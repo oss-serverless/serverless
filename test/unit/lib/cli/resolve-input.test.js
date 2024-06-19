@@ -127,23 +127,6 @@ describe('test/unit/lib/cli/resolve-input.test.js', () => {
         commandsSchema,
       });
     });
-
-    it('should recognize interactive setup', async () => {
-      resolveInput.clear();
-      data = overrideArgv(
-        {
-          args: ['serverless', '--app', 'foo'],
-        },
-        () => resolveInput()
-      );
-      expect(data).to.deep.equal({
-        commandSchema: commandsSchema.get(''),
-        command: '',
-        commands: [],
-        options: { app: 'foo' },
-        commandsSchema,
-      });
-    });
   });
 
   describe('isHelpRequest', () => {
@@ -195,24 +178,6 @@ describe('test/unit/lib/cli/resolve-input.test.js', () => {
         command: 'package',
         commands: ['package'],
         options: { help: true },
-        isHelpRequest: true,
-        commandsSchema,
-      });
-    });
-
-    it('should recognize "--help-interactive"', async () => {
-      resolveInput.clear();
-      const data = overrideArgv(
-        {
-          args: ['serverless', '--help-interactive'],
-        },
-        () => resolveInput()
-      );
-      expect(data).to.deep.equal({
-        commandSchema: commandsSchema.get(''),
-        command: '',
-        commands: [],
-        options: { 'help-interactive': true },
         isHelpRequest: true,
         commandsSchema,
       });

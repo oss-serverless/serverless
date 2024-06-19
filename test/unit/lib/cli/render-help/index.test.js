@@ -20,19 +20,6 @@ describe('test/unit/lib/cli/render-help/index.test.js', () => {
     expect(output).to.have.string('deploy function');
   });
 
-  it('should show interactive help when requested', async () => {
-    resolveInput.clear();
-    overrideArgv(
-      {
-        args: ['serverless', '--help-interactive'],
-      },
-      () => resolveInput()
-    );
-    const output = await observeOutput(() => renderHelp(new Set()));
-    expect(output).to.have.string('Interactive CLI');
-    expect(output).to.have.string('--help-interactive');
-  });
-
   it('should show general help on help command', async () => {
     resolveInput.clear();
     overrideArgv(

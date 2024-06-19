@@ -10,7 +10,7 @@ require('graceful-fs').gracefulify(require('fs'));
 
 // Setup log writing
 require('@serverless/utils/log-reporters/node');
-const { log, progress, isInteractive: isInteractiveTerminal } = require('@serverless/utils/log');
+const { log, progress } = require('@serverless/utils/log');
 
 const processLog = log.get('process');
 
@@ -24,7 +24,6 @@ let commandSchema;
 let serviceDir = null;
 let configuration = null;
 let serverless;
-const commandUsage = {};
 const variableSourcesInConfig = new Set();
 
 // Inquirer async operations do not keep node process alive
@@ -143,13 +142,11 @@ process.once('uncaughtException', (error) => {
     const isPropertyResolved = require('../lib/configuration/variables/is-property-resolved');
     const eventuallyReportVariableResolutionErrors = require('../lib/configuration/variables/eventually-report-resolution-errors');
     const filterSupportedOptions = require('../lib/cli/filter-supported-options');
-    const isDashboardEnabled = require('../lib/configuration/is-dashboard-enabled');
 
     let configurationPath = null;
     let providerName;
     let variablesMeta;
     let resolverConfiguration;
-    let isInteractiveSetup;
 
     const ensureResolvedProperty = (propertyPath) => {
       if (isPropertyResolved(variablesMeta, propertyPath)) return true;
@@ -175,8 +172,6 @@ process.once('uncaughtException', (error) => {
       ({ command, commands, options, isHelpRequest, commandSchema } = resolveInput(
         require('../lib/cli/commands-schema/service')
       ));
-
-      isInteractiveSetup = !isHelpRequest && command === '';
 
       processLog.debug('resolve eventual service configuration');
       const resolveConfigurationPath = require('../lib/cli/resolve-configuration-path');
@@ -272,7 +267,6 @@ process.once('uncaughtException', (error) => {
               variableSourcesInConfig,
             };
 
-            if (isInteractiveSetup) resolverConfiguration.fulfilledSources.add('opt');
             await resolveVariables(resolverConfiguration);
 
             if (
@@ -453,14 +447,7 @@ process.once('uncaughtException', (error) => {
           if (!ensureResolvedProperty('package\0path')) return;
 
           if (!ensureResolvedProperty('frameworkVersion')) return;
-          if (!ensureResolvedProperty('app')) return;
-          if (!ensureResolvedProperty('org')) return;
-          if (!ensureResolvedProperty('dashboard')) return;
           if (!ensureResolvedProperty('service')) return;
-          if (isDashboardEnabled({ configuration, options })) {
-            // Dashboard requires AWS region to be resolved upfront
-            ensureResolvedProperty('provider\0region');
-          }
         })();
 
         // Ensure to have full AWS commands schema loaded if we're in context of AWS provider
@@ -511,32 +498,6 @@ process.once('uncaughtException', (error) => {
         });
         await finalize({});
         return;
-      } else if (isInteractiveSetup) {
-        if (!isInteractiveTerminal) {
-          throw new ServerlessError(
-            'Attempted to run an interactive setup in non TTY environment.\n' +
-              "If that's intended, run with the SLS_INTERACTIVE_SETUP_ENABLE=1 environment variable",
-            'INTERACTIVE_SETUP_IN_NON_TTY'
-          );
-        }
-        if (!configuration) {
-          processLog.debug('run interactive onboarding');
-          const interactiveContext = await require('../lib/cli/interactive-setup')({
-            configuration,
-            serviceDir,
-            configurationFilename,
-            options,
-            commandUsage,
-          });
-          if (interactiveContext.configuration) {
-            configuration = interactiveContext.configuration;
-          }
-          if (interactiveContext.serverless) {
-            serverless = interactiveContext.serverless;
-          }
-          await finalize({});
-          return;
-        }
       }
     }
 
@@ -636,17 +597,6 @@ process.once('uncaughtException', (error) => {
           serverless.pluginManager.dashboardPlugin.configurationVariablesSources.param;
         resolverConfiguration.fulfilledSources.add('param');
 
-        // Register dashboard specific variable source resolvers
-        if (isDashboardEnabled({ configuration, options })) {
-          for (const [sourceName, sourceConfig] of Object.entries(
-            serverless.pluginManager.dashboardPlugin.configurationVariablesSources
-          )) {
-            if (sourceName === 'param') continue;
-            resolverConfiguration.sources[sourceName] = sourceConfig;
-            resolverConfiguration.fulfilledSources.add(sourceName);
-          }
-        }
-
         // Register AWS provider specific variable sources
         if (providerName === 'aws') {
           // Pre-resolve to eventually pick not yet resolved AWS auth related properties
@@ -721,14 +671,6 @@ process.once('uncaughtException', (error) => {
           (sourceName) => !recognizedSourceNames.has(sourceName)
         );
 
-        if (unrecognizedSourceNames.includes('output')) {
-          throw new ServerlessError(
-            '"Cannot resolve configuration: ' +
-              '"output" variable can only be used in ' +
-              'services deployed with Serverless Dashboard (with "org" setting configured)',
-            'DASHBOARD_VARIABLE_SOURCES_MISUSE'
-          );
-        }
         throw new ServerlessError(
           `Unrecognized configuration variable sources: "${unrecognizedSourceNames.join('", "')}"`,
           'UNRECOGNIZED_VARIABLE_SOURCES'
@@ -739,51 +681,13 @@ process.once('uncaughtException', (error) => {
         // Show help
         processLog.debug('render help');
         require('../lib/cli/render-help')(serverless.pluginManager.externalPlugins);
-      } else if (isInteractiveSetup) {
-        processLog.debug('run interactive onboarding');
-        const interactiveContext = await require('../lib/cli/interactive-setup')({
-          configuration,
-          serverless,
-          serviceDir,
-          configurationFilename,
-          options,
-          commandUsage,
-        });
-        if (interactiveContext.configuration) {
-          configuration = interactiveContext.configuration;
-        }
-        if (interactiveContext.serverless) {
-          serverless = interactiveContext.serverless;
-        }
-      } else {
-        processLog.debug('run Serverless instance');
-        // Run command
-        await serverless.run();
       }
-
       const backendNotificationRequest = await finalize({});
-      if (!isInteractiveSetup && backendNotificationRequest) {
+      if (backendNotificationRequest) {
         await processBackendNotificationRequest(backendNotificationRequest);
       }
     } catch (error) {
       processLog.debug('handle error');
-      // If Dashboard Plugin, capture error
-      const dashboardPlugin = serverless.pluginManager.dashboardPlugin;
-      const dashboardErrorHandler = _.get(dashboardPlugin, 'enterprise.errorHandler');
-      if (!dashboardErrorHandler) throw error;
-      try {
-        await dashboardErrorHandler(error, serverless.invocationId);
-      } catch (dashboardErrorHandlerError) {
-        const tokenizeException = require('../lib/utils/tokenize-exception');
-        const exceptionTokens = tokenizeException(dashboardErrorHandlerError);
-        log.warning(
-          `Publication to Serverless Dashboard errored with:\n${' '.repeat('Serverless: '.length)}${
-            exceptionTokens.isUserError || !exceptionTokens.stack
-              ? exceptionTokens.message
-              : exceptionTokens.stack
-          }`
-        );
-      }
       throw error;
     }
   } catch (error) {
