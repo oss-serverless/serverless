@@ -15,12 +15,6 @@ const { log, progress, isInteractive: isInteractiveTerminal } = require('@server
 const processLog = log.get('process');
 
 const handleError = require('../lib/cli/handle-error');
-const {
-  storeLocally: storeTelemetryLocally,
-  send: sendTelemetry,
-} = require('../lib/utils/telemetry');
-const generateTelemetryPayload = require('../lib/utils/telemetry/generate-payload');
-const isTelemetryDisabled = require('../lib/utils/telemetry/are-disabled');
 const logDeprecation = require('../lib/utils/log-deprecation');
 
 let command;
@@ -30,7 +24,6 @@ let commandSchema;
 let serviceDir = null;
 let configuration = null;
 let serverless;
-let dockerVersion;
 const commandUsage = {};
 const variableSourcesInConfig = new Set();
 
@@ -39,12 +32,9 @@ const variableSourcesInConfig = new Set();
 // to properly handle e.g. `SIGINT` interrupt
 const keepAliveTimer = setTimeout(() => {}, 60 * 60 * 1000);
 
-const trueWithProbability = (probability) => Math.random() < probability;
-
-let processSpanPromise;
 let hasBeenFinalized = false;
-const finalize = async ({ error, shouldBeSync, telemetryData, shouldSendTelemetry } = {}) => {
-  processLog.debug('finalize %o', { error, shouldBeSync, telemetryData, shouldSendTelemetry });
+const finalize = async ({ error, shouldBeSync } = {}) => {
+  processLog.debug('finalize %o', { error, shouldBeSync });
   if (hasBeenFinalized) {
     if (error) {
       // Programmer error in finalize handling, ensure to expose
@@ -57,36 +47,11 @@ const finalize = async ({ error, shouldBeSync, telemetryData, shouldSendTelemetr
   hasBeenFinalized = true;
   clearTimeout(keepAliveTimer);
   progress.clear();
-  if (error) ({ telemetryData } = await handleError(error, { serverless }));
+  if (error) (await handleError(error, { serverless }));
   if (!shouldBeSync) {
     await logDeprecation.printSummary();
   }
-  if (isTelemetryDisabled || !commandSchema) return null;
-  if (!error && isHelpRequest) return null;
-  storeTelemetryLocally({
-    ...generateTelemetryPayload({
-      command,
-      options,
-      commandSchema,
-      serviceDir,
-      configuration,
-      serverless,
-      commandUsage,
-      variableSources: variableSourcesInConfig,
-      dockerVersion,
-    }),
-    ...telemetryData,
-  });
-
-  // We want to explicitly ensure that when processing should be sync, we never attempt sending telemetry data
-  if (shouldBeSync) return null;
-
-  // We want to send telemetry at least roughly every 20 commands (in addition to sending on deploy and on errors)
-  // to avoid situations where we have very big batches of telemetry events that cannot be processed on the backend side
-  const shouldForceTelemetry = trueWithProbability(0.05);
-
-  if (!error && !shouldSendTelemetry && !shouldForceTelemetry) return null;
-  return sendTelemetry({ serverlessExecutionSpan: processSpanPromise });
+  return null;
 };
 
 process.once('uncaughtException', (error) => {
@@ -94,7 +59,7 @@ process.once('uncaughtException', (error) => {
   finalize({ error }).then(() => process.exit());
 });
 
-processSpanPromise = (async () => {
+(async () => {
   try {
     const wait = require('timers-ext/promise/sleep');
     await wait(); // Ensure access to "processSpanPromise"
@@ -107,7 +72,6 @@ processSpanPromise = (async () => {
         const isOtherSigintListener = Boolean(process.listenerCount(signal));
         finalize({
           shouldBeSync: true,
-          telemetryData: { outcome: 'interrupt', interruptSignal: signal },
         });
         if (isOtherSigintListener) return;
         // Follow recommendation from signal-exit:
@@ -553,7 +517,7 @@ processSpanPromise = (async () => {
           configurationFilename,
           options,
         });
-        await finalize({ telemetryData: { outcome: 'success' } });
+        await finalize({});
         return;
       } else if (isInteractiveSetup) {
         if (!isInteractiveTerminal) {
@@ -578,7 +542,7 @@ processSpanPromise = (async () => {
           if (interactiveContext.serverless) {
             serverless = interactiveContext.serverless;
           }
-          await finalize({ telemetryData: { outcome: 'success' }, shouldSendTelemetry: true });
+          await finalize({});
           return;
         }
       }
@@ -595,7 +559,6 @@ processSpanPromise = (async () => {
     });
 
     try {
-      serverless.onExitPromise = processSpanPromise;
       serverless.invocationId = uuid.v4();
       processLog.debug('initialize Serverless instance');
       await serverless.init();
@@ -801,28 +764,12 @@ processSpanPromise = (async () => {
           serverless = interactiveContext.serverless;
         }
       } else {
-        if (commands.join(' ') === 'deploy') {
-          const spawn = require('child-process-ext/spawn');
-          spawn('docker', ['--version']).then(
-            ({ stdoutBuffer }) => {
-              dockerVersion = null;
-              const matcher = String(stdoutBuffer).match(/(?<version>\d+\.\d+\.\d+),/);
-              if (!matcher) return;
-              dockerVersion = matcher.groups.version;
-            },
-            () => (dockerVersion = null)
-          );
-        }
-
         processLog.debug('run Serverless instance');
         // Run command
         await serverless.run();
       }
 
-      const backendNotificationRequest = await finalize({
-        telemetryData: { outcome: 'success' },
-        shouldSendTelemetry: isInteractiveSetup || commands.join(' ') === 'deploy',
-      });
+      const backendNotificationRequest = await finalize({});
       if (!isInteractiveSetup && backendNotificationRequest) {
         await processBackendNotificationRequest(backendNotificationRequest);
       }
