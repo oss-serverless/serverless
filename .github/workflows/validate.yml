@@ -5,6 +5,8 @@ name: Validate
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
 
 env:
   SLS_IGNORE_WARNING: '*'
