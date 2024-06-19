@@ -101,7 +101,7 @@ describe('test/unit/lib/cli/triage/index.test.js', () => {
     describe('regular commands', () => {
       let restoreArgv;
       before(() => {
-        ({ restoreArgv } = overrideArgv({ args: ['sls', 'login'] }));
+        ({ restoreArgv } = overrideArgv({ args: ['sls', 'doctor'] }));
       });
       after(() => restoreArgv());
 

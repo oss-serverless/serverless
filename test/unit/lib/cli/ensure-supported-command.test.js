@@ -13,7 +13,7 @@ describe('test/unit/lib/cli/ensure-supported-command.test.js', () => {
     triggeredDeprecations.clear();
     overrideArgv(
       {
-        args: ['serverless', 'login'],
+        args: ['serverless', 'help'],
       },
       () => resolveInput()
     );
@@ -51,7 +51,7 @@ describe('test/unit/lib/cli/ensure-supported-command.test.js', () => {
     triggeredDeprecations.clear();
     overrideArgv(
       {
-        args: ['serverless', 'login', '--hadsfa'],
+        args: ['serverless', 'deploy', '--hadsfa'],
       },
       () => resolveInput()
     );
