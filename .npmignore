@@ -2,7 +2,6 @@
 /.editorconfig
 /.prettierignore
 /CODE_OF_CONDUCT.md
-/commitlint.config.js
 /CONTRIBUTING.md
 /docker-compose.yml
 /Dockerfile

@@ -86,7 +86,6 @@
     "yaml-ast-parser": "0.0.43"
   },
   "devDependencies": {
-    "@commitlint/cli": "^12.1.4",
     "@serverless/eslint-config": "^5.1.0",
     "@serverless/test": "^11.1.1",
     "adm-zip": "^0.5.10",
@@ -223,7 +222,6 @@
     ]
   },
   "scripts": {
-    "commitlint": "commitlint -f HEAD@{15}",
     "coverage": "nyc npm test",
     "integration-test-cleanup": "node test/utils/aws-cleanup.js",
     "integration-test-run-all": "mocha-isolated --pass-through-aws-creds --skip-fs-cleanup-check --max-workers=20 \"test/integration/**/*.test.js\"",

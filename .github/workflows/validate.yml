@@ -15,15 +15,11 @@ env:
 
 jobs:
   linuxNode16:
-    name: '[Linux] Node.js 16: Lint, Formatting, Eventual Commitlint, Eventual Changelog, Unit & packaging tests'
+    name: '[Linux] Node.js 16: Lint, Formatting, Eventual Changelog, Unit & packaging tests'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-        with:
-          # For commitlint purpose ensure to have complete list of PR commits
-          # It's loose and imperfect assumption that PR has no more than 30 commits
-          fetch-depth: 30
 
       - name: Retrieve last main commit (for `git diff` purposes)
         run: |
@@ -58,9 +54,6 @@ jobs:
         run: npm run prettier-check:updated
       - name: Validate lint rules
         run: npm run lint:updated
-      - name: Validate commit messages
-        if: github.event.pull_request.base.repo.id == github.event.pull_request.head.repo.id
-        run: npx commitlint -f main
       - name: Validate changelog (if new version)
         run: |
           NEW_VERSION=`git diff -U0 main package.json | grep '"version": "' | tail -n 1 | grep -oE "[0-9]+\.[0-9]+\.[0-9]+"` || :

@@ -8,8 +8,6 @@ See proposed [Commit Message Guidelines](https://docs.google.com/document/d/1hKU
 
 In PR's as coming from forks (community contributions) while its welcome, we do not require to follow semantic commit messages. Yet, such PR is expected to be squash merged by project members with a single semantic commit message.
 
-PR's coming from branches have commit messages validated with [commmitlint](https://commitlint.js.org/#/)
-
 ## Release flow
 
 Releases are triggered manually by preparing a release PRs
