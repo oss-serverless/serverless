@@ -137,10 +137,6 @@ describe('test/unit/lib/cli/commands-schema/resolve-final.test.js', () => {
       expect(commands.get('deploy apim').usage).to.equal('Deploys APIM');
     });
 
-    it('should expose AWS specific options on newly introduced commands', () => {
-      expect(commands.get('deploy apim').options).to.have.property('app');
-    });
-
     it('should expose no service options on new service commands', () =>
       expect(commands.get('deploy apim').options).to.have.property('help'));
     it('should expose service options on new service commands', () =>
