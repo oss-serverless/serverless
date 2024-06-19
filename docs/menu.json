@@ -465,7 +465,6 @@
     "Upgrading to v3": "guides/upgrading-v3",
     "Configuration Validation": "configuration-validation",
     "Resolution of Environment Variables": "environment-variables",
-    "Deprecations": "deprecations",
-    "Telemetry and Notifications": "telemetry"
+    "Deprecations": "deprecations"
   }
 }
