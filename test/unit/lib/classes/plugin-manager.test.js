@@ -144,8 +144,6 @@ describe('PluginManager', () => {
 
   class ServicePluginMock2 {}
 
-  class EnterprisePluginMock {}
-
   const brokenPluginError = new Error('Broken plugin');
   class BrokenPluginMock {
     constructor() {
@@ -597,7 +595,6 @@ describe('PluginManager', () => {
       mockRequire('ServicePluginMock1', ServicePluginMock1);
       mockRequire('ServicePluginMock2', ServicePluginMock2);
       mockRequire('BrokenPluginMock', BrokenPluginMock);
-      mockRequire('@serverless/dashboard-plugin', EnterprisePluginMock);
     });
 
     it('should load only core plugins when no service plugins are given', async () => {
@@ -619,9 +616,6 @@ describe('PluginManager', () => {
       expect(pluginManager.plugins.some((plugin) => plugin instanceof ServicePluginMock2)).to.equal(
         true
       );
-      expect(
-        pluginManager.plugins.some((plugin) => plugin instanceof EnterprisePluginMock)
-      ).to.equal(true);
       // note: this test will be refactored as the Create plugin will be moved
       // to another directory
       expect(pluginManager.plugins.length).to.be.above(2);
@@ -636,7 +630,6 @@ describe('PluginManager', () => {
         pluginManager.plugins.findIndex((plugin) => plugin instanceof Create),
         pluginManager.plugins.findIndex((plugin) => plugin instanceof ServicePluginMock1),
         pluginManager.plugins.findIndex((plugin) => plugin instanceof ServicePluginMock2),
-        pluginManager.plugins.findIndex((plugin) => plugin instanceof EnterprisePluginMock),
       ];
       expect(pluginIndexes).to.deep.equal(pluginIndexes.slice().sort((a, b) => a - b));
     });
@@ -690,7 +683,6 @@ describe('PluginManager', () => {
       mockRequire.stop('ServicePluginMock1');
       mockRequire.stop('ServicePluginMock2');
       mockRequire.stop('BrokenPluginMock');
-      mockRequire.stop('@serverless/dashboard-plugin');
     });
   });
 

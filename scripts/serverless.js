@@ -46,7 +46,7 @@ const finalize = async ({ error, shouldBeSync } = {}) => {
   hasBeenFinalized = true;
   clearTimeout(keepAliveTimer);
   progress.clear();
-  if (error) (await handleError(error, { serverless }));
+  if (error) (handleError(error, { serverless }));
   if (!shouldBeSync) {
     await logDeprecation.printSummary();
   }
@@ -81,7 +81,6 @@ process.once('uncaughtException', (error) => {
     });
 
     const humanizePropertyPathKeys = require('../lib/configuration/variables/humanize-property-path-keys');
-    const processBackendNotificationRequest = require('../lib/utils/process-backend-notification-request');
 
     (() => {
       // Rewrite eventual `sls deploy -f` into `sls deploy function -f`
@@ -593,8 +592,6 @@ process.once('uncaughtException', (error) => {
           require('../lib/configuration/variables/sources/instance-dependent/get-sls')(serverless);
         resolverConfiguration.fulfilledSources.add('sls');
 
-        resolverConfiguration.sources.param =
-          serverless.pluginManager.dashboardPlugin.configurationVariablesSources.param;
         resolverConfiguration.fulfilledSources.add('param');
 
         // Register AWS provider specific variable sources
@@ -686,10 +683,7 @@ process.once('uncaughtException', (error) => {
         // Run command
         await serverless.run();
       }
-      const backendNotificationRequest = await finalize({});
-      if (backendNotificationRequest) {
-        await processBackendNotificationRequest(backendNotificationRequest);
-      }
+      await finalize({});
     } catch (error) {
       processLog.debug('handle error');
       throw error;
