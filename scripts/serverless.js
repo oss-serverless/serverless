@@ -681,6 +681,10 @@ process.once('uncaughtException', (error) => {
         // Show help
         processLog.debug('render help');
         require('../lib/cli/render-help')(serverless.pluginManager.externalPlugins);
+      } else {
+        processLog.debug('run Serverless instance');
+        // Run command
+        await serverless.run();
       }
       const backendNotificationRequest = await finalize({});
       if (backendNotificationRequest) {
