@@ -37,6 +37,7 @@
     "cachedir": "^2.3.0",
     "chalk": "^4.1.2",
     "child-process-ext": "^2.1.1",
+    "ci-info": "^4.0.0",
     "cli-progress-footer": "^2.3.2",
     "d": "^1.0.1",
     "dayjs": "^1.11.8",
