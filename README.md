@@ -19,6 +19,7 @@ It contains the following differences:
   - Removed unused dependencies. 
   - Auto-updating has been removed (because it's not working anymore).
 - All documentation for non-AWS providers has been removed.
+- There is no standalone binary version, the package is only available via NPM.
 - Fixed vulnerabilities in dependencies:
   - [micromatch](https://github.com/serverless/serverless/issues/12482)
   - [braces](https://github.com/serverless/serverless/issues/12481)
