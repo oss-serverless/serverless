@@ -14,26 +14,6 @@ describe('test/unit/lib/cli/triage/index.test.js', () => {
   before(() => overrideEnv({ variables: { SLS_GEO_LOCATION: 'us' } }));
 
   describe('CLI params', () => {
-    it('should recognize "serverless-tencent" unonditionally when in China and not at service context', async () =>
-      overrideEnv({ variables: { SLS_GEO_LOCATION: 'cn' } }, async () =>
-        overrideArgv({ args: ['sls any'] }, async () => {
-          expect(await triage()).to.equal('serverless-tencent');
-        })
-      ));
-
-    it('should unconditionally favor "serverless" for version check', async () =>
-      overrideEnv(
-        { variables: { SERVERLESS_PLATFORM_VENDOR: 'tencent', SLS_GEO_LOCATION: 'cn' } },
-        async () => {
-          await overrideArgv({ args: ['sls', '-v'] }, async () => {
-            expect(await triage()).to.equal('serverless');
-          });
-          await overrideArgv({ args: ['sls', '--version'] }, async () => {
-            expect(await triage()).to.equal('serverless');
-          });
-        }
-      ));
-
     it('should favor "serverless" in other cases', async () => {
       await overrideArgv({ args: ['sls', 'print'] }, async () => {
         expect(await triage()).to.equal('serverless');
@@ -91,7 +71,6 @@ describe('test/unit/lib/cli/triage/index.test.js', () => {
             )
           );
         };
-        register('serverless-tencent', 'cn');
         register('@serverless/components', 'us');
       }
     }
