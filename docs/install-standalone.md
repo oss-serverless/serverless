@@ -54,4 +54,4 @@ choco upgrade serverless
 
 ## Next steps
 
-Now that Serverless Framework is installed, [get back to the Setup guide to create your first project](./getting-started.md#getting-started).
+Now that Serverless Framework is installed, [get back to the Setup guide to create your first project](./getting-started.md).

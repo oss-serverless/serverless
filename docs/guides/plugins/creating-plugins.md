@@ -1,17 +1,3 @@
-<!--
-title: Serverless Framework - Creating plugins
-menuText: Creating plugins
-menuOrder: 1
-description: How to create custom plugins to customize the Serverless Framework
-layout: Doc
--->
-
-<!-- DOCS-SITE-LINK:START automatically generated  -->
-
-### [Read this on the main serverless docs site](https://www.serverless.com/framework/docs/guides/plugins/creating-plugins)
-
-<!-- DOCS-SITE-LINK:END -->
-
 # Creating custom plugins
 
 Creating a custom plugin lets you:

@@ -1,17 +1,3 @@
-<!--
-title: Serverless Framework - Plugins - CLI output
-menuText: CLI output
-menuOrder: 2
-description: How to write to the CLI output in Serverless Framework plugins.
-layout: Doc
--->
-
-<!-- DOCS-SITE-LINK:START automatically generated  -->
-
-### [Read this on the main serverless docs site](https://www.serverless.com/framework/docs/guides/plugins/cli-output)
-
-<!-- DOCS-SITE-LINK:END -->
-
 # CLI output in plugins
 
 Plugins can integrate and extend the CLI output of the Serverless Framework in different ways.

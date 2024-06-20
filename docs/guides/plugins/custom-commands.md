@@ -1,17 +1,3 @@
-<!--
-title: Serverless Framework - Plugins - Custom commands
-menuText: Custom commands
-menuOrder: 3
-description: How to create custom Serverless Framework commands via a plugin
-layout: Doc
--->
-
-<!-- DOCS-SITE-LINK:START automatically generated  -->
-
-### [Read this on the main serverless docs site](https://www.serverless.com/framework/docs/guides/plugins/custom-commands)
-
-<!-- DOCS-SITE-LINK:END -->
-
 # Custom commands
 
 Serverless Framework plugins can define custom CLI commands.

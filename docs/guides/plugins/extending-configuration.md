@@ -1,17 +1,3 @@
-<!--
-title: Serverless Framework - Plugins - Extending and overriding the configuration
-menuText: Extending and overriding configuration
-menuOrder: 6
-description: How to extend and override configuration via a plugin
-layout: Doc
--->
-
-<!-- DOCS-SITE-LINK:START automatically generated  -->
-
-### [Read this on the main serverless docs site](https://www.serverless.com/framework/docs/guides/plugins/extending-configuration)
-
-<!-- DOCS-SITE-LINK:END -->
-
 # Extending and overriding configuration
 
 Plugins can extend and override the internal configuration.

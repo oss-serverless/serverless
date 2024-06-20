@@ -1,17 +1,3 @@
-<!--
-title: Serverless Framework - Plugins
-menuText: Plugins
-menuOrder: 4
-description: How to install plugins to customize the Serverless Framework
-layout: Doc
--->
-
-<!-- DOCS-SITE-LINK:START automatically generated  -->
-
-### [Read this on the main serverless docs site](https://www.serverless.com/framework/docs/guides/plugins)
-
-<!-- DOCS-SITE-LINK:END -->
-
 # Plugins
 
 A plugin is custom JavaScript code that extends the Serverless Framework with new features.

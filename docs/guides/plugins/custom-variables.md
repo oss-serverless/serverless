@@ -1,17 +1,3 @@
-<!--
-title: Serverless Framework - Plugins - Custom variables
-menuText: Custom variables
-menuOrder: 4
-description: How to create custom Serverless Framework variables via a plugin
-layout: Doc
--->
-
-<!-- DOCS-SITE-LINK:START automatically generated  -->
-
-### [Read this on the main serverless docs site](https://www.serverless.com/framework/docs/guides/plugins/custom-variables)
-
-<!-- DOCS-SITE-LINK:END -->
-
 # Custom variables
 
 Plugins can register custom variables sources, for example `${foo:some-variable}`.

@@ -1,16 +1,3 @@
-<!--
-title: Serverless Framework - Upgrading to v3
-menuText: Upgrading to v3
-menuOrder: 12
-layout: Doc
--->
-
-<!-- DOCS-SITE-LINK:START automatically generated  -->
-
-### [Read this on the main serverless docs site](https://www.serverless.com/framework/docs/guides/upgrading-v3/)
-
-<!-- DOCS-SITE-LINK:END -->
-
 # Upgrading to Serverless Framework v3
 
 Serverless Framework v3 contains a few breaking changes that may impact some projects.
