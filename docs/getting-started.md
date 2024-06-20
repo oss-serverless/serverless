@@ -1,8 +1,3 @@
-<!--
-title: Setting Up Serverless Framework With AWS
-layout: Doc
--->
-
 # Setting Up Serverless Framework With AWS
 
 Get started with Serverless Framework’s open-source CLI and Amazon Web Services in minutes.
@@ -33,7 +28,6 @@ The `serverless` command will guide you to:
 
 1. Create a new project
 2. Configure your [AWS credentials](https://serverless.com/framework/docs/providers/aws/guide/credentials/)
-3. Optionally set up a free Serverless Framework account with additional features.
 
 Your new serverless project will contain a `serverless.yml` file. This file features simple syntax for deploying infrastructure to AWS, such as AWS Lambda functions, infrastructure that triggers those functions with events, and additional infrastructure your AWS Lambda functions may need for various use-cases. You can learn more about this in the [Core Concepts documentation](https://www.serverless.com/framework/docs/providers/aws/guide/intro).
 
@@ -121,27 +115,6 @@ More details on the `invoke local` command can be found [here](https://www.serve
 Serverless Framework also has a great plugin that allows you to run a server locally and emulate AWS API Gateway. This is the `serverless-offline` command.
 
 More details on the **serverless-offline** plugins command can be found [here](https://github.com/dherault/serverless-offline)
-
-## Monitoring & Observability
-
-Monitoring AWS Lambda and its other resources dependencies can be challenging (especially as your number of resources grow). This generally involves jumping around various services and products within AWS Cloudwatch.
-
-Fortunately, we've delivered a consolidated and elegant solution to monitoring AWS Lambda in [Serverless Console](https://console.serverless.com). You'll get a bunch of delightful features out of the box:
-
-- Start monitoring automatically, with no code instrumentation required.
-- Monitor everything via a consolidated Metrics view for all of your AWS Lambda functions across AWS accounts, regions and more.
-- Troubleshoot any invocation by querying rich tags that are automatically added by Serverless Console.
-- Understand issues via detailed Traces detailing what happened within your AWS Lambda invocation.
-- Capture Errors, Warnings and more.
-- Stream Logs and other telemetry instantly while you develop via the Dev Mode user interface.
-
-To set up Serverless Console automatically, run:
-
-```bash
-sls --console
-```
-
-Serverless Console is designed for developers, and it moves at their speed.
 
 ## Remove Your Service
 

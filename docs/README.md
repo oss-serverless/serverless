@@ -1,6 +1,5 @@
 - Get Started
   - [Setup](./getting-started.md)
-  - [Tutorial](./tutorial.md)
   - [Concepts](./providers/aws/guide/intro.md)
   - [AWS Credentials](./providers/aws/guide/credentials.md)
 - Usage
