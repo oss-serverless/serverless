@@ -56,9 +56,7 @@ jobs:
     needs: prePublishPackageTest
     runs-on: ubuntu-latest
     env:
-      # It'll work with secrets.GITHUB_TOKEN (which is provided by GitHub unconditionally)
-      # Still then release author would be "github-actions". It's better if it's dedicated repo bot
-      GITHUB_TOKEN: ${{ secrets.USER_GITHUB_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -93,18 +91,3 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish
-
-      - name: Build standalone artifacts
-        run: npm run pkg:build
-
-      - name: Publish release notes
-        run: |
-          TEMP_ARRAY=($(echo $GITHUB_REF | tr "/" "\n"))
-          TAG=${TEMP_ARRAY[@]: -1}
-          npx github-release-from-cc-changelog $TAG
-
-      - name: Publish standalone artifacts
-        run: |
-          TEMP_ARRAY=($(echo $GITHUB_REF | tr "/" "\n"))
-          TAG=${TEMP_ARRAY[@]: -1}
-          npm run pkg:upload -- $TAG

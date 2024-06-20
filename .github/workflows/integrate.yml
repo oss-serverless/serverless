@@ -193,19 +193,7 @@ jobs:
       # Note: No need to install dependencies as we have retrieved cached `node_modules` for very
       #       same `package.json` as stored with previous job
 
-      - name: Build standalone artifacts
-        run: npm run pkg:build
-
       - name: Basic integration tests against standalone binary
         run: npm run integration-test-run-basic
       - name: Full integration tests against standalone binary
         run: npm run integration-test-run-all
-
-      - name: Tag if new version
-        run: |
-          NEW_VERSION=`git diff -U0 ${{ github.event.before }} package.json | grep '"version": "' | tail -n 1 | grep -oE "[0-9]+\.[0-9]+\.[0-9]+"` || :
-          if [ -n "$NEW_VERSION" ];
-          then
-            git tag v$NEW_VERSION
-            git push --tags
-          fi
