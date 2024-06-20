@@ -98,10 +98,6 @@ process.once('uncaughtException', (error) => {
 
       if (commands.join(' ') !== 'deploy') return;
       if (!args.includes('-f') && !args.includes('--function')) return;
-      logDeprecation(
-        'CLI_DEPLOY_FUNCTION_OPTION_V3',
-        'Starting with v4.0.0, `--function` or `-f` option for `deploy` command will no longer be supported. In order to deploy a single function, please use `deploy function` command instead.'
-      );
       process.argv.splice(3, 0, 'function');
     })();
 
