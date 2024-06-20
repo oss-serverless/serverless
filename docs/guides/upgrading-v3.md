@@ -32,7 +32,6 @@ npm install -g serverless
 If you [installed `serverless` as a standalone binary](../getting-started.md#install-as-a-standalone-binary), run the following command instead:
 
 - MacOS/Linux standalone binary: `serverless upgrade --major`
-- Windows: `choco upgrade serverless`
 
 ## Update `frameworkVersion` setting for v3
 

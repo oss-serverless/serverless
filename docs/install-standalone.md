@@ -36,22 +36,6 @@ serverless upgrade
 curl -o- -L https://slss.io/install | VERSION=2.72.2 bash
 ```
 
-## Windows
-
-Install Serverless Framework with [Chocolatey](https://chocolatey.org/):
-
-```bash
-choco install serverless
-```
-
-### Upgrade
-
-On Windows, upgrade Serverless Framework to the latest version by running:
-
-```bash
-choco upgrade serverless
-```
-
 ## Next steps
 
 Now that Serverless Framework is installed, [get back to the Setup guide to create your first project](./getting-started.md).

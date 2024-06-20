@@ -224,7 +224,6 @@
     "lint": "eslint .",
     "lint:updated": "pipe-git-updated --ext=js --base=main -- eslint",
     "pkg:build": "node ./scripts/pkg/build.js",
-    "pkg:generate-choco-package": "node ./scripts/pkg/generate-choco-package.js",
     "pkg:upload": "node ./scripts/pkg/upload/index.js",
     "postinstall": "node ./scripts/postinstall.js",
     "prepare-release": "standard-version && prettier --write CHANGELOG.md",
