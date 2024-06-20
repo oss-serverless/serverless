@@ -3,8 +3,8 @@
 name: Integrate
 
 on:
-#  push:
-#    branches: [main]
+  push:
+    branches: [disabled]
 
 env:
   SLS_IGNORE_WARNING: '*'
