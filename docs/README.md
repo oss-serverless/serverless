@@ -35,7 +35,7 @@
     - [Websocket](./providers/aws/events/websocket.md)
   - [Layers](./providers/aws/guide/layers.md)
   - [IAM Function Permissions](./providers/aws/guide/iam.md)
-  - [Parameters](./guides/parameters.md)
+  - [Parameters](./parameters.md)
   - [Variables](./providers/aws/guide/variables.md)
   - [Resources](./providers/aws/guide/resources.md)
   - [Composing services](./guides/compose.md)
