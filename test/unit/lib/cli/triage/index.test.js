@@ -37,7 +37,7 @@ describe('test/unit/lib/cli/triage/index.test.js', () => {
     });
     after(() => restoreArgv());
 
-    for (const cliName of ['serverless', '@serverless/cli', '@serverless/compose']) {
+    for (const cliName of ['serverless', '@serverless/compose']) {
       for (const extension of fs.readdirSync(path.resolve(fixturesDirname, cliName))) {
         for (const fixtureName of fs.readdirSync(
           path.resolve(fixturesDirname, cliName, extension)
@@ -52,26 +52,6 @@ describe('test/unit/lib/cli/triage/index.test.js', () => {
             )
           );
         }
-      }
-    }
-    for (const extension of fs.readdirSync(path.resolve(fixturesDirname, 'platform'))) {
-      for (const fixtureName of fs.readdirSync(
-        path.resolve(fixturesDirname, 'platform', extension)
-      )) {
-        const register = (cliName, geoLocation) => {
-          const testName = `should recognize "${cliName}" at "platform/${extension}/${fixtureName}" for "${geoLocation}" location`;
-          it(testName, async () =>
-            overrideEnv({ variables: { SLS_GEO_LOCATION: geoLocation } }, async () =>
-              overrideCwd(
-                path.resolve(fixturesDirname, 'platform', extension, fixtureName),
-                async () => {
-                  expect(await triage()).to.equal(cliName);
-                }
-              )
-            )
-          );
-        };
-        register('@serverless/components', 'us');
       }
     }
   });

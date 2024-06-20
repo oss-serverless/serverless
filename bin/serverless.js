@@ -80,38 +80,6 @@ require('../lib/cli/triage')().then((cliName) => {
         });
       });
       return;
-    case '@serverless/components':
-      {
-        const chalk = require('chalk');
-        process.stdout.write(
-          `${[
-            'Serverless Components CLI is no longer bundled with Serverless Framework CLI',
-            '',
-            "To run it, ensure it's installed:",
-            chalk.bold('npm install -g @serverless/components'),
-            '',
-            'Then run:',
-            chalk.bold('components <command> <options>'),
-          ].join('\n')}\n`
-        );
-      }
-      return;
-    case '@serverless/cli':
-      {
-        const chalk = require('chalk');
-        process.stdout.write(
-          `${[
-            'Serverless Components CLI v1 is no longer bundled with Serverless Framework CLI',
-            '',
-            "To run it, ensure it's installed:",
-            chalk.bold('npm install -g @serverless/cli'),
-            '',
-            'Then run:',
-            chalk.bold('components-v1 <command> <options>'),
-          ].join('\n')}\n`
-        );
-      }
-      return;
     default:
       throw new Error(`Unrecognized CLI name "${cliName}"`);
   }
