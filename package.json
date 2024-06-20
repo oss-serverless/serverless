@@ -1,11 +1,9 @@
 {
-  "name": "serverless",
+  "name": "@bref.sh/serverless",
   "version": "3.39.0",
-  "description": "Serverless Framework - Build web, mobile and IoT applications with serverless architectures using AWS Lambda, Azure Functions, Google CloudFunctions & more",
+  "description": "Serverless Framework v3",
   "preferGlobal": true,
-  "homepage": "https://serverless.com/framework/docs/",
-  "author": "serverless.com",
-  "repository": "serverless/serverless",
+  "homepage": "https://github.com/mnapoli/serverless-framework",
   "keywords": [
     "serverless",
     "lambda",
