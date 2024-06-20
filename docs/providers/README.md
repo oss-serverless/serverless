@@ -1,15 +1,3 @@
-<!--
-title: Serverless - Infrastructure & Compute Providers
-menuText: Provider References
-layout: Doc
--->
-
-<!-- DOCS-SITE-LINK:START automatically generated  -->
-
-### [Read this on the main serverless docs site](https://www.serverless.com/framework/docs/providers/)
-
-<!-- DOCS-SITE-LINK:END -->
-
 # Serverless Infrastructure Providers
 
 Under the hood, the Serverless Framework is deploying your code to a cloud provider like AWS, Microsoft Azure, Google Cloud Platform, Apache OpenWhisk, Cloudflare Workers, or a Kubernetes-based solution like Kubeless. Click on your provider for detailed Serverless Framework CLI user guides and references.
