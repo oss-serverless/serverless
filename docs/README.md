@@ -1,43 +1,79 @@
-<!--
-title: Serverless Framework Documentation
-layout: Doc
--->
-
-<!-- DOCS-SITE-LINK:START automatically generated  -->
-
-### [Read this on the main serverless docs site](https://www.serverless.com/framework/docs/)
-
-<!-- DOCS-SITE-LINK:END -->
-
-# Serverless Framework Documentation
-
-**Deliver software with radically less overhead.**
-
-This is the guiding principle behind the Serverless Framework, which was developed following the release of AWS Lambda in 2014. The Serverless Framework pioneered serverless architecture on AWS, a transformative approach to building applications on cloud infrastructure that auto-scales, incurs no charges when idle, and typically demands minimal maintenance. Today, it continues to be the leading developer tool for deploying serverless architectures.
-
-Here are the Serverless Framework's highlights:
-
-- **Empowering** - Build more and manage less with serverless architectures.
-- **Many Use-Cases** - Choose from tons of efficient serverless use-cases (APIs, Scheduled Tasks, Event Handlers, Streaming Data Pipelines, Web Sockets & more).
-- **Automated** - Deploys both code and infrastructure together, resulting in out-of-the-box serverless apps.
-- **Easy** - Enjoy simple syntax to safely deploy AWS Lambda functions, event sources and more without being a cloud expert.
-- **Multi-Language** - Supports Node.js, Python, Java, Go, C#, Ruby, Swift, Kotlin, PHP, Scala, & F#
-- **Full Lifecycle** - Manages the lifecycle of your serverless architecture (build, deploy, update, monitor, troubleshoot).
-- **Multi-Domains** - Group domains into Serverless Services for easy management of code, resources & processes, across large projects & teams.
-- **Multi-Environments** - Built-in support for multiple stages (e.g. development, staging, production).
-- **Guardrails** - Loaded with automation, optimization and best practices.
-- **Extensible** - Extend or modify the Framework and its operations via Plugins.
-- **Plugin Ecosystem** - Extend or modify the Framework and its operations via Plugins.
-- **Welcoming** - A passionate and welcoming community!
-
-Get started via the Serverless Framework CLI using [this guide](https://serverless.com/framework/docs/getting-started/).
-
-Have questions? Join thousands of other users in our [Slack Channel](https://serverless.com/slack).
-
-After that, we recommend you...
-
-- [Study Serverless Framework's core concepts](https://www.serverless.com/framework/docs/providers/aws/guide/intro)
-- [Get inspiration from these Serverless Framework templates](https://github.com/serverless/examples)
-- [Discover all of the events that can trigger AWS Lambda functions](https://www.serverless.com/framework/docs/providers/aws/guide/events)
-- [Bookmark Serverless Framework's `serverless.yml` guide](https://www.serverless.com/framework/docs/providers/aws/guide/serverless.yml)
-- [Search the plugins registry to extend Serverless Framework](https://www.serverless.com/plugins)
+- Get Started
+  - [Setup](./getting-started.md)
+  - [Tutorial](./tutorial.md)
+  - [Concepts](./providers/aws/guide/intro.md)
+  - [AWS Credentials](./providers/aws/guide/credentials.md)
+- Usage
+  - [Deploying](./providers/aws/guide/deploying.md)
+  - [Packaging](./providers/aws/guide/packaging.md)
+  - [Testing](./providers/aws/guide/testing.md)
+  - [Services](./providers/aws/guide/services.md)
+  - [Functions](./providers/aws/guide/functions.md)
+  - Events
+    - [Overview](./providers/aws/guide/events.md)
+    - [HTTP (API Gateway v2)](./providers/aws/events/http-api.md)
+    - [REST (API Gateway v1)](./providers/aws/events/apigateway.md)
+    - [ActiveMQ](./providers/aws/events/activemq.md)
+    - [Application Load Balancer](./providers/aws/events/alb.md)
+    - [Alexa Skill](./providers/aws/events/alexa-skill.md)
+    - [Alexa Smart Home](./providers/aws/events/alexa-smart-home.md)
+    - [CloudWatch Event](./providers/aws/events/cloudwatch-event.md)
+    - [CloudWatch Log](./providers/aws/events/cloudwatch-log.md)
+    - [CloudFront](./providers/aws/events/cloudfront.md)
+    - [Cognito User Pool](./providers/aws/events/cognito-user-pool.md)
+    - [EventBridge Event](./providers/aws/events/event-bridge.md)
+    - [IoT](./providers/aws/events/iot.md)
+    - [IoT Fleet Provisioning](./providers/aws/events/iot-fleet-provisioning.md)
+    - [Kafka](./providers/aws/events/kafka.md)
+    - [Kinesis & DynamoDB](./providers/aws/events/streams.md)
+    - [MSK](./providers/aws/events/msk.md)
+    - [RabbitMQ](./providers/aws/events/rabbitmq.md)
+    - [S3](./providers/aws/events/s3.md)
+    - [Schedule](./providers/aws/events/schedule.md)
+    - [SNS](./providers/aws/events/sns.md)
+    - [SQS](./providers/aws/events/sqs.md)
+    - [Websocket](./providers/aws/events/websocket.md)
+  - [Layers](./providers/aws/guide/layers.md)
+  - [IAM Function Permissions](./providers/aws/guide/iam.md)
+  - [Parameters](./guides/parameters.md)
+  - [Variables](./providers/aws/guide/variables.md)
+  - [Resources](./providers/aws/guide/resources.md)
+  - [Composing services](./guides/compose.md)
+  - [Workflow Tips](./providers/aws/guide/workflow.md)
+- [Serverless.yml Reference](./providers/aws/guide/serverless.yml)
+- CLI Reference
+  - [Overview](./providers/aws/cli-reference/README.md)
+  - [config credentials](./providers/aws/cli-reference/config-credentials.md)
+  - [create](./providers/aws/cli-reference/create.md)
+  - [install](./providers/aws/cli-reference/install.md)
+  - [package](./providers/aws/cli-reference/package.md)
+  - [deploy](./providers/aws/cli-reference/deploy.md)
+  - [deploy function](./providers/aws/cli-reference/deploy-function.md)
+  - [deploy list](./providers/aws/cli-reference/deploy-list.md)
+  - [invoke](./providers/aws/cli-reference/invoke.md)
+  - [invoke local](./providers/aws/cli-reference/invoke-local.md)
+  - [logs](./providers/aws/cli-reference/logs.md)
+  - [metrics](./providers/aws/cli-reference/metrics.md)
+  - [info](./providers/aws/cli-reference/info.md)
+  - [rollback](./providers/aws/cli-reference/rollback.md)
+  - [rollback function](./providers/aws/cli-reference/rollback-function.md)
+  - [remove](./providers/aws/cli-reference/remove.md)
+  - [plugin list](./providers/aws/cli-reference/plugin-list.md)
+  - [plugin search](./providers/aws/cli-reference/plugin-search.md)
+  - [plugin install](./providers/aws/cli-reference/plugin-install.md)
+  - [plugin uninstall](./providers/aws/cli-reference/plugin-uninstall.md)
+  - [generate event](./providers/aws/cli-reference/generate-event.md)
+  - [print](./providers/aws/cli-reference/print.md)
+- Learn More
+  - [Upgrading to v3](./guides/upgrading-v3.md)
+  - [Configuration Validation](./configuration-validation.md)
+  - [Resolution of Environment Variables](./environment-variables.md)
+  - [Deprecations](./deprecations.md)
+- Plugins
+  - [Overview](./guides/plugins/README.md)
+  - [Creating Plugins](./guides/plugins/creating-plugins.md)
+  - [CLI Output](./guides/plugins/cli-output.md)
+  - [Custom Commands](./guides/plugins/custom-commands.md)
+  - [Custom Variables](./guides/plugins/custom-variables.md)
+  - [Extending the Configuration schema](./guides/plugins/custom-configuration.md)
+  - [Extending and overriding configuration](./guides/plugins/extending-configuration.md)
