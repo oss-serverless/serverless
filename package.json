@@ -85,7 +85,6 @@
     "eslint": "^8.43.0",
     "eslint-plugin-import": "^2.27.5",
     "git-list-updated": "^1.2.1",
-    "github-release-from-cc-changelog": "^2.3.0",
     "husky": "^4.3.8",
     "jszip": "^3.10.1",
     "lint-staged": "^13.2.2",
@@ -172,35 +171,6 @@
       "text-summary"
     ]
   },
-  "standard-version": {
-    "skip": {
-      "commit": true,
-      "tag": true
-    },
-    "types": [
-      {
-        "type": "feat",
-        "section": "Features"
-      },
-      {
-        "type": "fix",
-        "section": "Bug Fixes"
-      },
-      {
-        "type": "perf",
-        "section": "Performance Improvements"
-      },
-      {
-        "type": "refactor",
-        "section": "Maintenance Improvements"
-      }
-    ]
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
   "lint-staged": {
     "*.js": [
       "eslint"
@@ -222,7 +192,6 @@
     "pkg:build": "node ./scripts/pkg/build.js",
     "pkg:upload": "node ./scripts/pkg/upload/index.js",
     "postinstall": "node ./scripts/postinstall.js",
-    "prepare-release": "standard-version && prettier --write CHANGELOG.md",
     "prettier-check": "prettier -c \"**/*.{css,html,js,json,md,yaml,yml}\"",
     "prettier-check:updated": "pipe-git-updated --ext=css --ext=html --ext=js --ext=json --ext=md --ext=yaml --ext=yml --base=main -- prettier -c",
     "prettify": "prettier --write \"**/*.{css,html,js,json,md,yaml,yml}\"",
