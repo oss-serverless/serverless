@@ -17,7 +17,7 @@ It contains the following differences:
   - Serverless Dashboard/Enterprise features are removed (because there is no guarantee to keep them working with v3), if you are using them you should upgrade to v4.
   - Serverless Components support have been removed: these are old and unmaintained projects, it's very unlikely you are using them. That improves the boot time of the CLI.
   - Removed unused dependencies. 
-- Auto-updating has been removed (because it's not working anymore).
+  - Auto-updating has been removed (because it's not working anymore).
 - All documentation for non-AWS providers has been removed.
 - Fixed vulnerabilities in dependencies:
   - [micromatch](https://github.com/serverless/serverless/issues/12482)
