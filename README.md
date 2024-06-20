@@ -8,7 +8,7 @@ The Serverless Framework is a command-line tool with an easy and approachable YA
 
 This repository is based on Serverless Framework v3. It exists to help those that are still on this version and cannot upgrade immediately to v4.
 
-This is not intended as a fork or long-term maintained project, but to solve immediate needs for v3.
+This is not intended as a fork or long-term maintained project, but to solve immediate needs for v3 to continue working.
 
 It contains the following differences:
 
