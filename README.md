@@ -4,7 +4,25 @@
 
 The Serverless Framework is a command-line tool with an easy and approachable YAML syntax to deploy both your code and cloud infrastructure needed to make tons of serverless application use-cases. It's a multi-language framework that supports Node.js, Typescript, Python, Go, Java, and more. It's also completely extensible via over 1,000 plugins which add more serverless use-cases and workflows to the Framework.
 
-**This repository maintains the documentation for Serverless Framework v3.**
+## Context
+
+This repository is based on Serverless Framework v3. It exists to help those that are still on this version and cannot upgrade immediately to v4.
+
+This is not intended as a fork or long-term maintained project, but to solve immediate needs for v3.
+
+It contains the following differences:
+
+- [Up-to-date documentation for v3](./docs)
+- Lighter and faster CLI:
+  - Serverless Dashboard/Enterprise features are removed (because there is no guarantee to keep them working with v3), if you are using them you should upgrade to v4.
+  - Serverless Components support have been removed: these are old and unmaintained projects, it's very unlikely you are using them. That improves the boot time of the CLI.
+  - Removed unused dependencies. 
+- Auto-updating has been removed (because it's not working anymore).
+- All documentation for non-AWS providers has been removed.
+- Fixed vulnerabilities in dependencies:
+  - [micromatch](https://github.com/serverless/serverless/issues/12482)
+  - [braces](https://github.com/serverless/serverless/issues/12481)
+  - [tar](https://github.com/serverless/serverless/issues/12422)
 
 ## Get Started
 
