@@ -22,6 +22,7 @@ It contains the following differences:
 - Lighter and faster CLI - Each command is ~1s faster than the original v3.
   - Serverless Dashboard/Enterprise features are removed (because there is no guarantee to keep them working with v3), if you are using them you should upgrade to v4.
   - Serverless Components support have been removed: these are old and unmaintained projects, it's very unlikely you are using them. That improves the boot time of the CLI.
+  - Serverless' integration for Tencent Cloud (China version of the `serverless` CLI) has been removed.
   - Removed unused dependencies. 
   - Auto-updating has been removed (because it's not working anymore).
 - Fixed a node warning ("The `punycode` module is deprecated").

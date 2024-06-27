@@ -38,41 +38,16 @@ else
   exit 1
 fi
 
-if [ -n "$SLS_GEO_LOCATION" ]
-then
-  if [[ $SLS_GEO_LOCATION == "cn" ]]
-  then
-    IS_IN_CHINA=1
-  fi
-else
-  TIMEZONE_OFFSET=`date +"%Z %z"`
-  if [[ $TIMEZONE_OFFSET == "CST +0800" ]]
-  then
-    IS_IN_CHINA=1
-  fi
-fi
-
 if [[ -z "${VERSION}" ]]
 then
   # Get latest tag
-  if [[ $IS_IN_CHINA == "1" ]]
-  then
-    TAG=`curl -L --silent https://sls-standalone-sv-1300963013.cos.na-siliconvalley.myqcloud.com/latest-tag`
-  else
-    TAG='v3.39.0'
-  fi
+  TAG='v3.39.0'
   VERSION=${TAG:1}
 else
   TAG=v$VERSION
 fi
 
-if [[ $IS_IN_CHINA == "1" ]]
-then
-	# In China download from location in China (Github API download is slow and times out)
-	BINARY_URL=https://sls-standalone-sv-1300963013.cos.na-siliconvalley.myqcloud.com/$TAG/serverless-$PLATFORM-$ARCH
-else
-	BINARY_URL=https://github.com/serverless/serverless/releases/download/$TAG/serverless-$PLATFORM-$ARCH
-fi
+BINARY_URL=https://github.com/serverless/serverless/releases/download/$TAG/serverless-$PLATFORM-$ARCH
 
 # Download binary
 BINARIES_DIR_PATH=$HOME/.serverless/bin
