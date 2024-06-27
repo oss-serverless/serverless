@@ -24,6 +24,7 @@ It contains the following differences:
   - Serverless Components support have been removed: these are old and unmaintained projects, it's very unlikely you are using them. That improves the boot time of the CLI.
   - Removed unused dependencies. 
   - Auto-updating has been removed (because it's not working anymore).
+- Fixed a node warning ("The `punycode` module is deprecated").
 
 ## Get Started
 
