@@ -19,7 +19,7 @@ It contains the following differences:
   - [micromatch](https://github.com/serverless/serverless/issues/12482)
   - [braces](https://github.com/serverless/serverless/issues/12481)
   - [tar](https://github.com/serverless/serverless/issues/12422)
-- Lighter and faster CLI - Each command is ~1s faster than the original v3.
+- Lighter and faster CLI
   - Serverless Dashboard/Enterprise features are removed (because there is no guarantee to keep them working with v3), if you are using them you should upgrade to v4.
   - Serverless Components support have been removed: these are old and unmaintained projects, it's very unlikely you are using them. That improves the boot time of the CLI.
   - Serverless' integration for Tencent Cloud (China version of the `serverless` CLI) has been removed.
