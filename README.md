@@ -25,6 +25,7 @@ It contains the following differences:
   - Serverless' integration for Tencent Cloud (China version of the `serverless` CLI) has been removed.
   - Removed unused dependencies. 
   - Auto-updating has been removed (because it's not working anymore).
+  - Removed automatic use of local `serverless` installation (in `node_modules`): this avoids surprises running the local `serverless` version instead of this fork.
 - Fixed a node warning ("The `punycode` module is deprecated").
 
 ## Get Started

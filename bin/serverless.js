@@ -38,33 +38,6 @@ if (isMainModule) {
       return;
     }
   }
-
-  const path = require('path');
-  const localInstallationPath = require('../lib/cli/local-serverless-path');
-  if (localInstallationPath && localInstallationPath !== path.dirname(__dirname)) {
-    // Local fallback
-    const localServerlessBinPath = (() => {
-      try {
-        return require.resolve(path.resolve(localInstallationPath, 'bin/serverless'));
-      } catch (ignore) {
-        // Unrecognized "serverless" installation, continue with this one
-        return null;
-      }
-    })();
-
-    if (localServerlessBinPath) {
-      EvalError.$serverlessInitInstallationVersion = require('../package').version;
-      const colorSupportLevel = require('supports-color').stdout.level;
-      let message = 'Running "serverless" from node_modules\n';
-      if (colorSupportLevel) {
-        message =
-          colorSupportLevel > 2 ? `\x1b[38;5;145m${message}\x1b[39m` : `\x1b[90m${message}\x1b[39m`;
-      }
-      process.stderr.write(message);
-      require(localServerlessBinPath);
-      return;
-    }
-  }
 }
 
 require('../lib/cli/triage')().then((cliName) => {
