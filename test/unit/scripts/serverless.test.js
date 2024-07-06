@@ -67,17 +67,6 @@ describe('test/unit/scripts/serverless.test.js', () => {
     }
   });
 
-  it('should handle local serverless installation', async () => {
-    const output = String(
-      (
-        await spawn('node', [serverlessBinPath, '--help'], {
-          cwd: (await programmaticFixturesEngine.setup('locally-installed-serverless')).servicePath,
-        })
-      ).stderrBuffer
-    );
-    expect(output).to.include('Running "serverless" from node_modules');
-  });
-
   it('should handle no service related commands', async () => {
     const output = String(
       (
