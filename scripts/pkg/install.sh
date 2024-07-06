@@ -106,5 +106,3 @@ else
     fi
   fi
 fi
-
-$HOME/.serverless/bin/serverless binary-postinstall

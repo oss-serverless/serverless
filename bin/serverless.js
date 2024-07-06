@@ -33,10 +33,6 @@ if (
 if (isMainModule) {
   if (require('../lib/utils/is-standalone-executable')) {
     require('../lib/utils/standalone-patch');
-    if (process.argv[2] === 'binary-postinstall' && process.argv.length === 3) {
-      require('../scripts/postinstall');
-      return;
-    }
   }
 }
 

@@ -196,7 +196,6 @@
     "lint:updated": "pipe-git-updated --ext=js --base=main -- eslint",
     "pkg:build": "node ./scripts/pkg/build.js",
     "pkg:upload": "node ./scripts/pkg/upload/index.js",
-    "postinstall": "node ./scripts/postinstall.js",
     "prettier-check": "prettier -c \"**/*.{css,html,js,json,md,yaml,yml}\"",
     "prettier-check:updated": "pipe-git-updated --ext=css --ext=html --ext=js --ext=json --ext=md --ext=yaml --ext=yml --base=main -- prettier -c",
     "prettify": "prettier --write \"**/*.{css,html,js,json,md,yaml,yml}\"",

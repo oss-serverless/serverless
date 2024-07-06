@@ -26,6 +26,7 @@ It contains the following differences:
   - Removed unused dependencies. 
   - Auto-updating has been removed (because it's not working anymore).
   - Removed automatic use of local `serverless` installation (in `node_modules`): this avoids surprises running the local `serverless` version instead of this fork.
+  - Removed post-install messages.
 - Fixed a node warning ("The `punycode` module is deprecated").
 
 ## Get Started
