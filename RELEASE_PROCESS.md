@@ -1,5 +1,4 @@
 # Release process
 
-1. Bump the version in `package.json` and commit the changes 
-2. Push to `main`
-3. Tag a release
+1. Push to `main`
+2. Tag a release in GitHub
