@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 30
 
       - name: Retrieve last main commit (for `git diff` purposes)
         run: |

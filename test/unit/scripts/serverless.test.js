@@ -9,7 +9,6 @@ const stripAnsi = require('strip-ansi');
 const { version } = require('../../../package');
 const programmaticFixturesEngine = require('../../fixtures/programmatic');
 
-const serverlessBinPath = path.resolve(__dirname, '../../../bin/serverless.js');
 const serverlessPath = path.resolve(__dirname, '../../../scripts/serverless.js');
 const programmaticFixturesPath = path.resolve(__dirname, '../../fixtures/programmatic');
 const cliFixturesPath = path.resolve(__dirname, '../../fixtures/cli');
