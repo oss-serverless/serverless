@@ -1,19 +1,25 @@
-[![Serverless Application Framework AWS Lambda API Gateway](https://s3.amazonaws.com/assets.github.serverless/readme-serverless-framework.gif)](https://serverless.com)
-
 **The Serverless Framework** – Build applications on AWS Lambda and other next-gen cloud services, that auto-scale and only charge you when they run. This lowers the total cost of running and operating your apps, enabling you to build more and manage less.
 
-The Serverless Framework is a command-line tool with an easy and approachable YAML syntax to deploy both your code and cloud infrastructure needed to make tons of serverless application use-cases. It's a multi-language framework that supports Node.js, Typescript, Python, Go, Java, and more. It's also completely extensible via over 1,000 plugins which add more serverless use-cases and workflows to the Framework.
+The Serverless Framework is a command-line tool with an easy and approachable YAML syntax to deploy both your code and cloud infrastructure needed to make tons of serverless application use-cases. It's a multi-language framework that supports Node.js, Typescript, Python, Go, Java, and more.
 
-## Context
+---
 
-This repository is based on Serverless Framework v3. It exists to help those that are still on this version and cannot upgrade immediately to v4.
+This repository is based on [Serverless Framework](https://github.com/serverless/serverless) v3. It exists for those that are still on this version and cannot upgrade to v4.
 
-This is not intended as a fork or long-term maintained project, but to solve immediate needs for v3 to continue working.
+Get started with:
 
-It contains the following differences:
+```sh
+npm remove -g serverless
+npm install -g osls
 
-- [Up-to-date documentation for v3](./docs)
-- All documentation for non-AWS providers has been removed.
+serverless --version
+```
+
+## Changes
+
+This repository contains the following differences with the original Serverless Framework v3:
+
+- [Up-to-date documentation for v3](./docs) (all documentation for non-AWS providers has been removed).
 - There is no standalone binary version, the package is only available via NPM.
 - Fixed vulnerabilities in dependencies:
   - [micromatch](https://github.com/serverless/serverless/issues/12482)
@@ -23,8 +29,8 @@ It contains the following differences:
   - Serverless Dashboard/Enterprise features are removed (because there is no guarantee to keep them working with v3), if you are using them you should upgrade to v4.
   - Serverless Components support have been removed: these are old and unmaintained projects, it's very unlikely you are using them. That improves the boot time of the CLI.
   - Serverless' integration for Tencent Cloud (China version of the `serverless` CLI) has been removed.
-  - Removed unused dependencies. 
-  - Auto-updating has been removed (because it's not working anymore).
+  - Removed unused dependencies.
+  - Removed auto-updating (because it's not working anymore).
   - Removed automatic use of local `serverless` installation (in `node_modules`): this avoids surprises running the local `serverless` version instead of this fork.
   - Removed post-install messages.
 - Fixed a node warning ("The `punycode` module is deprecated").

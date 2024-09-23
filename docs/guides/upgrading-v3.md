@@ -26,12 +26,8 @@ First, [upgrade to the latest v2 version](../getting-started.md#upgrade) and mak
 Then, to upgrade to Serverless Framework v3, run:
 
 ```bash
-npm install -g serverless
+npm install -g osls
 ```
-
-If you [installed `serverless` as a standalone binary](../getting-started.md#install-as-a-standalone-binary), run the following command instead:
-
-- MacOS/Linux standalone binary: `serverless upgrade --major`
 
 ## Update `frameworkVersion` setting for v3
 

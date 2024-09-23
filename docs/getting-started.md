@@ -4,13 +4,13 @@ Get started with Serverless Framework’s open-source CLI and Amazon Web Service
 
 ## Installation
 
-Install `serverless` module via NPM:
+Install `osls` module via NPM:
 
 ```bash
-npm install -g serverless
+npm install -g osls
 ```
 
-_If you don’t already have Node.js on your machine, [install it first](https://nodejs.org/). If you don't want to install Node or NPM, you can [install `serverless` as a standalone binary](./install-standalone.md)._
+_If you don’t already have Node.js on your machine, [install it first](https://nodejs.org/)._
 
 ## Creating A Service
 
