@@ -36,12 +36,6 @@ If we're about to add new tests to an existing test file with tests written old 
 
 _Note: PR's which rewrite existing tests into new method are very welcome! (but, ideally each PR should cover single test file rewrite)_
 
-### Coverage
-
-We aim for a (near) 100% test coverage, so make sure your tests cover as much of your code as possible.
-
-During development, you can easily check coverage by running `npm run coverage`, then opening the `index.html` file inside the `coverage` directory.
-
 ## AWS Integration tests
 
 Run all tests via:

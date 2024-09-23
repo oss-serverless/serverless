@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 30
 
       - name: Retrieve last main commit (for `git diff` purposes)
         run: |
@@ -62,11 +64,7 @@ jobs:
             npx dump-release-notes-from-cc-changelog $NEW_VERSION
           fi
       - name: Unit tests
-        # Some tests depend on TTY support, which is missing in GA runner
-        # Workaround taken from https://github.com/actions/runner/issues/241#issuecomment-577360161
-        run: script -e -c "npm run coverage -- -b"
-      - name: Push coverage
-        run: npx codecov
+        run: npm test -- -b
       - name: Packaging tests
         run: npm run integration-test-run-package
 

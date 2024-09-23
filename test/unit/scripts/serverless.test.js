@@ -9,7 +9,6 @@ const stripAnsi = require('strip-ansi');
 const { version } = require('../../../package');
 const programmaticFixturesEngine = require('../../fixtures/programmatic');
 
-const serverlessBinPath = path.resolve(__dirname, '../../../bin/serverless.js');
 const serverlessPath = path.resolve(__dirname, '../../../scripts/serverless.js');
 const programmaticFixturesPath = path.resolve(__dirname, '../../fixtures/programmatic');
 const cliFixturesPath = path.resolve(__dirname, '../../fixtures/cli');
@@ -17,7 +16,7 @@ const cliFixturesPath = path.resolve(__dirname, '../../fixtures/cli');
 describe('test/unit/scripts/serverless.test.js', () => {
   it('should display version when "--version" option', async () => {
     const output = String((await spawn('node', [serverlessPath, '-v'])).stdoutBuffer);
-    expect(output).to.include(`Framework Core: ${version}`);
+    expect(output).to.include(`osls version: ${version}`);
   });
 
   it('should not prevent help output with invalid service configuration', async () => {

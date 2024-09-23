@@ -1,9 +1,9 @@
 {
-  "name": "@bref.sh/serverless",
+  "name": "osls",
   "version": "3.40.1",
-  "description": "Serverless Framework v3",
+  "description": "Open-source alternative to Serverless Framework",
   "preferGlobal": true,
-  "homepage": "https://github.com/mnapoli/serverless-framework",
+  "homepage": "https://github.com/oss-serverless/serverless",
   "keywords": [
     "serverless",
     "lambda",
@@ -93,7 +93,6 @@
     "mocha": "^9.2.2",
     "mock-require": "^3.0.3",
     "ncjsm": "^4.3.2",
-    "nyc": "^15.1.0",
     "pkg": "^5.8.1",
     "prettier": "^2.8.8",
     "proxyquire": "^2.1.3",
@@ -158,24 +157,6 @@
     ],
     "timeout": 60000
   },
-  "nyc": {
-    "all": true,
-    "exclude": [
-      ".github",
-      "coverage/**",
-      "dist/**",
-      "docs/**",
-      "scripts/test/**",
-      "test/**",
-      "tmp/**",
-      "prettier.config.js"
-    ],
-    "reporter": [
-      "lcov",
-      "html",
-      "text-summary"
-    ]
-  },
   "lint-staged": {
     "*.js": [
       "eslint"
@@ -185,7 +166,6 @@
     ]
   },
   "scripts": {
-    "coverage": "nyc npm test",
     "integration-test-cleanup": "node test/utils/aws-cleanup.js",
     "integration-test-run-all": "mocha-isolated --pass-through-aws-creds --skip-fs-cleanup-check --max-workers=20 \"test/integration/**/*.test.js\"",
     "integration-test-run-basic": "mocha test/integration-basic.test.js",
