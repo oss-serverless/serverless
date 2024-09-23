@@ -41,13 +41,13 @@ const shortHandOptions = [
   },
   {
     name: 'Sub, with mapping',
-    yaml: 'Item: !Sub\n- www.${Domain}\n- { Domain: "serverless.com" }',
+    yaml: 'Item: !Sub\n- www.${Domain}\n- { Domain: "example.com" }',
     json: {
       Item: {
         'Fn::Sub': [
           'www.${Domain}',
           {
-            Domain: 'serverless.com',
+            Domain: 'example.com',
           },
         ],
       },

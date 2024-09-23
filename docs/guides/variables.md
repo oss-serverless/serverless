@@ -145,7 +145,7 @@ In the above example you're dynamically adding a prefix to the function names by
 
 ## Referencing Parameters
 
-Parameters can be defined in `serverless.yml` under the `params` key, or in [Serverless Dashboard](https://www.serverless.com/secrets).
+Parameters can be defined in `serverless.yml` under the `params` key, or passed in as CLI arguments.
 
 To reference parameters, use the `${param:XXX}` syntax in `serverless.yml`.
 

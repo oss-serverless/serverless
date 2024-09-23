@@ -181,7 +181,7 @@ describe('HTTP API Integration Test', function () {
 
       const response = await fetch(testEndpoint, {
         method: 'GET',
-        headers: { Origin: 'https://serverless.com' },
+        headers: { Origin: 'https://example.com' },
       });
       expect(response.headers.get('access-control-allow-origin')).to.equal('*');
       expect(response.headers.get('access-control-expose-headers')).to.equal('x-foo');
