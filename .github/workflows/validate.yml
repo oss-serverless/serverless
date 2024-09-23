@@ -15,11 +15,11 @@ env:
 
 jobs:
   linuxNode22:
-    name: '[Linux] Node.js 22: Lint, Formatting, Eventual Changelog, Unit & packaging tests'
+    name: '[Linux] Node 22: Lint, Formatting, Changelog, Unit & packaging tests'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 30
 
@@ -32,7 +32,7 @@ jobs:
 
       - name: Retrieve dependencies from cache
         id: cacheNpm
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.npm
@@ -43,7 +43,7 @@ jobs:
             npm-v22-${{ runner.os }}-refs/heads/main-
 
       - name: Install Node.js and npm
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 22.x
 
@@ -71,15 +71,15 @@ jobs:
         run: npm run integration-test-run-package
 
   windowsNode22:
-    name: '[Windows] Node.js v22: Unit tests'
+    name: '[Windows] Node 22: Unit tests'
     runs-on: windows-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Retrieve dependencies from cache
         id: cacheNpm
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.npm
@@ -90,7 +90,7 @@ jobs:
             npm-v22-${{ runner.os }}-refs/heads/main-
 
       - name: Install Node.js and npm
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 22.x
 
@@ -103,15 +103,15 @@ jobs:
         run: npm test -- -b
 
   linuxNode16:
-    name: '[Linux] Node.js 16: Isolated unit tests'
+    name: '[Linux] Node 16: Isolated unit tests'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Retrieve dependencies from cache
         id: cacheNpm
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.npm
@@ -122,7 +122,7 @@ jobs:
             npm-v16-${{ runner.os }}-refs/heads/main-
 
       - name: Install Node.js and npm
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 16.x
 

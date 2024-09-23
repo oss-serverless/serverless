@@ -13,14 +13,14 @@ env:
 
 jobs:
   linuxNode22:
-    name: '[Linux] Node.js 22: Publish canary, Unit & packaging tests '
+    name: '[Linux] Node 22: Publish canary, Unit & packaging tests '
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Node.js and npm
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 22.x
           registry-url: https://registry.npmjs.org
@@ -37,7 +37,7 @@ jobs:
 
       - name: Retrieve dependencies from cache
         id: cacheNpm
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.npm
@@ -58,15 +58,15 @@ jobs:
         run: npm run integration-test-run-package
 
   windowsNode22:
-    name: '[Windows] Node.js v22: Unit tests'
+    name: '[Windows] Node 22: Unit tests'
     runs-on: windows-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Retrieve dependencies from cache
         id: cacheNpm
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.npm
@@ -75,7 +75,7 @@ jobs:
           restore-keys: npm-v22-${{ runner.os }}-${{ github.ref }}-
 
       - name: Install Node.js and npm
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 22.x
 
@@ -88,15 +88,15 @@ jobs:
         run: npm test -- -b
 
   linuxNode16:
-    name: '[Linux] Node.js 16: Isolated unit tests'
+    name: '[Linux] Node 16: Isolated unit tests'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Retrieve dependencies from cache
         id: cacheNpm
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.npm
@@ -105,7 +105,7 @@ jobs:
           restore-keys: npm-v16-${{ runner.os }}-${{ github.ref }}-
 
       - name: Install Node.js and npm
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 16.x
 
@@ -131,7 +131,7 @@ jobs:
       SERVERLESS_BINARY_PATH: ./dist/serverless-linux
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           # Ensure to have complete history of commits pushed with given push operation
           # It's loose and imperfect assumption that no more than 30 commits will be pushed at once
@@ -141,7 +141,7 @@ jobs:
           token: ${{ secrets.USER_GITHUB_TOKEN }}
 
       - name: Retrieve dependencies from cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.npm
@@ -154,7 +154,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install Node.js and npm
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 22.x
 
