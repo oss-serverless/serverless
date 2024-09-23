@@ -12,8 +12,8 @@ env:
   SLS_SCHEMA_CACHE_BASE_DIR: '/home/runner'
 
 jobs:
-  linuxNode16:
-    name: '[Linux] Node.js 16: Publish canary, Unit & packaging tests '
+  linuxNode22:
+    name: '[Linux] Node.js 22: Publish canary, Unit & packaging tests '
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -22,7 +22,7 @@ jobs:
       - name: Install Node.js and npm
         uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 22.x
           registry-url: https://registry.npmjs.org
 
       - name: Publish canary
@@ -42,8 +42,8 @@ jobs:
           path: |
             ~/.npm
             node_modules
-          key: npm-v16-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('package.json') }}
-          restore-keys: npm-v16-${{ runner.os }}-${{ github.ref }}-
+          key: npm-v22-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('package.json') }}
+          restore-keys: npm-v22-${{ runner.os }}-${{ github.ref }}-
 
       - name: Install dependencies
         if: steps.cacheNpm.outputs.cache-hit != 'true'
@@ -57,9 +57,39 @@ jobs:
       - name: Packaging tests
         run: npm run integration-test-run-package
 
-  windowsNode16:
-    name: '[Windows] Node.js v16: Unit tests'
+  windowsNode22:
+    name: '[Windows] Node.js v22: Unit tests'
     runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Retrieve dependencies from cache
+        id: cacheNpm
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.npm
+            node_modules
+          key: npm-v22-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('package.json') }}
+          restore-keys: npm-v22-${{ runner.os }}-${{ github.ref }}-
+
+      - name: Install Node.js and npm
+        uses: actions/setup-node@v3
+        with:
+          node-version: 22.x
+
+      - name: Install dependencies
+        if: steps.cacheNpm.outputs.cache-hit != 'true'
+        run: |
+          npm update --no-save
+          npm update --save-dev --no-save
+      - name: Unit tests
+        run: npm test -- -b
+
+  linuxNode16:
+    name: '[Linux] Node.js 16: Isolated unit tests'
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -85,74 +115,14 @@ jobs:
           npm update --no-save
           npm update --save-dev --no-save
       - name: Unit tests
-        run: npm test -- -b
-
-  linuxNode14:
-    name: '[Linux] Node.js 14: Isolated unit tests'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Retrieve dependencies from cache
-        id: cacheNpm
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.npm
-            node_modules
-          key: npm-v14-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('package.json') }}
-          restore-keys: npm-v14-${{ runner.os }}-${{ github.ref }}-
-
-      - name: Install Node.js and npm
-        uses: actions/setup-node@v3
-        with:
-          node-version: 14.x
-
-      - name: Install dependencies
-        if: steps.cacheNpm.outputs.cache-hit != 'true'
-        run: |
-          npm update --no-save
-          npm update --save-dev --no-save
-      - name: Unit tests
         # Some tests depend on TTY support, which is missing in GA runner
         # Workaround taken from https://github.com/actions/runner/issues/241#issuecomment-577360161
         run: script -e -c "npm run test:isolated -- -b"
 
-  linuxNode12:
-    name: '[Linux] Node.js v12: Node version validation test'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Install Node.js and npm
-        uses: actions/setup-node@v3
-        with:
-          node-version: 12.x
-
-      - name: Node version validation test
-        run: ./bin/serverless.js 2>&1 | grep -q "does not support"
-
-  linuxNode4:
-    name: '[Linux] Node.js v4: Node version validation test'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Install Node.js and npm
-        uses: actions/setup-node@v3
-        with:
-          node-version: 4.x
-
-      - name: Node version validation test
-        run: ./bin/serverless.js 2>&1 | grep -q "does not support"
-
   integrate:
     name: Integrate
     runs-on: ubuntu-latest
-    needs: [linuxNode16, windowsNode16, linuxNode14, linuxNode12, linuxNode4]
+    needs: [linuxNode22, windowsNode22, linuxNode16]
     timeout-minutes: 30 # Default is 360
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -176,7 +146,7 @@ jobs:
           path: |
             ~/.npm
             node_modules
-          key: npm-v16-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('package.json') }}
+          key: npm-v22-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('package.json') }}
 
       # Potentially needed for test/integration/curated-plugins-python.test.js
       - uses: actions/setup-python@v4
@@ -186,7 +156,7 @@ jobs:
       - name: Install Node.js and npm
         uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 22.x
 
       # Note: No need to install dependencies as we have retrieved cached `node_modules` for very
       #       same `package.json` as stored with previous job
