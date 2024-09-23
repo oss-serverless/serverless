@@ -11,21 +11,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Retrieve dependencies from cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: cacheNpm
         with:
           path: |
             ~/.npm
             node_modules
-          key: npm-v16-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('package.json') }}
+          key: npm-v22-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('package.json') }}
 
       - name: Install Node.js and npm
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 16.x
+          node-version: 22.x
           registry-url: https://registry.npmjs.org
 
       - name: Install dependencies
@@ -56,28 +56,28 @@ jobs:
           script -e -c "npm test -- -b"
 
   npmPublish:
-    name: Publish to npm
+    name: Publish to NPM
     needs: prePublishPackageTest
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Retrieve dependencies from cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: cacheNpm
         with:
           path: |
             ~/.npm
             node_modules
-          key: npm-v16-${{ runner.os }}-refs/heads/main-${{ hashFiles('package.json') }}
+          key: npm-v22-${{ runner.os }}-refs/heads/main-${{ hashFiles('package.json') }}
 
       - name: Install Node.js and npm
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 16.x
+          node-version: 22.x
           registry-url: https://registry.npmjs.org
 
       # Normally we have a guarantee that deps are already there, still it may not be the case when:

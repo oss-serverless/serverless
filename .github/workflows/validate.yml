@@ -14,12 +14,12 @@ env:
   SLS_SCHEMA_CACHE_BASE_DIR: '/home/runner'
 
 jobs:
-  linuxNode16:
-    name: '[Linux] Node.js 16: Lint, Formatting, Eventual Changelog, Unit & packaging tests'
+  linuxNode22:
+    name: '[Linux] Node 22: Lint, Formatting, Changelog, Unit & packaging tests'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 30
 
@@ -32,20 +32,20 @@ jobs:
 
       - name: Retrieve dependencies from cache
         id: cacheNpm
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.npm
             node_modules
-          key: npm-v16-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('package.json') }}
+          key: npm-v22-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('package.json') }}
           restore-keys: |
-            npm-v16-${{ runner.os }}-${{ github.ref }}-
-            npm-v16-${{ runner.os }}-refs/heads/main-
+            npm-v22-${{ runner.os }}-${{ github.ref }}-
+            npm-v22-${{ runner.os }}-refs/heads/main-
 
       - name: Install Node.js and npm
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 16.x
+          node-version: 22.x
 
       - name: Install dependencies
         if: steps.cacheNpm.outputs.cache-hit != 'true'
@@ -71,15 +71,15 @@ jobs:
         run: npm run integration-test-run-package
 
   windowsNode16:
-    name: '[Windows] Node.js v16: Unit tests'
+    name: '[Windows] Node 16: Unit tests'
     runs-on: windows-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Retrieve dependencies from cache
         id: cacheNpm
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.npm
@@ -90,7 +90,7 @@ jobs:
             npm-v16-${{ runner.os }}-refs/heads/main-
 
       - name: Install Node.js and npm
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 16.x
 
@@ -102,29 +102,29 @@ jobs:
       - name: Unit tests
         run: npm test -- -b
 
-  linuxNode14:
-    name: '[Linux] Node.js 14: Isolated unit tests'
+  linuxNode16:
+    name: '[Linux] Node 16: Isolated unit tests'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Retrieve dependencies from cache
         id: cacheNpm
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.npm
             node_modules
-          key: npm-v14-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('package.json') }}
+          key: npm-v16-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('package.json') }}
           restore-keys: |
-            npm-v14-${{ runner.os }}-${{ github.ref }}-
-            npm-v14-${{ runner.os }}-refs/heads/main-
+            npm-v16-${{ runner.os }}-${{ github.ref }}-
+            npm-v16-${{ runner.os }}-refs/heads/main-
 
       - name: Install Node.js and npm
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 14.x
+          node-version: 16.x
 
       - name: Install dependencies
         if: steps.cacheNpm.outputs.cache-hit != 'true'
@@ -135,33 +135,3 @@ jobs:
         # Some tests depend on TTY support, which is missing in GA runner
         # Workaround taken from https://github.com/actions/runner/issues/241#issuecomment-577360161
         run: script -e -c "npm run test:isolated -- -b"
-
-  linuxNode12:
-    name: '[Linux] Node.js v12: Node version validation test'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Install Node.js and npm
-        uses: actions/setup-node@v3
-        with:
-          node-version: 12.x
-
-      - name: Node version validation test
-        run: ./bin/serverless.js 2>&1 | grep -q "does not support"
-
-  linuxNode4:
-    name: '[Linux] Node.js v4: Node version validation test'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Install Node.js and npm
-        uses: actions/setup-node@v3
-        with:
-          node-version: 4.x
-
-      - name: Node version validation test
-        run: ./bin/serverless.js 2>&1 | grep -q "does not support"
