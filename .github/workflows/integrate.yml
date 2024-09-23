@@ -57,8 +57,8 @@ jobs:
       - name: Packaging tests
         run: npm run integration-test-run-package
 
-  windowsNode22:
-    name: '[Windows] Node 22: Unit tests'
+  windowsNode16:
+    name: '[Windows] Node 16: Unit tests'
     runs-on: windows-latest
     steps:
       - name: Checkout repository
@@ -71,13 +71,13 @@ jobs:
           path: |
             ~/.npm
             node_modules
-          key: npm-v22-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('package.json') }}
-          restore-keys: npm-v22-${{ runner.os }}-${{ github.ref }}-
+          key: npm-v16-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('package.json') }}
+          restore-keys: npm-v16-${{ runner.os }}-${{ github.ref }}-
 
       - name: Install Node.js and npm
         uses: actions/setup-node@v4
         with:
-          node-version: 22.x
+          node-version: 16.x
 
       - name: Install dependencies
         if: steps.cacheNpm.outputs.cache-hit != 'true'
