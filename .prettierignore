@@ -1,5 +1,3 @@
-/.nyc_output
-/coverage
 /test/fixtures/cli/config-syntax-error/serverless.yml
 /test/unit/lib/configuration/variables/sources/fixture/invalid.json
 /test/unit/lib/configuration/variables/sources/fixture/invalid.yml
