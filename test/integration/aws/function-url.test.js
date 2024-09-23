@@ -114,7 +114,7 @@ describe('test/integration/aws/function-url.test.js', function () {
   it('should return expected CORS headers from Lambda URL', async () => {
     const response = await fetch(otherEndpoint, {
       method: 'GET',
-      headers: { Origin: 'https://serverless.com' },
+      headers: { Origin: 'https://example.com' },
     });
     const headers = response.headers;
     expect(headers.get('access-control-expose-headers')).to.equal('x-foo');

@@ -302,7 +302,7 @@ describe('lib/plugins/aws/package/compile/events/httpApi.test.js', () => {
               provider: {
                 httpApi: {
                   cors: {
-                    allowedOrigins: 'https://serverless.com',
+                    allowedOrigins: 'https://example.com',
                     exposedResponseHeaders: ['Content-Length', 'X-Kuma-Revision'],
                   },
                 },
@@ -328,7 +328,7 @@ describe('lib/plugins/aws/package/compile/events/httpApi.test.js', () => {
           expect(cfCors.AllowMethods).to.not.include('DELETE');
         });
         it('should respect allowedOrigins', () =>
-          expect(cfCors.AllowOrigins).to.deep.equal(['https://serverless.com']));
+          expect(cfCors.AllowOrigins).to.deep.equal(['https://example.com']));
         it('should respect exposedResponseHeaders', () =>
           expect(cfCors.ExposeHeaders).to.deep.equal(['Content-Length', 'X-Kuma-Revision']));
         it('should not set MaxAge', () => expect(cfCors.MaxAge).to.equal());

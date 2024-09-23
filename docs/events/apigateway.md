@@ -1060,7 +1060,7 @@ functions:
 
 #### Pass Through Behavior
 
-[API Gateway](https://serverless.com/amazon-api-gateway/) provides multiple ways to handle requests where the Content-Type header does not match any of the specified mapping templates. When this happens, the request payload will either be passed through the integration request _without transformation_ or rejected with a `415 - Unsupported Media Type`, depending on the configuration.
+API Gateway provides multiple ways to handle requests where the Content-Type header does not match any of the specified mapping templates. When this happens, the request payload will either be passed through the integration request _without transformation_ or rejected with a `415 - Unsupported Media Type`, depending on the configuration.
 
 You can define this behaviour as follows (if not specified, a value of **NEVER** will be used):
 
@@ -1242,7 +1242,7 @@ functions:
 ## Setting an HTTP Proxy on API Gateway
 
 To set up an HTTP proxy, you'll need two CloudFormation templates, one for the endpoint (known as resource in CF), and
-one for method. These two templates will work together to construct your proxy. So if you want to set `your-app.com/serverless` as a proxy for `serverless.com`, you'll need the following two templates in your `serverless.yml`:
+one for method. These two templates will work together to construct your proxy. So if you want to set `your-app.com/serverless` as a proxy for `example.com`, you'll need the following two templates in your `serverless.yml`:
 
 ```yml
 service: service-name
@@ -1274,7 +1274,7 @@ resources:
         Integration:
           IntegrationHttpMethod: POST
           Type: HTTP
-          Uri: http://serverless.com # the URL you want to set a proxy to
+          Uri: http://example.com # the URL you want to set a proxy to
           IntegrationResponses:
             - StatusCode: 200
 ```

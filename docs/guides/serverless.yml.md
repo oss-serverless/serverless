@@ -1295,7 +1295,7 @@ functions:
             # Refers to any external Cache Policy ID
             id: 658327ea-f89d-4fab-a63d-7e88639e58f6
           origin:
-            DomainName: serverless.com
+            DomainName: example.com
             OriginPath: /framework
             CustomOriginConfig:
               OriginProtocolPolicy: match-viewer
