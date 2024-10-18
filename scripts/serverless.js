@@ -46,7 +46,7 @@ const finalize = async ({ error, shouldBeSync } = {}) => {
   hasBeenFinalized = true;
   clearTimeout(keepAliveTimer);
   progress.clear();
-  if (error) (handleError(error, { serverless }));
+  if (error) handleError(error, { serverless });
   if (!shouldBeSync) {
     await logDeprecation.printSummary();
   }
@@ -474,11 +474,7 @@ process.once('uncaughtException', (error) => {
 
     // Names of the commands which are configured independently in root `commands` folder
     // and not in Serverless class internals
-    const notIntegratedCommands = new Set([
-      'doctor',
-      'plugin install',
-      'plugin uninstall',
-    ]);
+    const notIntegratedCommands = new Set(['doctor', 'plugin install', 'plugin uninstall']);
     const isStandaloneCommand = notIntegratedCommands.has(command);
 
     if (!isHelpRequest) {
@@ -564,6 +560,7 @@ process.once('uncaughtException', (error) => {
               self: require('../lib/configuration/variables/sources/self'),
               strToBool: require('../lib/configuration/variables/sources/str-to-bool'),
               sls: require('../lib/configuration/variables/sources/instance-dependent/get-sls')(),
+              param: require('../lib/configuration/variables/sources/instance-dependent/param')(),
             },
             options: filterSupportedOptions(options, { commandSchema, providerName }),
             fulfilledSources: new Set(['env', 'file', 'self', 'strToBool']),
@@ -588,6 +585,8 @@ process.once('uncaughtException', (error) => {
           require('../lib/configuration/variables/sources/instance-dependent/get-sls')(serverless);
         resolverConfiguration.fulfilledSources.add('sls');
 
+        resolverConfiguration.sources.param =
+          require('../lib/configuration/variables/sources/instance-dependent/param')(serverless);
         resolverConfiguration.fulfilledSources.add('param');
 
         // Register AWS provider specific variable sources
