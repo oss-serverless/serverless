@@ -49,7 +49,7 @@ jobs:
           TAG=${TEMP_ARRAY[@]: -1}
           PACKAGE_VERSION=${TAG:1}
           mkdir "serverless-${PACKAGE_VERSION}"
-          tar zxf "bref.sh-serverless-${PACKAGE_VERSION}.tgz" -C "serverless-${PACKAGE_VERSION}"
+          tar zxf "osls-${PACKAGE_VERSION}.tgz" -C "serverless-${PACKAGE_VERSION}"
           cp -R test "serverless-${PACKAGE_VERSION}/package"
           ln -s "$(pwd)"/node_modules "serverless-${PACKAGE_VERSION}/package/node_modules"
           cd "serverless-${PACKAGE_VERSION}/package"
