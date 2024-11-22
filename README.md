@@ -22,6 +22,7 @@ The repository has been created and is maintained by [Bref](https://bref.sh) mai
 This repository contains the following differences with the original Serverless Framework v3:
 
 - [Up-to-date documentation for v3](./docs) (all documentation for non-AWS providers has been removed).
+- Up-to-date support for new AWS Lambda runtimes.
 - There is no standalone binary version, the package is only available via NPM.
 - Fixed vulnerabilities in dependencies:
   - [micromatch](https://github.com/serverless/serverless/issues/12482)
