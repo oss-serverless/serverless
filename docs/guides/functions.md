@@ -12,7 +12,7 @@ service: myService
 
 provider:
   name: aws
-  runtime: nodejs14.x
+  runtime: nodejs20.x
   runtimeManagement: auto # optional, set how Lambda controls all functions runtime. AWS default is auto; this can either be 'auto' or 'onFunctionUpdate'. For 'manual', see example in hello function below (syntax for both is identical)
   memorySize: 512 # optional, in MB, default is 1024
   timeout: 10 # optional, in seconds, default is 6
@@ -25,7 +25,7 @@ functions:
     handler: handler.hello # required, handler set in AWS Lambda
     name: ${sls:stage}-lambdaName # optional, Deployed Lambda name
     description: Description of what the lambda function does # optional, Description to publish to AWS
-    runtime: python3.11 # optional overwrite, default is provider runtime
+    runtime: python3.12 # optional overwrite, default is provider runtime
     runtimeManagement:
       mode: manual # syntax required for manual, mode property also supports 'auto' or 'onFunctionUpdate' (see provider.runtimeManagement)
       arn: <aws runtime arn> # required when mode is manual
@@ -52,7 +52,7 @@ service: myService
 
 provider:
   name: aws
-  runtime: nodejs14.x
+  runtime: nodejs20.x
 
 functions:
   functionOne:
@@ -72,7 +72,7 @@ service: myService
 
 provider:
   name: aws
-  runtime: nodejs14.x
+  runtime: nodejs20.x
   memorySize: 512 # will be inherited by all functions
 
 functions:
@@ -88,7 +88,7 @@ service: myService
 
 provider:
   name: aws
-  runtime: nodejs14.x
+  runtime: nodejs20.x
 
 functions:
   functionOne:
@@ -124,7 +124,7 @@ service: myService
 
 provider:
   name: aws
-  runtime: nodejs14.x
+  runtime: nodejs20.x
   iam:
     role:
       statements: # permissions for all of your functions can be set here
@@ -439,7 +439,7 @@ To enable SnapStart for your lambda function you can add the `snapStart` object 
 functions:
   hello:
     ...
-    runtime: java11
+    runtime: java21
     snapStart: true
 ```
 
@@ -727,7 +727,7 @@ service: service
 
 provider:
   name: aws
-  runtime: nodejs14.x
+  runtime: nodejs20.x
 
 functions:
   hello:
@@ -780,7 +780,7 @@ service: myService
 
 provider:
   name: aws
-  runtime: nodejs14.x
+  runtime: nodejs20.x
   tracing:
     lambda: true
 ```

@@ -5,7 +5,7 @@ frameworkVersion: '*'
 
 provider:
   name: aws
-  runtime: nodejs16.x
+  runtime: nodejs20.x
 
 functions:
   callback:
@@ -32,22 +32,22 @@ functions:
     handler: remaining-time.handler
     timeout: 3
   python:
-    runtime: python3.11
+    runtime: python3.12
     handler: handler.handler
   pythonRemainingTime:
-    runtime: python3.11
+    runtime: python3.12
     handler: remaining_time.handler
     timeout: 3
   ruby:
-    runtime: ruby2.7
+    runtime: ruby3.3
     handler: handler.handler
   rubyRemainingTime:
-    runtime: ruby2.7
+    runtime: ruby3.3
     handler: remaining_time.handler
     timeout: 3
   rubyDeadline:
-    runtime: ruby2.7
+    runtime: ruby3.3
     handler: deadline_ms.handler
   rubyClass:
-    runtime: ruby2.7
+    runtime: ruby3.3
     handler: class.MyModule::MyClass.my_class_method
