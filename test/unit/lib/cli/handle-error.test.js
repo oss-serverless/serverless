@@ -28,5 +28,4 @@ describe('test/unit/lib/cli/handle-error.test.js', () => {
     const output = await observeOutput(() => handleError(handleError('NON-ERROR')));
     expect(output).to.have.string('NON-ERROR');
   });
-
 });
