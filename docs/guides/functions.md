@@ -529,51 +529,6 @@ The Lambda function execution role must have permissions to create, describe and
 By default, when a Lambda function is executed inside a VPC, it loses internet access and some resources inside AWS may become unavailable. In order for S3 resources and DynamoDB resources to be available for your Lambda function running inside the VPC, a VPC end point needs to be created. For more information please check [VPC Endpoint for Amazon S3](https://aws.amazon.com/blogs/aws/new-vpc-endpoint-for-amazon-s3/).
 In order for other services such as Kinesis streams to be made available, a NAT Gateway needs to be configured inside the subnets that are being used to run the Lambda, for the VPC used to execute the Lambda. For more information, please check [Enable Outgoing Internet Access within VPC](https://medium.com/@philippholly/aws-lambda-enable-outgoing-internet-access-within-vpc-8dd250e11e12)
 
-**VPC Lambda Internet IPv6 Access**
-
-Alternatively to setting up a NAT Gateway, you can also use an [egress-only internet gateway](https://docs.aws.amazon.com/vpc/latest/userguide/egress-only-internet-gateway.html) and allow your functions in a VPC to access the internet or other AWS services via IPv6. This eliminates the need for a NAT Gateway, reducing costs and simplifying architecture. In this case, VPC-configured Lambda functions can be allowed to access the internet using egress-only internet gateway by adding a `ipv6AllowedForDualStack` option to either the functions VPC specification:
-
-```yml
-# serverless.yml
-service: service-name
-provider: aws
-
-functions:
-  hello:
-    handler: handler.hello
-    vpc:
-      ipv6AllowedForDualStack: true
-      securityGroupIds:
-        - securityGroupId1
-        - securityGroupId2
-      subnetIds:
-        - subnetId1
-        - subnetId2
-```
-
-Or if you want to apply VPC configuration to all functions in your service, you can add the configuration to the higher level `provider` object, and overwrite these service level config at the function level. For example:
-
-```yml
-# serverless.yml
-service: service-name
-provider:
-  name: aws
-  vpc:
-    ipv6AllowedForDualStack: true
-    securityGroupIds:
-      - securityGroupId1
-      - securityGroupId2
-    subnetIds:
-      - subnetId1
-      - subnetId2
-
-functions:
-    ...
-```
-
-For more information, please check [Announcing AWS Lambda’s support for Internet Protocol Version 6 (IPv6) for outbound connections in VPC](https://aws.amazon.com/about-aws/whats-new/2023/10/aws-lambda-ipv6-outbound-connections-vpc/)
-
-
 ## Environment Variables
 
 You can add environment variable configuration to a specific function in `serverless.yml` by adding an `environment` object property in the function configuration. This object should contain a key-value pairs of string to string:
