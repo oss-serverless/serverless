@@ -490,8 +490,9 @@ Configure the Lambda functions to run inside a VPC ([complete documentation](./f
 ```yml
 provider:
   # Optional VPC settings
-  # If you use VPC then both securityGroupIds and subnetIds are required
+  # If you use VPC then both securityGroupIds and subnetIds are required, ipv6AllowedForDualStack is optional
   vpc:
+    ipv6AllowedForDualStack: true
     securityGroupIds:
       - securityGroupId1
       - securityGroupId2
@@ -647,6 +648,7 @@ functions:
     # If you use VPC then both subproperties (securityGroupIds and subnetIds) are required
     # Can be set to '~' to disable the use of a VPC
     vpc:
+      ipv6AllowedForDualStack: true
       securityGroupIds:
         - securityGroupId1
         - securityGroupId2
