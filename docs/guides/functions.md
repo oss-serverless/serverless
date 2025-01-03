@@ -567,12 +567,10 @@ provider:
       - subnetId1
       - subnetId2
 
-functions:
-    ...
+functions: ...
 ```
 
 For more information, please check [Announcing AWS Lambda’s support for Internet Protocol Version 6 (IPv6) for outbound connections in VPC](https://aws.amazon.com/about-aws/whats-new/2023/10/aws-lambda-ipv6-outbound-connections-vpc/)
-
 
 ## Environment Variables
 

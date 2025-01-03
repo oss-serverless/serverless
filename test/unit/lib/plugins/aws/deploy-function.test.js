@@ -1019,8 +1019,8 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
         SubnetIds: ['subnet-111', 'subnet-222'],
       },
       Layers: [layerArn, secondLayerArn],
-      });
     });
+  });
 
   it('should update function configuration if ipv6AllowedForDualStack is false', async () => {
     await runServerless({
@@ -1092,9 +1092,8 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
         SubnetIds: ['subnet-111', 'subnet-222'],
       },
       Layers: [layerArn, secondLayerArn],
-      });
     });
-
+  });
 
   it('should update function configuration with provider-level properties', async () => {
     await runServerless({
