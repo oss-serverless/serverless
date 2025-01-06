@@ -948,6 +948,153 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
     });
   });
 
+  it('should update function configuration if ipv6AllowedForDualStack is true', async () => {
+    await runServerless({
+      fixture: 'function',
+      command: 'deploy function',
+      options: { function: 'basic' },
+      awsRequestStubMap: {
+        ...awsRequestStubMap,
+        Lambda: {
+          ...awsRequestStubMap.Lambda,
+          getFunction: {
+            Configuration: {
+              LastModified: '2020-05-20T15:34:16.494+0000',
+              PackageType: 'Zip',
+              State: 'Active',
+              LastUpdateStatus: 'Successful',
+            },
+          },
+        },
+      },
+      configExt: {
+        provider: {
+          environment: {
+            ANOTHERVAR: 'anothervalue',
+          },
+        },
+        functions: {
+          basic: {
+            kmsKeyArn,
+            description,
+            handler,
+            environment: {
+              VARIABLE: 'value',
+            },
+            name: functionName,
+            memorySize,
+            onError: onErrorHandler,
+            role,
+            timeout,
+            vpc: {
+              ipv6AllowedForDualStack: true,
+              securityGroupIds: ['sg-111', 'sg-222'],
+              subnetIds: ['subnet-111', 'subnet-222'],
+            },
+            layers: [layerArn, secondLayerArn],
+          },
+        },
+      },
+    });
+    expect(updateFunctionConfigurationStub).to.be.calledWithExactly({
+      FunctionName: functionName,
+      KMSKeyArn: kmsKeyArn,
+      Description: description,
+      Handler: handler,
+      Environment: {
+        Variables: {
+          ANOTHERVAR: 'anothervalue',
+          VARIABLE: 'value',
+        },
+      },
+      MemorySize: memorySize,
+      Timeout: timeout,
+      DeadLetterConfig: {
+        TargetArn: onErrorHandler,
+      },
+      Role: role,
+      VpcConfig: {
+        Ipv6AllowedForDualStack: true,
+        SecurityGroupIds: ['sg-111', 'sg-222'],
+        SubnetIds: ['subnet-111', 'subnet-222'],
+      },
+      Layers: [layerArn, secondLayerArn],
+    });
+  });
+
+  it('should update function configuration if ipv6AllowedForDualStack is false', async () => {
+    await runServerless({
+      fixture: 'function',
+      command: 'deploy function',
+      options: { function: 'basic' },
+      awsRequestStubMap: {
+        ...awsRequestStubMap,
+        Lambda: {
+          ...awsRequestStubMap.Lambda,
+          getFunction: {
+            Configuration: {
+              LastModified: '2020-05-20T15:34:16.494+0000',
+              PackageType: 'Zip',
+              State: 'Active',
+              LastUpdateStatus: 'Successful',
+            },
+          },
+        },
+      },
+      configExt: {
+        provider: {
+          environment: {
+            ANOTHERVAR: 'anothervalue',
+          },
+        },
+        functions: {
+          basic: {
+            kmsKeyArn,
+            description,
+            handler,
+            environment: {
+              VARIABLE: 'value',
+            },
+            name: functionName,
+            memorySize,
+            onError: onErrorHandler,
+            role,
+            timeout,
+            vpc: {
+              ipv6AllowedForDualStack: false,
+              securityGroupIds: ['sg-111', 'sg-222'],
+              subnetIds: ['subnet-111', 'subnet-222'],
+            },
+            layers: [layerArn, secondLayerArn],
+          },
+        },
+      },
+    });
+    expect(updateFunctionConfigurationStub).to.be.calledWithExactly({
+      FunctionName: functionName,
+      KMSKeyArn: kmsKeyArn,
+      Description: description,
+      Handler: handler,
+      Environment: {
+        Variables: {
+          ANOTHERVAR: 'anothervalue',
+          VARIABLE: 'value',
+        },
+      },
+      MemorySize: memorySize,
+      Timeout: timeout,
+      DeadLetterConfig: {
+        TargetArn: onErrorHandler,
+      },
+      Role: role,
+      VpcConfig: {
+        SecurityGroupIds: ['sg-111', 'sg-222'],
+        SubnetIds: ['subnet-111', 'subnet-222'],
+      },
+      Layers: [layerArn, secondLayerArn],
+    });
+  });
+
   it('should update function configuration with provider-level properties', async () => {
     await runServerless({
       fixture: 'function',
