@@ -10,17 +10,20 @@ const getParamSource = require('../../../../../../../lib/configuration/variables
 const Serverless = require('../../../../../../../lib/serverless');
 
 describe('test/unit/lib/configuration/variables/sources/instance-dependent/param.test.js', () => {
-  let configuration;
-  let variablesMeta;
-  let serverlessInstance;
-
-  const initializeServerless = async ({ configExt, options, setupOptions = {} } = {}) => {
-    configuration = {
-      service: 'foo',
+  const runServerless = async ({
+    cliParameters = [],
+    stageParameters = {},
+    stage,
+    resolveWithoutInstance = false,
+  } = {}) => {
+    const configuration = {
+      service: 'param-test-service',
       provider: {
+        stage,
         name: 'aws',
         deploymentBucket: '${param:bucket}',
         timeout: '${param:timeout}',
+        region: '${param:region}',
       },
       custom: {
         missingAddress: '${param:}',
@@ -28,87 +31,138 @@ describe('test/unit/lib/configuration/variables/sources/instance-dependent/param
         nonStringAddress: '${param:${self:custom.someObject}}',
         someObject: {},
       },
-      params: {
-        default: {
-          bucket: 'global.bucket',
-          timeout: 10,
-        },
-        dev: {
-          bucket: 'my.bucket',
-        },
-      },
+      params: stageParameters,
     };
-    if (configExt) {
-      configuration = _.merge(configuration, configExt);
-    }
-    variablesMeta = resolveMeta(configuration);
-    serverlessInstance = new Serverless({
+
+    const variablesMeta = resolveMeta(configuration);
+
+    const serverlessInstance = new Serverless({
       configuration,
+      options: {
+        param: cliParameters,
+      },
       serviceDir: process.cwd(),
       configurationFilename: 'serverless.yml',
       commands: ['package'],
-      options: options || {},
     });
+
     serverlessInstance.init();
+
     await resolve({
       serviceDir: process.cwd(),
       configuration,
       variablesMeta,
       sources: {
         self: selfSource,
-        param: getParamSource(setupOptions.withoutInstance ? null : serverlessInstance),
+        param: getParamSource(resolveWithoutInstance ? null : serverlessInstance),
       },
-      options: options || {},
+      options: {
+        param: cliParameters,
+      },
       fulfilledSources: new Set(['self', 'param']),
     });
+
+    return {
+      configuration,
+      serverlessInstance,
+      variablesMeta,
+    };
   };
 
-  it('should resolve ${param:timeout}', async () => {
-    await initializeServerless();
-    if (variablesMeta.get('param\0timeout')) throw variablesMeta.get('param\0timeout').error;
+  it('should resolve parameters from CLI parameters', async () => {
+    const { configuration } = await runServerless({
+      cliParameters: ['region=eu-west-1'],
+    });
+    expect(configuration.provider.region).to.equal('eu-west-1');
+  });
+
+  it('should resolve parameter from parameters for the configured stage', async () => {
+    const { configuration } = await runServerless({
+      stageParameters: {
+        staging: {
+          timeout: 10,
+        },
+      },
+      stage: 'staging',
+    });
     expect(configuration.provider.timeout).to.equal(10);
   });
 
-  it('should resolve ${param:bucket} for different stages', async () => {
-    // Dev by default
-    await initializeServerless();
-    expect(configuration.provider.deploymentBucket).to.equal('my.bucket');
-
-    // Forced prod
-    await initializeServerless({
-      configExt: {
-        provider: {
-          stage: 'prod',
+  it('should resolve parameter from default parameters if the parameter is not set for the configured stage', async () => {
+    const { configuration } = await runServerless({
+      stageParameters: {
+        staging: {},
+        default: {
+          bucket: 'global.bucket',
         },
       },
+      stage: 'staging',
     });
     expect(configuration.provider.deploymentBucket).to.equal('global.bucket');
   });
 
-  it('should resolve ${param:bucket} when no serverless instance available', async () => {
-    await initializeServerless({ setupOptions: { withoutInstance: true } });
-    expect(variablesMeta.get('provider\0timeout')).to.have.property('variables');
-    expect(variablesMeta.get('provider\0timeout')).to.not.have.property('error');
+  it('should resolve parameter from `dev` parameter if the stage is not configured', async () => {
+    const { configuration } = await runServerless({
+      stageParameters: {
+        dev: {
+          timeout: 5,
+        },
+        staging: {
+          timeout: 10,
+        },
+      },
+    });
+    expect(configuration.provider.timeout).to.equal(5);
   });
 
-  it('should report with an error missing address', async () => {
-    await initializeServerless();
+  it('should treat CLI parameters with a higher precedence than stage parameters', async () => {
+    const { configuration } = await runServerless({
+      cliParameters: ['region=eu-west-2'],
+      stageParameters: {
+        staging: {
+          region: 'eu-west-1',
+        },
+      },
+      stage: 'staging',
+    });
+    expect(configuration.provider.region).to.equal('eu-west-2');
+  });
+
+  it('should report with an error when the CLI parameter is invalid', async () => {
+    const { variablesMeta } = await runServerless({
+      cliParameters: ['region'],
+    });
+
+    expect(variablesMeta.get('provider\0region').error.code).to.equal('VARIABLE_RESOLUTION_ERROR');
+  });
+
+  it('should report with an error when the address is missing', async () => {
+    const { variablesMeta } = await runServerless();
     expect(variablesMeta.get('custom\0missingAddress').error.code).to.equal(
       'VARIABLE_RESOLUTION_ERROR'
     );
   });
 
-  it('should report with an error unsupported address', async () => {
-    await initializeServerless();
+  it('should report with an error when the address is not supported', async () => {
+    const { variablesMeta } = await runServerless();
     expect(variablesMeta.get('custom\0unsupportedAddress').error.code).to.equal(
       'VARIABLE_RESOLUTION_ERROR'
     );
   });
 
-  it('should report with an error a non-string address', async () => {
-    await initializeServerless();
+  it('should report with an error when the address it not a string', async () => {
+    const { variablesMeta } = await runServerless();
     expect(variablesMeta.get('custom\0nonStringAddress').error.code).to.equal(
       'VARIABLE_RESOLUTION_ERROR'
     );
+  });
+
+  it('should still resolve varibales when no Serverless instance is available', async () => {
+    const { variablesMeta } = await runServerless({
+      cliParameters: ['timeout=10'],
+      resolveWithoutInstance: true,
+    });
+    expect(variablesMeta.get('provider\0timeout')).to.have.property('variables');
+    expect(variablesMeta.get('provider\0timeout')).to.not.have.property('error');
   });
 });
