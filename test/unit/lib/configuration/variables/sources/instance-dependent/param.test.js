@@ -157,7 +157,7 @@ describe('test/unit/lib/configuration/variables/sources/instance-dependent/param
     );
   });
 
-  it('should still resolve varibales when no Serverless instance is available', async () => {
+  it('should still resolve variables when no Serverless instance is available', async () => {
     const { variablesMeta } = await runServerless({
       cliParameters: ['timeout=10'],
       resolveWithoutInstance: true,
