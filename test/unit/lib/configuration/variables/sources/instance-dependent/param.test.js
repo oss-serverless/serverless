@@ -1,7 +1,6 @@
 'use strict';
 
 const { expect } = require('chai');
-const _ = require('lodash');
 
 const resolveMeta = require('../../../../../../../lib/configuration/variables/resolve-meta');
 const resolve = require('../../../../../../../lib/configuration/variables/resolve');
