@@ -101,7 +101,7 @@ Some function settings can be defined for all functions inside the `provider` ke
 # serverless.yml
 
 provider:
-  runtime: nodejs14.x
+  runtime: nodejs20.x
   runtimeManagement: auto # optional, set how Lambda controls all functions runtime. AWS default is auto; this can either be 'auto' or 'onFunctionUpdate'. For 'manual', see example in hello function below (syntax for both is identical
   # Default memory size for functions (default: 1024MB)
   memorySize: 512
@@ -607,7 +607,7 @@ functions:
     # Container image to use. Cannot be used with 'handler'.
     # Can be the URI of an image in ECR, or the name of an image defined in 'provider.ecr.images'
     image: baseimage
-    runtime: nodejs14.x
+    runtime: nodejs20.x
     runtimeManagement:
       mode: manual # syntax required for manual, mode property also supports 'auto' or 'onFunctionUpdate' (see provider.runtimeManagement)
       arn: <aws runtime arn> # required when mode is manual
@@ -1321,7 +1321,7 @@ layers:
     description: Description of what the lambda layer does
     # optional, a list of runtimes this layer is compatible with
     compatibleRuntimes:
-      - python3.11
+      - python3.12
     # optional, a list of architectures this layer is compatible with
     compatibleArchitectures:
       - x86_64
