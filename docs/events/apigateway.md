@@ -55,6 +55,9 @@ Summary:
 - [AWS X-Ray Tracing](#aws-x-ray-tracing)
 - [Tags / Stack Tags](#tags--stack-tags)
 - [Logs](#logs)
+- [Disable Default Endpoint](#disable-default-endpoint)
+- [Providing a custom stage name](#providing-a-custom-stage-name)
+- [Timeout](#timeout)
 
 _Are you looking for tutorials on using API Gateway? Check out the following resources:_
 
@@ -1866,4 +1869,34 @@ By default, the API Gateway stage will be same as the serverless stage. This can
 provider:
   apiGateway:
     stage: customStageName
+```
+
+## Timeout
+
+By default, the timeout for API Gateway integration is 29 seconds.
+You can change this by setting the `timeoutInMillis` property in the `apiGateway` configuration
+and overriding it in the `http` event for specific functions.
+
+**Note:** This is particularly useful if you have requested an increase to the API Gateway integration timeout soft limit
+in AWS (which previously had a hard limit of 29 seconds).
+
+```yml
+provider:
+  apiGateway:
+    timeoutInMillis: 10000 # Default timeout of 10 seconds for all endpoints
+
+functions:
+  fetch:
+    handler: handler.hello
+    events:
+      - http:
+          path: /posts/{id}
+          method: get
+  create:
+    handler: handler.bye
+    events:
+      - http:
+          path: /posts
+          method: post
+          timeoutInMillis: 40000 # Override: 40-second timeout for this endpoint
 ```
