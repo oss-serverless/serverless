@@ -396,9 +396,15 @@ describe('#addCustomResourceToService()', () => {
 
     const { Resources } = serverless.service.provider.compiledCloudFormationTemplate;
 
-    expect(Resources.CustomDashresourceDashexistingDashs3LambdaFunction.Properties.Runtime).to.equal('nodejs22.x');
-    expect(Resources.CustomDashresourceDashexistingDashcupLambdaFunction.Properties.Runtime).to.equal('nodejs22.x');
-    expect(Resources.CustomDashresourceDasheventDashbridgeLambdaFunction.Properties.Runtime).to.equal('nodejs22.x');
+    expect(
+      Resources.CustomDashresourceDashexistingDashs3LambdaFunction.Properties.Runtime
+    ).to.equal('nodejs22.x');
+    expect(
+      Resources.CustomDashresourceDashexistingDashcupLambdaFunction.Properties.Runtime
+    ).to.equal('nodejs22.x');
+    expect(
+      Resources.CustomDashresourceDasheventDashbridgeLambdaFunction.Properties.Runtime
+    ).to.equal('nodejs22.x');
   });
 });
 
