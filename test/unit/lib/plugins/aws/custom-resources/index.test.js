@@ -347,6 +347,59 @@ describe('#addCustomResourceToService()', () => {
       Resources.CustomDashresourceDashexistingDashs3LambdaFunction.Properties.FunctionName.length
     ).to.be.below(65);
   });
+
+  it('should use defined runtime', async () => {
+    serverless.service.provider.runtime = 'nodejs22.x';
+    await Promise.all([
+      // add the custom S3 resource
+      addCustomResourceToService(provider, 's3', [
+        ...iamRoleStatements,
+        {
+          Effect: 'Allow',
+          Resource: 'arn:aws:s3:::some-bucket',
+          Action: ['s3:PutBucketNotification', 's3:GetBucketNotification'],
+        },
+      ]),
+      // add the custom Cognito User Pool resource
+      addCustomResourceToService(provider, 'cognitoUserPool', [
+        ...iamRoleStatements,
+        {
+          Effect: 'Allow',
+          Resource: '*',
+          Action: [
+            'cognito-idp:ListUserPools',
+            'cognito-idp:DescribeUserPool',
+            'cognito-idp:UpdateUserPool',
+          ],
+        },
+      ]),
+      // add the custom Event Bridge resource
+      addCustomResourceToService(provider, 'eventBridge', [
+        ...iamRoleStatements,
+        {
+          Effect: 'Allow',
+          Resource: 'arn:aws:events:*:*:rule/some-rule',
+          Action: [
+            'events:PutRule',
+            'events:RemoveTargets',
+            'events:PutTargets',
+            'events:DeleteRule',
+          ],
+        },
+        {
+          Action: ['events:CreateEventBus', 'events:DeleteEventBus'],
+          Effect: 'Allow',
+          Resource: 'arn:aws:events:*:*:event-bus/some-event-bus',
+        },
+      ]),
+    ]);
+
+    const { Resources } = serverless.service.provider.compiledCloudFormationTemplate;
+
+    expect(Resources.CustomDashresourceDashexistingDashs3LambdaFunction.Properties.Runtime).to.equal('nodejs22.x');
+    expect(Resources.CustomDashresourceDashexistingDashcupLambdaFunction.Properties.Runtime).to.equal('nodejs22.x');
+    expect(Resources.CustomDashresourceDasheventDashbridgeLambdaFunction.Properties.Runtime).to.equal('nodejs22.x');
+  });
 });
 
 describe('test/unit/lib/plugins/aws/customResources/index.test.js', () => {
