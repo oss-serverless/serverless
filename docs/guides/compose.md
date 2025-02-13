@@ -215,8 +215,6 @@ The `serverless-compose.yml` and `serverless.yml` files have different syntaxes 
 
 Unless documented here, expect `serverless.yml` features to not be supported in `serverless-compose.yml`. For example, it is not possible to include plugins or use most `serverless.yml` variables (like `${self:`, `${opt:`, etc.) inside `serverless-compose.yml`.
 
-You can [open feature requests](https://github.com/serverless/compose) if you need features that aren't supported in `serverless-compose.yml`.
-
 ## Refreshing outputs
 
 The outputs of a service are stored locally (in the `.serverless/` directory). If a colleague deployed changes that changed the outputs of a service, you can refresh your local state via the `refresh-outputs` command:

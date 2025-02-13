@@ -41,7 +41,7 @@ require('../lib/cli/triage')().then((cliName) => {
     case 'serverless':
       require('../scripts/serverless');
       return;
-    case '@serverless/compose':
+    case '@osls/compose':
       require('../lib/cli/run-compose')().catch((error) => {
         // Expose eventual resolution error as regular crash, and not unhandled rejection
         process.nextTick(() => {
