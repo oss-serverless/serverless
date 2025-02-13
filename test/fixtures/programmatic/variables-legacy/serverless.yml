@@ -2,7 +2,7 @@ service: service
 
 provider:
   name: aws
-  runtime: nodejs16.x
+  runtime: nodejs18.x
 
 custom:
   importedFile: ${file(config.json)}
