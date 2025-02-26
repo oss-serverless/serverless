@@ -701,7 +701,7 @@ describe('test/unit/lib/plugins/aws/package/compile/events/kafka.test.js', () =>
 
     expect(eventSourceMappingResource.Properties.ProvisionedPollerConfig).to.deep.equal({
         MinimumPollers: 2,
-        MaximumPollers: 3
+        MaximumPollers: 10
     });
   });
 
