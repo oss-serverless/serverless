@@ -21,6 +21,7 @@ describe('test/unit/lib/plugins/aws/package/compile/events/kafka.test.js', () =>
   const batchSize = 5000;
   const maximumBatchingWindow = 20;
   const filterPatterns = [{ eventName: 'INSERT' }];
+  const provisionedPollerConfig = { minimumPollers: 1, maximumPollers: 10 };
 
   describe('when there are kafka events defined', () => {
     let minimalEventSourceMappingResource;
@@ -56,6 +57,7 @@ describe('test/unit/lib/plugins/aws/package/compile/events/kafka.test.js', () =>
                     enabled,
                     startingPosition,
                     filterPatterns,
+                    provisionedPollerConfig
                   },
                 },
               ],
@@ -136,6 +138,10 @@ describe('test/unit/lib/plugins/aws/package/compile/events/kafka.test.js', () =>
             },
           ],
         },
+        ProvisionedPollerConfig: {
+          MinimumPollers: 1,
+          MaximumPollers: 10
+        }
       });
     });
   });
