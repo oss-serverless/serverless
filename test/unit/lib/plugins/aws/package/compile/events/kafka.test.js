@@ -673,6 +673,38 @@ describe('test/unit/lib/plugins/aws/package/compile/events/kafka.test.js', () =>
     });
   });
 
+  it('should correctly compile EventSourceMapping resource properties for ProvisionedPollerConfig', async () => {
+    const { awsNaming, cfTemplate } = await runServerless({
+      fixture: 'function',
+      configExt: {
+        functions: {
+          basic: {
+            role: { 'Fn::ImportValue': 'MyImportedRole' },
+            events: [
+              {
+                kafka: {
+                  topic,
+                  bootstrapServers: ['abc.xyz:9092'],
+                  accessConfigurations: { saslScram256Auth: saslScram256AuthArn },
+                  provisionedPollerConfig: { minimumPollers: 2, maximumPollers: 10 },
+                },
+              },
+            ],
+          },
+        },
+      },
+      command: 'package',
+    });
+
+    const eventSourceMappingResource =
+      cfTemplate.Resources[awsNaming.getKafkaEventLogicalId('basic', 'TestingTopic')];
+
+    expect(eventSourceMappingResource.Properties.ProvisionedPollerConfig).to.deep.equal({
+        MinimumPollers: 2,
+        MaximumPollers: 3
+    });
+  });
+
   describe('when no kafka events are defined', () => {
     it('should not modify the default IAM role', async () => {
       const { cfTemplate } = await runServerless({
