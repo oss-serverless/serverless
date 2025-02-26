@@ -1044,6 +1044,10 @@ functions:
           # Optional, specifies event pattern content filtering
           filterPatterns:
             - eventName: INSERT
+          # Optional, configures provisioned mode, must specify minimumPollers (1-200 range) and minimumPollers (1-2000 range)
+          provisionedPollerConfig:
+            minimumPollers: 1
+            maximumPollers: 10
 ```
 
 ### RabbitMQ
