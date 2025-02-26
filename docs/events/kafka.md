@@ -182,3 +182,24 @@ functions:
           maximumBatchingWindow: 30
           startingPosition: LATEST
 ```
+
+## Setting ProvisionedPollerConfig
+
+You can set the `provisionedPollerConfig` to configure your Kafka event source to be in provisioned mode. A `minimumPollers` must be configured from 1 to 200 and a `maximumPollers` from 1 to 2000.
+
+```yml
+functions:
+  compute:
+    handler: handler.compute
+    events:
+      - kafka:
+          accessConfigurations:
+            saslScram512Auth: arn:aws:secretsmanager:us-east-1:01234567890:secret:MyBrokerSecretName
+          topic: MySelfManagedKafkaTopic
+          bootstrapServers:
+            - abc3.xyz.com:9092
+            - abc2.xyz.com:9092
+          provisionedPollerConfig:
+            minimumPollers: 1
+            maximumPollers: 10
+```
