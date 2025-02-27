@@ -57,7 +57,7 @@ describe('test/unit/lib/plugins/aws/package/compile/events/kafka.test.js', () =>
                     enabled,
                     startingPosition,
                     filterPatterns,
-                    provisionedPollerConfig
+                    provisionedPollerConfig,
                   },
                 },
               ],
@@ -140,8 +140,8 @@ describe('test/unit/lib/plugins/aws/package/compile/events/kafka.test.js', () =>
         },
         ProvisionedPollerConfig: {
           MinimumPollers: 1,
-          MaximumPollers: 10
-        }
+          MaximumPollers: 10,
+        },
       });
     });
   });
@@ -706,8 +706,8 @@ describe('test/unit/lib/plugins/aws/package/compile/events/kafka.test.js', () =>
       cfTemplate.Resources[awsNaming.getKafkaEventLogicalId('basic', 'TestingTopic')];
 
     expect(eventSourceMappingResource.Properties.ProvisionedPollerConfig).to.deep.equal({
-        MinimumPollers: 2,
-        MaximumPollers: 10
+      MinimumPollers: 2,
+      MaximumPollers: 10,
     });
   });
 
