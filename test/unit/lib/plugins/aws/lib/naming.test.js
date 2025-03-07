@@ -1087,4 +1087,15 @@ describe('#naming()', () => {
       expect(sdk.naming.getHttpApiName()).to.equal('app-dev-testApi');
     });
   });
+
+  describe('#getHttpApiDescription()', () => {
+    it('should return nothing if custom description not provided', () => {
+      expect(sdk.naming.getHttpApiDescription()).to.equal(undefined);
+    });
+
+    it('should return the custom api description if provided', () => {
+      serverless.service.provider.httpApi = { description: 'My TestApi' };
+      expect(sdk.naming.getHttpApiDescription()).to.equal('My TestApi');
+    });
+  });
 });

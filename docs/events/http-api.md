@@ -380,7 +380,7 @@ resources:
                 - Ref: YourCognitoUserPoolName
 ```
 
-### Event / payload format
+## Event / payload format
 
 HTTP API offers only a 'proxy' option for Lambda integration where an event submitted to the function contains the details of HTTP request such as headers, query string parameters etc.
 There are two formats for this event available (see [Working with AWS Lambda proxy integrations for HTTP APIs](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html)), with the default being 2.0. It is possible to downgrade to 1.0 version by specifying `payload`. The payload version could be configured globally as:
@@ -405,7 +405,7 @@ functions:
           method: GET
 ```
 
-### Detailed Metrics
+## Detailed Metrics
 
 With HTTP API we may configure detailed metrics that can be used setup monitoring and alerting in Cloudwatch.
 
@@ -417,7 +417,7 @@ provider:
     metrics: true
 ```
 
-### Tags
+## Tags
 
 When using HTTP API, it is possible to tag the corresponding API Gateway resources. By setting `provider.httpApi.useProviderTags` to `true`, all tags defined on `provider.tags` will be applied to API Gateway and API Gateway Stage.
 
@@ -433,7 +433,7 @@ In the above example, the tag project: myProject will be applied to API Gateway 
 
 _Note: If the API Gateway has any existing tags applied outside of Serverless Framework, they will be removed during deployment._
 
-### Disable Default Endpoint
+## Disable Default Endpoint
 
 By default, clients can invoke your API with the default https://{api_id}.execute-api.{region}.amazonaws.com endpoint. To require that clients use a custom domain name to invoke your API, disable the default endpoint.
 
@@ -443,14 +443,18 @@ provider:
     disableDefaultEndpoint: true
 ```
 
-### Service Naming
+## Service Naming
 
 You can use the `shouldStartNameWithService` option to change the naming scheme for HTTP API from the default `${stage}-${service}` to `${service}-${stage}`.
+
+You can also define your own name for the API instead of the default generated one and also define a description for it.
 
 ```yml
 provider:
   httpApi:
     shouldStartNameWithService: true
+    name: app-dev-testApi
+    description: My TestApi
 ```
 
 ## Custom domains
