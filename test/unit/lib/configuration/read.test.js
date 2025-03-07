@@ -7,7 +7,6 @@ const { expect } = chai;
 
 const fsp = require('fs').promises;
 const fse = require('fs-extra');
-const proxyquire = require('proxyquire');
 const readConfiguration = require('../../../../lib/configuration/read');
 
 describe('test/unit/lib/configuration/read.test.js', () => {
