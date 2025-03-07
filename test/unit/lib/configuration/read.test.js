@@ -58,7 +58,7 @@ describe('test/unit/lib/configuration/read.test.js', () => {
     expect(await readConfiguration(configurationPath)).to.deep.equal(configuration);
   });
 
-  it('should read "serverless.js"', async () => {
+  it('should read "serverless.js" as CJS', async () => {
     configurationPath = 'serverless.js';
     const configuration = {
       service: 'test-js',
@@ -68,10 +68,29 @@ describe('test/unit/lib/configuration/read.test.js', () => {
     expect(await readConfiguration(configurationPath)).to.deep.equal(configuration);
   });
 
-  it('should read "serverless.ts"', async () => {
+  it('should read "serverless.cjs" as CJS', async () => {
+    configurationPath = 'serverless.cjs';
+    const configuration = {
+      service: 'test-js',
+      provider: { name: 'aws' },
+    };
+    await fsp.writeFile(configurationPath, `module.exports = ${JSON.stringify(configuration)}`);
+    expect(await readConfiguration(configurationPath)).to.deep.equal(configuration);
+  });
+
+  it('should read "serverless.mjs" as ESM', async () => {
+    configurationPath = 'serverless.mjs';
+    const configuration = {
+      service: 'test-js',
+      provider: { name: 'aws' },
+    };
+    await fsp.writeFile(configurationPath, `export default ${JSON.stringify(configuration)}`);
+    expect(await readConfiguration(configurationPath)).to.deep.equal(configuration);
+  });
+
+  it('should read "serverless.ts" as CJS', async () => {
     await fse.ensureDir('node_modules');
     try {
-      await fsp.writeFile('node_modules/ts-node.js', 'module.exports.register = () => null;');
       configurationPath = 'serverless.ts';
       const configuration = {
         service: 'test-ts',
@@ -84,39 +103,18 @@ describe('test/unit/lib/configuration/read.test.js', () => {
     }
   });
 
-  it('should read "serverless.cjs"', async () => {
-    configurationPath = 'serverless.cjs';
-    const configuration = {
-      service: 'test-js',
-      provider: { name: 'aws' },
-    };
-    await fsp.writeFile(configurationPath, `module.exports = ${JSON.stringify(configuration)}`);
-    expect(await readConfiguration(configurationPath)).to.deep.equal(configuration);
-  });
-
-  it('should read "serverless.mjs"', async () => {
-    configurationPath = 'serverless.mjs';
-    const configuration = {
-      service: 'test-js',
-      provider: { name: 'aws' },
-    };
-    await fsp.writeFile(configurationPath, `export default ${JSON.stringify(configuration)}`);
-    expect(await readConfiguration(configurationPath)).to.deep.equal(configuration);
-  });
-
-  it('should register ts-node only if it is not already registered', async () => {
+  it('should read "serverless.ts" as ESM', async () => {
+    await fse.ensureDir('node_modules');
     try {
-      expect(process[Symbol.for('ts-node.register.instance')]).to.be.undefined;
-      process[Symbol.for('ts-node.register.instance')] = 'foo';
       configurationPath = 'serverless.ts';
       const configuration = {
         service: 'test-ts',
         provider: { name: 'aws' },
       };
-      await fsp.writeFile(configurationPath, `module.exports = ${JSON.stringify(configuration)}`);
+      await fsp.writeFile(configurationPath, `export default ${JSON.stringify(configuration)}`);
       expect(await readConfiguration(configurationPath)).to.deep.equal(configuration);
     } finally {
-      delete process[Symbol.for('ts-node.register.instance')];
+      await fse.remove('node_modules');
     }
   });
 
@@ -177,24 +175,6 @@ describe('test/unit/lib/configuration/read.test.js', () => {
       'code',
       'CONFIGURATION_INITIALIZATION_ERROR'
     );
-  });
-
-  it('should reject TS configuration if "ts-node" is not found', async () => {
-    // Test against different service dir, to not fall into cached `require.resolve` value
-    configurationPath = 'other/serverless-errored.ts';
-    const configuration = {
-      service: 'test-ts',
-      provider: { name: 'aws' },
-    };
-    await fse.ensureFile(configurationPath);
-    await fsp.writeFile(configurationPath, `module.exports = ${JSON.stringify(configuration)}`);
-    await expect(
-      proxyquire('../../../../lib/configuration/read', {
-        'child-process-ext/spawn': async () => {
-          throw Object.assign(new Error('Not found'), { code: 'ENOENT' });
-        },
-      })(configurationPath)
-    ).to.eventually.be.rejected.and.have.property('code', 'CONFIGURATION_RESOLUTION_ERROR');
   });
 
   it('should reject non object configuration', async () => {
