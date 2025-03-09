@@ -21,6 +21,7 @@ describe('test/unit/lib/plugins/aws/package/compile/events/kafka.test.js', () =>
   const batchSize = 5000;
   const maximumBatchingWindow = 20;
   const filterPatterns = [{ eventName: 'INSERT' }];
+  const provisionedPollerConfig = { minimumPollers: 1, maximumPollers: 10 };
 
   describe('when there are kafka events defined', () => {
     let minimalEventSourceMappingResource;
@@ -56,6 +57,7 @@ describe('test/unit/lib/plugins/aws/package/compile/events/kafka.test.js', () =>
                     enabled,
                     startingPosition,
                     filterPatterns,
+                    provisionedPollerConfig,
                   },
                 },
               ],
@@ -135,6 +137,10 @@ describe('test/unit/lib/plugins/aws/package/compile/events/kafka.test.js', () =>
               }),
             },
           ],
+        },
+        ProvisionedPollerConfig: {
+          MinimumPollers: 1,
+          MaximumPollers: 10,
         },
       });
     });
@@ -670,6 +676,38 @@ describe('test/unit/lib/plugins/aws/package/compile/events/kafka.test.js', () =>
           },
         ],
       });
+    });
+  });
+
+  it('should correctly compile EventSourceMapping resource properties for ProvisionedPollerConfig', async () => {
+    const { awsNaming, cfTemplate } = await runServerless({
+      fixture: 'function',
+      configExt: {
+        functions: {
+          basic: {
+            role: { 'Fn::ImportValue': 'MyImportedRole' },
+            events: [
+              {
+                kafka: {
+                  topic,
+                  bootstrapServers: ['abc.xyz:9092'],
+                  accessConfigurations: { saslScram256Auth: saslScram256AuthArn },
+                  provisionedPollerConfig: { minimumPollers: 2, maximumPollers: 10 },
+                },
+              },
+            ],
+          },
+        },
+      },
+      command: 'package',
+    });
+
+    const eventSourceMappingResource =
+      cfTemplate.Resources[awsNaming.getKafkaEventLogicalId('basic', 'TestingTopic')];
+
+    expect(eventSourceMappingResource.Properties.ProvisionedPollerConfig).to.deep.equal({
+      MinimumPollers: 2,
+      MaximumPollers: 10,
     });
   });
 
