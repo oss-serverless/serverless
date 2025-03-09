@@ -124,8 +124,6 @@ const serverlessConfiguration: Serverless = {
 module.exports = serverlessConfiguration;
 ```
 
-Note: when deploying using a `serverless.ts` file, `ts-node` needs to be installed separately as a dev dependency.
-
 For the sake of simplicity, most examples in the documentation refer to the `serverless.yml` format. However, all functionalities work with the other available service file formats.
 
 ### Plugins
