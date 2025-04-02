@@ -22,7 +22,7 @@ if [[ $OSTYPE == "linux-gnu" ]]; then
 elif [[ $OSTYPE == "darwin"* ]]; then
   PLATFORM="macos"
 else
-  echo "$red Sorry, there's no serverless binary installer available for this platform. Please open request for it at https://github.com/serverless/serverless/issues.$reset"
+  echo "$red Sorry, there's no serverless binary installer available for this platform. Please open request for it at https://github.com/oss-serverless/serverless/issues.$reset"
   exit 1
 fi
 
@@ -34,7 +34,7 @@ elif [[ $OSTYPE == "darwin"* ]] && [[ $MACHINE_TYPE == "arm64" ]]; then
   ARCH='x64'
   echo "There is no native binary installer available for $MACHINE_TYPE architecture. Version for x86_64 architecture will be installed instead. In order to use it, you need to have Rosetta installed."
 else
-  echo "$red Sorry, there's no serverless binary installer available for $MACHINE_TYPE architecture. Please open request for it at https://github.com/serverless/serverless/issues.$reset"
+  echo "$red Sorry, there's no serverless binary installer available for $MACHINE_TYPE architecture. Please open request for it at https://github.com/oss-serverless/serverless/issues.$reset"
   exit 1
 fi
 

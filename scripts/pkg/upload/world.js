@@ -7,8 +7,8 @@ const fetch = require('node-fetch');
 const chalk = require('chalk');
 
 const distPath = path.join(__dirname, '../../../dist');
-const API_URL = 'https://api.github.com/repos/serverless/serverless/releases/';
-const API_UPLOADS_URL = 'https://uploads.github.com/repos/serverless/serverless/releases/';
+const API_URL = 'https://api.github.com/repos/oss-serverless/serverless/releases/';
+const API_UPLOADS_URL = 'https://uploads.github.com/repos/oss-serverless/serverless/releases/';
 const requestOptions = { headers: { Authorization: `token ${process.env.GITHUB_TOKEN}` } };
 const binaryBasenameMatcher = /^serverless-([a-z0-9]+)(?:-([a-z0-9]+))?(\.exe)?$/;
 
