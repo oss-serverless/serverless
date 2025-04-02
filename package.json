@@ -100,7 +100,8 @@
     "semver-regex": "^3.1.4",
     "sinon": "^13.0.2",
     "sinon-chai": "^3.7.0",
-    "standard-version": "^9.5.0"
+    "standard-version": "^9.5.0",
+    "typescript": "^5.8.2"
   },
   "overrides": {
     "node-fetch": {
@@ -183,10 +184,12 @@
     "prettify:updated": "pipe-git-updated --ext=css --ext=html --ext=js --ext=json --ext=md --ext=yaml --ext=yml --base=main -- prettier --write",
     "test": "mocha \"test/unit/**/*.test.js\"",
     "test:ci": "npm run prettier-check:updated && npm run lint:updated && npm run test:isolated",
-    "test:isolated": "mocha-isolated \"test/unit/**/*.test.js\""
+    "test:isolated": "mocha-isolated \"test/unit/**/*.test.js\"",
+    "types:generate": "tsc lib/**/*.js --declaration --allowJs --emitDeclarationOnly --outDir types"
   },
   "engines": {
     "node": ">=12.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "types": "types/serverless.d.ts"
 }

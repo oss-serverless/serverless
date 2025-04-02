@@ -1,0 +1,12 @@
+export let defaultExcludes: string[];
+export function getIncludes(include: any): any;
+export function getRuntime(runtime: any): any;
+export function getExcludes(exclude: any, excludeLayers: any): any;
+export function packageService(): Promise<void>;
+export function packageAll(): Promise<any>;
+export function packageFunction(functionName: any): Promise<any>;
+export function packageLayer(layerName: any): Promise<any>;
+export function resolveFilePathsAll(): Promise<string[]>;
+export function resolveFilePathsFunction(functionName: any): Promise<string[]>;
+export function resolveFilePathsLayer(layerName: any): Promise<string[]>;
+export function resolveFilePathsFromPatterns(params: any, prefix: any): Promise<string[]>;
