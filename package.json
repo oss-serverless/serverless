@@ -15,6 +15,7 @@
     "iot"
   ],
   "main": "lib/serverless.js",
+  "types": "types/index.d.ts",
   "bin": {
     "serverless": "./bin/serverless.js",
     "sls": "./bin/serverless.js"
