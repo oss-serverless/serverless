@@ -199,7 +199,7 @@ You can add such custom output to CloudFormation stack. For example:
 service: another-service
 provider:
   name: aws
-  runtime: nodejs14.x
+  runtime: nodejs18.x
   region: ap-northeast-1
   memorySize: 512
 functions:
