@@ -440,11 +440,55 @@ describe('AwsInvokeLocal', () => {
       ).to.be.equal(true);
     });
 
+    it('should call invokeLocalPython when python3.9 runtime is set', async () => {
+      awsInvokeLocal.options.functionObj.runtime = 'python3.9';
+      await awsInvokeLocal.invokeLocal();
+      // NOTE: this is important so that tests on Windows won't fail
+      const runtime = process.platform === 'win32' ? 'python.exe' : 'python3.9';
+      expect(invokeLocalPythonStub.calledOnce).to.be.equal(true);
+      expect(
+        invokeLocalPythonStub.calledWithExactly(runtime, 'handler', 'hello', {}, undefined)
+      ).to.be.equal(true);
+    });
+
+    it('should call invokeLocalPython when python3.10 runtime is set', async () => {
+      awsInvokeLocal.options.functionObj.runtime = 'python3.10';
+      await awsInvokeLocal.invokeLocal();
+      // NOTE: this is important so that tests on Windows won't fail
+      const runtime = process.platform === 'win32' ? 'python.exe' : 'python3.10';
+      expect(invokeLocalPythonStub.calledOnce).to.be.equal(true);
+      expect(
+        invokeLocalPythonStub.calledWithExactly(runtime, 'handler', 'hello', {}, undefined)
+      ).to.be.equal(true);
+    });
+
     it('should call invokeLocalPython when python3.11 runtime is set', async () => {
       awsInvokeLocal.options.functionObj.runtime = 'python3.11';
       await awsInvokeLocal.invokeLocal();
       // NOTE: this is important so that tests on Windows won't fail
       const runtime = process.platform === 'win32' ? 'python.exe' : 'python3.11';
+      expect(invokeLocalPythonStub.calledOnce).to.be.equal(true);
+      expect(
+        invokeLocalPythonStub.calledWithExactly(runtime, 'handler', 'hello', {}, undefined)
+      ).to.be.equal(true);
+    });
+
+    it('should call invokeLocalPython when python3.12 runtime is set', async () => {
+      awsInvokeLocal.options.functionObj.runtime = 'python3.12';
+      await awsInvokeLocal.invokeLocal();
+      // NOTE: this is important so that tests on Windows won't fail
+      const runtime = process.platform === 'win32' ? 'python.exe' : 'python3.12';
+      expect(invokeLocalPythonStub.calledOnce).to.be.equal(true);
+      expect(
+        invokeLocalPythonStub.calledWithExactly(runtime, 'handler', 'hello', {}, undefined)
+      ).to.be.equal(true);
+    });
+
+    it('should call invokeLocalPython when python3.13 runtime is set', async () => {
+      awsInvokeLocal.options.functionObj.runtime = 'python3.13';
+      await awsInvokeLocal.invokeLocal();
+      // NOTE: this is important so that tests on Windows won't fail
+      const runtime = process.platform === 'win32' ? 'python.exe' : 'python3.13';
       expect(invokeLocalPythonStub.calledOnce).to.be.equal(true);
       expect(
         invokeLocalPythonStub.calledWithExactly(runtime, 'handler', 'hello', {}, undefined)
