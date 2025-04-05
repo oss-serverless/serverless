@@ -50,9 +50,16 @@ export type AwsLogRetentionInDays =
   | 3653;
 export type AwsLambdaMemorySize = number;
 export type AwsLambdaRole = string | AwsCfSub | AwsCfImport | AwsCfGetAtt;
+
+/**
+ * @see https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html
+ */
 export type AwsLambdaRuntime =
+  | "dotnet9"
+  | "dotnet8"
   | "dotnet6"
   | "go1.x"
+  | "java21"
   | "java17"
   | "java11"
   | "java8"
@@ -61,6 +68,7 @@ export type AwsLambdaRuntime =
   | "nodejs16.x"
   | "nodejs18.x"
   | "nodejs20.x"
+  | "nodejs22.x"
   | "provided"
   | "provided.al2"
   | "provided.al2023"
@@ -69,8 +77,12 @@ export type AwsLambdaRuntime =
   | "python3.9"
   | "python3.10"
   | "python3.11"
+  | "python3.12"
+  | "python3.13"
   | "ruby2.7"
-  | "ruby3.2";
+  | "ruby3.2"
+  | "ruby3.3"
+  | "ruby3.4";
 export type AwsLambdaRuntimeManagement =
   | ("auto" | "onFunctionUpdate")
   | {
