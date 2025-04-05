@@ -61,7 +61,7 @@ service: serverless-ws-test
 
 provider:
   name: aws
-  runtime: nodejs14.x
+  runtime: nodejs18.x
   websocketsApiName: custom-websockets-api-name
   websocketsApiRouteSelectionExpression: $request.body.action # custom routes are selected by the value of the action property in the body
   websocketsDescription: Custom Serverless Websockets
