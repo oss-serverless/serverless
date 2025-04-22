@@ -2,7 +2,7 @@ service: configSchemaExtensionsError
 
 provider:
   name: someProvider
-  runtime: nodejs18.x
+  runtime: nodejs20.x
 
 configValidationMode: error
 frameworkVersion: '*'

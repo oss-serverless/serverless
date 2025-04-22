@@ -421,7 +421,7 @@ describe('AwsInvokeLocal', () => {
         it(`should call invokeLocalNodeJs for any node.js runtime version for ${item.path}`, async () => {
           awsInvokeLocal.options.functionObj.handler = item.path;
 
-          awsInvokeLocal.options.functionObj.runtime = 'nodejs18.x';
+          awsInvokeLocal.options.functionObj.runtime = 'nodejs20.x';
           await awsInvokeLocal.invokeLocal();
           expect(invokeLocalNodeJsStub.calledOnce).to.be.equal(true);
           expect(
@@ -563,8 +563,8 @@ describe('AwsInvokeLocal', () => {
       expect(invokeLocalDockerStub.calledWithExactly()).to.be.equal(true);
     });
 
-    it('should call invokeLocalDocker if using --docker option with nodejs18.x', async () => {
-      awsInvokeLocal.options.functionObj.runtime = 'nodejs18.x';
+    it('should call invokeLocalDocker if using --docker option with nodejs20.x', async () => {
+      awsInvokeLocal.options.functionObj.runtime = 'nodejs20.x';
       awsInvokeLocal.options.functionObj.handler = 'handler.foobar';
       awsInvokeLocal.options.docker = true;
       await awsInvokeLocal.invokeLocal();
@@ -706,7 +706,7 @@ describe('AwsInvokeLocal', () => {
           handler: 'handler.hello',
           name: 'hello',
           timeout: 4,
-          runtime: 'nodejs18.x',
+          runtime: 'nodejs20.x',
           environment: {
             functionVar: 'functionValue',
           },
@@ -734,7 +734,7 @@ describe('AwsInvokeLocal', () => {
       expect(spawnExtStub.getCall(0).args).to.deep.equal(['docker', ['version']]);
       expect(spawnExtStub.getCall(1).args).to.deep.equal([
         'docker',
-        ['images', '-q', 'lambci/lambda:nodejs18.x'],
+        ['images', '-q', 'lambci/lambda:nodejs20.x'],
       ]);
       expect(spawnExtStub.getCall(3).args).to.deep.equal([
         'docker',
@@ -765,7 +765,7 @@ describe('AwsInvokeLocal', () => {
           'commandLineEnvVar=commandLineEnvVarValue',
           '-p',
           '9292:9292',
-          'sls-docker-nodejs18.x',
+          'sls-docker-nodejs20.x',
           'handler.hello',
           '{}',
         ],
@@ -1059,7 +1059,7 @@ describe('test/unit/lib/plugins/aws/invokeLocal/index.test.js', () => {
           },
           configExt: {
             provider: {
-              runtime: 'nodejs18.x',
+              runtime: 'nodejs20.x',
               environment: {
                 PROVIDER_LEVEL_VAR: 'PROVIDER_LEVEL_VAR_VALUE',
                 NULL_VAR: null,
