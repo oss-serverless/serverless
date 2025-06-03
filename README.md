@@ -15,7 +15,7 @@ npm install -g osls
 serverless --version
 ```
 
-The repository has been created and is maintained by [Bref](https://bref.sh) maintainers and contributors. The main goal of this repository is to provide continuity for Bref users, so that these Bref projects keep working for the next 5 years. No major new features are planned. However, community contributions to keep the project running (even for languages other than PHP), like adding support to new runtime versions, adapting to AWS changes, bugfixes, and other small improvements are welcome.
+The repository has been created and is maintained by [Bref](https://bref.sh) maintainers and contributors. The main goal of this repository is to provide continuity for Bref users, so that these Bref projects keep working for the next 5 years (2030). No major new features are planned. However, community contributions to keep the project running (even for languages other than PHP), like adding support for new runtime versions, adapting to AWS changes, bugfixes, and other small improvements are welcome.
 
 ## Changes
 
