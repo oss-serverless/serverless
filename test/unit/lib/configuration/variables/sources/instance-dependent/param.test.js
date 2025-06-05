@@ -29,6 +29,7 @@ describe('test/unit/lib/configuration/variables/sources/instance-dependent/param
         unsupportedAddress: '${param:foo}',
         nonStringAddress: '${param:${self:custom.someObject}}',
         someObject: {},
+        variableWithFallback: '${param:bar, "value"}',
       },
       params: stageParameters,
     };
@@ -145,7 +146,7 @@ describe('test/unit/lib/configuration/variables/sources/instance-dependent/param
   it('should report with an error when the address is not supported', async () => {
     const { variablesMeta } = await runServerless();
     expect(variablesMeta.get('custom\0unsupportedAddress').error.code).to.equal(
-      'VARIABLE_RESOLUTION_ERROR'
+      'MISSING_VARIABLE_RESULT'
     );
   });
 
@@ -163,5 +164,15 @@ describe('test/unit/lib/configuration/variables/sources/instance-dependent/param
     });
     expect(variablesMeta.get('provider\0timeout')).to.have.property('variables');
     expect(variablesMeta.get('provider\0timeout')).to.not.have.property('error');
+  });
+
+  it('should substitute parameter when provided', async () => {
+    const { configuration } = await runServerless({ cliParameters: ['bar=qux'] });
+    expect(configuration.custom.variableWithFallback).to.equal('qux');
+  });
+
+  it('should use fallback when parameter is missing', async () => {
+    const { configuration } = await runServerless();
+    expect(configuration.custom.variableWithFallback).to.equal('value');
   });
 });
