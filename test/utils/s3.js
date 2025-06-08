@@ -1,10 +1,49 @@
 'use strict';
 
 const awsRequest = require('@serverless/test/aws-request');
-const S3Service = require('aws-sdk').S3;
+
+// Support for both AWS SDK v2 and v3
+const getS3Client = () => {
+  if (process.env.SLS_AWS_SDK_V3 === 'true') {
+    // AWS SDK v3
+    const { S3Client } = require('@aws-sdk/client-s3');
+    const { 
+      CreateBucketCommand,
+      PutObjectCommand,
+      DeleteObjectCommand,
+      ListObjectsCommand,
+      DeleteObjectsCommand,
+      DeleteBucketCommand
+    } = require('@aws-sdk/client-s3');
+    
+    const client = new S3Client({ region: 'us-east-1' });
+    
+    return {
+      createBucket: (params) => client.send(new CreateBucketCommand(params)),
+      putObject: (params) => client.send(new PutObjectCommand(params)),
+      deleteObject: (params) => client.send(new DeleteObjectCommand(params)),
+      listObjects: (params) => client.send(new ListObjectsCommand(params)),
+      deleteObjects: (params) => client.send(new DeleteObjectsCommand(params)),
+      deleteBucket: (params) => client.send(new DeleteBucketCommand(params)),
+    };
+  } else {
+    // AWS SDK v2
+    const S3Service = require('aws-sdk').S3;
+    return {
+      createBucket: (params) => awsRequest(S3Service, 'createBucket', params),
+      putObject: (params) => awsRequest(S3Service, 'putObject', params),
+      deleteObject: (params) => awsRequest(S3Service, 'deleteObject', params),
+      listObjects: (params) => awsRequest(S3Service, 'listObjects', params),
+      deleteObjects: (params) => awsRequest(S3Service, 'deleteObjects', params),
+      deleteBucket: (params) => awsRequest(S3Service, 'deleteBucket', params),
+    };
+  }
+};
+
+const s3 = getS3Client();
 
 async function createBucket(bucket) {
-  return awsRequest(S3Service, 'createBucket', { Bucket: bucket });
+  return s3.createBucket({ Bucket: bucket });
 }
 
 async function createAndRemoveInBucket(bucket, opts = {}) {
@@ -18,19 +57,19 @@ async function createAndRemoveInBucket(bucket, opts = {}) {
     Body: 'hello world',
   };
 
-  return awsRequest(S3Service, 'putObject', params).then(() => {
+  return s3.putObject(params).then(() => {
     delete params.Body;
-    return awsRequest(S3Service, 'deleteObject', params);
+    return s3.deleteObject(params);
   });
 }
 
 async function emptyBucket(bucket) {
-  return awsRequest(S3Service, 'listObjects', { Bucket: bucket }).then((data) => {
+  return s3.listObjects({ Bucket: bucket }).then((data) => {
     const items = data.Contents;
     const numItems = items.length;
     if (numItems) {
       const keys = items.map((item) => Object.assign({}, { Key: item.Key }));
-      return awsRequest(S3Service, 'deleteObjects', {
+      return s3.deleteObjects({
         Bucket: bucket,
         Delete: {
           Objects: keys,
@@ -42,7 +81,7 @@ async function emptyBucket(bucket) {
 }
 
 async function deleteBucket(bucket) {
-  return emptyBucket(bucket).then(() => awsRequest(S3Service, 'deleteBucket', { Bucket: bucket }));
+  return emptyBucket(bucket).then(() => s3.deleteBucket({ Bucket: bucket }));
 }
 
 module.exports = {

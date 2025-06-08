@@ -1,7 +1,40 @@
 'use strict';
 
 const awsRequest = require('@serverless/test/aws-request');
-const CloudFormationService = require('aws-sdk').CloudFormation;
+
+// Support for both AWS SDK v2 and v3
+const getCloudFormationClient = () => {
+  if (process.env.SLS_AWS_SDK_V3 === 'true') {
+    // AWS SDK v3
+    const { CloudFormationClient } = require('@aws-sdk/client-cloudformation');
+    const { 
+      ListStacksCommand,
+      DeleteStackCommand, 
+      ListStackResourcesCommand,
+      DescribeStacksCommand
+    } = require('@aws-sdk/client-cloudformation');
+    
+    const client = new CloudFormationClient({ region: 'us-east-1' });
+    
+    return {
+      listStacks: (params) => client.send(new ListStacksCommand(params)),
+      deleteStack: (params) => client.send(new DeleteStackCommand(params)),
+      listStackResources: (params) => client.send(new ListStackResourcesCommand(params)),
+      describeStacks: (params) => client.send(new DescribeStacksCommand(params)),
+    };
+  } else {
+    // AWS SDK v2
+    const CloudFormationService = require('aws-sdk').CloudFormation;
+    return {
+      listStacks: (params) => awsRequest(CloudFormationService, 'listStacks', params),
+      deleteStack: (params) => awsRequest(CloudFormationService, 'deleteStack', params),
+      listStackResources: (params) => awsRequest(CloudFormationService, 'listStackResources', params),
+      describeStacks: (params) => awsRequest(CloudFormationService, 'describeStacks', params),
+    };
+  }
+};
+
+const cf = getCloudFormationClient();
 
 const SHARED_INFRA_TESTS_CLOUDFORMATION_STACK = 'integration-tests-deps-stack';
 const SHARED_INFRA_TESTS_ACTIVE_MQ_CREDENTIALS_NAME =
@@ -17,7 +50,7 @@ async function findStacks(name, status) {
 
   async function recursiveFind(found, token) {
     if (token) params.NextToken = token;
-    return awsRequest(CloudFormationService, 'listStacks', params).then((result) => {
+    return cf.listStacks(params).then((result) => {
       const matches = result.StackSummaries.filter((stack) => stack.StackName.match(name));
       if (matches.length) {
         found.push(...matches);
@@ -35,7 +68,7 @@ async function deleteStack(stack) {
     StackName: stack,
   };
 
-  return awsRequest(CloudFormationService, 'deleteStack', params);
+  return cf.deleteStack(params);
 }
 
 async function listStackResources(stack) {
@@ -45,7 +78,7 @@ async function listStackResources(stack) {
 
   async function recursiveFind(resources, token) {
     if (token) params.NextToken = token;
-    return awsRequest(CloudFormationService, 'listStackResources', params).then((result) => {
+    return cf.listStackResources(params).then((result) => {
       resources.push(...result.StackResourceSummaries);
       if (result.NextToken) return recursiveFind(resources, result.NextToken);
       return resources;
@@ -61,11 +94,11 @@ async function listStacks(status) {
     params.StackStatusFilter = status;
   }
 
-  return awsRequest(CloudFormationService, 'listStacks', params);
+  return cf.listStacks(params);
 }
 
 async function getStackOutputMap(name) {
-  const describeStackResponse = await awsRequest(CloudFormationService, 'describeStacks', {
+  const describeStackResponse = await cf.describeStacks({
     StackName: name,
   });
 
@@ -80,7 +113,7 @@ async function isDependencyStackAvailable() {
   const validStatuses = ['CREATE_COMPLETE', 'UPDATE_COMPLETE'];
 
   try {
-    const describeStacksResponse = await awsRequest(CloudFormationService, 'describeStacks', {
+    const describeStacksResponse = await cf.describeStacks({
       StackName: SHARED_INFRA_TESTS_CLOUDFORMATION_STACK,
     });
     if (validStatuses.includes(describeStacksResponse.Stacks[0].StackStatus)) {
@@ -88,7 +121,8 @@ async function isDependencyStackAvailable() {
     }
     return false;
   } catch (e) {
-    if (e.code === 'ValidationError') {
+    // Handle both v2 and v3 error patterns
+    if (e.code === 'ValidationError' || e.name === 'ValidationException') {
       return false;
     }
     throw e;

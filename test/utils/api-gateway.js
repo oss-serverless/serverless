@@ -2,14 +2,47 @@
 
 const _ = require('lodash');
 const awsRequest = require('@serverless/test/aws-request');
-const APIGatewayService = require('aws-sdk').APIGateway;
+
+// Support for both AWS SDK v2 and v3
+const getAPIGatewayClient = () => {
+  if (process.env.SLS_AWS_SDK_V3 === 'true') {
+    // AWS SDK v3
+    const { APIGatewayClient } = require('@aws-sdk/client-api-gateway');
+    const { 
+      CreateRestApiCommand,
+      DeleteRestApiCommand,
+      GetResourcesCommand,
+      GetRestApisCommand
+    } = require('@aws-sdk/client-api-gateway');
+    
+    const client = new APIGatewayClient({ region: 'us-east-1' });
+    
+    return {
+      createRestApi: (params) => client.send(new CreateRestApiCommand(params)),
+      deleteRestApi: (params) => client.send(new DeleteRestApiCommand(params)),
+      getResources: (params) => client.send(new GetResourcesCommand(params)),
+      getRestApis: (params) => client.send(new GetRestApisCommand(params)),
+    };
+  } else {
+    // AWS SDK v2
+    const APIGatewayService = require('aws-sdk').APIGateway;
+    return {
+      createRestApi: (params) => awsRequest(APIGatewayService, 'createRestApi', params),
+      deleteRestApi: (params) => awsRequest(APIGatewayService, 'deleteRestApi', params),
+      getResources: (params) => awsRequest(APIGatewayService, 'getResources', params),
+      getRestApis: (params) => awsRequest(APIGatewayService, 'getRestApis', params),
+    };
+  }
+};
+
+const apiGateway = getAPIGatewayClient();
 
 async function createRestApi(name) {
   const params = {
     name,
   };
 
-  return awsRequest(APIGatewayService, 'createRestApi', params);
+  return apiGateway.createRestApi(params);
 }
 
 async function deleteRestApi(restApiId) {
@@ -17,7 +50,7 @@ async function deleteRestApi(restApiId) {
     restApiId,
   };
 
-  return awsRequest(APIGatewayService, 'deleteRestApi', params);
+  return apiGateway.deleteRestApi(params);
 }
 
 async function getResources(restApiId) {
@@ -25,7 +58,7 @@ async function getResources(restApiId) {
     restApiId,
   };
 
-  return awsRequest(APIGatewayService, 'getResources', params).then((data) => data.items);
+  return apiGateway.getResources(params).then((data) => data.items);
 }
 
 async function findRestApis(name) {
@@ -35,7 +68,7 @@ async function findRestApis(name) {
 
   async function recursiveFind(found, position) {
     if (position) params.position = position;
-    return awsRequest(APIGatewayService, 'getRestApis', params).then((result) => {
+    return apiGateway.getRestApis(params).then((result) => {
       const matches = result.items.filter((restApi) => restApi.name.match(name));
       if (matches.length) {
         _.merge(found, matches);
