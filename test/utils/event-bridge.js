@@ -22,16 +22,15 @@ const getEventBridgeClient = () => {
       describeEventBus: (params) => client.send(new DescribeEventBusCommand(params)),
       putEvents: (params) => client.send(new PutEventsCommand(params)),
     };
-  } else {
-    // AWS SDK v2
-    const EventBridgeService = require('aws-sdk').EventBridge;
-    return {
-      createEventBus: (params) => awsRequest(EventBridgeService, 'createEventBus', params),
-      deleteEventBus: (params) => awsRequest(EventBridgeService, 'deleteEventBus', params),
-      describeEventBus: (params) => awsRequest(EventBridgeService, 'describeEventBus', params),
-      putEvents: (params) => awsRequest(EventBridgeService, 'putEvents', params),
-    };
   }
+  // AWS SDK v2
+  const EventBridgeService = require('aws-sdk').EventBridge;
+  return {
+    createEventBus: (params) => awsRequest(EventBridgeService, 'createEventBus', params),
+    deleteEventBus: (params) => awsRequest(EventBridgeService, 'deleteEventBus', params),
+    describeEventBus: (params) => awsRequest(EventBridgeService, 'describeEventBus', params),
+    putEvents: (params) => awsRequest(EventBridgeService, 'putEvents', params),
+  };
 };
 
 const eventBridge = getEventBridgeClient();

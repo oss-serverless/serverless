@@ -25,20 +25,19 @@ const getIoTClients = () => {
         };
       },
     };
-  } else {
-    // AWS SDK v2
-    const IotService = require('aws-sdk').Iot;
-    const IotDataService = require('aws-sdk').IotData;
-    return {
-      iot: {
-        describeEndpoint: (params) => awsRequest(IotService, 'describeEndpoint', params),
-      },
-      createIoTDataClient: (endpoint) => ({
-        publish: (params) =>
-          awsRequest({ client: IotDataService, params: { endpoint } }, 'publish', params),
-      }),
-    };
   }
+  // AWS SDK v2
+  const IotService = require('aws-sdk').Iot;
+  const IotDataService = require('aws-sdk').IotData;
+  return {
+    iot: {
+      describeEndpoint: (params) => awsRequest(IotService, 'describeEndpoint', params),
+    },
+    createIoTDataClient: (endpoint) => ({
+      publish: (params) =>
+        awsRequest({ client: IotDataService, params: { endpoint } }, 'publish', params),
+    }),
+  };
 };
 
 const { iot, createIoTDataClient } = getIoTClients();

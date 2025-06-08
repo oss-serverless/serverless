@@ -22,16 +22,15 @@ const getKinesisClient = () => {
       describeStream: (params) => client.send(new DescribeStreamCommand(params)),
       putRecord: (params) => client.send(new PutRecordCommand(params)),
     };
-  } else {
-    // AWS SDK v2
-    const KinesisService = require('aws-sdk').Kinesis;
-    return {
-      createStream: (params) => awsRequest(KinesisService, 'createStream', params),
-      deleteStream: (params) => awsRequest(KinesisService, 'deleteStream', params),
-      describeStream: (params) => awsRequest(KinesisService, 'describeStream', params),
-      putRecord: (params) => awsRequest(KinesisService, 'putRecord', params),
-    };
   }
+  // AWS SDK v2
+  const KinesisService = require('aws-sdk').Kinesis;
+  return {
+    createStream: (params) => awsRequest(KinesisService, 'createStream', params),
+    deleteStream: (params) => awsRequest(KinesisService, 'deleteStream', params),
+    describeStream: (params) => awsRequest(KinesisService, 'describeStream', params),
+    putRecord: (params) => awsRequest(KinesisService, 'putRecord', params),
+  };
 };
 
 const kinesis = getKinesisClient();

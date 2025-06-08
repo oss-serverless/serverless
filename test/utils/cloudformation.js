@@ -22,17 +22,15 @@ const getCloudFormationClient = () => {
       listStackResources: (params) => client.send(new ListStackResourcesCommand(params)),
       describeStacks: (params) => client.send(new DescribeStacksCommand(params)),
     };
-  } else {
-    // AWS SDK v2
-    const CloudFormationService = require('aws-sdk').CloudFormation;
-    return {
-      listStacks: (params) => awsRequest(CloudFormationService, 'listStacks', params),
-      deleteStack: (params) => awsRequest(CloudFormationService, 'deleteStack', params),
-      listStackResources: (params) =>
-        awsRequest(CloudFormationService, 'listStackResources', params),
-      describeStacks: (params) => awsRequest(CloudFormationService, 'describeStacks', params),
-    };
   }
+  // AWS SDK v2
+  const CloudFormationService = require('aws-sdk').CloudFormation;
+  return {
+    listStacks: (params) => awsRequest(CloudFormationService, 'listStacks', params),
+    deleteStack: (params) => awsRequest(CloudFormationService, 'deleteStack', params),
+    listStackResources: (params) => awsRequest(CloudFormationService, 'listStackResources', params),
+    describeStacks: (params) => awsRequest(CloudFormationService, 'describeStacks', params),
+  };
 };
 
 const cf = getCloudFormationClient();

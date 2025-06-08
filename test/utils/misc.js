@@ -15,13 +15,12 @@ const getCloudWatchLogsClient = () => {
     return {
       filterLogEvents: (params) => client.send(new FilterLogEventsCommand(params)),
     };
-  } else {
-    // AWS SDK v2
-    const CloudWatchLogsService = require('aws-sdk').CloudWatchLogs;
-    return {
-      filterLogEvents: (params) => awsRequest(CloudWatchLogsService, 'filterLogEvents', params),
-    };
   }
+  // AWS SDK v2
+  const CloudWatchLogsService = require('aws-sdk').CloudWatchLogs;
+  return {
+    filterLogEvents: (params) => awsRequest(CloudWatchLogsService, 'filterLogEvents', params),
+  };
 };
 
 const cloudWatchLogs = getCloudWatchLogsClient();

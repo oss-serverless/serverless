@@ -22,16 +22,15 @@ const getSQSClient = () => {
       getQueueUrl: (params) => client.send(new GetQueueUrlCommand(params)),
       sendMessage: (params) => client.send(new SendMessageCommand(params)),
     };
-  } else {
-    // AWS SDK v2
-    const SQSService = require('aws-sdk').SQS;
-    return {
-      createQueue: (params) => awsRequest(SQSService, 'createQueue', params),
-      deleteQueue: (params) => awsRequest(SQSService, 'deleteQueue', params),
-      getQueueUrl: (params) => awsRequest(SQSService, 'getQueueUrl', params),
-      sendMessage: (params) => awsRequest(SQSService, 'sendMessage', params),
-    };
   }
+  // AWS SDK v2
+  const SQSService = require('aws-sdk').SQS;
+  return {
+    createQueue: (params) => awsRequest(SQSService, 'createQueue', params),
+    deleteQueue: (params) => awsRequest(SQSService, 'deleteQueue', params),
+    getQueueUrl: (params) => awsRequest(SQSService, 'getQueueUrl', params),
+    sendMessage: (params) => awsRequest(SQSService, 'sendMessage', params),
+  };
 };
 
 const sqs = getSQSClient();

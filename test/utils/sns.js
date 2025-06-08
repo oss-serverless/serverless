@@ -22,16 +22,15 @@ const getSNSClient = () => {
       listTopics: (params) => client.send(new ListTopicsCommand(params)),
       publish: (params) => client.send(new PublishCommand(params)),
     };
-  } else {
-    // AWS SDK v2
-    const SNSService = require('aws-sdk').SNS;
-    return {
-      createTopic: (params) => awsRequest(SNSService, 'createTopic', params),
-      deleteTopic: (params) => awsRequest(SNSService, 'deleteTopic', params),
-      listTopics: (params) => awsRequest(SNSService, 'listTopics', params),
-      publish: (params) => awsRequest(SNSService, 'publish', params),
-    };
   }
+  // AWS SDK v2
+  const SNSService = require('aws-sdk').SNS;
+  return {
+    createTopic: (params) => awsRequest(SNSService, 'createTopic', params),
+    deleteTopic: (params) => awsRequest(SNSService, 'deleteTopic', params),
+    listTopics: (params) => awsRequest(SNSService, 'listTopics', params),
+    publish: (params) => awsRequest(SNSService, 'publish', params),
+  };
 };
 
 const sns = getSNSClient();

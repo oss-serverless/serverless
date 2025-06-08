@@ -23,16 +23,15 @@ const getAPIGatewayClient = () => {
       getResources: (params) => client.send(new GetResourcesCommand(params)),
       getRestApis: (params) => client.send(new GetRestApisCommand(params)),
     };
-  } else {
-    // AWS SDK v2
-    const APIGatewayService = require('aws-sdk').APIGateway;
-    return {
-      createRestApi: (params) => awsRequest(APIGatewayService, 'createRestApi', params),
-      deleteRestApi: (params) => awsRequest(APIGatewayService, 'deleteRestApi', params),
-      getResources: (params) => awsRequest(APIGatewayService, 'getResources', params),
-      getRestApis: (params) => awsRequest(APIGatewayService, 'getRestApis', params),
-    };
   }
+  // AWS SDK v2
+  const APIGatewayService = require('aws-sdk').APIGateway;
+  return {
+    createRestApi: (params) => awsRequest(APIGatewayService, 'createRestApi', params),
+    deleteRestApi: (params) => awsRequest(APIGatewayService, 'deleteRestApi', params),
+    getResources: (params) => awsRequest(APIGatewayService, 'getResources', params),
+    getRestApis: (params) => awsRequest(APIGatewayService, 'getRestApis', params),
+  };
 };
 
 const apiGateway = getAPIGatewayClient();

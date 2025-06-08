@@ -15,13 +15,12 @@ const getDynamoDBClient = () => {
     return {
       put: (params) => docClient.send(new PutCommand(params)),
     };
-  } else {
-    // AWS SDK v2
-    const DDBDocumentClient = require('aws-sdk').DynamoDB.DocumentClient;
-    return {
-      put: (params) => awsRequest(DDBDocumentClient, 'put', params),
-    };
   }
+  // AWS SDK v2
+  const DDBDocumentClient = require('aws-sdk').DynamoDB.DocumentClient;
+  return {
+    put: (params) => awsRequest(DDBDocumentClient, 'put', params),
+  };
 };
 
 const dynamodb = getDynamoDBClient();

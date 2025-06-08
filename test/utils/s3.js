@@ -26,18 +26,17 @@ const getS3Client = () => {
       deleteObjects: (params) => client.send(new DeleteObjectsCommand(params)),
       deleteBucket: (params) => client.send(new DeleteBucketCommand(params)),
     };
-  } else {
-    // AWS SDK v2
-    const S3Service = require('aws-sdk').S3;
-    return {
-      createBucket: (params) => awsRequest(S3Service, 'createBucket', params),
-      putObject: (params) => awsRequest(S3Service, 'putObject', params),
-      deleteObject: (params) => awsRequest(S3Service, 'deleteObject', params),
-      listObjects: (params) => awsRequest(S3Service, 'listObjects', params),
-      deleteObjects: (params) => awsRequest(S3Service, 'deleteObjects', params),
-      deleteBucket: (params) => awsRequest(S3Service, 'deleteBucket', params),
-    };
   }
+  // AWS SDK v2
+  const S3Service = require('aws-sdk').S3;
+  return {
+    createBucket: (params) => awsRequest(S3Service, 'createBucket', params),
+    putObject: (params) => awsRequest(S3Service, 'putObject', params),
+    deleteObject: (params) => awsRequest(S3Service, 'deleteObject', params),
+    listObjects: (params) => awsRequest(S3Service, 'listObjects', params),
+    deleteObjects: (params) => awsRequest(S3Service, 'deleteObjects', params),
+    deleteBucket: (params) => awsRequest(S3Service, 'deleteBucket', params),
+  };
 };
 
 const s3 = getS3Client();

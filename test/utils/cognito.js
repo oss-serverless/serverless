@@ -31,28 +31,27 @@ const getCognitoClient = () => {
       adminSetUserPassword: (params) => client.send(new AdminSetUserPasswordCommand(params)),
       initiateAuth: (params) => client.send(new InitiateAuthCommand(params)),
     };
-  } else {
-    // AWS SDK v2
-    const CognitoIdentityServiceProviderService = require('aws-sdk').CognitoIdentityServiceProvider;
-    return {
-      createUserPool: (params) =>
-        awsRequest(CognitoIdentityServiceProviderService, 'createUserPool', params),
-      createUserPoolClient: (params) =>
-        awsRequest(CognitoIdentityServiceProviderService, 'createUserPoolClient', params),
-      deleteUserPool: (params) =>
-        awsRequest(CognitoIdentityServiceProviderService, 'deleteUserPool', params),
-      listUserPools: (params) =>
-        awsRequest(CognitoIdentityServiceProviderService, 'listUserPools', params),
-      describeUserPool: (params) =>
-        awsRequest(CognitoIdentityServiceProviderService, 'describeUserPool', params),
-      adminCreateUser: (params) =>
-        awsRequest(CognitoIdentityServiceProviderService, 'adminCreateUser', params),
-      adminSetUserPassword: (params) =>
-        awsRequest(CognitoIdentityServiceProviderService, 'adminSetUserPassword', params),
-      initiateAuth: (params) =>
-        awsRequest(CognitoIdentityServiceProviderService, 'initiateAuth', params),
-    };
   }
+  // AWS SDK v2
+  const CognitoIdentityServiceProviderService = require('aws-sdk').CognitoIdentityServiceProvider;
+  return {
+    createUserPool: (params) =>
+      awsRequest(CognitoIdentityServiceProviderService, 'createUserPool', params),
+    createUserPoolClient: (params) =>
+      awsRequest(CognitoIdentityServiceProviderService, 'createUserPoolClient', params),
+    deleteUserPool: (params) =>
+      awsRequest(CognitoIdentityServiceProviderService, 'deleteUserPool', params),
+    listUserPools: (params) =>
+      awsRequest(CognitoIdentityServiceProviderService, 'listUserPools', params),
+    describeUserPool: (params) =>
+      awsRequest(CognitoIdentityServiceProviderService, 'describeUserPool', params),
+    adminCreateUser: (params) =>
+      awsRequest(CognitoIdentityServiceProviderService, 'adminCreateUser', params),
+    adminSetUserPassword: (params) =>
+      awsRequest(CognitoIdentityServiceProviderService, 'adminSetUserPassword', params),
+    initiateAuth: (params) =>
+      awsRequest(CognitoIdentityServiceProviderService, 'initiateAuth', params),
+  };
 };
 
 const cognito = getCognitoClient();

@@ -24,17 +24,16 @@ const getApiGatewayV2Client = () => {
       deleteStage: (params) => client.send(new DeleteStageCommand(params)),
       getRoutes: (params) => client.send(new GetRoutesCommand(params)),
     };
-  } else {
-    // AWS SDK v2
-    const ApiGatewayV2Service = require('aws-sdk').ApiGatewayV2;
-    return {
-      createApi: (params) => awsRequest(ApiGatewayV2Service, 'createApi', params),
-      deleteApi: (params) => awsRequest(ApiGatewayV2Service, 'deleteApi', params),
-      createStage: (params) => awsRequest(ApiGatewayV2Service, 'createStage', params),
-      deleteStage: (params) => awsRequest(ApiGatewayV2Service, 'deleteStage', params),
-      getRoutes: (params) => awsRequest(ApiGatewayV2Service, 'getRoutes', params),
-    };
   }
+  // AWS SDK v2
+  const ApiGatewayV2Service = require('aws-sdk').ApiGatewayV2;
+  return {
+    createApi: (params) => awsRequest(ApiGatewayV2Service, 'createApi', params),
+    deleteApi: (params) => awsRequest(ApiGatewayV2Service, 'deleteApi', params),
+    createStage: (params) => awsRequest(ApiGatewayV2Service, 'createStage', params),
+    deleteStage: (params) => awsRequest(ApiGatewayV2Service, 'deleteStage', params),
+    getRoutes: (params) => awsRequest(ApiGatewayV2Service, 'getRoutes', params),
+  };
 };
 
 const apiGatewayV2 = getApiGatewayV2Client();
