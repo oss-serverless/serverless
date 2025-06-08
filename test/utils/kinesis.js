@@ -4,7 +4,7 @@ const awsRequest = require('@serverless/test/aws-request');
 
 // Support for both AWS SDK v2 and v3
 const getKinesisClient = () => {
-  if (process.env.SLS_AWS_SDK_V3 === 'true') {
+  if (process.env.SLS_AWS_SDK_V3 === '1') {
     // AWS SDK v3
     const { KinesisClient } = require('@aws-sdk/client-kinesis');
     const {

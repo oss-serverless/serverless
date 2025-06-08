@@ -4,7 +4,7 @@ const awsRequest = require('@serverless/test/aws-request');
 
 // Support for both AWS SDK v2 and v3
 const getSNSClient = () => {
-  if (process.env.SLS_AWS_SDK_V3 === 'true') {
+  if (process.env.SLS_AWS_SDK_V3 === '1') {
     // AWS SDK v3
     const { SNSClient } = require('@aws-sdk/client-sns');
     const {

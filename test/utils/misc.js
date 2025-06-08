@@ -5,7 +5,7 @@ const wait = require('timers-ext/promise/sleep');
 
 // Support for both AWS SDK v2 and v3
 const getCloudWatchLogsClient = () => {
-  if (process.env.SLS_AWS_SDK_V3 === 'true') {
+  if (process.env.SLS_AWS_SDK_V3 === '1') {
     // AWS SDK v3
     const { CloudWatchLogsClient } = require('@aws-sdk/client-cloudwatch-logs');
     const { FilterLogEventsCommand } = require('@aws-sdk/client-cloudwatch-logs');

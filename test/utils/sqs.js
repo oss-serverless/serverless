@@ -4,7 +4,7 @@ const awsRequest = require('@serverless/test/aws-request');
 
 // Support for both AWS SDK v2 and v3
 const getSQSClient = () => {
-  if (process.env.SLS_AWS_SDK_V3 === 'true') {
+  if (process.env.SLS_AWS_SDK_V3 === '1') {
     // AWS SDK v3
     const { SQSClient } = require('@aws-sdk/client-sqs');
     const {

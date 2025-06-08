@@ -4,7 +4,7 @@ const awsRequest = require('@serverless/test/aws-request');
 
 // Support for both AWS SDK v2 and v3
 const getIoTClients = () => {
-  if (process.env.SLS_AWS_SDK_V3 === 'true') {
+  if (process.env.SLS_AWS_SDK_V3 === '1') {
     // AWS SDK v3 - dual service pattern (IoT + IoTDataPlane)
     const { IoTClient, DescribeEndpointCommand } = require('@aws-sdk/client-iot');
     const { IoTDataPlaneClient, PublishCommand } = require('@aws-sdk/client-iot-data-plane');
