@@ -7,15 +7,15 @@ const getEventBridgeClient = () => {
   if (process.env.SLS_AWS_SDK_V3 === 'true') {
     // AWS SDK v3
     const { EventBridgeClient } = require('@aws-sdk/client-eventbridge');
-    const { 
+    const {
       CreateEventBusCommand,
       DeleteEventBusCommand,
       DescribeEventBusCommand,
-      PutEventsCommand
+      PutEventsCommand,
     } = require('@aws-sdk/client-eventbridge');
-    
+
     const client = new EventBridgeClient({ region: 'us-east-1' });
-    
+
     return {
       createEventBus: (params) => client.send(new CreateEventBusCommand(params)),
       deleteEventBus: (params) => client.send(new DeleteEventBusCommand(params)),

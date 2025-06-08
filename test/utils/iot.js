@@ -8,22 +8,22 @@ const getIoTClients = () => {
     // AWS SDK v3 - dual service pattern (IoT + IoTDataPlane)
     const { IoTClient, DescribeEndpointCommand } = require('@aws-sdk/client-iot');
     const { IoTDataPlaneClient, PublishCommand } = require('@aws-sdk/client-iot-data-plane');
-    
+
     const iotClient = new IoTClient({ region: 'us-east-1' });
-    
+
     return {
       iot: {
         describeEndpoint: (params) => iotClient.send(new DescribeEndpointCommand(params)),
       },
       createIoTDataClient: (endpoint) => {
-        const iotDataClient = new IoTDataPlaneClient({ 
+        const iotDataClient = new IoTDataPlaneClient({
           region: 'us-east-1',
-          endpoint: `https://${endpoint}`
+          endpoint: `https://${endpoint}`,
         });
         return {
           publish: (params) => iotDataClient.send(new PublishCommand(params)),
         };
-      }
+      },
     };
   } else {
     // AWS SDK v2
@@ -34,8 +34,9 @@ const getIoTClients = () => {
         describeEndpoint: (params) => awsRequest(IotService, 'describeEndpoint', params),
       },
       createIoTDataClient: (endpoint) => ({
-        publish: (params) => awsRequest({ client: IotDataService, params: { endpoint } }, 'publish', params),
-      })
+        publish: (params) =>
+          awsRequest({ client: IotDataService, params: { endpoint } }, 'publish', params),
+      }),
     };
   }
 };
@@ -43,11 +44,9 @@ const getIoTClients = () => {
 const { iot, createIoTDataClient } = getIoTClients();
 
 async function resolveIotEndpoint() {
-  return iot.describeEndpoint({ endpointType: 'iot:Data-ATS' }).then(
-    (data) => {
-      return data.endpointAddress;
-    }
-  );
+  return iot.describeEndpoint({ endpointType: 'iot:Data-ATS' }).then((data) => {
+    return data.endpointAddress;
+  });
 }
 
 async function publishIotData(topic, message) {

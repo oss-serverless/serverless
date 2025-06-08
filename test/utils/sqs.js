@@ -7,15 +7,15 @@ const getSQSClient = () => {
   if (process.env.SLS_AWS_SDK_V3 === 'true') {
     // AWS SDK v3
     const { SQSClient } = require('@aws-sdk/client-sqs');
-    const { 
+    const {
       CreateQueueCommand,
       DeleteQueueCommand,
       GetQueueUrlCommand,
-      SendMessageCommand
+      SendMessageCommand,
     } = require('@aws-sdk/client-sqs');
-    
+
     const client = new SQSClient({ region: 'us-east-1' });
-    
+
     return {
       createQueue: (params) => client.send(new CreateQueueCommand(params)),
       deleteQueue: (params) => client.send(new DeleteQueueCommand(params)),

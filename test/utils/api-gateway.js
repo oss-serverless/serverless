@@ -8,15 +8,15 @@ const getAPIGatewayClient = () => {
   if (process.env.SLS_AWS_SDK_V3 === 'true') {
     // AWS SDK v3
     const { APIGatewayClient } = require('@aws-sdk/client-api-gateway');
-    const { 
+    const {
       CreateRestApiCommand,
       DeleteRestApiCommand,
       GetResourcesCommand,
-      GetRestApisCommand
+      GetRestApisCommand,
     } = require('@aws-sdk/client-api-gateway');
-    
+
     const client = new APIGatewayClient({ region: 'us-east-1' });
-    
+
     return {
       createRestApi: (params) => client.send(new CreateRestApiCommand(params)),
       deleteRestApi: (params) => client.send(new DeleteRestApiCommand(params)),

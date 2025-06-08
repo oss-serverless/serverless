@@ -8,10 +8,10 @@ const getDynamoDBClient = () => {
     // AWS SDK v3 - using DynamoDBDocumentClient from lib-dynamodb
     const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
     const { DynamoDBDocumentClient, PutCommand } = require('@aws-sdk/lib-dynamodb');
-    
+
     const client = new DynamoDBClient({ region: 'us-east-1' });
     const docClient = DynamoDBDocumentClient.from(client);
-    
+
     return {
       put: (params) => docClient.send(new PutCommand(params)),
     };

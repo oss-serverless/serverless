@@ -7,15 +7,15 @@ const getSNSClient = () => {
   if (process.env.SLS_AWS_SDK_V3 === 'true') {
     // AWS SDK v3
     const { SNSClient } = require('@aws-sdk/client-sns');
-    const { 
+    const {
       CreateTopicCommand,
       DeleteTopicCommand,
       ListTopicsCommand,
-      PublishCommand
+      PublishCommand,
     } = require('@aws-sdk/client-sns');
-    
+
     const client = new SNSClient({ region: 'us-east-1' });
-    
+
     return {
       createTopic: (params) => client.send(new CreateTopicCommand(params)),
       deleteTopic: (params) => client.send(new DeleteTopicCommand(params)),

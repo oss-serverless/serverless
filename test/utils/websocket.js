@@ -7,16 +7,16 @@ const getApiGatewayV2Client = () => {
   if (process.env.SLS_AWS_SDK_V3 === 'true') {
     // AWS SDK v3
     const { ApiGatewayV2Client } = require('@aws-sdk/client-apigatewayv2');
-    const { 
+    const {
       CreateApiCommand,
       DeleteApiCommand,
       CreateStageCommand,
       DeleteStageCommand,
-      GetRoutesCommand
+      GetRoutesCommand,
     } = require('@aws-sdk/client-apigatewayv2');
-    
+
     const client = new ApiGatewayV2Client({ region: 'us-east-1' });
-    
+
     return {
       createApi: (params) => client.send(new CreateApiCommand(params)),
       deleteApi: (params) => client.send(new DeleteApiCommand(params)),

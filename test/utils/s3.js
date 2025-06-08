@@ -7,17 +7,17 @@ const getS3Client = () => {
   if (process.env.SLS_AWS_SDK_V3 === 'true') {
     // AWS SDK v3
     const { S3Client } = require('@aws-sdk/client-s3');
-    const { 
+    const {
       CreateBucketCommand,
       PutObjectCommand,
       DeleteObjectCommand,
       ListObjectsCommand,
       DeleteObjectsCommand,
-      DeleteBucketCommand
+      DeleteBucketCommand,
     } = require('@aws-sdk/client-s3');
-    
+
     const client = new S3Client({ region: 'us-east-1' });
-    
+
     return {
       createBucket: (params) => client.send(new CreateBucketCommand(params)),
       putObject: (params) => client.send(new PutObjectCommand(params)),

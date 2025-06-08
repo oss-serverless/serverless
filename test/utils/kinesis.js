@@ -7,15 +7,15 @@ const getKinesisClient = () => {
   if (process.env.SLS_AWS_SDK_V3 === 'true') {
     // AWS SDK v3
     const { KinesisClient } = require('@aws-sdk/client-kinesis');
-    const { 
+    const {
       CreateStreamCommand,
       DeleteStreamCommand,
       DescribeStreamCommand,
-      PutRecordCommand
+      PutRecordCommand,
     } = require('@aws-sdk/client-kinesis');
-    
+
     const client = new KinesisClient({ region: 'us-east-1' });
-    
+
     return {
       createStream: (params) => client.send(new CreateStreamCommand(params)),
       deleteStream: (params) => client.send(new DeleteStreamCommand(params)),
@@ -60,9 +60,7 @@ async function createKinesisStream(streamName) {
     StreamName: streamName,
   };
 
-  return kinesis.createStream(params).then(() =>
-    waitForKinesisStream(streamName)
-  );
+  return kinesis.createStream(params).then(() => waitForKinesisStream(streamName));
 }
 
 async function deleteKinesisStream(streamName) {

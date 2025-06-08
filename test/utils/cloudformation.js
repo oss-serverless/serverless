@@ -7,15 +7,15 @@ const getCloudFormationClient = () => {
   if (process.env.SLS_AWS_SDK_V3 === 'true') {
     // AWS SDK v3
     const { CloudFormationClient } = require('@aws-sdk/client-cloudformation');
-    const { 
+    const {
       ListStacksCommand,
-      DeleteStackCommand, 
+      DeleteStackCommand,
       ListStackResourcesCommand,
-      DescribeStacksCommand
+      DescribeStacksCommand,
     } = require('@aws-sdk/client-cloudformation');
-    
+
     const client = new CloudFormationClient({ region: 'us-east-1' });
-    
+
     return {
       listStacks: (params) => client.send(new ListStacksCommand(params)),
       deleteStack: (params) => client.send(new DeleteStackCommand(params)),
@@ -28,7 +28,8 @@ const getCloudFormationClient = () => {
     return {
       listStacks: (params) => awsRequest(CloudFormationService, 'listStacks', params),
       deleteStack: (params) => awsRequest(CloudFormationService, 'deleteStack', params),
-      listStackResources: (params) => awsRequest(CloudFormationService, 'listStackResources', params),
+      listStackResources: (params) =>
+        awsRequest(CloudFormationService, 'listStackResources', params),
       describeStacks: (params) => awsRequest(CloudFormationService, 'describeStacks', params),
     };
   }

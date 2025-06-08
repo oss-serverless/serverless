@@ -9,9 +9,9 @@ const getCloudWatchLogsClient = () => {
     // AWS SDK v3
     const { CloudWatchLogsClient } = require('@aws-sdk/client-cloudwatch-logs');
     const { FilterLogEventsCommand } = require('@aws-sdk/client-cloudwatch-logs');
-    
+
     const client = new CloudWatchLogsClient({ region: 'us-east-1' });
-    
+
     return {
       filterLogEvents: (params) => client.send(new FilterLogEventsCommand(params)),
     };
