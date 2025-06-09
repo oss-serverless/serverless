@@ -50,12 +50,24 @@ jobs:
         run: |
           npm update --no-save
           npm update --save-dev --no-save
-      - name: Unit tests
+      - name: Unit tests (AWS SDK v2)
         # Some tests depend on TTY support, which is missing in GA runner
         # Workaround taken from https://github.com/actions/runner/issues/241#issuecomment-577360161
         run: script -e -c "npm test -- -b"
-      - name: Packaging tests
+        env:
+          SLS_AWS_SDK_V3: '0'
+      - name: Unit tests (AWS SDK v3)
+        run: script -e -c "npm test -- -b"
+        env:
+          SLS_AWS_SDK_V3: '1'
+      - name: Packaging tests (AWS SDK v2)
         run: npm run integration-test-run-package
+        env:
+          SLS_AWS_SDK_V3: '0'
+      - name: Packaging tests (AWS SDK v3)
+        run: npm run integration-test-run-package
+        env:
+          SLS_AWS_SDK_V3: '1'
 
   windowsNode16:
     name: '[Windows] Node 16: Unit tests'
