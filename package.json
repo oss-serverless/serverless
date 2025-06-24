@@ -73,6 +73,7 @@
     "strip-ansi": "^6.0.1",
     "supports-color": "^8.1.1",
     "timers-ext": "^0.1.7",
+    "tsx": "^4.20.3",
     "type": "^2.7.2",
     "untildify": "^4.0.0",
     "uuid": "^9.0.0",
