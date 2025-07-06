@@ -117,6 +117,50 @@ describe('test/unit/lib/configuration/read.test.js', () => {
     }
   });
 
+  it('should support tsconfig.paths', async () => {
+    await fse.ensureDir('node_modules');
+    const tsconfigPath = 'tsconfig.json';
+    const servicePath = 'test.ts';
+
+    try {
+      await fse.writeFile(
+        tsconfigPath,
+        JSON.stringify({
+          compilerOptions: {
+            paths: {
+              '@/test': ['./test.ts'],
+            },
+          },
+          include: ['**/*.ts'],
+        })
+      );
+
+      await fse.writeFile(servicePath, "export const service = 'test-ts';");
+
+      configurationPath = 'serverless.ts';
+      const configuration = {
+        service: 'test-ts',
+        provider: { name: 'aws' },
+      };
+
+      await fsp.writeFile(
+        configurationPath,
+        `import { service } from '@/test';
+
+        export default {
+          service: service,
+          provider: { name: 'aws' },
+        }`
+      );
+      const result = await readConfiguration(configurationPath);
+      expect(result).to.deep.equal(configuration);
+    } finally {
+      await fse.remove('node_modules');
+      await fsp.unlink(tsconfigPath);
+      await fsp.unlink(servicePath);
+    }
+  });
+
   it('should support deferred configuration result', async () => {
     // JS configurations are required (so immune to modules caching).
     // In this tests we cannot use same JS configuration path twice for testing
