@@ -817,12 +817,12 @@ aws_secret_access_key = CUSTOMSECRET
               },
             },
           },
-        }),
+        })
       ).to.be.eventually.rejected.and.have.property(
         'code',
-        'ECR_IMAGE_URI_AND_BUILDOPTIONS_DEFINED_ERROR',
-      )
-    })
+        'ECR_IMAGE_URI_AND_BUILDOPTIONS_DEFINED_ERROR'
+      );
+    });
 
     it('should fail if `functions[].image` references image with both path and uri', async () => {
       await expect(
@@ -1688,7 +1688,7 @@ aws_secret_access_key = CUSTOMSECRET
         ]);
       });
 
-      t('should work correctly when image is defined with `buildOptions` set', async () => {
+      it('should work correctly when image is defined with `buildOptions` set', async () => {
         const awsRequestStubMap = {
           ...baseAwsRequestStubMap,
           ECR: {
@@ -1698,7 +1698,7 @@ aws_secret_access_key = CUSTOMSECRET
             }),
             createRepository: createRepositoryStub,
           },
-        }
+        };
         const {
           awsNaming,
           cfTemplate,
@@ -1721,23 +1721,20 @@ aws_secret_access_key = CUSTOMSECRET
               },
             },
           },
-        })
+        });
 
-        const functionCfLogicalId = awsNaming.getLambdaLogicalId('foo')
-        const functionCfConfig =
-          cfTemplate.Resources[functionCfLogicalId].Properties
+        const functionCfLogicalId = awsNaming.getLambdaLogicalId('foo');
+        const functionCfConfig = cfTemplate.Resources[functionCfLogicalId].Properties;
         const versionCfConfig = Object.values(cfTemplate.Resources).find(
           (resource) =>
             resource.Type === 'AWS::Lambda::Version' &&
-            resource.Properties.FunctionName.Ref === functionCfLogicalId,
-        ).Properties
+            resource.Properties.FunctionName.Ref === functionCfLogicalId
+        ).Properties;
 
-        expect(functionCfConfig.Code.ImageUri).to.deep.equal(
-          `${repositoryUri}@sha256:${imageSha}`,
-        )
-        expect(versionCfConfig.CodeSha256).to.equal(imageSha)
-        expect(describeRepositoriesStub).to.be.calledOnce
-        expect(createRepositoryStub.notCalled).to.be.true
+        expect(functionCfConfig.Code.ImageUri).to.deep.equal(`${repositoryUri}@sha256:${imageSha}`);
+        expect(versionCfConfig.CodeSha256).to.equal(imageSha);
+        expect(describeRepositoriesStub).to.be.calledOnce;
+        expect(createRepositoryStub.notCalled).to.be.true;
         expect(spawnExtStub).to.be.calledWith('docker', [
           'build',
           '-t',
@@ -1747,7 +1744,7 @@ aws_secret_access_key = CUSTOMSECRET
           '--ssh',
           'default=/path/to/file',
           './',
-        ])
+        ]);
       });
 
       it('should work correctly when image is defined with `buildArgs` set', async () => {
