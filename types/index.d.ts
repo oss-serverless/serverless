@@ -384,6 +384,7 @@ export interface AWS {
             topic: string;
             consumerGroupId?: string;
             filterPatterns?: FilterPatterns;
+            onFailureDestination?: string;
           };
         }
         | {

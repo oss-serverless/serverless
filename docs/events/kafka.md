@@ -153,6 +153,25 @@ functions:
             - eventName: INSERT
 ```
 
+## Failure destinations
+
+A failure destination allows you to send messages that failed processing repeatedly to be sent to an SNS Topic, SQS Queue or another lambda function.
+By default, Lambda discards oversized records (> 6MB) and records that fail all retry attempts.
+Configuring an on-failure destination ensures that you don't lose data when your Lambda function encounters errors.
+For more information, see [capturing discarded batches for a self-managed Apache Kafka event source](https://docs.aws.amazon.com/lambda/latest/dg/with-kafka-on-failure.html)
+
+```yml
+functions:
+  compute:
+    handler: handler.compute
+    events:
+      - kafka:
+          accessConfigurations:
+            saslScram512Auth: arn:aws:secretsmanager:us-east-1:01234567890:secret:MyBrokerSecretName
+          topic: MySelfManagedKafkaTopic
+          onFailureDestination: arn:aws:sqs:us-east-1:01234567890:my-queue
+```
+
 ## IAM Permissions
 
 The Serverless Framework will automatically configure the most minimal set of IAM permissions for you. However you can still add additional permissions if you need to. Read the official [AWS documentation](https://docs.aws.amazon.com/lambda/latest/dg/kafka-smaa.html) for more information about IAM Permissions for Kafka events.
