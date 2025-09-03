@@ -564,7 +564,7 @@ describe('test/unit/lib/plugins/aws/package/compile/events/kafka.test.js', () =>
                       topic,
                       bootstrapServers: ['abc.xyz:9092'],
                       accessConfigurations: { saslScram256Auth: saslScram256AuthArn },
-                      onFailureDestination: 'arn:aws:sqs:eu-central-1:000000000000:some-queue'
+                      onFailureDestination: 'arn:aws:sqs:eu-central-1:000000000000:some-queue',
                     },
                   },
                 ],
@@ -576,7 +576,9 @@ describe('test/unit/lib/plugins/aws/package/compile/events/kafka.test.js', () =>
 
         const eventSourceMappingResource =
           cfTemplate.Resources[awsNaming.getKafkaEventLogicalId('basic', 'TestingTopic')];
-        expect(eventSourceMappingResource.Properties.DestinationConfig.OnFailure.Destination).to.equal('arn:aws:sqs:eu-central-1:000000000000:some-queue');
+        expect(
+          eventSourceMappingResource.Properties.DestinationConfig.OnFailure.Destination
+        ).to.equal('arn:aws:sqs:eu-central-1:000000000000:some-queue');
       });
     });
 
