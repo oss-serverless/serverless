@@ -165,6 +165,55 @@ serverless deploy --aws-profile devProfile
 
 To use web identity token authentication the `AWS_WEB_IDENTITY_TOKEN_FILE` and `AWS_ROLE_ARN` environment need to be set. It is automatically set if you specify a service account in AWS EKS.
 
+##### Using AWS SSO (Single Sign-On)
+
+**Note: SSO support requires enabling AWS SDK v3 mode by setting the `SLS_AWS_SDK_V3=1` environment variable.**
+
+AWS SSO (now AWS IAM Identity Center) provides a centralized way to manage access to multiple AWS accounts. The Serverless Framework supports SSO authentication when using AWS SDK v3 mode.
+
+To use AWS SSO:
+
+1. **Configure your SSO profile** (if not already done):
+   ```bash
+   aws configure sso
+   ```
+
+2. **Login to your SSO session**:
+   ```bash
+   aws sso login --profile your-sso-profile
+   ```
+
+3. **Enable SDK v3 mode and deploy**:
+   ```bash
+   export SLS_AWS_SDK_V3=1
+   serverless deploy --aws-profile your-sso-profile
+   ```
+
+The framework supports both legacy SSO configuration and the newer SSO session format in `~/.aws/config`:
+
+```ini
+# Legacy format
+[profile my-sso-profile]
+sso_start_url = https://example.awsapps.com/start
+sso_region = us-east-1
+sso_account_id = 123456789012
+sso_role_name = DeveloperRole
+region = us-west-2
+
+# New session format
+[profile my-session-profile]
+sso_session = my-session
+sso_account_id = 123456789012
+sso_role_name = DeveloperRole
+region = us-west-2
+
+[sso-session my-session]
+sso_start_url = https://example.awsapps.com/start
+sso_region = us-east-1
+```
+
+When your SSO session expires, the framework will provide a helpful error message with instructions to re-authenticate.
+
 #### Per Stage Profiles
 
 As an advanced use-case, you can deploy different stages to different accounts by using different profiles per stage. In order to use different profiles per stage, you must leverage [variables](./variables.md) and the provider profile setting.
