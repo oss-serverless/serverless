@@ -18,7 +18,7 @@ To create your first project (known as a Serverless Framework "Service"), run th
 
 ```bash
 # Create a new serverless project
-serverless
+serverless create --template template-name
 
 # Move into the newly created directory
 cd your-service-name
