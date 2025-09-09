@@ -1,5 +1,6 @@
 {
   "name": "osls",
+  "version": "0.0.0",
   "description": "Open-source alternative to Serverless Framework",
   "preferGlobal": true,
   "homepage": "https://github.com/oss-serverless/serverless",
