@@ -1,6 +1,6 @@
 {
   "name": "osls",
-  "version": "3.40.1",
+  "version": "3.53.0",
   "description": "Open-source alternative to Serverless Framework",
   "preferGlobal": true,
   "homepage": "https://github.com/oss-serverless/serverless",
