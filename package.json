@@ -18,7 +18,8 @@
   "types": "types/index.d.ts",
   "bin": {
     "serverless": "./bin/serverless.js",
-    "sls": "./bin/serverless.js"
+    "sls": "./bin/serverless.js",
+    "osls": "./bin/serverless.js"
   },
   "dependencies": {
     "@aws-sdk/client-api-gateway": "^3.588.0",
