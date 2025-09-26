@@ -140,6 +140,45 @@ function handler(event, context, callback) {
 }
 ```
 
+### PreTokenGeneration Trigger
+
+The PreTokenGeneration trigger supports multiple lambda versions for enhanced token customization:
+
+```yml
+functions:
+  preTokenGenerationV1:
+    handler: preToken.handler
+    events:
+      - cognitoUserPool:
+          pool: MyUserPool
+          trigger: PreTokenGeneration
+          # No lambdaVersion = V1_0 behavior (ID token customization only)
+
+  preTokenGenerationV2:
+    handler: preToken.handler
+    events:
+      - cognitoUserPool:
+          pool: MyUserPool
+          trigger: PreTokenGeneration
+          lambdaVersion: V2_0 # ID + Access token customization
+
+  preTokenGenerationV3:
+    handler: preToken.handler
+    events:
+      - cognitoUserPool:
+          pool: MyUserPool
+          trigger: PreTokenGeneration
+          lambdaVersion: V3_0 # Includes M2M client-credentials grants
+```
+
+**Lambda Version Support:**
+
+- `V1_0` (default): ID token customization only
+- `V2_0`: ID and access token customization
+- `V3_0`: Includes machine-to-machine (M2M) client-credentials grants
+
+**NOTE:** V2_0 and V3_0 require your user pool to be on the Essentials or Plus feature plan, as documented [by AWS](https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-lambda-pre-token-generation.html).
+
 ### Custom Message Trigger Handlers
 
 For custom messages, you will need to check `event.triggerSource` type inside your handler function:
