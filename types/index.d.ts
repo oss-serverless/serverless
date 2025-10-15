@@ -1041,6 +1041,7 @@ export interface AWS {
     | "ap-southeast-2"
     | "ap-southeast-3"
     | "ap-southeast-4"
+    | "ap-southeast-5"
     | "ca-central-1"
     | "cn-north-1"
     | "cn-northwest-1"
