@@ -443,7 +443,8 @@ describe('test/unit/lib/plugins/aws/customResources/index.test.js', () => {
       },
     });
 
-    const properties = cfTemplate.Resources.CustomDashresourceDashapigwDashcwDashroleLambdaFunction.Properties;
+    const properties =
+      cfTemplate.Resources.CustomDashresourceDashapigwDashcwDashroleLambdaFunction.Properties;
     expect(properties.Runtime).to.equal('nodejs22.x');
   });
 
@@ -459,7 +460,8 @@ describe('test/unit/lib/plugins/aws/customResources/index.test.js', () => {
       },
     });
 
-    const properties = cfTemplate.Resources.CustomDashresourceDashexistingDashcupLambdaFunction.Properties;
+    const properties =
+      cfTemplate.Resources.CustomDashresourceDashexistingDashcupLambdaFunction.Properties;
     expect(properties.Runtime).to.equal('nodejs22.x');
   });
 
@@ -479,7 +481,8 @@ describe('test/unit/lib/plugins/aws/customResources/index.test.js', () => {
       },
     });
 
-    const properties = cfTemplate.Resources.CustomDashresourceDasheventDashbridgeLambdaFunction.Properties;
+    const properties =
+      cfTemplate.Resources.CustomDashresourceDasheventDashbridgeLambdaFunction.Properties;
     expect(properties.Runtime).to.equal('nodejs22.x');
   });
 
@@ -495,10 +498,10 @@ describe('test/unit/lib/plugins/aws/customResources/index.test.js', () => {
       },
     });
 
-    const properties = cfTemplate.Resources.CustomDashresourceDashexistingDashs3LambdaFunction.Properties;
+    const properties =
+      cfTemplate.Resources.CustomDashresourceDashexistingDashs3LambdaFunction.Properties;
     expect(properties.Runtime).to.equal('nodejs22.x');
   });
-
 
   it('correctly takes stage from config into account when constructing apiGatewayCloudWatchRole resource', async () => {
     const { cfTemplate } = await runServerless({
