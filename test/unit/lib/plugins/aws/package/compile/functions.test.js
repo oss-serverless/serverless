@@ -2578,6 +2578,66 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
       });
     });
 
+    it('should support `provider.logs.lambda`', async () => {
+      const { cfTemplate, awsNaming } = await runServerless({
+        fixture: 'function',
+        configExt: {
+          provider: {
+            logs: {
+              lambda: {
+                logFormat: 'JSON',
+                applicationLogLevel: 'INFO',
+                systemLogLevel: 'WARN',
+                logGroup: '/aws/lambda/provider-log-group',
+              },
+            },
+          },
+        },
+        command: 'package',
+      });
+
+      const { LoggingConfig } = cfTemplate.Resources[awsNaming.getLambdaLogicalId('basic')].Properties;
+
+      expect(LoggingConfig).to.deep.equal({
+        LogFormat: 'JSON',
+        ApplicationLogLevel: 'INFO',
+        SystemLogLevel: 'WARN',
+        LogGroup: '/aws/lambda/provider-log-group',
+      });
+    });
+
+    it('should prefer `functions[].logs` over `provider.logs.lambda`', async () => {
+      const { cfTemplate, awsNaming } = await runServerless({
+        fixture: 'function',
+        configExt: {
+          provider: {
+            logs: {
+              lambda: {
+                logFormat: 'Text',
+                applicationLogLevel: 'ERROR',
+              },
+            },
+          },
+          functions: {
+            basic: {
+              logs: {
+                logFormat: 'JSON',
+                applicationLogLevel: 'DEBUG',
+              },
+            },
+          },
+        },
+        command: 'package',
+      });
+
+      const { LoggingConfig } = cfTemplate.Resources[awsNaming.getLambdaLogicalId('basic')].Properties;
+
+      expect(LoggingConfig).to.deep.equal({
+        LogFormat: 'JSON',
+        ApplicationLogLevel: 'DEBUG',
+      });
+    });
+
     it('should support `functions[].fileSystemConfig` (with vpc configured on function)', () => {
       const functionServiceConfig = serviceConfig.functions.fnFileSystemConfig;
       const fileSystemCfConfig =

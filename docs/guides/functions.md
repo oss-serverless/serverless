@@ -877,7 +877,19 @@ functions:
 
 [Configuring Lambda advanced logging options](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs.html#monitoring-cloudwatchlogs-advanced)
 
+This can be configured at the provider level (applies to all functions) or individually per function:
+
 ```yml
+# Provider-level configuration (applies to all functions)
+provider:
+  logs:
+    lambda:
+      logFormat: JSON
+      applicationLogLevel: INFO
+      systemLogLevel: WARN
+      logGroup: /aws/lambda/global-log-group
+
+# Function-level configuration (overrides provider settings)
 functions:
   helloLogging:
     handler: handler.handler
