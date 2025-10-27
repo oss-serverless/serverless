@@ -1709,6 +1709,15 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
               handler: 'index.handler',
               ephemeralStorageSize: 1024,
             },
+            fnLogs: {
+              handler: 'target.handler',
+              logs: {
+                applicationLogLevel: 'DEBUG',
+                logFormat: 'JSON',
+                logGroup: 'helloLoggingLogGroup',
+                systemLogLevel: 'DEBUG',
+              },
+            },
             fnUrl: {
               handler: 'target.handler',
               url: true,
@@ -2261,6 +2270,312 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
       expect(
         cfResources[naming.getLambdaLogicalId('fnEphemeralStorage')].Properties.EphemeralStorage
       ).to.deep.equal({ Size: ephemeralStorageSize });
+    });
+
+    it('should support `functions[].logs`', () => {
+      const logs = serviceConfig.functions.fnLogs.logs;
+
+      expect(logs.applicationLogLevel).to.be.a('string');
+      expect(logs.logFormat).to.be.a('string');
+      expect(logs.logGroup).to.be.a('string');
+      expect(logs.systemLogLevel).to.be.a('string');
+
+      expect(
+        cfResources[naming.getLambdaLogicalId('fnLogs')].Properties.LoggingConfig
+      ).to.deep.equal({
+        ApplicationLogLevel: logs.applicationLogLevel,
+        LogFormat: logs.logFormat,
+        LogGroup: logs.logGroup,
+        SystemLogLevel: logs.systemLogLevel,
+      });
+    });
+
+    it('should accept `DEBUG` as a valid applicationLogLevel value', () => {
+      return runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              logs: {
+                applicationLogLevel: 'DEBUG',
+              },
+            },
+          },
+        },
+        command: 'package',
+      }).then((result) => {
+        expect(result).to.be.ok;
+      });
+    });
+
+    it('should accept `ERROR` as a valid applicationLogLevel value', () => {
+      return runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              logs: {
+                applicationLogLevel: 'ERROR',
+              },
+            },
+          },
+        },
+        command: 'package',
+      }).then((result) => {
+        expect(result).to.be.ok;
+      });
+    });
+
+    it('should accept `FATAL` as a valid applicationLogLevel value', () => {
+      return runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              logs: {
+                applicationLogLevel: 'FATAL',
+              },
+            },
+          },
+        },
+        command: 'package',
+      }).then((result) => {
+        expect(result).to.be.ok;
+      });
+    });
+
+    it('should accept `INFO` as a valid applicationLogLevel value', () => {
+      return runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              logs: {
+                applicationLogLevel: 'INFO',
+              },
+            },
+          },
+        },
+        command: 'package',
+      }).then((result) => {
+        expect(result).to.be.ok;
+      });
+    });
+
+    it('should accept `TRACE` as a valid applicationLogLevel value', () => {
+      return runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              logs: {
+                applicationLogLevel: 'TRACE',
+              },
+            },
+          },
+        },
+        command: 'package',
+      }).then((result) => {
+        expect(result).to.be.ok;
+      });
+    });
+
+    it('should accept `WARN` as a valid applicationLogLevel value', () => {
+      return runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              logs: {
+                applicationLogLevel: 'WARN',
+              },
+            },
+          },
+        },
+        command: 'package',
+      }).then((result) => {
+        expect(result).to.be.ok;
+      });
+    });
+
+    it('should reject invalid applicationLogLevel value', () => {
+      return runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              logs: {
+                applicationLogLevel: 'INVALID',
+              },
+            },
+          },
+        },
+        command: 'package',
+      }).catch((error) => {
+        expect(error).to.have.property('code', 'INVALID_NON_SCHEMA_COMPLIANT_CONFIGURATION');
+      });
+    });
+
+    it('should accept `JSON` as a valid logFormat value', () => {
+      return runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              logs: {
+                logFormat: 'JSON',
+              },
+            },
+          },
+        },
+        command: 'package',
+      }).then((result) => {
+        expect(result).to.be.ok;
+      });
+    });
+
+    it('should accept `Text` as a valid logFormat value', () => {
+      return runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              logs: {
+                logFormat: 'Text',
+              },
+            },
+          },
+        },
+        command: 'package',
+      }).then((result) => {
+        expect(result).to.be.ok;
+      });
+    });
+
+    it('should reject invalid logFormat value', () => {
+      return runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              logs: {
+                logFormat: 'INVALID',
+              },
+            },
+          },
+        },
+        command: 'package',
+      }).catch((error) => {
+        expect(error).to.have.property('code', 'INVALID_NON_SCHEMA_COMPLIANT_CONFIGURATION');
+      });
+    });
+
+    it('should accept valid logGroup value', () => {
+      return runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              logs: {
+                logGroup: 'valid',
+              },
+            },
+          },
+        },
+        command: 'package',
+      }).then((result) => {
+        expect(result).to.be.ok;
+      });
+    });
+
+    it('should reject invalid logGroup value', () => {
+      return runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              logs: {
+                logGroup: '',
+              },
+            },
+          },
+        },
+        command: 'package',
+      }).catch((error) => {
+        expect(error).to.have.property('code', 'INVALID_NON_SCHEMA_COMPLIANT_CONFIGURATION');
+      });
+    });
+
+    it('should accept `DEBUG` as a valid systemLogLevel value', () => {
+      return runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              logs: {
+                systemLogLevel: 'DEBUG',
+              },
+            },
+          },
+        },
+        command: 'package',
+      }).then((result) => {
+        expect(result).to.be.ok;
+      });
+    });
+
+    it('should accept `INFO` as a valid systemLogLevel value', () => {
+      return runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              logs: {
+                systemLogLevel: 'INFO',
+              },
+            },
+          },
+        },
+        command: 'package',
+      }).then((result) => {
+        expect(result).to.be.ok;
+      });
+    });
+
+    it('should accept `WARN` as a valid systemLogLevel value', () => {
+      return runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              logs: {
+                systemLogLevel: 'WARN',
+              },
+            },
+          },
+        },
+        command: 'package',
+      }).then((result) => {
+        expect(result).to.be.ok;
+      });
+    });
+
+    it('should reject invalid systemLogLevel value', () => {
+      return runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              logs: {
+                systemLogLevel: 'INVALID',
+              },
+            },
+          },
+        },
+        command: 'package',
+      }).catch((error) => {
+        expect(error).to.have.property('code', 'INVALID_NON_SCHEMA_COMPLIANT_CONFIGURATION');
+      });
     });
 
     it('should support `functions[].fileSystemConfig` (with vpc configured on function)', () => {
