@@ -154,7 +154,7 @@ describe('AwsCompileMSKEvents', () => {
         ProvisionedPollerConfig: {
           MinimumPollers: 2,
           MaximumPollers: 5,
-        }
+        },
       });
     });
 
