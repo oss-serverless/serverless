@@ -1958,6 +1958,14 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
         FunctionUrlAuthType: 'NONE',
         Principal: '*',
       });
+      expect(cfResources[naming.getLambdaFnPermissionLogicalId('fnUrl')].Properties).to.deep.equal({
+        Action: 'lambda:InvokeFunction',
+        FunctionName: {
+          'Fn::GetAtt': ['FnUrlLambdaFunction', 'Arn'],
+        },
+        InvokedViaFunctionUrl: true,
+        Principal: '*',
+      });
     });
 
     it('should support `functions[].url` set to `true` with provisionedConcurrency set', () => {
