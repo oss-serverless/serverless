@@ -422,6 +422,7 @@ export interface AWS {
             saslScram512?: AwsArnString;
             consumerGroupId?: string;
             filterPatterns?: FilterPatterns;
+            provisionedPollerConfig?: {maximumPollers?: number, minimumPollers?: number}
           };
         }
         | {
