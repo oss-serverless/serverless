@@ -2596,7 +2596,8 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
         command: 'package',
       });
 
-      const { LoggingConfig } = cfTemplate.Resources[awsNaming.getLambdaLogicalId('basic')].Properties;
+      const { LoggingConfig } =
+        cfTemplate.Resources[awsNaming.getLambdaLogicalId('basic')].Properties;
 
       expect(LoggingConfig).to.deep.equal({
         LogFormat: 'JSON',
@@ -2630,7 +2631,8 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
         command: 'package',
       });
 
-      const { LoggingConfig } = cfTemplate.Resources[awsNaming.getLambdaLogicalId('basic')].Properties;
+      const { LoggingConfig } =
+        cfTemplate.Resources[awsNaming.getLambdaLogicalId('basic')].Properties;
 
       expect(LoggingConfig).to.deep.equal({
         LogFormat: 'JSON',
