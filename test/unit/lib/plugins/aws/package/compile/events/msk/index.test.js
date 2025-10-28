@@ -26,8 +26,8 @@ describe('AwsCompileMSKEvents', () => {
   ];
   const filterPatterns = [{ value: { a: [1, 2] } }, { value: [3] }];
   const provisionedPollerConfig = {
-    MinimumPollers: 2,
-    MaximumPollers: 5,
+    minimumPollers: 2,
+    maximumPollers: 5,
   };
 
   describe('when there are msk events defined', () => {
