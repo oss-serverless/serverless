@@ -25,6 +25,10 @@ describe('AwsCompileMSKEvents', () => {
     },
   ];
   const filterPatterns = [{ value: { a: [1, 2] } }, { value: [3] }];
+  const provisionedPollerConfig = {
+    MinimumPollers: 2,
+    MaximumPollers: 5,
+  };
 
   describe('when there are msk events defined', () => {
     let minimalEventSourceMappingResource;
@@ -61,6 +65,7 @@ describe('AwsCompileMSKEvents', () => {
                     saslScram512,
                     consumerGroupId,
                     filterPatterns,
+                    provisionedPollerConfig,
                   },
                 },
               ],
@@ -146,6 +151,10 @@ describe('AwsCompileMSKEvents', () => {
             },
           ],
         },
+        ProvisionedPollerConfig: {
+          MinimumPollers: 2,
+          MaximumPollers: 5,
+        }
       });
     });
 
