@@ -131,7 +131,6 @@ AWS recently added support for directly controlling the polling configuration fo
 Note: at least one of `minimumPollers` or `maximumPollers` must be provided.
 
 ```yml
-
 ---
 functions:
   compute:
