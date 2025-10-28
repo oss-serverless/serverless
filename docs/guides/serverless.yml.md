@@ -517,6 +517,17 @@ Configure logs for the deployed resources:
 ```yml
 provider:
   logs:
+    # Optional Configuration of Lambda Logging Configuration
+    lambda:
+      # The Log Format to be used for all lambda functions (default: Text)
+      logFormat: JSON
+      # The Application Log Level to be used, This can only be set if `logFormat` is set to `JSON`
+      applicationLogLevel: ERROR
+      # The System Log Level to be used, This can only be set if `logFormat` is set to `JSON`
+      systemLogLevel: INFO
+      # The LogGroup that will be used by default. If this is set the Framework will not create LogGroups for any functions
+      logGroup: /aws/lambda/global-log-group
+
     # Enable HTTP API logs
     # This can either be set to `httpApi: true` to use defaults, or configured via subproperties
     # Can only be configured if the API is created by Serverless Framework
@@ -722,6 +733,12 @@ functions:
     maximumRetryAttempts: 1
     # Maximum event age in seconds when invoking asynchronously (between 60 and 21600)
     maximumEventAge: 7200
+    # Configuring Lambda advanced logging options
+    logs:
+      applicationLogLevel: DEBUG
+      logFormat: JSON
+      logGroup: helloLoggingLogGroup
+      systemLogLevel: DEBUG
 ```
 
 ## Lambda events
