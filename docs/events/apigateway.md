@@ -1746,6 +1746,19 @@ provider:
     tagKey: tagValue
 ```
 
+API Gateway itself will be tagged with the `tags` values defined at the `provider` level if `provider.restApi.useProviderTags` option is set:
+
+```yml
+# serverless.yml
+
+provider:
+  name: aws
+  tags:
+    tagKey: tagValue
+  restApi:
+    useProviderTags: true
+```
+
 ## Logs
 
 Use the following configuration to enable API Gateway logs:
