@@ -1058,6 +1058,9 @@ export interface AWS {
     | "me-central-1"
     | "me-south-1"
     | "sa-east-1";
+    restApi?: {
+      useProviderTags?: boolean;
+    };
     role?: AwsLambdaRole;
     rolePermissionsBoundary?: AwsArnString;
     rollbackConfiguration?: {
