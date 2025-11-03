@@ -62,10 +62,6 @@ describe('#compileRestApi()', () => {
       tagKey2: 'tagValue2',
     };
 
-    awsCompileApigEvents.serverless.service.provider.restApi = {
-      useProviderTags: true,
-    };
-
     awsCompileApigEvents.compileRestApi();
     const resources =
       awsCompileApigEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources;
