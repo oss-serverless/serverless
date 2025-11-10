@@ -1,6 +1,6 @@
 {
   "name": "@kennethwkz/osls",
-  "version": "3.58.1",
+  "version": "3.58.2",
   "description": "Open-source alternative to Serverless Framework",
   "preferGlobal": true,
   "homepage": "https://github.com/kennethwkz/osls",
