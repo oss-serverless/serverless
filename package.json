@@ -22,6 +22,7 @@
     "osls": "./bin/serverless.js"
   },
   "dependencies": {
+    "@apidevtools/json-schema-ref-parser": "^14.2.1",
     "@aws-sdk/client-api-gateway": "^3.588.0",
     "@aws-sdk/client-apigatewayv2": "^3.588.0",
     "@aws-sdk/client-cloudformation": "^3.588.0",
@@ -41,11 +42,10 @@
     "@aws-sdk/client-sqs": "^3.588.0",
     "@aws-sdk/client-ssm": "^3.588.0",
     "@aws-sdk/client-sts": "^3.588.0",
+    "@aws-sdk/credential-providers": "^3.588.0",
     "@aws-sdk/lib-dynamodb": "^3.588.0",
     "@aws-sdk/lib-storage": "^3.588.0",
-    "@aws-sdk/credential-providers": "^3.588.0",
     "@serverless/utils": "^6.13.1",
-    "@apidevtools/json-schema-ref-parser": "^15.1.1",
     "ajv": "^8.12.0",
     "ajv-formats": "^2.1.1",
     "archiver": "^7.0.1",
@@ -206,7 +206,7 @@
     "test:isolated": "mocha-isolated \"test/unit/**/*.test.js\""
   },
   "engines": {
-    "node": ">=12.0"
+    "node": ">=18.0"
   },
   "license": "MIT"
 }
