@@ -74,6 +74,7 @@ export type AwsLambdaRuntime =
   | "python3.11"
   | "python3.12"
   | "python3.13"
+  | "python3.14"
   | "ruby2.7"
   | "ruby3.2"
   | "ruby3.3"
