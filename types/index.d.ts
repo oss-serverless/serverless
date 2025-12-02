@@ -64,6 +64,7 @@ export type AwsLambdaRuntime =
   | "nodejs18.x"
   | "nodejs20.x"
   | "nodejs22.x"
+  | "nodejs24.x"
   | "provided"
   | "provided.al2"
   | "provided.al2023"

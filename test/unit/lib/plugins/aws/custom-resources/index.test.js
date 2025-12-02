@@ -349,7 +349,7 @@ describe('#addCustomResourceToService()', () => {
   });
 
   it('should use defined runtime', async () => {
-    serverless.service.provider.runtime = 'nodejs22.x';
+    serverless.service.provider.runtime = 'nodejs24.x';
     await Promise.all([
       // add the custom S3 resource
       addCustomResourceToService(provider, 's3', [
@@ -398,13 +398,13 @@ describe('#addCustomResourceToService()', () => {
 
     expect(
       Resources.CustomDashresourceDashexistingDashs3LambdaFunction.Properties.Runtime
-    ).to.equal('nodejs22.x');
+    ).to.equal('nodejs24.x');
     expect(
       Resources.CustomDashresourceDashexistingDashcupLambdaFunction.Properties.Runtime
-    ).to.equal('nodejs22.x');
+    ).to.equal('nodejs24.x');
     expect(
       Resources.CustomDashresourceDasheventDashbridgeLambdaFunction.Properties.Runtime
-    ).to.equal('nodejs22.x');
+    ).to.equal('nodejs24.x');
   });
 });
 
@@ -428,7 +428,7 @@ describe('test/unit/lib/plugins/aws/customResources/index.test.js', () => {
     expect(properties.FunctionName.endsWith('testing-custom-resource-apigw-cw-role')).to.be.true;
   });
 
-  it('falls back to nodejs22 runtime for CW custom resource if provider runtime is not nodejs ', async () => {
+  it('falls back to nodejs24 runtime for CW custom resource if provider runtime is not nodejs ', async () => {
     const { cfTemplate } = await runServerless({
       fixture: 'api-gateway',
       command: 'package',
@@ -445,10 +445,10 @@ describe('test/unit/lib/plugins/aws/customResources/index.test.js', () => {
 
     const properties =
       cfTemplate.Resources.CustomDashresourceDashapigwDashcwDashroleLambdaFunction.Properties;
-    expect(properties.Runtime).to.equal('nodejs22.x');
+    expect(properties.Runtime).to.equal('nodejs24.x');
   });
 
-  it('falls back to nodejs22 runtime for Cognito UP custom resource if provider runtime is not nodejs ', async () => {
+  it('falls back to nodejs24 runtime for Cognito UP custom resource if provider runtime is not nodejs ', async () => {
     const { cfTemplate } = await runServerless({
       fixture: 'cognito-user-pool',
       command: 'package',
@@ -462,10 +462,10 @@ describe('test/unit/lib/plugins/aws/customResources/index.test.js', () => {
 
     const properties =
       cfTemplate.Resources.CustomDashresourceDashexistingDashcupLambdaFunction.Properties;
-    expect(properties.Runtime).to.equal('nodejs22.x');
+    expect(properties.Runtime).to.equal('nodejs24.x');
   });
 
-  it('falls back to nodejs22 runtime for Event Bridge [LEGACY] custom resource if provider runtime is not nodejs ', async () => {
+  it('falls back to nodejs24 runtime for Event Bridge [LEGACY] custom resource if provider runtime is not nodejs ', async () => {
     const { cfTemplate } = await runServerless({
       fixture: 'event-bridge',
       command: 'package',
@@ -483,10 +483,10 @@ describe('test/unit/lib/plugins/aws/customResources/index.test.js', () => {
 
     const properties =
       cfTemplate.Resources.CustomDashresourceDasheventDashbridgeLambdaFunction.Properties;
-    expect(properties.Runtime).to.equal('nodejs22.x');
+    expect(properties.Runtime).to.equal('nodejs24.x');
   });
 
-  it('falls back to nodejs22 runtime for S3 custom resource if provider runtime is not nodejs ', async () => {
+  it('falls back to nodejs24 runtime for S3 custom resource if provider runtime is not nodejs ', async () => {
     const { cfTemplate } = await runServerless({
       fixture: 's3',
       command: 'package',
@@ -500,7 +500,7 @@ describe('test/unit/lib/plugins/aws/customResources/index.test.js', () => {
 
     const properties =
       cfTemplate.Resources.CustomDashresourceDashexistingDashs3LambdaFunction.Properties;
-    expect(properties.Runtime).to.equal('nodejs22.x');
+    expect(properties.Runtime).to.equal('nodejs24.x');
   });
 
   it('correctly takes stage from config into account when constructing apiGatewayCloudWatchRole resource', async () => {
