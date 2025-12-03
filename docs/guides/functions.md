@@ -12,7 +12,7 @@ service: myService
 
 provider:
   name: aws
-  runtime: nodejs18.x
+  runtime: nodejs24.x
   runtimeManagement: auto # optional, set how Lambda controls all functions runtime. AWS default is auto; this can either be 'auto' or 'onFunctionUpdate'. For 'manual', see example in hello function below (syntax for both is identical)
   memorySize: 512 # optional, in MB, default is 1024
   timeout: 10 # optional, in seconds, default is 6
@@ -52,7 +52,7 @@ service: myService
 
 provider:
   name: aws
-  runtime: nodejs18.x
+  runtime: nodejs24.x
 
 functions:
   functionOne:
@@ -72,7 +72,7 @@ service: myService
 
 provider:
   name: aws
-  runtime: nodejs18.x
+  runtime: nodejs24.x
   memorySize: 512 # will be inherited by all functions
 
 functions:
@@ -88,7 +88,7 @@ service: myService
 
 provider:
   name: aws
-  runtime: nodejs18.x
+  runtime: nodejs24.x
 
 functions:
   functionOne:
@@ -124,7 +124,7 @@ service: myService
 
 provider:
   name: aws
-  runtime: nodejs18.x
+  runtime: nodejs24.x
   iam:
     role:
       statements: # permissions for all of your functions can be set here
@@ -728,7 +728,7 @@ service: service
 
 provider:
   name: aws
-  runtime: nodejs18.x
+  runtime: nodejs24.x
 
 functions:
   hello:
@@ -781,7 +781,7 @@ service: myService
 
 provider:
   name: aws
-  runtime: nodejs18.x
+  runtime: nodejs24.x
   tracing:
     lambda: true
 ```

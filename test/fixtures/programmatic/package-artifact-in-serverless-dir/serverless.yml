@@ -5,7 +5,7 @@ frameworkVersion: '*'
 
 provider:
   name: aws
-  runtime: nodejs18.x
+  runtime: nodejs24.x
 
 plugins:
   # Mutates `package.artifact` to point to copied `.serverless/NAME.zip`

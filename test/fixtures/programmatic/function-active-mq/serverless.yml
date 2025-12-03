@@ -8,7 +8,7 @@ frameworkVersion: '*'
 
 provider:
   name: aws
-  runtime: nodejs18.x
+  runtime: nodejs24.x
   versionFunctions: false
 
 functions:

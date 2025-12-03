@@ -30,7 +30,7 @@ custom:
 
 provider:
   name: aws
-  runtime: nodejs18.x
+  runtime: nodejs24.x
 
 functions:
   hello:
@@ -53,7 +53,7 @@ custom:
   bucketName: test
 provider:
   name: aws
-  runtime: nodejs18.x
+  runtime: nodejs24.x
   stage: dev # <-- Resolved
 functions:
   hello:
