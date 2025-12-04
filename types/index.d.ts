@@ -53,7 +53,9 @@ export type AwsLambdaRole = string | AwsCfSub | AwsCfImport | AwsCfGetAtt;
 export type AwsLambdaRuntime =
   | "dotnet6"
   | "dotnet8"
+  | "dotnet9"
   | "go1.x"
+  | "java25"
   | "java21"
   | "java17"
   | "java11"
