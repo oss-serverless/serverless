@@ -568,7 +568,7 @@ provider:
       fullExecutionData: true
 
     # Optional, whether to write CloudWatch logs for custom resource lambdas as added by the framework
-    frameworkLambda: false
+    frameworkLambda: true
 ```
 
 ### S3 buckets
