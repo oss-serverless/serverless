@@ -54,6 +54,7 @@ export type AwsLambdaRuntime =
   | "dotnet6"
   | "dotnet8"
   | "dotnet9"
+  | "dotnet10"
   | "go1.x"
   | "java25"
   | "java21"
