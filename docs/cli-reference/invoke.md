@@ -99,16 +99,6 @@ serverless invoke --function functionName --path lib/data.json
 This example will pass the json data in the `lib/data.json` file (relative to the root of the service) while invoking
 the specified/deployed function.
 
-#### Function invocation with durable execution name
-
-```bash
-serverless invoke --function orderProcessor --durable-execution-name order-12345
-```
-
-This example invokes a durable function with a unique execution name. If you invoke the same function with the same execution name again, Lambda returns the cached result from the previous execution instead of re-executing the function. This enables idempotent invocations for reliable workflow orchestration.
-
-**Note:** Durable execution names must be 1-64 characters and contain only alphanumeric characters, hyphens, or underscores. See the [Functions guide](../guides/functions.md#aws-lambda-durable-functions) for more information on configuring durable functions.
-
 #### Example `data.json`
 
 ```json
@@ -134,6 +124,16 @@ serverless invoke local --function functionName \
 ```
 
 This example will pass the json context in the `lib/context.json` file (relative to the root of the service) while invoking the specified/deployed function.
+
+### Function invocation with durable execution name
+
+```bash
+serverless invoke --function functionName --contextPath lib/context.json --durable-execution-name order-12345
+```
+
+This example invokes a durable function with a unique execution name. If you invoke the same function with the same execution name again, Lambda returns the cached result from the previous execution instead of re-executing the function. This enables idempotent invocations for reliable workflow orchestration.
+
+**Note:** Durable execution names must be 1-64 characters and contain only alphanumeric characters, hyphens, or underscores. See the [Functions guide](../guides/functions.md#aws-lambda-durable-functions) for more information on configuring durable functions.
 
 ### Limitations
 
