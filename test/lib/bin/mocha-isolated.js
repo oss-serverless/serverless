@@ -46,7 +46,7 @@ if (argv.help) {
 }
 
 if (argv.version) {
-  process.stdout.write(`${require('../package').version}\n`);
+  process.stdout.write(`${require('../../../package').version}\n`);
   return;
 }
 
