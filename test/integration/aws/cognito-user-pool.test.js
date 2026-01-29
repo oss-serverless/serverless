@@ -2,7 +2,7 @@
 
 const { expect } = require('chai');
 const log = require('log').get('serverless:test');
-const hasFailed = require('@serverless/test/has-failed');
+const hasFailed = require('../../lib/has-failed');
 const fixtures = require('../../fixtures/programmatic');
 
 const {

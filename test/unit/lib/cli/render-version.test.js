@@ -2,7 +2,7 @@
 
 const { expect } = require('chai');
 const listVersion = require('../../../../lib/cli/render-version');
-const observeOutput = require('@serverless/test/observe-output');
+const observeOutput = require('../../../lib/observe-output');
 
 describe('test/unit/lib/cli/list-version.test.js', () => {
   it('should log version', async () => {

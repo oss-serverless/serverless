@@ -4,7 +4,7 @@ const { expect } = require('chai');
 const overrideArgv = require('process-utils/override-argv');
 const resolveInput = require('../../../../../lib/cli/resolve-input');
 const renderHelp = require('../../../../../lib/cli/render-help');
-const observeOutput = require('@serverless/test/observe-output');
+const observeOutput = require('../../../../lib/observe-output');
 
 describe('test/unit/lib/cli/render-help/index.test.js', () => {
   it('should show general help on main command', async () => {

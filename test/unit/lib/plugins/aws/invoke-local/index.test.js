@@ -12,7 +12,7 @@ const AwsProvider = require('../../../../../../lib/plugins/aws/provider');
 const Serverless = require('../../../../../../lib/serverless');
 const CLI = require('../../../../../../lib/classes/cli');
 const { getTmpDirPath } = require('../../../../../utils/fs');
-const skipWithNotice = require('@serverless/test/skip-with-notice');
+const skipWithNotice = require('../../../../../lib/skip-with-notice');
 const runServerless = require('../../../../../utils/run-serverless');
 const spawnExt = require('child-process-ext/spawn');
 

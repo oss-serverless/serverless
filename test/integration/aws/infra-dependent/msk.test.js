@@ -9,7 +9,7 @@ const {
   getDependencyStackOutputMap,
 } = require('../../../utils/cloudformation');
 
-const awsRequest = require('@serverless/test/aws-request');
+const awsRequest = require('../../../lib/aws-request');
 const LambdaService = require('aws-sdk').Lambda;
 const KafkaService = require('aws-sdk').Kafka;
 const crypto = require('crypto');
