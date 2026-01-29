@@ -10,7 +10,7 @@ const {
   SHARED_INFRA_TESTS_ACTIVE_MQ_CREDENTIALS_NAME,
 } = require('../../../utils/cloudformation');
 
-const awsRequest = require('@serverless/test/aws-request');
+const awsRequest = require('../../../lib/aws-request');
 const LambdaService = require('aws-sdk').Lambda;
 const MQService = require('aws-sdk').MQ;
 const SecretsManagerService = require('aws-sdk').SecretsManager;

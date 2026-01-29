@@ -2,7 +2,7 @@
 
 const { expect } = require('chai');
 const renderGeneralHelp = require('../../../../../lib/cli/render-help/general');
-const observeOutput = require('@serverless/test/observe-output');
+const observeOutput = require('../../../../lib/observe-output');
 
 describe('test/unit/lib/cli/render-help/general.test.js', () => {
   it('should show help', async () => {

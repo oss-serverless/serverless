@@ -1,10 +1,10 @@
 'use strict';
 
-const awsRequest = require('@serverless/test/aws-request');
+const awsRequest = require('../../lib/aws-request');
 const CloudFormationService = require('aws-sdk').CloudFormation;
 const IotService = require('aws-sdk').Iot;
 const LambdaService = require('aws-sdk').Lambda;
-const hasFailed = require('@serverless/test/has-failed');
+const hasFailed = require('../../lib/has-failed');
 const { expect } = require('chai');
 const fixtures = require('../../fixtures/programmatic');
 const { deployService, removeService } = require('../../utils/integration');

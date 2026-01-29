@@ -3,7 +3,7 @@
 const uuid = require('uuid');
 const { expect } = require('chai');
 const fixtures = require('../../fixtures/programmatic');
-const awsRequest = require('@serverless/test/aws-request');
+const awsRequest = require('../../lib/aws-request');
 const S3Service = require('aws-sdk').S3;
 const { deployService, removeService } = require('../../utils/integration');
 const { createBucket, deleteBucket } = require('../../utils/s3');

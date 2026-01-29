@@ -7,9 +7,9 @@ const stripAnsi = require('strip-ansi');
 const { expect } = require('chai');
 const log = require('log').get('serverless:test');
 const spawn = require('child-process-ext/spawn');
-const resolveAwsEnv = require('@serverless/test/resolve-aws-env');
-const hasFailed = require('@serverless/test/has-failed');
-const awsRequest = require('@serverless/test/aws-request');
+const resolveAwsEnv = require('./lib/resolve-aws-env');
+const hasFailed = require('./lib/has-failed');
+const awsRequest = require('./lib/aws-request');
 const CloudFormationService = require('aws-sdk').CloudFormation;
 const { getTmpDirPath } = require('./utils/fs');
 

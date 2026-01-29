@@ -6,7 +6,7 @@ const proxyquire = require('proxyquire');
 const PluginList = require('../../../../../../lib/plugins/plugin/list');
 const Serverless = require('../../../../../../lib/serverless');
 const CLI = require('../../../../../../lib/classes/cli');
-const observeOutput = require('@serverless/test/observe-output');
+const observeOutput = require('../../../../../lib/observe-output');
 
 chai.use(require('chai-as-promised'));
 

@@ -1,7 +1,7 @@
 'use strict';
 
 const { expect } = require('chai');
-const hasFailed = require('@serverless/test/has-failed');
+const hasFailed = require('../../lib/has-failed');
 const log = require('log').get('serverless:test');
 const fixtures = require('../../fixtures/programmatic');
 

@@ -2,7 +2,7 @@
 
 const { expect } = require('chai');
 const renderOptionsHelp = require('../../../../../lib/cli/render-help/options');
-const observeOutput = require('@serverless/test/observe-output');
+const observeOutput = require('../../../../lib/observe-output');
 
 describe('test/unit/lib/cli/render-help/options.test.js', () => {
   it('should list options', async () => {

@@ -3,7 +3,7 @@
 const { expect } = require('chai');
 const renderCommandHelp = require('../../../../../lib/cli/render-help/command');
 const commandsSchema = require('../../../../../lib/cli/commands-schema');
-const observeOutput = require('@serverless/test/observe-output');
+const observeOutput = require('../../../../lib/observe-output');
 
 describe('test/unit/lib/cli/render-help/command.test.js', () => {
   it('should show help', async () => {
