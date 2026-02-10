@@ -829,7 +829,6 @@ functions:
           # Enable streaming responses by setting transferMode to STREAM (default is BUFFERED)
           response:
             transferMode: STREAM
-
 ```
 
 ### Websocket API

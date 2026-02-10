@@ -1100,6 +1100,178 @@ describe('#validate()', () => {
     expect(() => awsCompileApigEvents.validate()).to.throw(Error);
   });
 
+  it('should accept transferMode STREAM with AWS_PROXY integration', () => {
+    awsCompileApigEvents.serverless.service.functions = {
+      first: {
+        events: [
+          {
+            http: {
+              method: 'GET',
+              path: 'users/list',
+              integration: 'lambda-proxy',
+              response: {
+                transferMode: 'STREAM',
+              },
+            },
+          },
+        ],
+      },
+    };
+
+    const validated = awsCompileApigEvents.validate();
+    expect(validated.events).to.be.an('Array').with.length(1);
+    expect(validated.events[0].http.response.transferMode).to.equal('STREAM');
+  });
+
+  it('should accept transferMode BUFFERED with AWS_PROXY integration', () => {
+    awsCompileApigEvents.serverless.service.functions = {
+      first: {
+        events: [
+          {
+            http: {
+              method: 'GET',
+              path: 'users/list',
+              integration: 'lambda-proxy',
+              response: {
+                transferMode: 'BUFFERED',
+              },
+            },
+          },
+        ],
+      },
+    };
+
+    const validated = awsCompileApigEvents.validate();
+    expect(validated.events).to.be.an('Array').with.length(1);
+    expect(validated.events[0].http.response.transferMode).to.equal('BUFFERED');
+  });
+
+  it('should normalize transferMode to uppercase', () => {
+    awsCompileApigEvents.serverless.service.functions = {
+      first: {
+        events: [
+          {
+            http: {
+              method: 'GET',
+              path: 'users/list',
+              integration: 'lambda-proxy',
+              response: {
+                transferMode: 'stream',
+              },
+            },
+          },
+        ],
+      },
+    };
+
+    const validated = awsCompileApigEvents.validate();
+    expect(validated.events).to.be.an('Array').with.length(1);
+    expect(validated.events[0].http.response.transferMode).to.equal('STREAM');
+  });
+
+  it('should throw if transferMode is invalid', () => {
+    awsCompileApigEvents.serverless.service.functions = {
+      first: {
+        events: [
+          {
+            http: {
+              method: 'GET',
+              path: 'users/list',
+              integration: 'lambda-proxy',
+              response: {
+                transferMode: 'INVALID',
+              },
+            },
+          },
+        ],
+      },
+    };
+
+    expect(() => awsCompileApigEvents.validate()).to.throw(
+      ServerlessError,
+      'Invalid transferMode "INVALID"'
+    );
+  });
+
+  it('should throw if transferMode is used with non-proxy integration', () => {
+    awsCompileApigEvents.serverless.service.functions = {
+      first: {
+        events: [
+          {
+            http: {
+              method: 'GET',
+              path: 'users/list',
+              integration: 'lambda',
+              response: {
+                transferMode: 'STREAM',
+              },
+            },
+          },
+        ],
+      },
+    };
+
+    expect(() => awsCompileApigEvents.validate()).to.throw(
+      ServerlessError,
+      'transferMode can only be used with AWS_PROXY or HTTP_PROXY integrations'
+    );
+  });
+
+  it('should accept transferMode with HTTP_PROXY integration', () => {
+    awsCompileApigEvents.serverless.service.functions = {
+      first: {
+        events: [
+          {
+            http: {
+              method: 'GET',
+              path: 'users/list',
+              integration: 'HTTP_PROXY',
+              request: {
+                uri: 'https://example.com',
+              },
+              response: {
+                transferMode: 'STREAM',
+              },
+            },
+          },
+        ],
+      },
+    };
+
+    const validated = awsCompileApigEvents.validate();
+    expect(validated.events).to.be.an('Array').with.length(1);
+    expect(validated.events[0].http.response.transferMode).to.equal('STREAM');
+  });
+
+  it('should preserve transferMode but remove other response config with LAMBDA-PROXY', async () => {
+    awsCompileApigEvents.serverless.service.functions = {
+      first: {
+        events: [
+          {
+            http: {
+              method: 'GET',
+              path: 'users/list',
+              integration: 'lambda-proxy',
+              response: {
+                transferMode: 'STREAM',
+                headers: {
+                  'Content-Type': 'text/html',
+                },
+              },
+            },
+          },
+        ],
+      },
+    };
+    return serverless.init().then(() => {
+      sinon.stub(serverless.cli, 'log');
+
+      const validated = awsCompileApigEvents.validate();
+      expect(validated.events).to.be.an('Array').with.length(1);
+      expect(validated.events[0].http.response).to.deep.equal({ transferMode: 'STREAM' });
+    });
+  });
+
   it('should support MOCK integration', () => {
     awsCompileApigEvents.serverless.service.functions = {
       first: {
