@@ -658,6 +658,10 @@ functions:
     kmsKeyArn: arn:aws:kms:us-east-1:XXXXXX:key/some-hash
     # Defines if you want to make use of SnapStart, this feature can only be used in combination with a Java runtime. Configuring this property will result in either None or PublishedVersions for the Lambda function
     snapStart: true
+    # Configure AWS Lambda Durable Functions for long-running workflows (auto-enables versioning)
+    durableConfig:
+      executionTimeout: 3600              # Required: 1-31536000 seconds
+      retentionPeriodInDays: 30           # Optional: 1-90 days
     # Disable the creation of the CloudWatch log group
     disableLogs: false
     # Duration for CloudWatch log retention (default: forever). Overrides provider setting.

@@ -448,6 +448,65 @@ functions:
 
 **Note:** Lambda SnapStart only supports the Java 11, Java 17 and Java 21 runtimes and does not support provisioned concurrency, the arm64 architecture, the Lambda Extensions API, Amazon Elastic File System (Amazon EFS), AWS X-Ray, or ephemeral storage greater than 512 MB.
 
+## AWS Lambda Durable Functions
+
+[AWS Lambda Durable Functions](https://docs.aws.amazon.com/lambda/latest/dg/) enable long-running, fault-tolerant workflows without requiring custom state management. Durable functions use checkpoint-and-replay mechanisms to reliably execute workflows that can run for up to 1 year.
+
+Durable functions are ideal for:
+- Multi-step order processing workflows
+- Long-running data processing jobs
+- Reliable task orchestration
+- Workflows requiring idempotent execution guarantees
+
+### Configuration
+
+To enable durable function configuration for your Lambda function, add the `durableConfig` object property in the function configuration:
+
+```yaml
+functions:
+  orderProcessor:
+    handler: handler.processOrder
+    runtime: nodejs22.x
+    durableConfig:
+      executionTimeout: 3600              # Required: 1-31536000 seconds (1 sec to 1 year)
+      retentionPeriodInDays: 30           # Optional: 1-90 days
+```
+
+### Configuration Properties
+
+- **`executionTimeout`** (required, integer): Maximum execution time for the durable function in seconds. Range: 1 to 31,536,000 (1 year).
+- **`retentionPeriodInDays`** (optional, integer): Number of days to retain execution history and state. Range: 1 to 90 days. This determines how long AWS maintains execution metadata after completion.
+
+### Invoking Durable Functions
+
+When invoking a durable function, you can provide a unique execution name to enable idempotent invocations:
+
+```bash
+serverless invoke --function orderProcessor --durable-execution-name order-12345
+```
+
+If you invoke the same function with the same execution name again, Lambda returns the cached result instead of re-executing. Execution names must be 1-64 characters long and contain only alphanumeric characters, hyphens, or underscores.
+
+See the [invoke command documentation](../cli-reference/invoke.md) for more details on the `--durable-execution-name` option.
+
+### IAM Permissions
+
+When you configure a function with `durableConfig`, the Serverless Framework automatically adds the required IAM managed policy (`AWSLambdaBasicDurableExecutionRolePolicy`) to the Lambda execution role.
+
+**Note:** If you use a custom IAM role for your function (via `functions[].role` or `provider.iam.role`), you must manually add the `AWSLambdaBasicDurableExecutionRolePolicy` to your custom role. The framework cannot automatically modify custom roles.
+
+### Supported Runtimes and Limitations
+
+**Supported Runtimes:**
+- Node.js: `nodejs22.x`, `nodejs24.x`
+- Python: `python3.13`, `python3.14`
+- Container images with compatible runtimes
+
+**Notes:**
+- Durable functions require versioning, which is automatically enabled when `durableConfig` is present
+- Functions must be invoked with a specific version or alias for durability guarantees
+- Review the [AWS Lambda Durable Functions documentation](https://docs.aws.amazon.com/lambda/latest/dg/) for complete compatibility information and limitations
+
 ## VPC Configuration
 
 You can add VPC configuration to a specific function in `serverless.yml` by adding a `vpc` object property in the function configuration. This object should contain the `securityGroupIds` and `subnetIds` array properties needed to construct VPC for this function. Here's an example configuration:

@@ -601,6 +601,56 @@ describe('lib/plugins/aws/package/lib/mergeIamTemplates.test.js', () => {
           ],
         });
       });
+
+      it('should ensure needed IAM configuration when `functions[].durableConfig` is configured', async () => {
+        const { cfTemplate, awsNaming } = await runServerless({
+          fixture: 'function',
+          command: 'package',
+          configExt: {
+            functions: {
+              basic: {
+                durableConfig: {
+                  executionTimeout: 3600,
+                },
+              },
+            },
+          },
+        });
+
+        const IamRoleLambdaExecution = awsNaming.getRoleLogicalId();
+        const { Properties } = cfTemplate.Resources[IamRoleLambdaExecution];
+        expect(Properties.ManagedPolicyArns).to.deep.includes({
+          'Fn::Join': [
+            '',
+            [
+              'arn:',
+              { Ref: 'AWS::Partition' },
+              ':iam::aws:policy/service-role/AWSLambdaBasicDurableExecutionRolePolicy',
+            ],
+          ],
+        });
+      });
+
+      it('should not add durable IAM policy when `functions[].durableConfig` is not configured', async () => {
+        const { cfTemplate, awsNaming } = await runServerless({
+          fixture: 'function',
+          command: 'package',
+        });
+
+        const IamRoleLambdaExecution = awsNaming.getRoleLogicalId();
+        const { Properties } = cfTemplate.Resources[IamRoleLambdaExecution];
+        const durablePolicyArn = {
+          'Fn::Join': [
+            '',
+            [
+              'arn:',
+              { Ref: 'AWS::Partition' },
+              ':iam::aws:policy/service-role/AWSLambdaBasicDurableExecutionRolePolicy',
+            ],
+          ],
+        };
+        expect(Properties.ManagedPolicyArns || []).to.not.deep.includes(durablePolicyArn);
+      });
     });
   });
 });

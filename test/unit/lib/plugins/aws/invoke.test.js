@@ -481,4 +481,57 @@ describe('test/unit/lib/plugins/aws/invoke.test.js', () => {
       })
     ).to.be.eventually.fulfilled;
   });
+
+  it('should support --durable-execution-name option', async () => {
+    const lambdaInvokeStub = sinon.stub();
+    const result = await runServerless({
+      fixture: 'invocation',
+      command: 'invoke',
+      options: {
+        function: 'callback',
+        'durable-execution-name': 'order-123',
+      },
+      awsRequestStubMap: {
+        Lambda: {
+          invoke: (args) => {
+            lambdaInvokeStub.returns('payload');
+            return lambdaInvokeStub(args);
+          },
+        },
+      },
+    });
+    expect(lambdaInvokeStub.args[0][0]).to.deep.equal({
+      FunctionName: result.serverless.service.getFunction('callback').name,
+      InvocationType: 'RequestResponse',
+      LogType: 'None',
+      DurableExecutionName: 'order-123',
+      Payload: Buffer.from('{}'),
+    });
+  });
+
+  it('should not include DurableExecutionName when option is not provided', async () => {
+    const lambdaInvokeStub = sinon.stub();
+    const result = await runServerless({
+      fixture: 'invocation',
+      command: 'invoke',
+      options: {
+        function: 'callback',
+      },
+      awsRequestStubMap: {
+        Lambda: {
+          invoke: (args) => {
+            lambdaInvokeStub.returns('payload');
+            return lambdaInvokeStub(args);
+          },
+        },
+      },
+    });
+    expect(lambdaInvokeStub.args[0][0]).to.not.have.property('DurableExecutionName');
+    expect(lambdaInvokeStub.args[0][0]).to.deep.equal({
+      FunctionName: result.serverless.service.getFunction('callback').name,
+      InvocationType: 'RequestResponse',
+      LogType: 'None',
+      Payload: Buffer.from('{}'),
+    });
+  });
 });

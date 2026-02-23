@@ -964,6 +964,59 @@ describe('AwsCompileFunctions', () => {
 
       expect(cfTemplate.Resources.BasicLambdaFunction.Properties).to.not.have.property('SnapStart');
     });
+
+    it('should set function DurableConfig when enabled with all properties', async () => {
+      const { cfTemplate } = await runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              durableConfig: {
+                executionTimeout: 3600,
+                retentionPeriodInDays: 30,
+              },
+            },
+          },
+        },
+        command: 'package',
+      });
+
+      expect(cfTemplate.Resources.BasicLambdaFunction.Properties.DurableConfig).to.deep.equal({
+        ExecutionTimeout: 3600,
+        RetentionPeriodInDays: 30,
+      });
+    });
+
+    it('should set function DurableConfig with only executionTimeout', async () => {
+      const { cfTemplate } = await runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              durableConfig: {
+                executionTimeout: 7200,
+              },
+            },
+          },
+        },
+        command: 'package',
+      });
+
+      expect(cfTemplate.Resources.BasicLambdaFunction.Properties.DurableConfig).to.deep.equal({
+        ExecutionTimeout: 7200,
+      });
+    });
+
+    it('should not set function DurableConfig when not specified', async () => {
+      const { cfTemplate } = await runServerless({
+        fixture: 'function',
+        command: 'package',
+      });
+
+      expect(cfTemplate.Resources.BasicLambdaFunction.Properties).to.not.have.property(
+        'DurableConfig'
+      );
+    });
   });
 
   describe('#compileRole()', () => {
