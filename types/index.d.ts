@@ -205,6 +205,7 @@ export interface AWS {
               };
             };
             method?: "eventBus" | "scheduler";
+            roleArn?: AwsCfFunction | string;
             timezone?: string;
           };
         }
