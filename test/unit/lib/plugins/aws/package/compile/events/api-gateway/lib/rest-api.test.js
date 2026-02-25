@@ -59,8 +59,8 @@ describe('#compileRestApi()', () => {
 
   it('should create a REST API resource with security policy', () => {
     awsCompileApigEvents.serverless.service.provider.apiGateway = {
-      securityPolicy: 'SecurityPolicy_TLS13_1_3_2025_09'
-    }
+      securityPolicy: 'SecurityPolicy_TLS13_1_3_2025_09',
+    };
     awsCompileApigEvents.compileRestApi();
     const resources =
       awsCompileApigEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources;
