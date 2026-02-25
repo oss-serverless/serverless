@@ -49,9 +49,8 @@ jobs:
 
       - name: Install dependencies
         if: steps.cacheNpm.outputs.cache-hit != 'true'
-        run: |
-          npm update --no-save
-          npm update --save-dev --no-save
+        run: npm ci
+
       - name: Validate formatting
         run: npm run prettier-check:updated
       - name: Validate lint rules
@@ -108,9 +107,8 @@ jobs:
 
       - name: Install dependencies
         if: steps.cacheNpm.outputs.cache-hit != 'true'
-        run: |
-          npm update --no-save
-          npm update --save-dev --no-save
+        run: npm ci
+
       - name: Unit tests
         run: npm test -- -b
 
@@ -140,9 +138,8 @@ jobs:
 
       - name: Install dependencies
         if: steps.cacheNpm.outputs.cache-hit != 'true'
-        run: |
-          npm update --no-save
-          npm update --save-dev --no-save
+        run: npm ci
+
       - name: Unit tests
         # Some tests depend on TTY support, which is missing in GA runner
         # Workaround taken from https://github.com/actions/runner/issues/241#issuecomment-577360161

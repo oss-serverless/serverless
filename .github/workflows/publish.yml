@@ -30,9 +30,7 @@ jobs:
 
       - name: Install dependencies
         if: steps.cacheNpm.outputs.cache-hit != 'true'
-        run: |
-          npm update --no-save
-          npm update --save-dev --no-save
+        run: npm ci
 
       # Store the name of the release
       # See https://stackoverflow.com/questions/58177786/get-the-current-pushed-tag-in-github-actions
@@ -85,9 +83,7 @@ jobs:
       # - We've pushed tag manually before `main` build finalized
       - name: Install dependencies
         if: steps.cacheNpm.outputs.cache-hit != 'true'
-        run: |
-          npm update --no-save
-          npm update --save-dev --no-save
+        run: npm ci
 
       # Store the name of the release
       # See https://stackoverflow.com/questions/58177786/get-the-current-pushed-tag-in-github-actions
