@@ -91,6 +91,9 @@ jobs:
 
       - run: npm version $RELEASE_VERSION --no-git-tag-version
 
+      - name: Generate shrinkwrap lockfile
+        run: npm shrinkwrap
+
       - name: Publish new version
         # Note: Setting NODE_AUTH_TOKEN as job|workspace wide env var won't work
         #       as it appears actions/setup-node sets own value
