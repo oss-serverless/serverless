@@ -1,8 +1,8 @@
 'use strict';
 
 const isThenable = require('type/thenable/is');
-const { emitter: outputEmitter } = require('@serverless/utils/lib/log/get-output-reporter');
-const joinTextTokens = require('@serverless/utils/lib/log/join-text-tokens');
+const { emitter: outputEmitter } = require('../../lib/utils/serverless-utils/lib/log/get-output-reporter');
+const joinTextTokens = require('../../lib/utils/serverless-utils/lib/log/join-text-tokens');
 
 module.exports = (callback) => {
   let output = '';
