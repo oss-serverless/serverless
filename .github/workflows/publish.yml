@@ -5,6 +5,10 @@ on:
   release:
     types: [published]
 
+permissions:
+  id-token: write  # Required for OIDC
+  contents: read
+
 jobs:
   prePublishPackageTest:
     name: Prepublish package test
@@ -89,6 +93,9 @@ jobs:
           npm update --no-save
           npm update --save-dev --no-save
 
+      # Ensure npm 11.5.1 or later for trusted publishing
+      - run: npm install -g npm@latest
+
       # Store the name of the release
       # See https://stackoverflow.com/questions/58177786/get-the-current-pushed-tag-in-github-actions
       - run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
@@ -96,8 +103,4 @@ jobs:
       - run: npm version $RELEASE_VERSION --no-git-tag-version
 
       - name: Publish new version
-        # Note: Setting NODE_AUTH_TOKEN as job|workspace wide env var won't work
-        #       as it appears actions/setup-node sets own value
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --access public --tag=latest
