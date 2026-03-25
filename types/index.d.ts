@@ -694,6 +694,7 @@ export interface AWS {
         entryPoint?: string[];
       };
       kmsKeyArn?: AwsKmsArn;
+      recursiveLoop?: 'Allow' | 'Terminate';
       snapStart?: boolean;
       layers?: AwsLambdaLayers;
       logRetentionInDays?: AwsLogRetentionInDays;

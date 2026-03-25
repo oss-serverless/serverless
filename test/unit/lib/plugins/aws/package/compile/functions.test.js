@@ -1709,6 +1709,10 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
               handler: 'index.handler',
               ephemeralStorageSize: 1024,
             },
+            fnRecursiveLoop: {
+              handler: 'index.handler',
+              recursiveLoop: 'Allow',
+            },
             fnLogs: {
               handler: 'target.handler',
               logs: {
@@ -2278,6 +2282,18 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
       expect(
         cfResources[naming.getLambdaLogicalId('fnEphemeralStorage')].Properties.EphemeralStorage
       ).to.deep.equal({ Size: ephemeralStorageSize });
+    });
+
+    it('should support `functions[].recursiveLoop`', () => {
+      expect(
+        cfResources[naming.getLambdaLogicalId('fnRecursiveLoop')].Properties.RecursiveLoop
+      ).to.equal('Allow');
+    });
+
+    it('should not set RecursiveLoop when not specified', () => {
+      expect(
+        cfResources[naming.getLambdaLogicalId('fnEphemeralStorage')].Properties.RecursiveLoop
+      ).to.be.undefined;
     });
 
     it('should support `functions[].logs`', () => {
