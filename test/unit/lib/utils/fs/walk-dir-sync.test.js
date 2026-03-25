@@ -6,7 +6,7 @@ const writeFileSync = require('../../../../../lib/utils/fs/write-file-sync');
 const walkDirSync = require('../../../../../lib/utils/fs/walk-dir-sync');
 const { expect } = require('chai');
 const { getTmpDirPath } = require('../../../../utils/fs');
-const skipOnDisabledSymlinksInWindows = require('@serverless/test/skip-on-disabled-symlinks-in-windows');
+const skipOnDisabledSymlinksInWindows = require('../../../../lib/skip-on-disabled-symlinks-in-windows');
 
 describe('#walkDirSync()', () => {
   it('should return an array with corresponding paths to the found files', () => {

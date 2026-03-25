@@ -550,6 +550,38 @@ describe('test/unit/lib/plugins/aws/package/compile/events/kafka.test.js', () =>
       });
     });
 
+    describe('onFailureDestination', () => {
+      it('should correctly compile EventSourceMapping resource properties for onFailureDestination', async () => {
+        const { awsNaming, cfTemplate } = await runServerless({
+          fixture: 'function',
+          configExt: {
+            functions: {
+              basic: {
+                role: { 'Fn::ImportValue': 'MyImportedRole' },
+                events: [
+                  {
+                    kafka: {
+                      topic,
+                      bootstrapServers: ['abc.xyz:9092'],
+                      accessConfigurations: { saslScram256Auth: saslScram256AuthArn },
+                      onFailureDestination: 'arn:aws:sqs:eu-central-1:000000000000:some-queue',
+                    },
+                  },
+                ],
+              },
+            },
+          },
+          command: 'package',
+        });
+
+        const eventSourceMappingResource =
+          cfTemplate.Resources[awsNaming.getKafkaEventLogicalId('basic', 'TestingTopic')];
+        expect(
+          eventSourceMappingResource.Properties.DestinationConfig.OnFailure.Destination
+        ).to.equal('arn:aws:sqs:eu-central-1:000000000000:some-queue');
+      });
+    });
+
     describe('startingPositionTimestamp', () => {
       it('should fail to compile EventSourceMapping resource properties for startingPosition AT_TIMESTAMP with no startingPositionTimestamp', async () => {
         await expect(

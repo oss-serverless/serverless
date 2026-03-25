@@ -8,7 +8,7 @@ const spawn = require('child-process-ext/spawn');
 const nodeFetch = require('node-fetch');
 const log = require('log').get('serverless:test');
 const logFetch = require('log').get('fetch');
-const resolveAwsEnv = require('@serverless/test/resolve-aws-env');
+const resolveAwsEnv = require('../lib/resolve-aws-env');
 const { load: loadYaml } = require('js-yaml');
 
 const serverlessExec = require('../serverless-binary');

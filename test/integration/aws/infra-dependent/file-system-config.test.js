@@ -4,7 +4,7 @@ const { expect } = require('chai');
 const log = require('log').get('serverless:test');
 const fixtures = require('../../../fixtures/programmatic');
 
-const awsRequest = require('@serverless/test/aws-request');
+const awsRequest = require('../../../lib/aws-request');
 const LambdaService = require('aws-sdk').Lambda;
 const crypto = require('crypto');
 const { deployService, removeService } = require('../../../utils/integration');

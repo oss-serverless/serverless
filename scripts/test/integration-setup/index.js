@@ -6,7 +6,7 @@ require('essentials');
 require('log-node')();
 
 const log = require('log').get('serverless');
-const awsRequest = require('@serverless/test/aws-request');
+const awsRequest = require('../../../test/lib/aws-request');
 const fsp = require('fs').promises;
 const path = require('path');
 const CloudFormationService = require('aws-sdk').CloudFormation;

@@ -1,7 +1,7 @@
 'use strict';
 
 const { expect } = require('chai');
-const awsRequest = require('@serverless/test/aws-request');
+const awsRequest = require('../../lib/aws-request');
 const CloudFormationService = require('aws-sdk').CloudFormation;
 const fixtures = require('../../fixtures/programmatic');
 const aws4 = require('aws4');

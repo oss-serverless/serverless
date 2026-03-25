@@ -2,7 +2,7 @@
 
 const { expect } = require('chai');
 const log = require('log').get('serverless:test');
-const awsRequest = require('@serverless/test/aws-request');
+const awsRequest = require('../../lib/aws-request');
 const CloudFormationService = require('aws-sdk').CloudFormation;
 const CognitoIdentityServiceProviderService = require('aws-sdk').CognitoIdentityServiceProvider;
 const ApiGatewayV2Service = require('aws-sdk').ApiGatewayV2;

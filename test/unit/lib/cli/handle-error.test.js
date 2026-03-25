@@ -2,7 +2,7 @@
 
 const chai = require('chai');
 
-const observeOutput = require('@serverless/test/observe-output');
+const observeOutput = require('../../../lib/observe-output');
 const handleError = require('../../../../lib/cli/handle-error');
 const isStandaloneExecutable = require('../../../../lib/utils/is-standalone-executable');
 const ServerlessError = require('../../../../lib/serverless-error');

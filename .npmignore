@@ -12,3 +12,4 @@
 /test
 /VERSIONING.md
 !/lib/plugins/create/templates/**/.gitignore
+/docs

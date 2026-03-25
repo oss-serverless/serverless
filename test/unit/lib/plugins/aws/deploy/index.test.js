@@ -112,10 +112,14 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
           deleteObjects: deleteObjectsStub,
           listObjectsV2: { Contents: [] },
           upload: s3UploadStub,
-          headBucket: {},
           getBucketLocation: () => {
             return {
               LocationConstraint: 'us-east-1',
+            };
+          },
+          headBucket: () => {
+            return {
+              BucketRegion: 'us-east-1',
             };
           },
         },
@@ -523,10 +527,14 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
           deleteObjects: deleteObjectsStub,
           listObjectsV2: { Contents: [] },
           upload: s3UploadStub,
-          headBucket: {},
           getBucketLocation: () => {
             return {
               LocationConstraint: 'us-east-1',
+            };
+          },
+          headBucket: () => {
+            return {
+              BucketRegion: 'us-east-1',
             };
           },
         },
@@ -1206,6 +1214,9 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
         getBucketLocation: () => {
           throw new Error();
         },
+        headBucket: () => {
+          throw new Error();
+        },
       },
       CloudFormation: {
         describeStacks: { Stacks: [{}] },
@@ -1240,6 +1251,11 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
         getBucketLocation: () => {
           return {
             LocationConstraint: 'us-west-1',
+          };
+        },
+        headBucket: () => {
+          return {
+            BucketRegion: 'us-west-1',
           };
         },
       },

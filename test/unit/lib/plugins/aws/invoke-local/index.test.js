@@ -12,7 +12,7 @@ const AwsProvider = require('../../../../../../lib/plugins/aws/provider');
 const Serverless = require('../../../../../../lib/serverless');
 const CLI = require('../../../../../../lib/classes/cli');
 const { getTmpDirPath } = require('../../../../../utils/fs');
-const skipWithNotice = require('@serverless/test/skip-with-notice');
+const skipWithNotice = require('../../../../../lib/skip-with-notice');
 const runServerless = require('../../../../../utils/run-serverless');
 const spawnExt = require('child-process-ext/spawn');
 
@@ -489,6 +489,17 @@ describe('AwsInvokeLocal', () => {
       await awsInvokeLocal.invokeLocal();
       // NOTE: this is important so that tests on Windows won't fail
       const runtime = process.platform === 'win32' ? 'python.exe' : 'python3.13';
+      expect(invokeLocalPythonStub.calledOnce).to.be.equal(true);
+      expect(
+        invokeLocalPythonStub.calledWithExactly(runtime, 'handler', 'hello', {}, undefined)
+      ).to.be.equal(true);
+    });
+
+    it('should call invokeLocalPython when python3.14 runtime is set', async () => {
+      awsInvokeLocal.options.functionObj.runtime = 'python3.14';
+      await awsInvokeLocal.invokeLocal();
+      // NOTE: this is important so that tests on Windows won't fail
+      const runtime = process.platform === 'win32' ? 'python.exe' : 'python3.14';
       expect(invokeLocalPythonStub.calledOnce).to.be.equal(true);
       expect(
         invokeLocalPythonStub.calledWithExactly(runtime, 'handler', 'hello', {}, undefined)

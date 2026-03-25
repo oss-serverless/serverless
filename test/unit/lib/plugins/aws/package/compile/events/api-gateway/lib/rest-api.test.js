@@ -56,6 +56,34 @@ describe('#compileRestApi()', () => {
     });
   });
 
+  it('should create a REST API resource with tags', () => {
+    awsCompileApigEvents.serverless.service.provider.tags = {
+      tagKey1: 'tagValue1',
+      tagKey2: 'tagValue2',
+    };
+
+    awsCompileApigEvents.compileRestApi();
+    const resources =
+      awsCompileApigEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources;
+
+    expect(resources.ApiGatewayRestApi).to.deep.equal({
+      Type: 'AWS::ApiGateway::RestApi',
+      Properties: {
+        BinaryMediaTypes: undefined,
+        DisableExecuteApiEndpoint: undefined,
+        Name: 'dev-new-service',
+        EndpointConfiguration: {
+          Types: ['EDGE'],
+        },
+        Policy: '',
+        Tags: [
+          { Key: 'tagKey1', Value: 'tagValue1' },
+          { Key: 'tagKey2', Value: 'tagValue2' },
+        ],
+      },
+    });
+  });
+
   it('should create a REST API resource with resource policy', () => {
     awsCompileApigEvents.serverless.service.provider.apiGateway = {
       resourcePolicy: [

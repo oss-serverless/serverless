@@ -1,6 +1,6 @@
 'use strict';
 
-const awsRequest = require('@serverless/test/aws-request');
+const awsRequest = require('../lib/aws-request');
 
 // Support for both AWS SDK v2 and v3
 const getSNSClient = () => {

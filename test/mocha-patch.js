@@ -56,7 +56,7 @@ BbPromise.config({
   longStackTraces: true,
 });
 
-const { runnerEmitter } = require('@serverless/test/setup/patch');
+const { runnerEmitter } = require('./lib/setup/patch');
 
 runnerEmitter.on('runner', (runner) => {
   runner.on('suite end', (suite) => {

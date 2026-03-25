@@ -88,6 +88,9 @@ However, `AWS::Scheduler::Schedule` has much higher limits (1,000,000 events), a
 `method` can be set in order to migrate to this trigger type seamlessly. It also allows you to specify a timezone to run your event based on local time.
 The default method is `eventBus`, which configures an `AWS::Event::Rule`.
 
+By default, `scheduler` uses the function execution role as target role.
+You can provide `roleArn` to use a dedicated role for EventBridge Scheduler.
+
 ```yaml
 functions:
   foo:
@@ -95,6 +98,7 @@ functions:
     events:
       - schedule:
           method: scheduler
+          roleArn: arn:aws:iam::123456789012:role/scheduler-execution-role
           rate:
             - cron(0 0/4 ? * MON-FRI *)
           timezone: America/New_York

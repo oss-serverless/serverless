@@ -162,6 +162,49 @@ const serverlessConfigurationExtension = {
   },
 };
 
+const preTokenGenerationConfigurationExtension = {
+  configValidationMode: 'off',
+  functions: {
+    preTokenGenerationV2: {
+      handler: 'index.js',
+      events: [
+        {
+          cognitoUserPool: {
+            pool: 'PreTokenGenerationV2Pool',
+            trigger: 'PreTokenGeneration',
+            lambdaVersion: 'V2_0',
+          },
+        },
+      ],
+    },
+    preTokenGenerationV3: {
+      handler: 'index.js',
+      events: [
+        {
+          cognitoUserPool: {
+            pool: 'PreTokenGenerationV3Pool',
+            trigger: 'PreTokenGeneration',
+            lambdaVersion: 'V3_0',
+          },
+        },
+      ],
+    },
+    preTokenGenerationV2Existing: {
+      handler: 'index.js',
+      events: [
+        {
+          cognitoUserPool: {
+            pool: 'PreTokenGenerationV2PoolExisting',
+            trigger: 'PreTokenGeneration',
+            lambdaVersion: 'V2_0',
+            existing: true,
+          },
+        },
+      ],
+    },
+  },
+};
+
 describe('AwsCompileCognitoUserPoolEvents', () => {
   let serverless;
   let awsCompileCognitoUserPoolEvents;
@@ -1381,6 +1424,66 @@ describe('lib/plugins/aws/package/compile/events/cognito-user-pool.test.js', () 
             ],
             ForceDeploy: undefined,
           },
+        });
+      });
+    });
+  });
+
+  describe('PreTokenGeneration Lambda Versions', () => {
+    describe('New Pools', () => {
+      it('should create PreTokenGenerationConfig for V2_0', async () => {
+        const { cfTemplate } = await runServerless({
+          fixture: 'cognito-user-pool',
+          configExt: preTokenGenerationConfigurationExtension,
+          command: 'package',
+        });
+
+        const userPoolResource = cfTemplate.Resources.CognitoUserPoolPreTokenGenerationV2Pool;
+        expect(userPoolResource.Properties.LambdaConfig).to.have.property(
+          'PreTokenGenerationConfig'
+        );
+        expect(
+          userPoolResource.Properties.LambdaConfig.PreTokenGenerationConfig.LambdaVersion
+        ).to.equal('V2_0');
+        expect(userPoolResource.Properties.LambdaConfig).to.not.have.property('PreTokenGeneration');
+      });
+
+      it('should create PreTokenGenerationConfig for V3_0', async () => {
+        const { cfTemplate } = await runServerless({
+          fixture: 'cognito-user-pool',
+          configExt: preTokenGenerationConfigurationExtension,
+          command: 'package',
+        });
+
+        const userPoolResource = cfTemplate.Resources.CognitoUserPoolPreTokenGenerationV3Pool;
+        expect(userPoolResource.Properties.LambdaConfig).to.have.property(
+          'PreTokenGenerationConfig'
+        );
+        expect(
+          userPoolResource.Properties.LambdaConfig.PreTokenGenerationConfig.LambdaVersion
+        ).to.equal('V3_0');
+        expect(userPoolResource.Properties.LambdaConfig).to.not.have.property('PreTokenGeneration');
+      });
+    });
+
+    describe('Existing Pools', () => {
+      it('should create correct UserPoolConfigs for V2_0', async () => {
+        const { cfTemplate } = await runServerless({
+          fixture: 'cognito-user-pool',
+          configExt: preTokenGenerationConfigurationExtension,
+          command: 'package',
+        });
+
+        const customResources = Object.values(cfTemplate.Resources).filter(
+          (resource) => resource.Type === 'Custom::CognitoUserPool'
+        );
+        const v2Resource = customResources.find(
+          (resource) => resource.Properties.UserPoolName === 'PreTokenGenerationV2PoolExisting'
+        );
+
+        expect(v2Resource.Properties.UserPoolConfigs[0]).to.deep.include({
+          Trigger: 'PreTokenGeneration',
+          LambdaVersion: 'V2_0',
         });
       });
     });

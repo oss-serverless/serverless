@@ -1,3 +1,3 @@
 'use strict';
 
-module.exports = require('@serverless/test/setup-fixtures-engine')(__dirname);
+module.exports = require('../../lib/setup-fixtures-engine')(__dirname);

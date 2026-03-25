@@ -53,7 +53,10 @@ export type AwsLambdaRole = string | AwsCfSub | AwsCfImport | AwsCfGetAtt;
 export type AwsLambdaRuntime =
   | "dotnet6"
   | "dotnet8"
+  | "dotnet9"
+  | "dotnet10"
   | "go1.x"
+  | "java25"
   | "java21"
   | "java17"
   | "java11"
@@ -64,6 +67,7 @@ export type AwsLambdaRuntime =
   | "nodejs18.x"
   | "nodejs20.x"
   | "nodejs22.x"
+  | "nodejs24.x"
   | "provided"
   | "provided.al2"
   | "provided.al2023"
@@ -74,6 +78,7 @@ export type AwsLambdaRuntime =
   | "python3.11"
   | "python3.12"
   | "python3.13"
+  | "python3.14"
   | "ruby2.7"
   | "ruby3.2"
   | "ruby3.3"
@@ -200,6 +205,7 @@ export interface AWS {
               };
             };
             method?: "eventBus" | "scheduler";
+            roleArn?: AwsCfFunction | string;
             timezone?: string;
           };
         }
@@ -384,6 +390,7 @@ export interface AWS {
             topic: string;
             consumerGroupId?: string;
             filterPatterns?: FilterPatterns;
+            onFailureDestination?: string;
           };
         }
         | {
@@ -421,6 +428,7 @@ export interface AWS {
             saslScram512?: AwsArnString;
             consumerGroupId?: string;
             filterPatterns?: FilterPatterns;
+            provisionedPollerConfig?: {maximumPollers?: number, minimumPollers?: number}
           };
         }
         | {
@@ -1040,6 +1048,7 @@ export interface AWS {
     | "ap-southeast-2"
     | "ap-southeast-3"
     | "ap-southeast-4"
+    | "ap-southeast-5"
     | "ca-central-1"
     | "cn-north-1"
     | "cn-northwest-1"

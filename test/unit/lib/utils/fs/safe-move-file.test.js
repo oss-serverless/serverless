@@ -3,7 +3,7 @@
 const fse = require('fs-extra');
 const sinon = require('sinon');
 const chai = require('chai');
-const provisionTempDir = require('@serverless/test/provision-tmp-dir');
+const provisionTempDir = require('../../../../lib/provision-tmp-dir');
 const { join } = require('path');
 const { expect } = require('chai');
 const fsp = require('fs').promises;

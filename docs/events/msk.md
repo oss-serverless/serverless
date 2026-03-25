@@ -124,6 +124,26 @@ functions:
                 a: [1]
 ```
 
+## Provisioned Poller Configuration
+
+AWS recently added support for directly controlling the polling configuration for MSK ESMs. See the official [AWS documentation](https://docs.aws.amazon.com/lambda/latest/dg/msk-scaling-modes.html) for more information. To use that feature, add the following section to your `serverless.yml` function config:
+
+Note: at least one of `minimumPollers` or `maximumPollers` must be provided.
+
+```yml
+---
+functions:
+  compute:
+    handler: handler.compute
+    events:
+      - msk:
+          arn: arn:aws:kafka:region:XXXXXX:cluster/MyCluster/xxxx-xxxxx-xxxx
+          topic: mytopic
+          provisionedPollerConfig:
+            minimumPollers: 2
+            maximumPollers: 5
+```
+
 ## IAM Permissions
 
 The Serverless Framework will automatically configure the most minimal set of IAM permissions for you. However you can still add additional permissions if you need to. Read the official [AWS documentation](https://docs.aws.amazon.com/lambda/latest/dg/with-msk.html) for more information about IAM Permissions for MSK events.

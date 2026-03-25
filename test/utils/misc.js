@@ -1,6 +1,6 @@
 'use strict';
 
-const awsRequest = require('@serverless/test/aws-request');
+const awsRequest = require('../lib/aws-request');
 const wait = require('timers-ext/promise/sleep');
 
 // Support for both AWS SDK v2 and v3

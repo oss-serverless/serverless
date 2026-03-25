@@ -3,7 +3,7 @@
 const path = require('path');
 const expect = require('chai').expect;
 const fse = require('fs-extra');
-const skipOnDisabledSymlinksInWindows = require('@serverless/test/skip-on-disabled-symlinks-in-windows');
+const skipOnDisabledSymlinksInWindows = require('../../../../lib/skip-on-disabled-symlinks-in-windows');
 const fileExistsSync = require('../../../../../lib/utils/fs/file-exists-sync');
 
 describe('#fileExistsSync()', () => {
