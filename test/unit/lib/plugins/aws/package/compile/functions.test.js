@@ -2291,9 +2291,8 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
     });
 
     it('should not set RecursiveLoop when not specified', () => {
-      expect(
-        cfResources[naming.getLambdaLogicalId('fnEphemeralStorage')].Properties.RecursiveLoop
-      ).to.be.undefined;
+      expect(cfResources[naming.getLambdaLogicalId('fnEphemeralStorage')].Properties.RecursiveLoop)
+        .to.be.undefined;
     });
 
     it('should support `functions[].logs`', () => {
