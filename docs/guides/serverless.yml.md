@@ -378,6 +378,7 @@ Configure [deployment via Docker images](./functions.md#referencing-container-im
 provider:
   ecr:
     scanOnPush: true
+    maxImageCount: 10 # Max number of images to retain in ECR (enables lifecycle policy)
     # Definitions of images that later can be referenced by key in `function.image`
     images:
       baseimage:
