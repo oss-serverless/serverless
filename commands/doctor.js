@@ -1,7 +1,7 @@
 'use strict';
 
 const fsp = require('fs').promises;
-const { writeText, log } = require('@serverless/utils/log');
+const { writeText, log } = require('../lib/utils/serverless-utils/log');
 const healthStatusFilename = require('../lib/utils/health-status-filename');
 
 module.exports = async () => {
