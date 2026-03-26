@@ -609,6 +609,23 @@ functions:
           async: true # default is false
 ```
 
+### Enabling response streaming
+
+Enable response streaming for proxy integrations by setting `response.transferMode` on your `http` event:
+
+```yml
+functions:
+  stream:
+    handler: handler.stream
+    events:
+      - http:
+          path: stream
+          method: get
+          # Proxy integrations only (AWS_PROXY / HTTP_PROXY)
+          response:
+            transferMode: STREAM # defaults to BUFFERED
+```
+
 ### Catching Exceptions In Your Lambda Function
 
 In case an exception is thrown in your lambda function AWS will send an error message with `Process exited before completing request`. This will be caught by the regular expression for the 500 HTTP status and the 500 status will be returned.

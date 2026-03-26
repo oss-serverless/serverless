@@ -304,6 +304,7 @@ export interface AWS {
             };
             response?: {
               contentHandling?: "CONVERT_TO_BINARY" | "CONVERT_TO_TEXT";
+              transferMode?: "BUFFERED" | "STREAM";
               headers?: {
                 [k: string]: string;
               };
