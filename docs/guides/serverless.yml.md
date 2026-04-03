@@ -829,6 +829,9 @@ functions:
               application/json: '{ "httpMethod" : "$context.httpMethod" }'
             # Optional define pass through behavior when content-type does not match any of the specified mapping templates
             passThrough: NEVER
+          # Enable streaming responses by setting transferMode to STREAM (default is BUFFERED)
+          response:
+            transferMode: STREAM
 ```
 
 ### Websocket API

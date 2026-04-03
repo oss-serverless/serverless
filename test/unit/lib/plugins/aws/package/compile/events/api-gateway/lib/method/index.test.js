@@ -1051,6 +1051,133 @@ describe('#compileMethods()', () => {
     });
   });
 
+  it('should use streaming lambda URI when transferMode is STREAM with AWS_PROXY', () => {
+    awsCompileApigEvents.validated.events = [
+      {
+        functionName: 'First',
+        http: {
+          path: 'users/create',
+          method: 'post',
+          integration: 'AWS_PROXY',
+          response: {
+            transferMode: 'STREAM',
+          },
+        },
+      },
+    ];
+    awsCompileApigEvents.compileMethods();
+    const integration =
+      awsCompileApigEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources
+        .ApiGatewayMethodUsersCreatePost.Properties.Integration;
+    expect(integration.Uri).to.deep.equal({
+      'Fn::Join': [
+        '',
+        [
+          'arn:',
+          { Ref: 'AWS::Partition' },
+          ':apigateway:',
+          { Ref: 'AWS::Region' },
+          ':lambda:path/2021-11-15/functions/',
+          { 'Fn::GetAtt': ['FirstLambdaFunction', 'Arn'] },
+          '/response-streaming-invocations',
+        ],
+      ],
+    });
+    expect(integration.ResponseTransferMode).to.equal('STREAM');
+  });
+
+  it('should use default lambda URI when transferMode is BUFFERED with AWS_PROXY', () => {
+    awsCompileApigEvents.validated.events = [
+      {
+        functionName: 'First',
+        http: {
+          path: 'users/create',
+          method: 'post',
+          integration: 'AWS_PROXY',
+          response: {
+            transferMode: 'BUFFERED',
+          },
+        },
+      },
+    ];
+    awsCompileApigEvents.compileMethods();
+    const integration =
+      awsCompileApigEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources
+        .ApiGatewayMethodUsersCreatePost.Properties.Integration;
+    expect(integration.Uri).to.deep.equal({
+      'Fn::Join': [
+        '',
+        [
+          'arn:',
+          { Ref: 'AWS::Partition' },
+          ':apigateway:',
+          { Ref: 'AWS::Region' },
+          ':lambda:path/2015-03-31/functions/',
+          { 'Fn::GetAtt': ['FirstLambdaFunction', 'Arn'] },
+          '/invocations',
+        ],
+      ],
+    });
+    expect(integration.ResponseTransferMode).to.equal('BUFFERED');
+  });
+
+  it('should use default lambda URI when no transferMode is set', () => {
+    awsCompileApigEvents.validated.events = [
+      {
+        functionName: 'First',
+        http: {
+          path: 'users/create',
+          method: 'post',
+          integration: 'AWS_PROXY',
+        },
+      },
+    ];
+    awsCompileApigEvents.compileMethods();
+    const integration =
+      awsCompileApigEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources
+        .ApiGatewayMethodUsersCreatePost.Properties.Integration;
+    expect(integration.Uri).to.deep.equal({
+      'Fn::Join': [
+        '',
+        [
+          'arn:',
+          { Ref: 'AWS::Partition' },
+          ':apigateway:',
+          { Ref: 'AWS::Region' },
+          ':lambda:path/2015-03-31/functions/',
+          { 'Fn::GetAtt': ['FirstLambdaFunction', 'Arn'] },
+          '/invocations',
+        ],
+      ],
+    });
+    expect(integration).to.not.have.property('ResponseTransferMode');
+  });
+
+  it('should not set ResponseTransferMode for non-proxy integrations', () => {
+    awsCompileApigEvents.validated.events = [
+      {
+        functionName: 'First',
+        http: {
+          path: 'users/create',
+          method: 'post',
+          integration: 'AWS',
+          response: {
+            statusCodes: {
+              200: {
+                pattern: '',
+              },
+            },
+          },
+        },
+      },
+    ];
+    awsCompileApigEvents.compileMethods();
+    const integration =
+      awsCompileApigEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources
+        .ApiGatewayMethodUsersCreatePost.Properties.Integration;
+    expect(integration).to.not.have.property('ResponseTransferMode');
+  });
+
   it('should add CORS origins to method only when CORS is enabled', () => {
     awsCompileApigEvents.validated.events = [
       {
