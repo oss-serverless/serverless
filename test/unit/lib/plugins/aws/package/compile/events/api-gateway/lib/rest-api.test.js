@@ -52,6 +52,7 @@ describe('#compileRestApi()', () => {
           Types: ['EDGE'],
         },
         SecurityPolicy: undefined,
+        EndpointAccessMode: undefined,
         Policy: '',
       },
     });
@@ -75,6 +76,31 @@ describe('#compileRestApi()', () => {
           Types: ['EDGE'],
         },
         SecurityPolicy: 'SecurityPolicy_TLS13_1_3_2025_09',
+        EndpointAccessMode: undefined,
+        Policy: '',
+      },
+    });
+  });
+
+  it('should create a REST API resource with endpoint access mode', () => {
+    awsCompileApigEvents.serverless.service.provider.apiGateway = {
+      endpointAccessMode: 'STRICT',
+    };
+    awsCompileApigEvents.compileRestApi();
+    const resources =
+      awsCompileApigEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources;
+
+    expect(resources.ApiGatewayRestApi).to.deep.equal({
+      Type: 'AWS::ApiGateway::RestApi',
+      Properties: {
+        BinaryMediaTypes: undefined,
+        DisableExecuteApiEndpoint: undefined,
+        Name: 'dev-new-service',
+        EndpointConfiguration: {
+          Types: ['EDGE'],
+        },
+        SecurityPolicy: undefined,
+        EndpointAccessMode: 'STRICT',
         Policy: '',
       },
     });
@@ -100,6 +126,7 @@ describe('#compileRestApi()', () => {
           Types: ['EDGE'],
         },
         SecurityPolicy: undefined,
+        EndpointAccessMode: undefined,
         Policy: '',
         Tags: [
           { Key: 'tagKey1', Value: 'tagValue1' },
@@ -139,6 +166,7 @@ describe('#compileRestApi()', () => {
           Types: ['EDGE'],
         },
         SecurityPolicy: undefined,
+        EndpointAccessMode: undefined,
         Policy: {
           Version: '2012-10-17',
           Statement: [
@@ -175,6 +203,7 @@ describe('#compileRestApi()', () => {
         },
         Policy: '',
         SecurityPolicy: undefined,
+        EndpointAccessMode: undefined,
       },
     });
   });
@@ -209,6 +238,7 @@ describe('#compileRestApi()', () => {
         Name: 'dev-new-service',
         Policy: '',
         SecurityPolicy: undefined,
+        EndpointAccessMode: undefined,
       },
     });
   });
