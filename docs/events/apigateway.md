@@ -756,6 +756,43 @@ provider:
     - vpce-456
 ```
 
+### Security Policy
+
+You can configure the TLS version for your API Gateway REST API by setting the `securityPolicy` property under `apiGateway` in the `provider` block. This maps directly to the [SecurityPolicy](https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-apigateway-restapi.html#cfn-apigateway-restapi-securitypolicy) property of the `AWS::ApiGateway::RestApi` CloudFormation resource.
+Specific explanation about Security Policy types and structure can be found [here](https://aws.amazon.com/blogs/compute/enhancing-api-security-with-amazon-api-gateway-tls-security-policies/)
+
+```yml
+service: my-service
+provider:
+  name: aws
+  apiGateway:
+    securityPolicy: TLS_1_2
+functions:
+  hello:
+    events:
+      - http:
+          path: user/create
+          method: get
+```
+
+### Endpoint Access Mode
+
+You can control how clients access your API Gateway endpoint by setting the `endpointAccessMode` property under `apiGateway` in the `provider` block. Valid values are `STRICT` and `BASIC`. This maps directly to the [EndpointAccessMode](https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-apigateway-restapi.html#cfn-apigateway-restapi-endpointaccessmode) property of the `AWS::ApiGateway::RestApi` CloudFormation resource. According to AWS documentation, if a security policy is configured with a legacy template (that doesn't have the `SecurityPolicy_` prefix) access Mode should be empty)
+
+```yml
+service: my-service
+provider:
+  name: aws
+  apiGateway:
+    endpointAccessMode: STRICT
+functions:
+  hello:
+    events:
+      - http:
+          path: user/create
+          method: get
+```
+
 ### Request Parameters
 
 To pass optional and required parameters to your functions, so you can use them in API Gateway tests and SDK generation, marking them as `true` will make them required, `false` will make them optional.
