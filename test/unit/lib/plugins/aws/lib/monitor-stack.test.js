@@ -459,7 +459,6 @@ describe('monitorStack', () => {
       });
     });
 
-
     it('should exit on failure with --verbose when stack status is UPDATE_FAILED (disableRollback)', () => {
       awsPlugin.options.verbose = true;
       const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
