@@ -1282,6 +1282,15 @@ describe('test/unit/lib/plugins/aws/invokeLocal/index.test.js', () => {
 
       expect(output).to.include('Invoked');
     });
+    it('should support ES module handlers whose path contains URL-significant characters', async () => {
+      const { output } = await runServerless({
+        fixture: 'invocation',
+        command: 'invoke local',
+        options: { function: 'asyncEsmSpecialPath' },
+      });
+
+      expect(output).to.include('Invoked');
+    });
   });
 
   describe('Python', () => {
