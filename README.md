@@ -127,8 +127,10 @@ This repository contains the following differences with the original Serverless 
 
 ## Learn More
 
+- [Upgrading to v3](./docs/guides/upgrading-v3.md)
 - [Configuration Validation](./docs/guides/configuration-validation.md)
 - [Resolution of Environment Variables](./docs/guides/environment-variables.md)
+- [Deprecations](./docs/guides/deprecations.md)
 
 ## Creating Plugins
 
