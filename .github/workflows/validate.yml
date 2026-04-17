@@ -82,8 +82,8 @@ jobs:
         env:
           SLS_AWS_SDK_V3: '1'
 
-  windowsNode16:
-    name: '[Windows] Node 16: Unit tests'
+  windowsNode22:
+    name: '[Windows] Node 22: Unit tests'
     runs-on: windows-latest
     steps:
       - name: Checkout repository
@@ -96,15 +96,15 @@ jobs:
           path: |
             ~/.npm
             node_modules
-          key: npm-v16-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('package.json') }}
+          key: npm-v22-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('package.json') }}
           restore-keys: |
-            npm-v16-${{ runner.os }}-${{ github.ref }}-
-            npm-v16-${{ runner.os }}-refs/heads/main-
+            npm-v22-${{ runner.os }}-${{ github.ref }}-
+            npm-v22-${{ runner.os }}-refs/heads/main-
 
       - name: Install Node.js and npm
         uses: actions/setup-node@v4
         with:
-          node-version: 16.x
+          node-version: 22.x
 
       - name: Install dependencies
         if: steps.cacheNpm.outputs.cache-hit != 'true'
@@ -114,8 +114,8 @@ jobs:
       - name: Unit tests
         run: npm test -- -b
 
-  linuxNode16:
-    name: '[Linux] Node 16: Isolated unit tests'
+  linuxNode20:
+    name: '[Linux] Node 20: Isolated unit tests'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -128,15 +128,15 @@ jobs:
           path: |
             ~/.npm
             node_modules
-          key: npm-v16-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('package.json') }}
+          key: npm-v20-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('package.json') }}
           restore-keys: |
-            npm-v16-${{ runner.os }}-${{ github.ref }}-
-            npm-v16-${{ runner.os }}-refs/heads/main-
+            npm-v20-${{ runner.os }}-${{ github.ref }}-
+            npm-v20-${{ runner.os }}-refs/heads/main-
 
       - name: Install Node.js and npm
         uses: actions/setup-node@v4
         with:
-          node-version: 16.x
+          node-version: 20.x
 
       - name: Install dependencies
         if: steps.cacheNpm.outputs.cache-hit != 'true'

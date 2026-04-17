@@ -2,8 +2,8 @@
 
 const chai = require('chai');
 const sinon = require('sinon');
-const proxyquire = require('proxyquire');
 const PluginList = require('../../../../../../lib/plugins/plugin/list');
+const pluginUtilsModule = require('../../../../../../lib/plugins/plugin/lib/utils.js');
 const Serverless = require('../../../../../../lib/serverless');
 const CLI = require('../../../../../../lib/classes/cli');
 const observeOutput = require('../../../../../lib/observe-output');
@@ -42,23 +42,26 @@ describe('PluginUtils', () => {
 
   describe('#getPlugins()', () => {
     let fetchStub;
-    let pluginWithFetchStub;
+    let originalFetch;
 
-    beforeEach(async () => {
+    beforeEach(() => {
       fetchStub = sinon.stub().returns(
         Promise.resolve({
           json: sinon.stub().returns(Promise.resolve(plugins)),
         })
       );
-      pluginWithFetchStub = proxyquire('../../../../../../lib/plugins/plugin/lib/utils.js', {
-        'node-fetch': fetchStub,
-      });
+      originalFetch = globalThis.fetch;
+      globalThis.fetch = fetchStub;
+    });
+
+    afterEach(() => {
+      globalThis.fetch = originalFetch;
     });
 
     it('should fetch and return the plugins from the plugins repository', async () => {
       const endpoint = 'https://raw.githubusercontent.com/serverless/plugins/master/plugins.json';
 
-      return pluginWithFetchStub.getPlugins().then((result) => {
+      return pluginUtilsModule.getPlugins().then((result) => {
         expect(fetchStub.calledOnce).to.equal(true);
         expect(fetchStub.args[0][0]).to.equal(endpoint);
         expect(result).to.deep.equal(plugins);

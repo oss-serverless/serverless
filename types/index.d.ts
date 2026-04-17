@@ -21,7 +21,7 @@ export type AwsAlbListenerArn = string;
 export type AwsAlexaEventToken = string;
 export type AwsLogGroupName = string;
 export type AwsKmsArn = AwsCfFunction | string;
-export type AwsLambdaArchitecture = "arm64" | "x86_64";
+export type AwsLambdaArchitecture = 'arm64' | 'x86_64';
 export type AwsResourceCondition = string;
 export type AwsResourceDependsOn = string[];
 export type EcrImageUri = string;
@@ -51,103 +51,100 @@ export type AwsLogRetentionInDays =
 export type AwsLambdaMemorySize = number;
 export type AwsLambdaRole = string | AwsCfSub | AwsCfImport | AwsCfGetAtt;
 export type AwsLambdaRuntime =
-  | "dotnet6"
-  | "dotnet8"
-  | "dotnet9"
-  | "dotnet10"
-  | "go1.x"
-  | "java25"
-  | "java21"
-  | "java17"
-  | "java11"
-  | "java8"
-  | "java8.al2"
-  | "nodejs14.x"
-  | "nodejs16.x"
-  | "nodejs18.x"
-  | "nodejs20.x"
-  | "nodejs22.x"
-  | "nodejs24.x"
-  | "provided"
-  | "provided.al2"
-  | "provided.al2023"
-  | "python3.7"
-  | "python3.8"
-  | "python3.9"
-  | "python3.10"
-  | "python3.11"
-  | "python3.12"
-  | "python3.13"
-  | "python3.14"
-  | "ruby2.7"
-  | "ruby3.2"
-  | "ruby3.3"
-  | "ruby3.4";
+  | 'dotnet6'
+  | 'dotnet8'
+  | 'dotnet9'
+  | 'dotnet10'
+  | 'go1.x'
+  | 'java25'
+  | 'java21'
+  | 'java17'
+  | 'java11'
+  | 'java8'
+  | 'java8.al2'
+  | 'nodejs20.x'
+  | 'nodejs22.x'
+  | 'nodejs24.x'
+  | 'provided'
+  | 'provided.al2'
+  | 'provided.al2023'
+  | 'python3.7'
+  | 'python3.8'
+  | 'python3.9'
+  | 'python3.10'
+  | 'python3.11'
+  | 'python3.12'
+  | 'python3.13'
+  | 'python3.14'
+  | 'ruby2.7'
+  | 'ruby3.2'
+  | 'ruby3.3'
+  | 'ruby3.4';
 export type AwsLambdaRuntimeManagement =
-  | ("auto" | "onFunctionUpdate")
+  | ('auto' | 'onFunctionUpdate')
   | {
-    mode?: "auto" | "onFunctionUpdate" | "manual";
-    arn?: AwsArn;
-  };
+      mode?: 'auto' | 'onFunctionUpdate' | 'manual';
+      arn?: AwsArn;
+    };
 export type AwsLambdaTimeout = number;
-export type AwsLambdaTracing = ("Active" | "PassThrough") | boolean;
+export type AwsLambdaTracing = ('Active' | 'PassThrough') | boolean;
 export type AwsLambdaVersioning = boolean;
-export type AwsHttpApiPayload = "1.0" | "2.0";
+export type AwsHttpApiPayload = '1.0' | '2.0';
 export type AwsApiGatewayApiKeys = (
   | string
   | AwsApiGatewayApiKeysProperties
   | {
-    [k: string]: (string | AwsApiGatewayApiKeysProperties)[];
-  }
+      [k: string]: (string | AwsApiGatewayApiKeysProperties)[];
+    }
 )[];
 export type AwsResourcePolicyStatements = ({
   [k: string]: unknown;
 } & (
-    | {
+  | {
       [k: string]: unknown;
     }
-    | {
+  | {
       [k: string]: unknown;
     }
-  ) &
+) &
   (
     | {
-      [k: string]: unknown;
-    }
+        [k: string]: unknown;
+      }
     | {
-      [k: string]: unknown;
-    }
+        [k: string]: unknown;
+      }
   ))[];
 export type AwsS3BucketName = string;
 export type AwsIamPolicyStatements = ({
   [k: string]: unknown;
 } & (
-    | {
+  | {
       [k: string]: unknown;
     }
-    | {
+  | {
       [k: string]: unknown;
     }
-  ) &
+) &
   (
     | {
-      [k: string]: unknown;
-    }
+        [k: string]: unknown;
+      }
     | {
-      [k: string]: unknown;
-    }
+        [k: string]: unknown;
+      }
   ))[];
 export type Stage = string;
 export type AwsCfArrayInstruction = AwsCfInstruction[] | AwsCfSplit;
 export type ServiceName = string;
 
 export interface AWS {
-  configValidationMode?: "error" | "warn" | "off";
+  configValidationMode?: 'error' | 'warn' | 'off';
   console?:
-  | boolean
-  | {
-    [k: string]: unknown;
-  };
+    | boolean
+    | {
+        [k: string]: unknown;
+      };
   custom?: {
     enterprise?: {
       collectApiGatewayLogs?: boolean;
@@ -157,7 +154,7 @@ export interface AWS {
       disableFrameworksInstrumentation?: boolean;
       disableHttpSpans?: boolean;
       logAccessIamRole?: AwsArnString;
-      logIngestMode?: "push" | "pull";
+      logIngestMode?: 'push' | 'pull';
       disableWrapping?: boolean;
     };
     [k: string]: unknown;
@@ -165,8 +162,8 @@ export interface AWS {
   dashboard?: {
     disableMonitoring?: boolean;
   };
-  deprecationNotificationMode?: "error" | "warn" | "warn:summary";
-  disabledDeprecations?: "*" | ErrorCode[];
+  deprecationNotificationMode?: 'error' | 'warn' | 'warn:summary';
+  disabledDeprecations?: '*' | ErrorCode[];
   frameworkVersion?: string;
   functions?: {
     /**
@@ -177,486 +174,509 @@ export interface AWS {
       name?: string;
       events?: (
         | {
-          __schemaWorkaround__: null;
-        }
+            __schemaWorkaround__: null;
+          }
         | {
-          schedule:
-          | string
-          | {
-            rate: (AwsCfFunction | string)[];
-            enabled?: boolean;
-            name?: string;
-            description?: string;
-            input?:
-            | string
-            | (
+            schedule:
+              | string
               | {
-                body: string;
-              }
+                  rate: (AwsCfFunction | string)[];
+                  enabled?: boolean;
+                  name?: string;
+                  description?: string;
+                  input?:
+                    | string
+                    | (
+                        | {
+                            body: string;
+                          }
+                        | {
+                            [k: string]: unknown;
+                          }
+                      );
+                  inputPath?: string;
+                  inputTransformer?: {
+                    inputTemplate: string;
+                    inputPathsMap?: {
+                      [k: string]: unknown;
+                    };
+                  };
+                  method?: 'eventBus' | 'scheduler';
+                  roleArn?: AwsCfFunction | string;
+                  timezone?: string;
+                };
+          }
+        | {
+            s3:
+              | string
               | {
-                [k: string]: unknown;
-              }
-            );
-            inputPath?: string;
-            inputTransformer?: {
-              inputTemplate: string;
-              inputPathsMap?: {
-                [k: string]: unknown;
-              };
-            };
-            method?: "eventBus" | "scheduler";
-            roleArn?: AwsCfFunction | string;
-            timezone?: string;
-          };
-        }
+                  bucket: string | AwsCfFunction | AwsCfIf;
+                  event?: string;
+                  existing?: boolean;
+                  forceDeploy?: boolean;
+                  rules?: {
+                    prefix?: string | AwsCfFunction;
+                    suffix?: string | AwsCfFunction;
+                  }[];
+                };
+          }
         | {
-          s3:
-          | string
-          | {
-            bucket: string | AwsCfFunction | AwsCfIf;
-            event?: string;
-            existing?: boolean;
-            forceDeploy?: boolean;
-            rules?: {
-              prefix?: string | AwsCfFunction;
-              suffix?: string | AwsCfFunction;
-            }[];
-          };
-        }
+            http:
+              | string
+              | {
+                  async?: boolean;
+                  authorizer?:
+                    | string
+                    | {
+                        arn?: AwsArn;
+                        authorizerId?: AwsCfInstruction;
+                        claims?: string[];
+                        identitySource?: string;
+                        identityValidationExpression?: string;
+                        managedExternally?: boolean;
+                        name?: string;
+                        resultTtlInSeconds?: number;
+                        scopes?: (string | AwsCfInstruction)[];
+                        type?: string | string | string | string | string;
+                      };
+                  connectionId?: AwsCfInstruction;
+                  connectionType?: string | string;
+                  cors?:
+                    | boolean
+                    | {
+                        allowCredentials?: boolean;
+                        cacheControl?: string;
+                        headers?: string[];
+                        maxAge?: number;
+                        methods?: (
+                          | 'GET'
+                          | 'POST'
+                          | 'PUT'
+                          | 'PATCH'
+                          | 'OPTIONS'
+                          | 'HEAD'
+                          | 'DELETE'
+                          | 'ANY'
+                        )[];
+                        origin?: string;
+                        origins?: string[];
+                      };
+                  integration?:
+                    | string
+                    | string
+                    | string
+                    | string
+                    | string
+                    | string
+                    | string
+                    | string
+                    | string
+                    | string;
+                  method: string;
+                  operationId?: string;
+                  path: string;
+                  private?: boolean;
+                  request?: {
+                    contentHandling?: 'CONVERT_TO_BINARY' | 'CONVERT_TO_TEXT';
+                    method?: string;
+                    parameters?: {
+                      querystrings?: {
+                        [k: string]:
+                          | boolean
+                          | {
+                              required?: boolean;
+                              mappedValue?: AwsCfInstruction;
+                            };
+                      };
+                      headers?: {
+                        [k: string]:
+                          | boolean
+                          | {
+                              required?: boolean;
+                              mappedValue?: AwsCfInstruction;
+                            };
+                      };
+                      paths?: {
+                        [k: string]:
+                          | boolean
+                          | {
+                              required?: boolean;
+                              mappedValue?: AwsCfInstruction;
+                            };
+                      };
+                    };
+                    passThrough?: 'NEVER' | 'WHEN_NO_MATCH' | 'WHEN_NO_TEMPLATES';
+                    schemas?: {
+                      [k: string]:
+                        | {
+                            [k: string]: unknown;
+                          }
+                        | string;
+                    };
+                    template?: {
+                      [k: string]: string;
+                    };
+                    uri?: AwsCfInstruction;
+                  };
+                  response?: {
+                    contentHandling?: 'CONVERT_TO_BINARY' | 'CONVERT_TO_TEXT';
+                    transferMode?: 'BUFFERED' | 'STREAM';
+                    headers?: {
+                      [k: string]: string;
+                    };
+                    template?: string;
+                    statusCodes?: {
+                      [k: string]: {
+                        headers?: {
+                          [k: string]: string;
+                        };
+                        pattern?: string;
+                        template?:
+                          | string
+                          | {
+                              [k: string]: string;
+                            };
+                      };
+                    };
+                  };
+                };
+          }
         | {
-          http:
-          | string
-          | {
-            async?: boolean;
-            authorizer?:
-            | string
-            | {
-              arn?: AwsArn;
-              authorizerId?: AwsCfInstruction;
-              claims?: string[];
-              identitySource?: string;
-              identityValidationExpression?: string;
-              managedExternally?: boolean;
-              name?: string;
-              resultTtlInSeconds?: number;
-              scopes?: (string | AwsCfInstruction)[];
-              type?: string | string | string | string | string;
-            };
-            connectionId?: AwsCfInstruction;
-            connectionType?: string | string;
-            cors?:
-            | boolean
-            | {
-              allowCredentials?: boolean;
-              cacheControl?: string;
-              headers?: string[];
-              maxAge?: number;
-              methods?: ("GET" | "POST" | "PUT" | "PATCH" | "OPTIONS" | "HEAD" | "DELETE" | "ANY")[];
-              origin?: string;
-              origins?: string[];
-            };
-            integration?: string | string | string | string | string | string | string | string | string | string;
-            method: string;
-            operationId?: string;
-            path: string;
-            private?: boolean;
-            request?: {
-              contentHandling?: "CONVERT_TO_BINARY" | "CONVERT_TO_TEXT";
-              method?: string;
-              parameters?: {
-                querystrings?: {
-                  [k: string]:
-                  | boolean
-                  | {
-                    required?: boolean;
-                    mappedValue?: AwsCfInstruction;
-                  };
+            websocket:
+              | string
+              | {
+                  route: string;
+                  routeResponseSelectionExpression?: '$default';
+                  authorizer?:
+                    | AwsArnString
+                    | FunctionName
+                    | (
+                        | {
+                            [k: string]: unknown;
+                          }
+                        | {
+                            [k: string]: unknown;
+                          }
+                      );
                 };
-                headers?: {
-                  [k: string]:
-                  | boolean
+          }
+        | {
+            sns:
+              | string
+              | AwsArnString
+              | (
                   | {
-                    required?: boolean;
-                    mappedValue?: AwsCfInstruction;
-                  };
-                };
-                paths?: {
-                  [k: string]:
-                  | boolean
+                      [k: string]: unknown;
+                    }
                   | {
-                    required?: boolean;
-                    mappedValue?: AwsCfInstruction;
-                  };
+                      [k: string]: unknown;
+                    }
+                );
+          }
+        | {
+            stream:
+              | AwsArnString
+              | (
+                  | {
+                      arn: AwsCfFunction;
+                      [k: string]: unknown;
+                    }
+                  | {
+                      arn: AwsArnString;
+                      [k: string]: unknown;
+                    }
+                );
+          }
+        | {
+            kafka: {
+              accessConfigurations: {
+                vpcSubnet?: string[];
+                vpcSecurityGroup?: string[];
+                saslPlainAuth?: AwsSecretsManagerArnString[];
+                saslScram256Auth?: AwsSecretsManagerArnString[];
+                saslScram512Auth?: AwsSecretsManagerArnString[];
+                clientCertificateTlsAuth?: AwsSecretsManagerArnString[];
+                serverRootCaCertificate?: AwsSecretsManagerArnString[];
+              };
+              batchSize?: number;
+              maximumBatchingWindow?: number;
+              enabled?: boolean;
+              bootstrapServers: string[];
+              startingPosition?: 'LATEST' | 'TRIM_HORIZON' | 'AT_TIMESTAMP';
+              startingPositionTimestamp?: number;
+              topic: string;
+              consumerGroupId?: string;
+              filterPatterns?: FilterPatterns;
+              onFailureDestination?: string;
+            };
+          }
+        | {
+            activemq: {
+              arn: string | AwsCfImport | AwsCfRef;
+              basicAuthArn: AwsSecretsManagerArnString | AwsCfImport | AwsCfRef;
+              batchSize?: number;
+              maximumBatchingWindow?: number;
+              enabled?: boolean;
+              queue: string;
+              filterPatterns?: FilterPatterns;
+            };
+          }
+        | {
+            rabbitmq: {
+              arn: string | AwsCfImport | AwsCfRef;
+              basicAuthArn: AwsSecretsManagerArnString | AwsCfImport | AwsCfRef;
+              batchSize?: number;
+              maximumBatchingWindow?: number;
+              enabled?: boolean;
+              queue: string;
+              virtualHost?: string;
+              filterPatterns?: FilterPatterns;
+            };
+          }
+        | {
+            msk: {
+              arn: AwsArnString | AwsCfImport | AwsCfRef;
+              batchSize?: number;
+              maximumBatchingWindow?: number;
+              enabled?: boolean;
+              startingPosition?: 'LATEST' | 'TRIM_HORIZON' | 'AT_TIMESTAMP';
+              startingPositionTimestamp?: number;
+              topic: string;
+              saslScram512?: AwsArnString;
+              consumerGroupId?: string;
+              filterPatterns?: FilterPatterns;
+              provisionedPollerConfig?: { maximumPollers?: number; minimumPollers?: number };
+            };
+          }
+        | {
+            alb: {
+              authorizer?: string[];
+              conditions: {
+                header?:
+                  | {
+                      name: string;
+                      values: string[];
+                    }[]
+                  | {
+                      name: string;
+                      values: string[];
+                    };
+                host?: string[];
+                ip?: string[];
+                method?: string[];
+                path?: string[];
+                query?: {
+                  [k: string]: string;
                 };
               };
-              passThrough?: "NEVER" | "WHEN_NO_MATCH" | "WHEN_NO_TEMPLATES";
-              schemas?: {
-                [k: string]:
+              healthCheck?:
+                | boolean
                 | {
+                    healthyThresholdCount?: number;
+                    intervalSeconds?: number;
+                    matcher?: {
+                      httpCode?: string;
+                    };
+                    path?: string;
+                    timeoutSeconds?: number;
+                    unhealthyThresholdCount?: number;
+                  };
+              listenerArn: AwsAlbListenerArn | AwsCfRef;
+              multiValueHeaders?: boolean;
+              priority: number;
+              targetGroupName?: string;
+            };
+          }
+        | {
+            alexaSkill:
+              | AwsAlexaEventToken
+              | {
+                  appId: AwsAlexaEventToken;
+                  enabled?: boolean;
+                };
+          }
+        | {
+            alexaSmartHome:
+              | AwsAlexaEventToken
+              | {
+                  appId: AwsAlexaEventToken;
+                  enabled?: boolean;
+                };
+          }
+        | {
+            iot: {
+              sql: string;
+              sqlVersion?: '2015-10-08' | '2016-03-23' | 'beta';
+              name?: string;
+              enabled?: boolean;
+              description?: string;
+            };
+          }
+        | {
+            iotFleetProvisioning: {
+              enabled?: boolean;
+              provisioningRoleArn: AwsArn;
+              templateBody: {
+                [k: string]: unknown;
+              };
+              templateName?: string;
+            };
+          }
+        | {
+            cloudwatchEvent: {
+              event?: {
+                [k: string]: unknown;
+              };
+              input?:
+                | string
+                | {
+                    [k: string]: unknown;
+                  };
+              inputPath?: string;
+              inputTransformer?: {
+                inputPathsMap?: {
+                  [k: string]: string;
+                };
+                inputTemplate: string;
+              };
+              description?: string;
+              name?: string;
+              enabled?: boolean;
+            };
+          }
+        | {
+            cloudwatchLog:
+              | AwsLogGroupName
+              | {
+                  logGroup: AwsLogGroupName;
+                  filter?: string;
+                };
+          }
+        | {
+            cognitoUserPool: {
+              pool: string;
+              trigger:
+                | 'PreSignUp'
+                | 'PostConfirmation'
+                | 'PreAuthentication'
+                | 'PostAuthentication'
+                | 'PreTokenGeneration'
+                | 'CustomMessage'
+                | 'DefineAuthChallenge'
+                | 'CreateAuthChallenge'
+                | 'VerifyAuthChallengeResponse'
+                | 'UserMigration'
+                | 'CustomSMSSender'
+                | 'CustomEmailSender';
+              existing?: boolean;
+              forceDeploy?: boolean;
+              kmsKeyId?: AwsKmsArn;
+            };
+          }
+        | {
+            eventBridge:
+              | {
                   [k: string]: unknown;
                 }
-                | string;
-              };
-              template?: {
-                [k: string]: string;
-              };
-              uri?: AwsCfInstruction;
-            };
-            response?: {
-              contentHandling?: "CONVERT_TO_BINARY" | "CONVERT_TO_TEXT";
-              transferMode?: "BUFFERED" | "STREAM";
-              headers?: {
-                [k: string]: string;
-              };
-              template?: string;
-              statusCodes?: {
-                [k: string]: {
-                  headers?: {
-                    [k: string]: string;
-                  };
-                  pattern?: string;
-                  template?:
-                  | string
-                  | {
-                    [k: string]: string;
-                  };
+              | {
+                  [k: string]: unknown;
                 };
-              };
-            };
-          };
-        }
-        | {
-          websocket:
-          | string
-          | {
-            route: string;
-            routeResponseSelectionExpression?: "$default";
-            authorizer?:
-            | AwsArnString
-            | FunctionName
-            | (
-              | {
-                [k: string]: unknown;
-              }
-              | {
-                [k: string]: unknown;
-              }
-            );
-          };
-        }
-        | {
-          sns:
-          | string
-          | AwsArnString
-          | (
-            | {
-              [k: string]: unknown;
-            }
-            | {
-              [k: string]: unknown;
-            }
-          );
-        }
-        | {
-          stream:
-          | AwsArnString
-          | (
-            | {
-              arn: AwsCfFunction;
-              [k: string]: unknown;
-            }
-            | {
-              arn: AwsArnString;
-              [k: string]: unknown;
-            }
-          );
-        }
-        | {
-          kafka: {
-            accessConfigurations: {
-              vpcSubnet?: string[];
-              vpcSecurityGroup?: string[];
-              saslPlainAuth?: AwsSecretsManagerArnString[];
-              saslScram256Auth?: AwsSecretsManagerArnString[];
-              saslScram512Auth?: AwsSecretsManagerArnString[];
-              clientCertificateTlsAuth?: AwsSecretsManagerArnString[];
-              serverRootCaCertificate?: AwsSecretsManagerArnString[];
-            };
-            batchSize?: number;
-            maximumBatchingWindow?: number;
-            enabled?: boolean;
-            bootstrapServers: string[];
-            startingPosition?: "LATEST" | "TRIM_HORIZON" | "AT_TIMESTAMP";
-            startingPositionTimestamp?: number;
-            topic: string;
-            consumerGroupId?: string;
-            filterPatterns?: FilterPatterns;
-            onFailureDestination?: string;
-          };
-        }
-        | {
-          activemq: {
-            arn: string | AwsCfImport | AwsCfRef;
-            basicAuthArn: AwsSecretsManagerArnString | AwsCfImport | AwsCfRef;
-            batchSize?: number;
-            maximumBatchingWindow?: number;
-            enabled?: boolean;
-            queue: string;
-            filterPatterns?: FilterPatterns;
-          };
-        }
-        | {
-          rabbitmq: {
-            arn: string | AwsCfImport | AwsCfRef;
-            basicAuthArn: AwsSecretsManagerArnString | AwsCfImport | AwsCfRef;
-            batchSize?: number;
-            maximumBatchingWindow?: number;
-            enabled?: boolean;
-            queue: string;
-            virtualHost?: string;
-            filterPatterns?: FilterPatterns;
-          };
-        }
-        | {
-          msk: {
-            arn: AwsArnString | AwsCfImport | AwsCfRef;
-            batchSize?: number;
-            maximumBatchingWindow?: number;
-            enabled?: boolean;
-            startingPosition?: "LATEST" | "TRIM_HORIZON" | "AT_TIMESTAMP";
-            startingPositionTimestamp?: number;
-            topic: string;
-            saslScram512?: AwsArnString;
-            consumerGroupId?: string;
-            filterPatterns?: FilterPatterns;
-            provisionedPollerConfig?: {maximumPollers?: number, minimumPollers?: number}
-          };
-        }
-        | {
-          alb: {
-            authorizer?: string[];
-            conditions: {
-              header?:
-              | {
-                name: string;
-                values: string[];
-              }[]
-              | {
-                name: string;
-                values: string[];
-              };
-              host?: string[];
-              ip?: string[];
-              method?: string[];
-              path?: string[];
-              query?: {
-                [k: string]: string;
-              };
-            };
-            healthCheck?:
-            | boolean
-            | {
-              healthyThresholdCount?: number;
-              intervalSeconds?: number;
-              matcher?: {
-                httpCode?: string;
-              };
-              path?: string;
-              timeoutSeconds?: number;
-              unhealthyThresholdCount?: number;
-            };
-            listenerArn: AwsAlbListenerArn | AwsCfRef;
-            multiValueHeaders?: boolean;
-            priority: number;
-            targetGroupName?: string;
-          };
-        }
-        | {
-          alexaSkill:
-          | AwsAlexaEventToken
-          | {
-            appId: AwsAlexaEventToken;
-            enabled?: boolean;
-          };
-        }
-        | {
-          alexaSmartHome:
-          | AwsAlexaEventToken
-          | {
-            appId: AwsAlexaEventToken;
-            enabled?: boolean;
-          };
-        }
-        | {
-          iot: {
-            sql: string;
-            sqlVersion?: "2015-10-08" | "2016-03-23" | "beta";
-            name?: string;
-            enabled?: boolean;
-            description?: string;
-          };
-        }
-        | {
-          iotFleetProvisioning: {
-            enabled?: boolean;
-            provisioningRoleArn: AwsArn;
-            templateBody: {
-              [k: string]: unknown;
-            };
-            templateName?: string;
-          };
-        }
-        | {
-          cloudwatchEvent: {
-            event?: {
-              [k: string]: unknown;
-            };
-            input?:
-            | string
-            | {
-              [k: string]: unknown;
-            };
-            inputPath?: string;
-            inputTransformer?: {
-              inputPathsMap?: {
-                [k: string]: string;
-              };
-              inputTemplate: string;
-            };
-            description?: string;
-            name?: string;
-            enabled?: boolean;
-          };
-        }
-        | {
-          cloudwatchLog:
-          | AwsLogGroupName
-          | {
-            logGroup: AwsLogGroupName;
-            filter?: string;
-          };
-        }
-        | {
-          cognitoUserPool: {
-            pool: string;
-            trigger:
-            | "PreSignUp"
-            | "PostConfirmation"
-            | "PreAuthentication"
-            | "PostAuthentication"
-            | "PreTokenGeneration"
-            | "CustomMessage"
-            | "DefineAuthChallenge"
-            | "CreateAuthChallenge"
-            | "VerifyAuthChallengeResponse"
-            | "UserMigration"
-            | "CustomSMSSender"
-            | "CustomEmailSender";
-            existing?: boolean;
-            forceDeploy?: boolean;
-            kmsKeyId?: AwsKmsArn;
-          };
-        }
-        | {
-          eventBridge:
-          | {
-            [k: string]: unknown;
           }
-          | {
-            [k: string]: unknown;
-          };
-        }
         | {
-          sqs:
-          | AwsArnString
-          | {
-            arn: AwsArn;
-            batchSize?: number;
-            enabled?: boolean;
-            maximumBatchingWindow?: number;
-            functionResponseType?: "ReportBatchItemFailures";
-            filterPatterns?: FilterPatterns;
-            maximumConcurrency?: number;
-          };
-        }
-        | {
-          cloudFront: {
-            behavior?: {
-              AllowedMethods?:
-              | ("GET" | "HEAD")[]
-              | ("GET" | "HEAD" | "OPTIONS")[]
-              | ("GET" | "HEAD" | "OPTIONS" | "PUT" | "PATCH" | "POST" | "DELETE")[];
-              CachedMethods?: ("GET" | "HEAD")[] | ("GET" | "HEAD" | "OPTIONS")[];
-              CachePolicyId?: string;
-              Compress?: boolean;
-              FieldLevelEncryptionId?: string;
-              OriginRequestPolicyId?: string | AwsCfFunction;
-              ResponseHeadersPolicyId?: string | AwsCfFunction;
-              SmoothStreaming?: boolean;
-              TrustedSigners?: string[];
-              ViewerProtocolPolicy?: "allow-all" | "redirect-to-https" | "https-only";
-              TrustedKeyGroups?: (string | AwsCfRef)[];
-              MaxTTL?: number;
-              MinTTL?: number;
-              DefaultTTL?: number;
-              ForwardedValues?: {
-                Cookies?:
-                | {
-                  Forward: "all" | "none";
-                }
-                | {
-                  Forward: "whitelist";
-                  WhitelistedNames: string[];
+            sqs:
+              | AwsArnString
+              | {
+                  arn: AwsArn;
+                  batchSize?: number;
+                  enabled?: boolean;
+                  maximumBatchingWindow?: number;
+                  functionResponseType?: 'ReportBatchItemFailures';
+                  filterPatterns?: FilterPatterns;
+                  maximumConcurrency?: number;
                 };
-                Headers?: string[];
-                QueryString: boolean;
-                QueryStringCacheKeys?: string[];
-              };
-            };
-            cachePolicy?:
-            | {
-              [k: string]: unknown;
-            }
-            | {
-              [k: string]: unknown;
-            };
-            eventType?: "viewer-request" | "origin-request" | "origin-response" | "viewer-response";
-            isDefaultOrigin?: boolean;
-            includeBody?: boolean;
-            origin?:
-            | string
-            | (
-              | {
-                [k: string]: unknown;
-              }
-              | {
-                [k: string]: unknown;
-              }
-            );
-            pathPattern?: string;
-          };
-        }
+          }
         | {
-          httpApi:
-          | string
-          | {
-            authorizer?:
-            | string
-            | (
+            cloudFront: {
+              behavior?: {
+                AllowedMethods?:
+                  | ('GET' | 'HEAD')[]
+                  | ('GET' | 'HEAD' | 'OPTIONS')[]
+                  | ('GET' | 'HEAD' | 'OPTIONS' | 'PUT' | 'PATCH' | 'POST' | 'DELETE')[];
+                CachedMethods?: ('GET' | 'HEAD')[] | ('GET' | 'HEAD' | 'OPTIONS')[];
+                CachePolicyId?: string;
+                Compress?: boolean;
+                FieldLevelEncryptionId?: string;
+                OriginRequestPolicyId?: string | AwsCfFunction;
+                ResponseHeadersPolicyId?: string | AwsCfFunction;
+                SmoothStreaming?: boolean;
+                TrustedSigners?: string[];
+                ViewerProtocolPolicy?: 'allow-all' | 'redirect-to-https' | 'https-only';
+                TrustedKeyGroups?: (string | AwsCfRef)[];
+                MaxTTL?: number;
+                MinTTL?: number;
+                DefaultTTL?: number;
+                ForwardedValues?: {
+                  Cookies?:
+                    | {
+                        Forward: 'all' | 'none';
+                      }
+                    | {
+                        Forward: 'whitelist';
+                        WhitelistedNames: string[];
+                      };
+                  Headers?: string[];
+                  QueryString: boolean;
+                  QueryStringCacheKeys?: string[];
+                };
+              };
+              cachePolicy?:
+                | {
+                    [k: string]: unknown;
+                  }
+                | {
+                    [k: string]: unknown;
+                  };
+              eventType?:
+                | 'viewer-request'
+                | 'origin-request'
+                | 'origin-response'
+                | 'viewer-response';
+              isDefaultOrigin?: boolean;
+              includeBody?: boolean;
+              origin?:
+                | string
+                | (
+                    | {
+                        [k: string]: unknown;
+                      }
+                    | {
+                        [k: string]: unknown;
+                      }
+                  );
+              pathPattern?: string;
+            };
+          }
+        | {
+            httpApi:
+              | string
               | {
-                [k: string]: unknown;
-              }
-              | {
-                [k: string]: unknown;
-              }
-              | {
-                [k: string]: unknown;
-              }
-            );
-            method?: string;
-            path: string;
-          };
-        }
+                  authorizer?:
+                    | string
+                    | (
+                        | {
+                            [k: string]: unknown;
+                          }
+                        | {
+                            [k: string]: unknown;
+                          }
+                        | {
+                            [k: string]: unknown;
+                          }
+                      );
+                  method?: string;
+                  path: string;
+                };
+          }
       )[];
       architecture?: AwsLambdaArchitecture;
       awsKmsKeyArn?: AwsKmsArn;
@@ -665,17 +685,17 @@ export interface AWS {
       description?: string;
       destinations?: {
         onSuccess?:
-        | string
-        | {
-          arn: AwsCfFunction;
-          type: "function" | "sns" | "sqs" | "eventBus";
-        };
+          | string
+          | {
+              arn: AwsCfFunction;
+              type: 'function' | 'sns' | 'sqs' | 'eventBus';
+            };
         onFailure?:
-        | string
-        | {
-          arn: AwsCfFunction;
-          type: "function" | "sns" | "sqs" | "eventBus";
-        };
+          | string
+          | {
+              arn: AwsCfFunction;
+              type: 'function' | 'sns' | 'sqs' | 'eventBus';
+            };
       };
       disableLogs?: boolean;
       environment?: AwsLambdaEnvironment;
@@ -686,14 +706,14 @@ export interface AWS {
       };
       handler?: string;
       image?:
-      | EcrImageUri
-      | {
-        name?: string;
-        uri?: EcrImageUri;
-        workingDirectory?: string;
-        command?: string[];
-        entryPoint?: string[];
-      };
+        | EcrImageUri
+        | {
+            name?: string;
+            uri?: EcrImageUri;
+            workingDirectory?: string;
+            command?: string[];
+            entryPoint?: string[];
+          };
       kmsKeyArn?: AwsKmsArn;
       recursiveLoop?: 'Allow' | 'Terminate';
       snapStart?: boolean;
@@ -720,21 +740,21 @@ export interface AWS {
       timeout?: AwsLambdaTimeout;
       tracing?: AwsLambdaTracing;
       url?:
-      | boolean
-      | {
-        authorizer?: "aws_iam";
-        cors?:
         | boolean
         | {
-          allowCredentials?: boolean;
-          allowedHeaders?: string[];
-          allowedMethods?: string[];
-          allowedOrigins?: string[];
-          exposedResponseHeaders?: string[];
-          maxAge?: number;
-        };
-        invokeMode?: "BUFFERED" | "RESPONSE_STREAM";
-      };
+            authorizer?: 'aws_iam';
+            cors?:
+              | boolean
+              | {
+                  allowCredentials?: boolean;
+                  allowedHeaders?: string[];
+                  allowedMethods?: string[];
+                  allowedOrigins?: string[];
+                  exposedResponseHeaders?: string[];
+                  maxAge?: number;
+                };
+            invokeMode?: 'BUFFERED' | 'RESPONSE_STREAM';
+          };
       versionFunction?: AwsLambdaVersioning;
       vpc?: AwsLambdaVpcConfig;
       httpApi?: {
@@ -761,47 +781,47 @@ export interface AWS {
     };
   };
   plugins?:
-  | {
-    localPath?: string;
-    modules: string[];
-  }
-  | string[];
+    | {
+        localPath?: string;
+        modules: string[];
+      }
+    | string[];
   projectDir?: string;
   provider: {
-    name: "aws";
+    name: 'aws';
     alb?: {
       targetGroupPrefix?: string;
       authorizers?: {
         [k: string]:
-        | {
-          type: "oidc";
-          authorizationEndpoint: string;
-          clientId: string;
-          clientSecret?: string;
-          issuer: string;
-          tokenEndpoint: string;
-          userInfoEndpoint: string;
-          onUnauthenticatedRequest?: "allow" | "authenticate" | "deny";
-          requestExtraParams?: {
-            [k: string]: string;
-          };
-          scope?: string;
-          sessionCookieName?: string;
-          sessionTimeout?: number;
-        }
-        | {
-          type: "cognito";
-          userPoolArn: AwsArn;
-          userPoolClientId: string;
-          userPoolDomain: string;
-          onUnauthenticatedRequest?: "allow" | "authenticate" | "deny";
-          requestExtraParams?: {
-            [k: string]: string;
-          };
-          scope?: string;
-          sessionCookieName?: string;
-          sessionTimeout?: number;
-        };
+          | {
+              type: 'oidc';
+              authorizationEndpoint: string;
+              clientId: string;
+              clientSecret?: string;
+              issuer: string;
+              tokenEndpoint: string;
+              userInfoEndpoint: string;
+              onUnauthenticatedRequest?: 'allow' | 'authenticate' | 'deny';
+              requestExtraParams?: {
+                [k: string]: string;
+              };
+              scope?: string;
+              sessionCookieName?: string;
+              sessionTimeout?: number;
+            }
+          | {
+              type: 'cognito';
+              userPoolArn: AwsArn;
+              userPoolClientId: string;
+              userPoolDomain: string;
+              onUnauthenticatedRequest?: 'allow' | 'authenticate' | 'deny';
+              requestExtraParams?: {
+                [k: string]: string;
+              };
+              scope?: string;
+              sessionCookieName?: string;
+              sessionTimeout?: number;
+            };
       };
     };
     apiGateway?: {
@@ -815,13 +835,13 @@ export interface AWS {
       resourcePolicy?: AwsResourcePolicyStatements;
       restApiId?: AwsCfInstruction;
       restApiResources?:
-      | {
-        path?: string;
-        resourceId?: string;
-      }[]
-      | {
-        [k: string]: unknown;
-      };
+        | {
+            path?: string;
+            resourceId?: string;
+          }[]
+        | {
+            [k: string]: unknown;
+          };
       restApiRootResourceId?: AwsCfInstruction;
       request?: {
         schemas?: {
@@ -837,30 +857,30 @@ export interface AWS {
       shouldStartNameWithService?: boolean;
       stage?: string;
       usagePlan?:
-      | {
-        quota?: {
-          limit?: number;
-          offset?: number;
-          period?: "DAY" | "WEEK" | "MONTH";
-        };
-        throttle?: {
-          burstLimit?: number;
-          rateLimit?: number;
-        };
-      }
-      | {
-        [k: string]: {
-          quota?: {
-            limit?: number;
-            offset?: number;
-            period?: "DAY" | "WEEK" | "MONTH";
-          };
-          throttle?: {
-            burstLimit?: number;
-            rateLimit?: number;
-          };
-        };
-      }[];
+        | {
+            quota?: {
+              limit?: number;
+              offset?: number;
+              period?: 'DAY' | 'WEEK' | 'MONTH';
+            };
+            throttle?: {
+              burstLimit?: number;
+              rateLimit?: number;
+            };
+          }
+        | {
+            [k: string]: {
+              quota?: {
+                limit?: number;
+                offset?: number;
+                period?: 'DAY' | 'WEEK' | 'MONTH';
+              };
+              throttle?: {
+                burstLimit?: number;
+                rateLimit?: number;
+              };
+            };
+          }[];
       websocketApiId?: AwsCfInstruction;
     };
     apiName?: string;
@@ -875,17 +895,17 @@ export interface AWS {
           MinTTL: number;
           ParametersInCacheKeyAndForwardedToOrigin: {
             CookiesConfig: {
-              CookieBehavior: "none" | "whitelist" | "allExcept" | "all";
+              CookieBehavior: 'none' | 'whitelist' | 'allExcept' | 'all';
               Cookies?: string[];
             };
             EnableAcceptEncodingBrotli?: boolean;
             EnableAcceptEncodingGzip: boolean;
             HeadersConfig: {
-              HeaderBehavior: "none" | "whitelist";
+              HeaderBehavior: 'none' | 'whitelist';
               Headers?: string[];
             };
             QueryStringsConfig: {
-              QueryStringBehavior: "none" | "whitelist" | "allExcept" | "all";
+              QueryStringBehavior: 'none' | 'whitelist' | 'allExcept' | 'all';
               QueryStrings?: string[];
             };
           };
@@ -893,20 +913,20 @@ export interface AWS {
       };
     };
     deploymentBucket?:
-    | AwsS3BucketName
-    | {
-      blockPublicAccess?: boolean;
-      skipPolicySetup?: boolean;
-      maxPreviousDeploymentArtifacts?: number;
-      name?: AwsS3BucketName;
-      versioning?: boolean;
-      serverSideEncryption?: "AES256" | "aws:kms";
-      sseCustomerAlgorithim?: string;
-      sseCustomerKey?: string;
-      sseCustomerKeyMD5?: string;
-      sseKMSKeyId?: string;
-      tags?: AwsResourceTags;
-    };
+      | AwsS3BucketName
+      | {
+          blockPublicAccess?: boolean;
+          skipPolicySetup?: boolean;
+          maxPreviousDeploymentArtifacts?: number;
+          name?: AwsS3BucketName;
+          versioning?: boolean;
+          serverSideEncryption?: 'AES256' | 'aws:kms';
+          sseCustomerAlgorithim?: string;
+          sseCustomerKey?: string;
+          sseCustomerKeyMD5?: string;
+          sseKMSKeyId?: string;
+          tags?: AwsResourceTags;
+        };
     deploymentPrefix?: string;
     disableRollback?: boolean;
     endpointType?: string;
@@ -917,36 +937,36 @@ export interface AWS {
     httpApi?: {
       authorizers?: {
         [k: string]:
-        | {
-          type?: "jwt";
-          name?: string;
-          identitySource: AwsCfInstruction;
-          issuerUrl: AwsCfInstruction;
-          audience: AwsCfInstruction | AwsCfInstruction[];
-        }
-        | {
-          type: "request";
-          name?: string;
-          functionName?: string;
-          functionArn?: AwsCfInstruction;
-          managedExternally?: boolean;
-          resultTtlInSeconds?: number;
-          enableSimpleResponses?: boolean;
-          payloadVersion?: AwsHttpApiPayload;
-          identitySource?: AwsCfInstruction | AwsCfInstruction[];
-          [k: string]: unknown;
-        };
+          | {
+              type?: 'jwt';
+              name?: string;
+              identitySource: AwsCfInstruction;
+              issuerUrl: AwsCfInstruction;
+              audience: AwsCfInstruction | AwsCfInstruction[];
+            }
+          | {
+              type: 'request';
+              name?: string;
+              functionName?: string;
+              functionArn?: AwsCfInstruction;
+              managedExternally?: boolean;
+              resultTtlInSeconds?: number;
+              enableSimpleResponses?: boolean;
+              payloadVersion?: AwsHttpApiPayload;
+              identitySource?: AwsCfInstruction | AwsCfInstruction[];
+              [k: string]: unknown;
+            };
       };
       cors?:
-      | boolean
-      | {
-        allowCredentials?: boolean;
-        allowedHeaders?: string[];
-        allowedMethods?: string[];
-        allowedOrigins?: string[];
-        exposedResponseHeaders?: string[];
-        maxAge?: number;
-      };
+        | boolean
+        | {
+            allowCredentials?: boolean;
+            allowedHeaders?: string[];
+            allowedMethods?: string[];
+            allowedOrigins?: string[];
+            exposedResponseHeaders?: string[];
+            maxAge?: number;
+          };
       id?: string | AwsCfImportLocallyResolvable;
       name?: string;
       payload?: string;
@@ -957,16 +977,16 @@ export interface AWS {
     };
     iam?: {
       role?:
-      | AwsLambdaRole
-      | {
-        name?: string;
-        path?: string;
-        managedPolicies?: AwsArn[];
-        statements?: AwsIamPolicyStatements;
-        permissionBoundary?: AwsArn;
-        permissionsBoundary?: AwsArn;
-        tags?: AwsResourceTags;
-      };
+        | AwsLambdaRole
+        | {
+            name?: string;
+            path?: string;
+            managedPolicies?: AwsArn[];
+            statements?: AwsIamPolicyStatements;
+            permissionBoundary?: AwsArn;
+            permissionsBoundary?: AwsArn;
+            tags?: AwsResourceTags;
+          };
       deploymentRole?: AwsArn;
     };
     iamManagedPolicies?: AwsArn[];
@@ -979,109 +999,109 @@ export interface AWS {
          * via the `patternProperty` "^[a-z][a-z0-9-_]{1,31}$".
          */
         [k: string]:
-        | {
-          uri?: EcrImageUri;
-          path?: string;
-          file?: string;
-          buildArgs?: {
-            [k: string]: string;
-          };
-          cacheFrom?: string[];
-          platform?: string;
-        }
-        | string;
+          | {
+              uri?: EcrImageUri;
+              path?: string;
+              file?: string;
+              buildArgs?: {
+                [k: string]: string;
+              };
+              cacheFrom?: string[];
+              platform?: string;
+            }
+          | string;
       };
     };
     kmsKeyArn?: AwsKmsArn;
-    lambdaHashingVersion?: "20200924" | "20201221";
+    lambdaHashingVersion?: '20200924' | '20201221';
     layers?: AwsLambdaLayers;
     logRetentionInDays?: AwsLogRetentionInDays;
     logDataProtectionPolicy?: AwsLogDataProtectionPolicy;
     logs?: {
       frameworkLambda?: boolean;
       httpApi?:
-      | boolean
-      | {
-        format?: string;
-      };
+        | boolean
+        | {
+            format?: string;
+          };
       restApi?:
-      | boolean
-      | {
-        accessLogging?: boolean;
-        executionLogging?: boolean;
-        format?: string;
-        fullExecutionData?: boolean;
-        level?: "INFO" | "ERROR";
-        role?: AwsArn;
-        roleManagedExternally?: boolean;
-      };
+        | boolean
+        | {
+            accessLogging?: boolean;
+            executionLogging?: boolean;
+            format?: string;
+            fullExecutionData?: boolean;
+            level?: 'INFO' | 'ERROR';
+            role?: AwsArn;
+            roleManagedExternally?: boolean;
+          };
       websocket?:
-      | boolean
-      | {
-        accessLogging?: boolean;
-        executionLogging?: boolean;
-        format?: string;
-        fullExecutionData?: boolean;
-        level?: "INFO" | "ERROR";
-      };
+        | boolean
+        | {
+            accessLogging?: boolean;
+            executionLogging?: boolean;
+            format?: string;
+            fullExecutionData?: boolean;
+            level?: 'INFO' | 'ERROR';
+          };
       [k: string]: unknown;
     };
     memorySize?: AwsLambdaMemorySize;
     notificationArns?: AwsArnString[];
     profile?: string;
     region?:
-    | "us-east-1"
-    | "us-east-2"
-    | "us-gov-east-1"
-    | "us-gov-west-1"
-    | "us-iso-east-1"
-    | "us-iso-west-1"
-    | "us-isob-east-1"
-    | "us-west-1"
-    | "us-west-2"
-    | "af-south-1"
-    | "ap-east-1"
-    | "ap-northeast-1"
-    | "ap-northeast-2"
-    | "ap-northeast-3"
-    | "ap-south-1"
-    | "ap-south-2"
-    | "ap-southeast-1"
-    | "ap-southeast-2"
-    | "ap-southeast-3"
-    | "ap-southeast-4"
-    | "ap-southeast-5"
-    | "ca-central-1"
-    | "cn-north-1"
-    | "cn-northwest-1"
-    | "eu-central-1"
-    | "eu-central-2"
-    | "eu-north-1"
-    | "eu-south-1"
-    | "eu-south-2"
-    | "eu-west-1"
-    | "eu-west-2"
-    | "eu-west-3"
-    | "il-central-1"
-    | "me-central-1"
-    | "me-south-1"
-    | "sa-east-1";
+      | 'us-east-1'
+      | 'us-east-2'
+      | 'us-gov-east-1'
+      | 'us-gov-west-1'
+      | 'us-iso-east-1'
+      | 'us-iso-west-1'
+      | 'us-isob-east-1'
+      | 'us-west-1'
+      | 'us-west-2'
+      | 'af-south-1'
+      | 'ap-east-1'
+      | 'ap-northeast-1'
+      | 'ap-northeast-2'
+      | 'ap-northeast-3'
+      | 'ap-south-1'
+      | 'ap-south-2'
+      | 'ap-southeast-1'
+      | 'ap-southeast-2'
+      | 'ap-southeast-3'
+      | 'ap-southeast-4'
+      | 'ap-southeast-5'
+      | 'ca-central-1'
+      | 'cn-north-1'
+      | 'cn-northwest-1'
+      | 'eu-central-1'
+      | 'eu-central-2'
+      | 'eu-north-1'
+      | 'eu-south-1'
+      | 'eu-south-2'
+      | 'eu-west-1'
+      | 'eu-west-2'
+      | 'eu-west-3'
+      | 'il-central-1'
+      | 'me-central-1'
+      | 'me-south-1'
+      | 'sa-east-1';
     role?: AwsLambdaRole;
     rolePermissionsBoundary?: AwsArnString;
     rollbackConfiguration?: {
       RollbackTriggers?: {
         Arn: AwsArnString;
-        Type: "AWS::CloudWatch::Alarm";
+        Type: 'AWS::CloudWatch::Alarm';
       }[];
       MonitoringTimeInMinutes?: number;
     };
     runtime?: AwsLambdaRuntime;
     runtimeManagement?: AwsLambdaRuntimeManagement;
-    deploymentMethod?: "changesets" | "direct";
+    deploymentMethod?: 'changesets' | 'direct';
     s3?: {
       [k: string]: {
         accelerateConfiguration?: {
-          AccelerationStatus: "Enabled" | "Suspended";
+          AccelerationStatus: 'Enabled' | 'Suspended';
         };
         accessControl?: string;
         analyticsConfigurations?: {
@@ -1092,10 +1112,10 @@ export interface AWS {
               Destination: {
                 BucketAccountId?: string;
                 BucketArn: AwsArn;
-                Format: "CSV" | "ORC" | "Parquet";
+                Format: 'CSV' | 'ORC' | 'Parquet';
                 Prefix?: string;
               };
-              OutputSchemaVersion: "V_1";
+              OutputSchemaVersion: 'V_1';
             };
           };
           TagFilters?: {
@@ -1107,7 +1127,7 @@ export interface AWS {
           ServerSideEncryptionConfiguration: {
             ServerSideEncryptionByDefault?: {
               KMSMasterKeyID?: AwsArn | string;
-              SSEAlgorithm: "AES256" | "aws:kms";
+              SSEAlgorithm: 'AES256' | 'aws:kms';
             };
             BucketKeyEnabled?: boolean;
           }[];
@@ -1116,7 +1136,7 @@ export interface AWS {
         corsConfiguration?: {
           CorsRules: {
             AllowedHeaders?: string[];
-            AllowedMethods: ("GET" | "PUT" | "HEAD" | "POST" | "DELETE")[];
+            AllowedMethods: ('GET' | 'PUT' | 'HEAD' | 'POST' | 'DELETE')[];
             AllowedOrigins: string[];
             ExposedHeaders?: string[];
             Id?: string;
@@ -1127,42 +1147,42 @@ export interface AWS {
           Destination: {
             BucketAccountId?: string;
             BucketArn: AwsArn;
-            Format: "CSV" | "ORC" | "Parquet";
+            Format: 'CSV' | 'ORC' | 'Parquet';
             Prefix?: string;
           };
           Enabled: boolean;
           Id: string;
-          IncludedObjectVersions: "All" | "Current";
+          IncludedObjectVersions: 'All' | 'Current';
           OptionalFields?: string[];
           Prefix?: string;
-          ScheduleFrequency: "Daily" | "Weekly";
+          ScheduleFrequency: 'Daily' | 'Weekly';
         }[];
         lifecycleConfiguration?: {
           Rules: (
             | {
-              [k: string]: unknown;
-            }
+                [k: string]: unknown;
+              }
             | {
-              [k: string]: unknown;
-            }
+                [k: string]: unknown;
+              }
             | {
-              [k: string]: unknown;
-            }
+                [k: string]: unknown;
+              }
             | {
-              [k: string]: unknown;
-            }
+                [k: string]: unknown;
+              }
             | {
-              [k: string]: unknown;
-            }
+                [k: string]: unknown;
+              }
             | {
-              [k: string]: unknown;
-            }
+                [k: string]: unknown;
+              }
             | {
-              [k: string]: unknown;
-            }
+                [k: string]: unknown;
+              }
             | {
-              [k: string]: unknown;
-            }
+                [k: string]: unknown;
+              }
           )[];
         };
         loggingConfiguration?: {
@@ -1184,7 +1204,7 @@ export interface AWS {
             Filter?: {
               S3Key: {
                 Rules: {
-                  Name: "prefix" | "suffix";
+                  Name: 'prefix' | 'suffix';
                   Value: string;
                 }[];
               };
@@ -1196,7 +1216,7 @@ export interface AWS {
             Filter?: {
               S3Key: {
                 Rules: {
-                  Name: "prefix" | "suffix";
+                  Name: 'prefix' | 'suffix';
                   Value: string;
                 }[];
               };
@@ -1208,7 +1228,7 @@ export interface AWS {
             Filter?: {
               S3Key: {
                 Rules: {
-                  Name: "prefix" | "suffix";
+                  Name: 'prefix' | 'suffix';
                   Value: string;
                 }[];
               };
@@ -1217,11 +1237,11 @@ export interface AWS {
           }[];
         };
         objectLockConfiguration?: {
-          ObjectLockEnabled?: "Enabled";
+          ObjectLockEnabled?: 'Enabled';
           Rule?: {
             DefaultRetention?: {
               Days?: number;
-              Mode?: "COMPLIANCE" | "GOVERNANCE";
+              Mode?: 'COMPLIANCE' | 'GOVERNANCE';
               Years?: number;
             };
           };
@@ -1237,11 +1257,11 @@ export interface AWS {
           Role: AwsArn;
           Rules: {
             DeleteMarkerReplication?: {
-              Status?: "Disabled" | "Enabled";
+              Status?: 'Disabled' | 'Enabled';
             };
             Destination: {
               AccessControlTranslation?: {
-                Owner: "Destination";
+                Owner: 'Destination';
               };
               Account?: string;
               Bucket: AwsArn;
@@ -1252,23 +1272,23 @@ export interface AWS {
                 EventThreshold: {
                   Minutes: number;
                 };
-                Status: "Disabled" | "Enabled";
+                Status: 'Disabled' | 'Enabled';
               };
               ReplicationTime?: {
-                Status: "Disabled" | "Enabled";
+                Status: 'Disabled' | 'Enabled';
                 Time: {
                   Minutes: number;
                 };
               };
               StorageClass?:
-              | "DEEP_ARCHIVE"
-              | "GLACIER"
-              | "INTELLIGENT_TIERING"
-              | "ONEZONE_IA"
-              | "OUTPOSTS"
-              | "REDUCED_REDUNDANCY"
-              | "STANDARD"
-              | "STANDARD_IA";
+                | 'DEEP_ARCHIVE'
+                | 'GLACIER'
+                | 'INTELLIGENT_TIERING'
+                | 'ONEZONE_IA'
+                | 'OUTPOSTS'
+                | 'REDUCED_REDUNDANCY'
+                | 'STANDARD'
+                | 'STANDARD_IA';
             };
             Filter?: {
               And?: {
@@ -1289,10 +1309,10 @@ export interface AWS {
             Priority?: number;
             SourceSelectionCriteria?: {
               SseKmsEncryptedObjects: {
-                Status: "Disabled" | "Enabled";
+                Status: 'Disabled' | 'Enabled';
               };
             };
-            Status: "Disabled" | "Enabled";
+            Status: 'Disabled' | 'Enabled';
           }[];
         };
         tags?: {
@@ -1300,20 +1320,20 @@ export interface AWS {
           Value: string;
         }[];
         versioningConfiguration?: {
-          Status: "Enabled" | "Suspended";
+          Status: 'Enabled' | 'Suspended';
         };
         websiteConfiguration?: {
           ErrorDocument?: string;
           IndexDocument?: string;
           RedirectAllRequestsTo?: {
             HostName: string;
-            Protocol?: "http" | "https";
+            Protocol?: 'http' | 'https';
           };
           RoutingRules?: {
             RedirectRule: {
               HostName?: string;
               HttpRedirectCode?: string;
-              Protocol?: "http" | "https";
+              Protocol?: 'http' | 'https';
               ReplaceKeyPrefixWith?: string;
               ReplaceKeyWith?: string;
             };
@@ -1349,14 +1369,14 @@ export interface AWS {
     };
     websocketsApiName?: string;
     kinesis?: {
-      consumerNamingMode?: "serviceSpecific";
+      consumerNamingMode?: 'serviceSpecific';
     };
     websocketsApiRouteSelectionExpression?: string;
     websocketsDescription?: string;
   };
   service: ServiceName;
   useDotenv?: true;
-  variablesResolutionMode?: "20210219" | "20210326";
+  variablesResolutionMode?: '20210219' | '20210326';
   resources?: {
     AWSTemplateFormatVersion?: string;
     Conditions?: {
@@ -1376,39 +1396,39 @@ export interface AWS {
       [k: string]: unknown;
     };
     Resources?:
-    | {
-      "Fn::Transform"?: {
-        Name: string;
-        Parameters?: {
-          [k: string]: unknown;
+      | {
+          'Fn::Transform'?: {
+            Name: string;
+            Parameters?: {
+              [k: string]: unknown;
+            };
+          };
+        }
+      /**
+       * This interface was referenced by `undefined`'s JSON-Schema definition
+       * via the `patternProperty` "^[a-zA-Z0-9]{1,255}$".
+       */
+      | {
+          [k: string]: {
+            Type: string;
+            Properties?: {
+              [k: string]: unknown;
+            };
+            CreationPolicy?: {
+              [k: string]: unknown;
+            };
+            DeletionPolicy?: string;
+            DependsOn?: AwsResourceDependsOn;
+            Metadata?: {
+              [k: string]: unknown;
+            };
+            UpdatePolicy?: {
+              [k: string]: unknown;
+            };
+            UpdateReplacePolicy?: string;
+            Condition?: AwsResourceCondition;
+          };
         };
-      };
-    }
-    /**
-     * This interface was referenced by `undefined`'s JSON-Schema definition
-     * via the `patternProperty` "^[a-zA-Z0-9]{1,255}$".
-     */
-    | {
-      [k: string]: {
-        Type: string;
-        Properties?: {
-          [k: string]: unknown;
-        };
-        CreationPolicy?: {
-          [k: string]: unknown;
-        };
-        DeletionPolicy?: string;
-        DependsOn?: AwsResourceDependsOn;
-        Metadata?: {
-          [k: string]: unknown;
-        };
-        UpdatePolicy?: {
-          [k: string]: unknown;
-        };
-        UpdateReplacePolicy?: string;
-        Condition?: AwsResourceCondition;
-      };
-    };
     Transform?: string[];
     extensions?: {
       /**
@@ -1457,53 +1477,53 @@ export interface AWS {
   app?: string;
   outputs?: {
     [k: string]:
-    | string
-    | number
-    | boolean
-    | unknown[]
-    | {
-      [k: string]: unknown;
-    };
+      | string
+      | number
+      | boolean
+      | unknown[]
+      | {
+          [k: string]: unknown;
+        };
   };
 }
 export interface AwsCfImport {
-  "Fn::ImportValue": unknown;
+  'Fn::ImportValue': unknown;
 }
 export interface AwsCfJoin {
-  "Fn::Join": [string, unknown[]];
+  'Fn::Join': [string, unknown[]];
 }
 export interface AwsCfGetAtt {
-  "Fn::GetAtt": string[];
+  'Fn::GetAtt': string[];
 }
 export interface AwsCfRef {
   Ref: string;
 }
 export interface AwsCfSub {
-  "Fn::Sub": unknown;
+  'Fn::Sub': unknown;
 }
 export interface AwsCfBase64 {
-  "Fn::Base64"?: unknown;
+  'Fn::Base64'?: unknown;
   [k: string]: unknown;
 }
 export interface AwsCfToJsonString {
-  "Fn::ToJsonString":
-  | {
-    [k: string]: unknown;
-  }
-  | unknown[];
+  'Fn::ToJsonString':
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[];
 }
 export interface AwsCfIf {
-  "Fn::If": AwsCfInstruction[];
+  'Fn::If': AwsCfInstruction[];
 }
 export interface AwsLambdaEnvironment {
   /**
    * This interface was referenced by `AwsLambdaEnvironment`'s JSON-Schema definition
    * via the `patternProperty` "^[A-Za-z_][a-zA-Z0-9_]*$".
    */
-  [k: string]: "" | AwsCfInstruction | AwsCfIf | AwsCfSelect;
+  [k: string]: '' | AwsCfInstruction | AwsCfIf | AwsCfSelect;
 }
 export interface AwsCfSelect {
-  "Fn::Select": (
+  'Fn::Select': (
     | number
     | string
     | unknown[]
@@ -1516,13 +1536,13 @@ export interface AwsCfSelect {
   )[];
 }
 export interface AwsCfFindInMap {
-  "Fn::FindInMap": (string | AwsCfFunction)[];
+  'Fn::FindInMap': (string | AwsCfFunction)[];
 }
 export interface AwsCfGetAZs {
-  "Fn::GetAZs": string | AwsCfRef;
+  'Fn::GetAZs': string | AwsCfRef;
 }
 export interface AwsCfSplit {
-  "Fn::Split": (string | AwsCfFunction)[];
+  'Fn::Split': (string | AwsCfFunction)[];
 }
 export interface AwsLogDataProtectionPolicy {
   Name: string;
@@ -1549,5 +1569,5 @@ export interface AwsApiGatewayApiKeysProperties {
   enabled?: boolean;
 }
 export interface AwsCfImportLocallyResolvable {
-  "Fn::ImportValue": string;
+  'Fn::ImportValue': string;
 }

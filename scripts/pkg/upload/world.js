@@ -3,7 +3,7 @@
 const path = require('path');
 const fs = require('fs');
 const fsp = require('fs').promises;
-const fetch = require('node-fetch');
+const { Readable } = require('stream');
 const chalk = require('chalk');
 
 const distPath = path.join(__dirname, '../../../dist');
@@ -61,7 +61,8 @@ module.exports = async (versionTag, { isLegacyVersion }) => {
           `${API_UPLOADS_URL}${await releaseIdDeferred}/assets?name=${targetBinaryName}`,
           {
             method: 'POST',
-            body: fs.createReadStream(filePath),
+            body: Readable.toWeb(fs.createReadStream(filePath)),
+            duplex: 'half',
             headers: {
               ...requestOptions.headers,
               'content-length': (await fsp.stat(filePath)).size,

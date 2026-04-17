@@ -5,19 +5,18 @@ const sinon = require('sinon');
 const Serverless = require('../../../../../lib/serverless');
 const AwsProvider = require('../../../../../lib/plugins/aws/provider');
 const CLI = require('../../../../../lib/classes/cli');
-const proxyquire = require('proxyquire');
+const AwsRollbackFunction = require('../../../../../lib/plugins/aws/rollback-function.js');
 
 describe('AwsRollbackFunction', () => {
   let serverless;
   let awsRollbackFunction;
   let fetchStub;
-  let AwsRollbackFunction;
+  let originalFetch;
 
   beforeEach(() => {
-    fetchStub = sinon.stub().resolves({ buffer: () => {} });
-    AwsRollbackFunction = proxyquire('../../../../../lib/plugins/aws/rollback-function.js', {
-      'node-fetch': fetchStub,
-    });
+    fetchStub = sinon.stub().resolves({ arrayBuffer: async () => new ArrayBuffer(0) });
+    originalFetch = globalThis.fetch;
+    globalThis.fetch = fetchStub;
     serverless = new Serverless({ commands: [], options: {} });
     serverless.service.functions = {
       hello: {
@@ -33,6 +32,10 @@ describe('AwsRollbackFunction', () => {
     serverless.setProvider('aws', new AwsProvider(serverless, options));
     serverless.cli = new CLI(serverless);
     awsRollbackFunction = new AwsRollbackFunction(serverless, options);
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
   });
 
   describe('#constructor()', () => {

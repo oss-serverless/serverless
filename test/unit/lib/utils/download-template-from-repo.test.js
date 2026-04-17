@@ -23,6 +23,7 @@ describe('downloadTemplateFromRepo', () => {
 
   let parseRepoURL;
   let fetchStub;
+  let originalFetch;
 
   let serviceDir;
   let newServicePath;
@@ -43,19 +44,21 @@ describe('downloadTemplateFromRepo', () => {
       }),
     });
 
+    originalFetch = globalThis.fetch;
+    globalThis.fetch = async (url) => {
+      if (url.indexOf('mybitbucket.server.ltd') > -1) {
+        return fetchStub();
+      }
+
+      throw Error('unknown server type');
+    };
+
     spawnStub = sinon.stub().resolves();
     downloadStub = sinon.stub().resolves();
 
     const downloadTemplateFromRepoModule = proxyquire(
       '../../../../lib/utils/download-template-from-repo',
       {
-        'node-fetch': async (url) => {
-          if (url.indexOf('mybitbucket.server.ltd') > -1) {
-            return fetchStub();
-          }
-
-          throw Error('unknown server type');
-        },
         '@serverless/utils/download': downloadStub,
         'child-process-ext/spawn': spawnStub,
       }
@@ -65,6 +68,7 @@ describe('downloadTemplateFromRepo', () => {
   });
 
   afterEach((done) => {
+    globalThis.fetch = originalFetch;
     // change back to the old cwd
     process.chdir(cwd);
     fse.remove(newServicePath).then(done);
