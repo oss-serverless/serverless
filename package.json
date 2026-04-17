@@ -405,14 +405,6 @@
         "parserOptions": {
           "sourceType": "module"
         }
-      },
-      {
-        "files": [
-          "lib/utils/import-esm.js"
-        ],
-        "parserOptions": {
-          "ecmaVersion": 2023
-        }
       }
     ]
   },

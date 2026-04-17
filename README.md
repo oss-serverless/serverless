@@ -20,6 +20,8 @@ This project is open-source and free to use. However, maintaining it requires ti
 
 ## Installation
 
+Requires Node.js 20 or later.
+
 ```sh
 npm remove -g serverless
 npm install -g osls
@@ -125,10 +127,8 @@ This repository contains the following differences with the original Serverless 
 
 ## Learn More
 
-- [Upgrading to v3](./docs/guides/upgrading-v3.md)
 - [Configuration Validation](./docs/guides/configuration-validation.md)
 - [Resolution of Environment Variables](./docs/guides/environment-variables.md)
-- [Deprecations](./docs/guides/deprecations.md)
 
 ## Creating Plugins
 

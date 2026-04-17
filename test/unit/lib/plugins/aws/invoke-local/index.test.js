@@ -303,7 +303,7 @@ describe('AwsInvokeLocal', () => {
       await awsInvokeLocal.loadEnvVars();
       expect(process.env.LANG).to.equal('en_US.UTF-8');
       expect(process.env.LD_LIBRARY_PATH).to.equal(
-        '/usr/local/lib64/node-v4.3.x/lib:/lib64:/usr/lib64:/var/runtime:/var/runtime/lib:/var/task:/var/task/lib'
+        '/var/lang/lib:/lib64:/usr/lib64:/var/runtime:/var/runtime/lib:/var/task:/var/task/lib'
       );
       expect(process.env.LAMBDA_TASK_ROOT).to.equal('/var/task');
       expect(process.env.LAMBDA_RUNTIME_DIR).to.equal('/var/runtime');

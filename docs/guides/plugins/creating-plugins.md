@@ -176,7 +176,7 @@ The plugin will now only be executed when the service's provider matches the giv
 
 ## ESM plugins
 
-If you use Node.js v12.22 or later, ESM plugins are also supported.
+ESM plugins are also supported.
 
 ```javascript
 export default class MyPlugin {

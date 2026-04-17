@@ -916,7 +916,7 @@ functions:
 
 ## Lambda Hashing Algorithm migration
 
-**Note** Below migration guide is intended to be used if you are already using `v3` version of the Framework and you have `provider.lambdaHashingVersion` property set to `20200924` in your configuration file. If you are still on v2 and want to upgrade to v3, please refer to [V3 Upgrade docs](../../../guides/upgrading-v3.md#lambda-hashing-algorithm).
+**Note** Below migration guide is intended to be used if you have `provider.lambdaHashingVersion` property set to `20200924` in your configuration file.
 
 In `v3`, Lambda version hashes are generated using an improved algorithm that fixes determinism issues. If you are still using the old hashing algorithm, you can follow the guide below to migrate to new default version.
 
