@@ -49,7 +49,7 @@ describe('AwsProvider', () => {
       expect(localAwsProvider.serverless).to.equal(localServerless);
 
       const runtimeTypeMatch = runtimeTypeSource.match(
-        /export type AwsLambdaRuntime =([\s\S]*?)\r?\nexport type AwsLambdaRuntimeManagement =/
+        /export type AwsLambdaRuntime\s*=\s*([\s\S]*?);/
       );
 
       if (!runtimeTypeMatch) {
