@@ -1337,6 +1337,52 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
       expect(Runtime).to.equal(fooFunctionConfig.runtime);
     });
 
+    it('should accept `provider.runtime: java25`', async () => {
+      const {
+        awsNaming: localNaming,
+        cfTemplate: { Resources: localResources },
+      } = await runServerless({
+        fixture: 'function',
+        command: 'package',
+        configExt: {
+          provider: {
+            runtime: 'java25',
+          },
+        },
+      });
+
+      expect(localResources[localNaming.getLambdaLogicalId('basic')].Properties.Runtime).to.equal(
+        'java25'
+      );
+      expect(localResources[localNaming.getLambdaLogicalId('other')].Properties.Runtime).to.equal(
+        'java25'
+      );
+    });
+
+    it('should accept `functions[].runtime: java25`', async () => {
+      const {
+        awsNaming: localNaming,
+        cfTemplate: { Resources: localResources },
+      } = await runServerless({
+        fixture: 'function',
+        command: 'package',
+        configExt: {
+          functions: {
+            basic: {
+              runtime: 'java25',
+            },
+          },
+        },
+      });
+
+      expect(localResources[localNaming.getLambdaLogicalId('basic')].Properties.Runtime).to.equal(
+        'java25'
+      );
+      expect(localResources[localNaming.getLambdaLogicalId('other')].Properties.Runtime).to.equal(
+        'nodejs20.x'
+      );
+    });
+
     it('should support `provider.runtimeManagement`', () => {
       const providerConfig = serviceConfig.provider;
 

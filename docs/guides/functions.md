@@ -437,7 +437,7 @@ Finally, `auto` and `onFunctionUpdate` can be set as the `mode` property as well
 
 ## SnapStart
 
-[Lambda SnapStart](https://docs.aws.amazon.com/lambda/latest/dg/snapstart.html) for Java can improve startup performance for latency-sensitive applications.
+[Lambda SnapStart](https://docs.aws.amazon.com/lambda/latest/dg/snapstart.html) can improve startup performance for latency-sensitive applications on supported runtimes.
 
 To enable SnapStart for your lambda function you can add the `snapStart` object property in the function configuration which can be put to true and will result in the value `PublishedVersions` for this function.
 
@@ -449,7 +449,7 @@ functions:
     snapStart: true
 ```
 
-**Note:** Lambda SnapStart only supports the Java 11, Java 17 and Java 21 runtimes and does not support provisioned concurrency, the arm64 architecture, the Lambda Extensions API, Amazon Elastic File System (Amazon EFS), AWS X-Ray, or ephemeral storage greater than 512 MB.
+**Note:** SnapStart support and limitations are defined by AWS and may change over time. See the [AWS SnapStart documentation](https://docs.aws.amazon.com/lambda/latest/dg/snapstart.html) for the current supported runtimes and restrictions.
 
 ## Recursive Loop Detection
 

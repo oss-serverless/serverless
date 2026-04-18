@@ -189,6 +189,28 @@ describe('lib/plugins/aws/package/compile/layers/index.test.js', () => {
     expect(layerOne.Properties.CompatibleRuntimes).to.deep.equals(['nodejs20.x']);
   });
 
+  it('should accept `layers[].compatibleRuntimes: [java25]`', async () => {
+    const {
+      awsNaming,
+      cfTemplate: { Resources },
+    } = await runServerless({
+      fixture: 'layer',
+      command: 'package',
+      configExt: {
+        layers: {
+          layer: {
+            compatibleRuntimes: ['java25'],
+          },
+        },
+      },
+      awsRequestStubMap,
+    });
+
+    expect(
+      Resources[awsNaming.getLambdaLayerLogicalId('layer')].Properties.CompatibleRuntimes
+    ).to.deep.equal(['java25']);
+  });
+
   it('should support `layers[].compatibleArchitectures`', () => {
     const layerResourceName = naming.getLambdaLayerLogicalId('LayerTwo');
     const layerOne = cfResources[layerResourceName];

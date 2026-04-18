@@ -506,15 +506,34 @@ describe('AwsInvokeLocal', () => {
       ).to.be.equal(true);
     });
 
-    it('should call invokeLocalJava when java8 runtime is set', async () => {
-      awsInvokeLocal.options.functionObj.runtime = 'java8';
+    ['java8', 'java8.al2', 'java11', 'java17', 'java21', 'java25'].forEach((runtime) => {
+      it(`should call invokeLocalJava when ${runtime} runtime is set`, async () => {
+        awsInvokeLocal.options.functionObj.runtime = runtime;
+        await awsInvokeLocal.invokeLocal();
+        expect(invokeLocalJavaStub.calledOnce).to.be.equal(true);
+        expect(
+          invokeLocalJavaStub.calledWithExactly(
+            'java',
+            'handler.hello',
+            'handleRequest',
+            undefined,
+            {},
+            undefined
+          )
+        ).to.be.equal(true);
+      });
+    });
+
+    it('should call invokeLocalJava with an explicit handler method', async () => {
+      awsInvokeLocal.options.functionObj.runtime = 'java21';
+      awsInvokeLocal.options.functionObj.handler = 'com.example.Handler::customMethod';
       await awsInvokeLocal.invokeLocal();
       expect(invokeLocalJavaStub.calledOnce).to.be.equal(true);
       expect(
         invokeLocalJavaStub.calledWithExactly(
           'java',
-          'handler.hello',
-          'handleRequest',
+          'com.example.Handler',
+          'customMethod',
           undefined,
           {},
           undefined

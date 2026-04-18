@@ -126,7 +126,7 @@ This example will pass the json context in the `lib/context.json` file (relative
 
 ### Limitations
 
-Currently, `invoke local` only supports the Node.js, Python, Java and Ruby runtimes.
+`invoke local` runs Node.js, Python, Java, and Ruby runtimes directly on your machine. Other runtimes are invoked through Docker.
 
 ## Resource permissions
 
