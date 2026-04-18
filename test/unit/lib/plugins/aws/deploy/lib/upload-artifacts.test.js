@@ -304,9 +304,8 @@ describe('uploadArtifacts', () => {
       customResourcesFilePath = path.join(serviceDirPath, '.serverless', 'custom-resources.zip');
       // Ensure no file stream is created, as by having provider.request mocked it'll be not consumed.
       // File stream points file in temporary home folder which is cleaned after this test file is run.
-      // There were observed race conditions (mostly in Node.js v6) where this temporary home
-      // folder was cleaned before stream initialized fully, hence throwing uncaught
-      // ENOENT exception into the air.
+      // There were observed race conditions where this temporary home folder was cleaned
+      // before stream initialized fully, hence throwing uncaught ENOENT exception into the air.
       sinon.stub(fs, 'createReadStream').returns({
         path: customResourcesFilePath,
         on: () => {},

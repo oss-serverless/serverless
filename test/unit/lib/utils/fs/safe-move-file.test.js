@@ -20,7 +20,6 @@ chai.use(sinonChai);
  * @returns an Error object that resembles the EXDEV errors are thrown
  */
 const createFakeExDevError = () => {
-  // Properties captured by using fs.renameSync in the Node v12.20.1 REPL
   const fakeCrossDeviceError = new Error(
     "Error: EXDEV: cross-device link not permitted, rename '/foo/bar' -> '/bar/baz'"
   );

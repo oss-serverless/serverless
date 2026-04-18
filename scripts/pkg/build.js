@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// Node.js v8+ only
+// Node.js v20+ only
 
 'use strict';
 
@@ -20,7 +20,7 @@ const spawnOptions = { cwd: serverlessPath, stdio: 'inherit' };
   // It's due to fact that npm tends to issue buggy releases
   // Node.js confirms on given version before including it within its bundle
   // Version mappings reference: https://nodejs.org/en/download/releases/
-  await spawn('npm', ['install', '--no-save', 'npm@8.1.2'], spawnOptions);
+  await spawn('npm', ['install', '--no-save', 'npm@10.8.2'], spawnOptions);
 
   try {
     process.stdout.write('Build binaries\n');
@@ -31,7 +31,7 @@ const spawnOptions = { cwd: serverlessPath, stdio: 'inherit' };
         '-c',
         'scripts/pkg/config.js',
         '--targets',
-        'node16-linux-x64,node16-mac-x64,node16-win-x64',
+        'node20-linux-x64,node20-mac-x64,node20-win-x64',
         '--out-path',
         'dist',
         'bin/serverless.js',

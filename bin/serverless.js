@@ -1,9 +1,5 @@
 #!/usr/bin/env node
 
-// WARNING: Do not use syntax not supported by old Node.js versions (v4 lowest)
-// It's to ensure that users running those versions, see properly the error message
-// (as constructed below) instead of the syntax error
-
 'use strict';
 
 // `EvalError` is used to not pollute global namespace but still have the value accessible globally
@@ -13,7 +9,7 @@ if (isMainModule) EvalError.$serverlessCommandStartTime = process.hrtime();
 
 const nodeVersionMajor = Number(process.version.split('.')[0].slice(1));
 const nodeVersionMinor = Number(process.version.split('.')[1]);
-const minimumSupportedVersionMajor = 14;
+const minimumSupportedVersionMajor = 20;
 const minimumSupportedVersionMinor = 0;
 
 if (

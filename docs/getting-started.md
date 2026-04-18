@@ -10,7 +10,7 @@ Install `osls` module via NPM:
 npm install -g osls
 ```
 
-_If you don’t already have Node.js on your machine, [install it first](https://nodejs.org/)._
+_Requires Node.js 20 or later. If you don’t already have a supported Node.js version on your machine, [install it first](https://nodejs.org/)._
 
 ## Creating A Service
 

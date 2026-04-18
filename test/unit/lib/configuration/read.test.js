@@ -87,6 +87,16 @@ describe('test/unit/lib/configuration/read.test.js', () => {
     expect(await readConfiguration(configurationPath)).to.deep.equal(configuration);
   });
 
+  it('should read ESM configuration whose path contains URL-significant characters', async () => {
+    configurationPath = 'serverless#hash.mjs';
+    const configuration = {
+      service: 'test-js',
+      provider: { name: 'aws' },
+    };
+    await fsp.writeFile(configurationPath, `export default ${JSON.stringify(configuration)}`);
+    expect(await readConfiguration(configurationPath)).to.deep.equal(configuration);
+  });
+
   it('should read "serverless.ts" as CJS', async () => {
     await fse.ensureDir('node_modules');
     try {

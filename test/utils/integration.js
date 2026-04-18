@@ -5,7 +5,6 @@
 const path = require('path');
 const fsp = require('fs').promises;
 const spawn = require('child-process-ext/spawn');
-const nodeFetch = require('node-fetch');
 const log = require('log').get('serverless:test');
 const logFetch = require('log').get('fetch');
 const resolveAwsEnv = require('../lib/resolve-aws-env');
@@ -47,25 +46,29 @@ async function removeService(cwd) {
 }
 
 let lastRequestId = 0;
-async function fetch(url, options) {
+async function fetchWithLogging(url, options) {
   const requestId = ++lastRequestId;
   logFetch.debug('[%d] %s %o', requestId, url, options);
 
   let response;
   try {
-    response = await nodeFetch(url, options);
+    response = await fetch(url, options);
   } catch (error) {
     logFetch.error('[%d] request error: %o', requestId, error);
     throw error;
   }
 
-  logFetch.debug('[%d] %d %j', requestId, response.status, response.headers.raw());
-  /* eslint-enable */
+  logFetch.debug(
+    '[%d] %d %j',
+    requestId,
+    response.status,
+    Object.fromEntries(response.headers.entries())
+  );
   response
     .clone()
-    .buffer()
+    .arrayBuffer()
     .then(
-      (buffer) => logFetch.debug('[%d] %s', requestId, String(buffer)),
+      (buffer) => logFetch.debug('[%d] %s', requestId, Buffer.from(buffer).toString()),
       (error) => logFetch.error('[%d] response resolution error: %o', requestId, error)
     );
   return response;
@@ -81,7 +84,7 @@ function getMarkers(functionName) {
 module.exports = {
   deployService,
   env,
-  fetch,
+  fetch: fetchWithLogging,
   removeService,
   getMarkers,
 };

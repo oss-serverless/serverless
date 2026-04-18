@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 
-// Node.js v10+ only
-
 'use strict';
 
 require('essentials');

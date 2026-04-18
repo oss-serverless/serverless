@@ -81,7 +81,6 @@
     "memoizee": "^0.4.15",
     "micromatch": "^4.0.5",
     "module-alias": "^2.2.3",
-    "node-fetch": "^2.6.11",
     "object-hash": "^3.0.0",
     "open": "^8.4.2",
     "process-utils": "^4.0.0",
@@ -95,19 +94,20 @@
     "timers-ext": "^0.1.7",
     "tsx": "^4.20.3",
     "type": "^2.7.2",
+    "undici": "^6.21.0",
     "untildify": "^4.0.0",
     "uuid": "^9.0.0",
     "ws": "^7.5.9",
     "yaml-ast-parser": "0.0.43"
   },
   "devDependencies": {
-    "@serverless/eslint-config": "^5.1.0",
     "adm-zip": "^0.5.10",
     "aws4": "^1.12.0",
     "chai": "^4.3.7",
     "chai-as-promised": "^7.1.1",
-    "eslint": "^8.43.0",
+    "eslint": "^8.57.1",
     "eslint-plugin-import": "^2.27.5",
+    "eslint-plugin-n": "^17.24.0",
     "git-list-updated": "^1.2.1",
     "husky": "^4.3.8",
     "jszip": "^3.10.1",
@@ -126,15 +126,265 @@
     "sinon-chai": "^3.7.0",
     "standard-version": "^9.5.0"
   },
-  "overrides": {
-    "node-fetch": {
-      "whatwg-url": "^12.0.0"
-    }
-  },
   "eslintConfig": {
-    "extends": "@serverless/eslint-config/node/12",
+    "extends": [
+      "eslint:recommended",
+      "plugin:n/recommended"
+    ],
+    "plugins": [
+      "import"
+    ],
     "root": true,
+    "env": {
+      "es2023": true,
+      "node": true
+    },
+    "globals": {
+      "fetch": "readonly"
+    },
+    "rules": {
+      "array-callback-return": "error",
+      "block-scoped-var": "error",
+      "camelcase": [
+        "error",
+        {
+          "properties": "never"
+        }
+      ],
+      "consistent-return": "error",
+      "curly": [
+        "error",
+        "multi-line"
+      ],
+      "default-case": [
+        "error",
+        {
+          "commentPattern": "^no default$"
+        }
+      ],
+      "dot-notation": [
+        "error",
+        {
+          "allowKeywords": true
+        }
+      ],
+      "eqeqeq": [
+        "error",
+        "allow-null"
+      ],
+      "guard-for-in": "error",
+      "import/export": "error",
+      "import/newline-after-import": "error",
+      "import/no-amd": "error",
+      "import/no-duplicates": "error",
+      "import/no-extraneous-dependencies": [
+        "error",
+        {
+          "devDependencies": [
+            "**/*.test.js",
+            "**/scripts/**",
+            "**/test/**",
+            "**/tests/**",
+            "prettier.config.js"
+          ]
+        }
+      ],
+      "import/no-mutable-exports": "error",
+      "import/no-named-as-default": "error",
+      "import/no-named-as-default-member": "error",
+      "import/no-unresolved": [
+        "error",
+        {
+          "commonjs": true
+        }
+      ],
+      "import/prefer-default-export": "error",
+      "new-cap": [
+        "error",
+        {
+          "newIsCap": true
+        }
+      ],
+      "no-array-constructor": "error",
+      "no-caller": "error",
+      "no-confusing-arrow": [
+        "error",
+        {
+          "allowParens": false
+        }
+      ],
+      "no-console": "error",
+      "no-duplicate-imports": "error",
+      "no-else-return": "error",
+      "no-empty-function": [
+        "error",
+        {
+          "allow": [
+            "arrowFunctions",
+            "functions",
+            "methods"
+          ]
+        }
+      ],
+      "no-eval": "error",
+      "no-extra-bind": "error",
+      "no-extra-label": "error",
+      "no-extra-semi": "off",
+      "no-implied-eval": "error",
+      "no-iterator": "error",
+      "no-label-var": "error",
+      "no-lone-blocks": "error",
+      "no-lonely-if": "error",
+      "no-loop-func": "error",
+      "no-mixed-spaces-and-tabs": "off",
+      "no-multi-str": "error",
+      "no-nested-ternary": "error",
+      "no-new": "error",
+      "no-new-func": "error",
+      "no-new-object": "error",
+      "no-new-require": "error",
+      "no-new-wrappers": "error",
+      "no-octal-escape": "error",
+      "no-proto": "error",
+      "no-restricted-syntax": [
+        "error",
+        "DebuggerStatement",
+        "ForInStatement",
+        "WithStatement"
+      ],
+      "no-return-assign": "error",
+      "no-script-url": "error",
+      "no-self-compare": "error",
+      "no-sequences": "error",
+      "no-shadow": "error",
+      "no-throw-literal": "error",
+      "no-undef-init": "error",
+      "no-unexpected-multiline": "off",
+      "no-unneeded-ternary": [
+        "error",
+        {
+          "defaultAssignment": false
+        }
+      ],
+      "no-unused-expressions": [
+        "error"
+      ],
+      "no-unused-vars": [
+        "error",
+        {
+          "vars": "local",
+          "args": "after-used"
+        }
+      ],
+      "no-useless-computed-key": "error",
+      "no-useless-concat": "error",
+      "no-useless-constructor": "error",
+      "no-useless-rename": [
+        "error",
+        {
+          "ignoreDestructuring": false,
+          "ignoreImport": false,
+          "ignoreExport": false
+        }
+      ],
+      "no-var": "error",
+      "no-void": "error",
+      "object-shorthand": [
+        "error",
+        "always",
+        {
+          "ignoreConstructors": false,
+          "avoidQuotes": true
+        }
+      ],
+      "one-var": [
+        "error",
+        "never"
+      ],
+      "operator-assignment": [
+        "error",
+        "always"
+      ],
+      "quotes": [
+        "error",
+        "single",
+        {
+          "avoidEscape": true
+        }
+      ],
+      "prefer-arrow-callback": [
+        "error",
+        {
+          "allowNamedFunctions": false,
+          "allowUnboundThis": true
+        }
+      ],
+      "prefer-const": [
+        "error",
+        {
+          "destructuring": "any",
+          "ignoreReadBeforeAssign": true
+        }
+      ],
+      "prefer-rest-params": "error",
+      "prefer-spread": "error",
+      "prefer-template": "error",
+      "radix": "error",
+      "require-atomic-updates": "off",
+      "vars-on-top": "error",
+      "spaced-comment": [
+        "error",
+        "always",
+        {
+          "exceptions": [
+            "-",
+            "+"
+          ],
+          "markers": [
+            "=",
+            "!"
+          ]
+        }
+      ],
+      "strict": [
+        "error",
+        "safe"
+      ],
+      "yoda": "error",
+      "n/no-unsupported-features/node-builtins": [
+        "error",
+        {
+          "allowExperimental": true
+        }
+      ],
+      "n/no-extraneous-require": "off",
+      "n/no-unpublished-require": "off",
+      "n/no-missing-require": "off",
+      "n/no-process-exit": "off",
+      "n/no-deprecated-api": "off",
+      "n/hashbang": "off"
+    },
     "overrides": [
+      {
+        "files": [
+          "**/*.mjs"
+        ],
+        "parserOptions": {
+          "sourceType": "module"
+        }
+      },
+      {
+        "files": [
+          "**/*.test.js",
+          "**/test/**"
+        ],
+        "env": {
+          "mocha": true
+        },
+        "rules": {
+          "no-unused-expressions": "off"
+        }
+      },
       {
         "files": [
           "test/fixtures/**"
@@ -154,14 +404,6 @@
         ],
         "parserOptions": {
           "sourceType": "module"
-        }
-      },
-      {
-        "files": [
-          "lib/utils/import-esm.js"
-        ],
-        "parserOptions": {
-          "ecmaVersion": 2020
         }
       }
     ]
@@ -210,7 +452,7 @@
     "test:isolated": "node test/lib/bin/mocha-isolated.js \"test/unit/**/*.test.js\""
   },
   "engines": {
-    "node": ">=12.0"
+    "node": ">=20.0.0"
   },
   "license": "MIT"
 }
