@@ -39,28 +39,26 @@ describe('AwsProvider', () => {
 
   describe('runtime schema parity', () => {
     it('should keep `awsLambdaRuntime` in sync with `AwsLambdaRuntime`', () => {
-      const providerPath = path.resolve(__dirname, '../../../../../lib/plugins/aws/provider.js');
+      const localServerless = new Serverless({ ...options, commands: [], options: {} });
       const runtimeTypePath = path.resolve(__dirname, '../../../../../types/index.d.ts');
-      const providerSource = fs.readFileSync(providerPath, 'utf8');
       const runtimeTypeSource = fs.readFileSync(runtimeTypePath, 'utf8');
-      const providerMatch = providerSource.match(
-        /awsLambdaRuntime:\s*\{\s*enum:\s*\[([\s\S]*?)\],\s*\},\s*awsLambdaRuntimeManagement:/
-      );
-      const runtimeTypeMatch = runtimeTypeSource.match(
-        /export type AwsLambdaRuntime =([\s\S]*?)\nexport type AwsLambdaRuntimeManagement =/
-      );
 
-      if (!providerMatch) {
-        throw new Error('Could not find awsLambdaRuntime schema definition');
-      }
+      localServerless.service.provider.name = 'aws';
+      localServerless.cli = new localServerless.classes.CLI();
+      const localAwsProvider = new AwsProvider(localServerless, options);
+      expect(localAwsProvider.serverless).to.equal(localServerless);
+
+      const runtimeTypeMatch = runtimeTypeSource.match(
+        /export type AwsLambdaRuntime =([\s\S]*?)\r?\nexport type AwsLambdaRuntimeManagement =/
+      );
 
       if (!runtimeTypeMatch) {
         throw new Error('Could not find AwsLambdaRuntime type declaration');
       }
 
-      const providerRuntimes = [...providerMatch[1].matchAll(/'([^']+)'/g)]
-        .map((match) => match[1])
-        .sort();
+      const providerRuntimes = [
+        ...localServerless.configSchemaHandler.schema.definitions.awsLambdaRuntime.enum,
+      ].sort();
       const typeRuntimes = [...runtimeTypeMatch[1].matchAll(/'([^']+)'/g)]
         .map((match) => match[1])
         .sort();
