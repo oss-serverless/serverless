@@ -30,7 +30,7 @@ const loadCreate = ({ downloadTemplateFromRepoStub, dirExistsSyncStub } = {}) =>
     '../../utils/rename-service': {
       renameService: renameServiceStub,
     },
-    '@serverless/utils/log': {
+    '../../utils/serverless-utils/log': {
       progress: {
         get: () => ({ notice: sinon.stub() }),
       },
