@@ -1318,66 +1318,61 @@ describe('PluginManager', () => {
 
   describe('#getCommand()', () => {
     beforeEach(() => {
+      pluginManager.addPlugin(Create);
       pluginManager.addPlugin(SynchronousPluginMock);
-      pluginManager.serverless.cli.loadedCommands = {
-        create: {
-          usage: 'Create new Serverless service',
-          lifecycleEvents: ['create'],
-          options: {
-            'template-url': {
-              usage: 'Template URL for the service. Supports: GitHub, BitBucket',
-              shortcut: 'u',
-            },
-          },
-          key: 'create',
-          pluginName: 'Create',
+    });
+
+    it('should return the current create command definition', () => {
+      const command = pluginManager.getCommand(['create']);
+
+      expect(command).to.deep.include({
+        usage: 'Create new Serverless service',
+        lifecycleEvents: ['create'],
+        key: 'create',
+        pluginName: 'Create',
+      });
+      expect(command.options).to.include.all.keys('template-url', 'template-path', 'path', 'name');
+      expect(command.options['template-url']).to.deep.include({
+        usage: 'Template URL for the service. Supports: GitHub, BitBucket',
+        shortcut: 'u',
+      });
+      expect(command.options['template-path']).to.deep.include({
+        usage: 'Template local path for the service.',
+      });
+      expect(command.options.path).to.deep.include({
+        usage: 'The path where the service should be created (e.g. --path my-service)',
+        shortcut: 'p',
+      });
+      expect(command.options.name).to.deep.include({
+        usage: 'Name for the service. Overwrites the default name of the created service.',
+        shortcut: 'n',
+      });
+    });
+
+    it('should return nested command definitions', () => {
+      const command = pluginManager.getCommand(['deploy', 'onpremises']);
+
+      expect(command).to.deep.include({
+        usage: 'Deploy to your On-Premises infrastructure',
+        lifecycleEvents: ['resources', 'functions'],
+        key: 'deploy:onpremises',
+        pluginName: 'SynchronousPluginMock',
+      });
+      expect(command.options).to.deep.equal({
+        resource: {
+          usage: 'The resource you want to deploy (e.g. --resource db)',
+          type: 'string',
         },
-        deploy: {
-          usage: 'Deploy a Serverless service',
-          configDependent: true,
-          lifecycleEvents: ['cleanup', 'initialize'],
-          options: {
-            conceal: {
-              usage: 'Hide secrets from the output (e.g. API Gateway key values)',
-            },
-            stage: {
-              usage: 'Stage of the service',
-              shortcut: 's',
-            },
-          },
-          key: 'deploy',
-          pluginName: 'Deploy',
-          commands: {
-            function: {
-              usage: 'Deploy a single function from the service',
-              lifecycleEvents: ['initialize', 'packageFunction', 'deploy'],
-              options: {
-                function: {
-                  usage: 'Name of the function',
-                  shortcut: 'f',
-                  required: true,
-                },
-              },
-              key: 'deploy:function',
-              pluginName: 'Deploy',
-            },
-            list: {
-              usage: 'List deployed version of your Serverless Service',
-              lifecycleEvents: ['log'],
-              key: 'deploy:list',
-              pluginName: 'Deploy',
-              commands: {
-                functions: {
-                  usage: 'List all the deployed functions and their versions',
-                  lifecycleEvents: ['log'],
-                  key: 'deploy:list:functions',
-                  pluginName: 'Deploy',
-                },
-              },
-            },
-          },
+        function: {
+          usage: 'The function you want to deploy (e.g. --function create)',
+          type: 'string',
         },
-      };
+      });
+    });
+
+    it('should throw on unrecognized commands', () => {
+      expect(() => pluginManager.getCommand(['missing'])).to.throw(ServerlessError);
+      expect(() => pluginManager.getCommand(['missing'])).to.throw('Unrecognized command "missing"');
     });
   });
 
