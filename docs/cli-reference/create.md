@@ -42,7 +42,7 @@ serverless create \
 
 This example will download the template into the `my-new-service` directory. This directory will be created if not present. Serverless will not overwrite an existing target directory when `--path` is used.
 
-Additionally Serverless will rename the service according to the name you provide. If `--name` is omitted, the service name defaults to the target directory name.
+Additionally Serverless will rename the service according to the name you provide. If `--name` is omitted, the service name defaults to the target directory's final path segment.
 
 ### Creating a new service using a local template
 

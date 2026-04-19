@@ -199,6 +199,47 @@ describe('downloadTemplateFromRepo', () => {
       });
     });
 
+    it('should download into the provided path and rename the service to the provided name', async () => {
+      const url = 'https://github.com/johndoe/service-to-be-downloaded';
+      const name = 'new-service-name';
+      const downloadPath = 'custom-target-directory';
+      const targetPath = path.join(serviceDir, downloadPath);
+
+      downloadStub.callsFake(async (downloadUrl, destinationPath) => {
+        expect(downloadUrl).to.equal(`${url}/archive/master.zip`);
+        expect(destinationPath).to.equal(targetPath);
+        writeFileSync(path.join(destinationPath, 'serverless.yml'), 'service: service-name');
+      });
+
+      return expect(downloadTemplateFromRepo(url, name, downloadPath)).to.be.fulfilled.then(
+        (serviceName) => {
+          const yml = readFileSync(path.join(targetPath, 'serverless.yml'));
+          expect(yml.service).to.equal(name);
+          expect(serviceName).to.equal('service-to-be-downloaded');
+        }
+      );
+    });
+
+    it('should default the service name to the target directory basename when only path is provided', async () => {
+      const url = 'https://github.com/johndoe/service-to-be-downloaded';
+      const downloadPath = path.join('nested', 'custom-target-directory');
+      const targetPath = path.join(serviceDir, downloadPath);
+
+      downloadStub.callsFake(async (downloadUrl, destinationPath) => {
+        expect(downloadUrl).to.equal(`${url}/archive/master.zip`);
+        expect(destinationPath).to.equal(targetPath);
+        writeFileSync(path.join(destinationPath, 'serverless.yml'), 'service: service-name');
+      });
+
+      return expect(downloadTemplateFromRepo(url, undefined, downloadPath)).to.be.fulfilled.then(
+        (serviceName) => {
+          const yml = readFileSync(path.join(targetPath, 'serverless.yml'));
+          expect(yml.service).to.equal('custom-target-directory');
+          expect(serviceName).to.equal('service-to-be-downloaded');
+        }
+      );
+    });
+
     it('should download and rename the service based directories in the GitHub URL', async () => {
       const url = 'https://github.com/serverless/examples/tree/master/rest-api-with-dynamodb';
       const name = 'new-service-name';
@@ -218,6 +259,28 @@ describe('downloadTemplateFromRepo', () => {
       return expect(downloadTemplateFromRepo(url, name)).to.be.fulfilled.then((serviceName) => {
         expect(downloadStub.calledOnce).to.equal(true);
         const yml = readFileSync(path.join(newServicePath, 'serverless.yml'));
+        expect(yml.service).to.equal(name);
+        expect(serviceName).to.equal('rest-api-with-dynamodb');
+      });
+    });
+
+    it('should rename subdirectory downloads even when the requested name matches the repo name', async () => {
+      const url = 'https://github.com/serverless/examples/tree/master/rest-api-with-dynamodb';
+      const name = 'examples';
+      const targetPath = path.join(serviceDir, name);
+
+      downloadStub.callsFake(async () => {
+        const slsYml = path.join(
+          os.tmpdir(),
+          'examples',
+          'rest-api-with-dynamodb',
+          'serverless.yml'
+        );
+        writeFileSync(slsYml, 'service: service-name');
+      });
+
+      return expect(downloadTemplateFromRepo(url, name)).to.be.fulfilled.then((serviceName) => {
+        const yml = readFileSync(path.join(targetPath, 'serverless.yml'));
         expect(yml.service).to.equal(name);
         expect(serviceName).to.equal('rest-api-with-dynamodb');
       });

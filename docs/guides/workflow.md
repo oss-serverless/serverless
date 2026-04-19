@@ -32,7 +32,7 @@ A handy list of commands to use when developing with the Serverless Framework.
 Creates a new Service
 
 ```bash
-serverless create -p [SERVICE NAME] --template-url [TEMPLATE URL]
+serverless create -p [TARGET DIRECTORY] --template-url [TEMPLATE URL]
 ```
 
 ##### Install A Service

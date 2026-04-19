@@ -4,6 +4,8 @@ const chai = require('chai');
 const fsp = require('fs').promises;
 const path = require('path');
 const fse = require('fs-extra');
+const proxyquire = require('proxyquire');
+const sinon = require('sinon');
 const { getTmpDirPath } = require('../../../../utils/fs');
 const runServerless = require('../../../../utils/run-serverless');
 
@@ -56,5 +58,83 @@ describe('test/unit/lib/plugins/create/create.test.js', () => {
         options: {},
       })
     ).to.eventually.be.rejected.and.have.property('code', 'MISSING_TEMPLATE_CLI_PARAM');
+  });
+
+  describe('remote template URL flow', () => {
+    let Create;
+    let downloadTemplateFromRepoStub;
+    let noticeSuccessStub;
+
+    const createInstance = (options) =>
+      new Create(
+        {
+          pluginManager: {
+            commandRunStartTime: Date.now(),
+          },
+        },
+        options
+      );
+
+    beforeEach(() => {
+      const noticeStub = sinon.stub();
+      noticeSuccessStub = sinon.stub();
+      noticeStub.success = noticeSuccessStub;
+      downloadTemplateFromRepoStub = sinon.stub();
+
+      Create = proxyquire.noCallThru().load('../../../../../lib/plugins/create/create', {
+        '../../utils/download-template-from-repo': {
+          downloadTemplateFromRepo: downloadTemplateFromRepoStub,
+        },
+        '@serverless/utils/log': {
+          progress: {
+            get: () => ({ notice: sinon.stub() }),
+          },
+          log: {
+            notice: noticeStub,
+          },
+          style: {
+            aside: () => '',
+          },
+        },
+      });
+    });
+
+    it('should report the name-based target directory when --name is provided without --path', async () => {
+      const url = 'https://github.com/johndoe/service-to-be-downloaded';
+      downloadTemplateFromRepoStub.resolves('service-to-be-downloaded');
+
+      await createInstance({ 'template-url': url, 'name': 'new-service-name' }).create();
+
+      expect(
+        downloadTemplateFromRepoStub.calledOnceWithExactly(url, 'new-service-name', undefined)
+      ).to.equal(true);
+      expect(noticeSuccessStub.calledOnce).to.equal(true);
+      expect(noticeSuccessStub.firstCall.args[0]).to.contain(
+        'Project successfully created in "./new-service-name"'
+      );
+    });
+
+    it('should report the provided target path when both --path and --name are set', async () => {
+      const url = 'https://github.com/johndoe/service-to-be-downloaded';
+      downloadTemplateFromRepoStub.resolves('service-to-be-downloaded');
+
+      await createInstance({
+        'template-url': url,
+        'path': 'nested/service-directory',
+        'name': 'new-service-name',
+      }).create();
+
+      expect(
+        downloadTemplateFromRepoStub.calledOnceWithExactly(
+          url,
+          'new-service-name',
+          'nested/service-directory'
+        )
+      ).to.equal(true);
+      expect(noticeSuccessStub.calledOnce).to.equal(true);
+      expect(noticeSuccessStub.firstCall.args[0]).to.contain(
+        'Project successfully created in "nested/service-directory"'
+      );
+    });
   });
 });

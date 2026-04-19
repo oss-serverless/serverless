@@ -110,7 +110,10 @@ describe('Install', () => {
       downloadStub.resolves('remote-service');
 
       return install.install().then(() => {
-        expect(downloadStub).to.have.been.calledOnce;
+        expect(downloadStub).to.have.been.calledOnceWithExactly(
+          'https://github.com/johndoe/remote-service',
+          undefined
+        );
       });
     });
 
@@ -120,7 +123,10 @@ describe('Install', () => {
       downloadStub.resolves('remote-service');
 
       return install.install().then(() => {
-        expect(downloadStub).to.have.been.calledOnce;
+        expect(downloadStub).to.have.been.calledOnceWithExactly(
+          'https://github.com/johndoe/remote-service',
+          'remote'
+        );
       });
     });
   });
