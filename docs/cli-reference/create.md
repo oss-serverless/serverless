@@ -53,6 +53,6 @@ serverless create \
   --name my-new-service
 ```
 
-This will copy the `path/to/my/template/folder` folder into `path/to/my/service`. If `--name` is provided, the copied template's service name will be renamed to `my-new-service`.
+This will copy the `path/to/my/template/folder` folder into `path/to/my/service`. If `--name` is provided, the copied template's service name will be renamed to `my-new-service`. If `--name` is omitted, the service name defaults to the target directory's final path segment.
 
-If neither `--path` nor `--name` is provided, Serverless will create a new directory named after the local template folder.
+If neither `--path` nor `--name` is provided, Serverless will create a new directory named after the local template folder and preserve the template's existing service name.

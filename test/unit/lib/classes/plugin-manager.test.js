@@ -1372,7 +1372,9 @@ describe('PluginManager', () => {
 
     it('should throw on unrecognized commands', () => {
       expect(() => pluginManager.getCommand(['missing'])).to.throw(ServerlessError);
-      expect(() => pluginManager.getCommand(['missing'])).to.throw('Unrecognized command "missing"');
+      expect(() => pluginManager.getCommand(['missing'])).to.throw(
+        'Unrecognized command "missing"'
+      );
     });
   });
 

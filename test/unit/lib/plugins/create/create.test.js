@@ -215,6 +215,36 @@ describe('test/unit/lib/plugins/create/create.test.js', () => {
       );
     });
 
+    it('should default the service name to the target directory basename when only --path is provided', async () => {
+      const { Create, copyDirContentsSyncStub, noticeSuccessStub, renameServiceStub } =
+        loadCreate();
+      const targetPath = 'nested/service-directory';
+      const expectedServiceDir = path.resolve(process.cwd(), targetPath);
+
+      await new Create(
+        {
+          pluginManager: {
+            commandRunStartTime: Date.now(),
+          },
+        },
+        {
+          'template-path': path.join(fixturesPath, 'aws'),
+          'path': targetPath,
+        }
+      ).create();
+
+      expect(copyDirContentsSyncStub.calledOnce).to.equal(true);
+      expect(copyDirContentsSyncStub.firstCall.args[0]).to.equal(path.join(fixturesPath, 'aws'));
+      expect(copyDirContentsSyncStub.firstCall.args[1]).to.equal(expectedServiceDir);
+      expect(
+        renameServiceStub.calledOnceWithExactly('service-directory', expectedServiceDir)
+      ).to.equal(true);
+      expect(noticeSuccessStub.calledOnce).to.equal(true);
+      expect(noticeSuccessStub.firstCall.args[0]).to.contain(
+        'Project successfully created in "nested/service-directory"'
+      );
+    });
+
     it('should report the provided local target path when the directory already exists', async () => {
       const { Create } = loadCreate({
         dirExistsSyncStub: sinon.stub().returns(true),

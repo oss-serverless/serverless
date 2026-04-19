@@ -34,6 +34,22 @@ describe('test/integration/create.test.js', function () {
     expect(serverlessYmlfileContent).to.include('service: new-service-name');
   });
 
+  it('should default the local service name to the target directory basename when only --path is provided', async () => {
+    const tmpDir = path.join(getTmpDirPath(), 'nested', 'custom-target-directory');
+    await spawn(serverlessExec, [
+      'create',
+      '--template-path',
+      path.join(fixturesPath, 'aws'),
+      '--path',
+      tmpDir,
+    ]);
+
+    const serverlessYmlfileContent = (
+      await fsp.readFile(path.join(tmpDir, 'serverless.yml'))
+    ).toString();
+    expect(serverlessYmlfileContent).to.include('service: custom-target-directory');
+  });
+
   it('should error out when trying to create project in already existing directory', async () => {
     const tmpDir = getTmpDirPath();
     await fse.ensureDir(tmpDir);
