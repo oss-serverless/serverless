@@ -11,7 +11,7 @@ const memoizee = require('memoizee');
 const _ = require('lodash');
 const log = require('log').get('serverless:test');
 const { load: loadYaml, dump: saveYaml } = require('js-yaml');
-const cloudformationSchema = require('@serverless/utils/cloudformation-schema');
+const cloudformationSchema = require('../../lib/utils/serverless-utils/cloudformation-schema');
 const provisionTmpDir = require('./provision-tmp-dir');
 
 const isFixtureConfigured = memoizee((fixturePath) => {

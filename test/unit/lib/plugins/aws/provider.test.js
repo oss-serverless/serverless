@@ -219,7 +219,7 @@ describe('AwsProvider', () => {
         .noCallThru()
         .load('../../../../../lib/plugins/aws/provider.js', {
           '../../aws/request': awsRequestStub,
-          '@serverless/utils/log': {
+          '../../utils/serverless-utils/log': {
             log: {
               debug: sinon.stub(),
             },

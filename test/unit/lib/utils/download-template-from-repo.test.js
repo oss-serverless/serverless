@@ -59,7 +59,7 @@ describe('downloadTemplateFromRepo', () => {
     const downloadTemplateFromRepoModule = proxyquire(
       '../../../../lib/utils/download-template-from-repo',
       {
-        '@serverless/utils/download': downloadStub,
+        './serverless-utils/download': downloadStub,
         'child-process-ext/spawn': spawnStub,
       }
     );

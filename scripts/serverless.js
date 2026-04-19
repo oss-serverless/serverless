@@ -9,8 +9,8 @@ require('essentials');
 require('graceful-fs').gracefulify(require('fs'));
 
 // Setup log writing
-require('@serverless/utils/log-reporters/node');
-const { log, progress } = require('@serverless/utils/log');
+require('../lib/utils/serverless-utils/log-reporters/node');
+const { log, progress } = require('../lib/utils/serverless-utils/log');
 
 const processLog = log.get('process');
 
