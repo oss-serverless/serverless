@@ -1333,7 +1333,8 @@ describe('PluginManager', () => {
       });
       expect(command.options).to.include.all.keys('template-url', 'template-path', 'path', 'name');
       expect(command.options['template-url']).to.deep.include({
-        usage: 'Template URL for the service. Supports: GitHub, BitBucket',
+        usage:
+          'Template URL for the service. Supports plain Git URLs plus GitHub, GitHub Enterprise, GitLab, Bitbucket, and Bitbucket Server.',
         shortcut: 'u',
       });
       expect(command.options['template-path']).to.deep.include({
@@ -1344,7 +1345,8 @@ describe('PluginManager', () => {
         shortcut: 'p',
       });
       expect(command.options.name).to.deep.include({
-        usage: 'Name for the service. Overwrites the default name of the created service.',
+        usage:
+          'Name for the service. Overwrites the default name of the created service and is used as the target directory when --path is omitted.',
         shortcut: 'n',
       });
     });
