@@ -268,6 +268,24 @@ describe('downloadTemplateFromRepo', () => {
       );
     });
 
+    it('should treat --name as a literal target directory name when --path is omitted', async () => {
+      const url = 'https://github.com/johndoe/service-to-be-downloaded';
+      const name = '~/service';
+      const targetPath = path.join(serviceDir, name);
+
+      downloadStub.callsFake(async (downloadUrl, destinationPath) => {
+        expect(downloadUrl).to.equal(`${url}/archive/master.zip`);
+        expect(destinationPath).to.equal(targetPath);
+        writeFileSync(path.join(destinationPath, 'serverless.yml'), 'service: service-name');
+      });
+
+      return expect(downloadTemplateFromRepo(url, name)).to.be.fulfilled.then((serviceName) => {
+        const yml = readFileSync(path.join(targetPath, 'serverless.yml'));
+        expect(yml.service).to.equal(name);
+        expect(serviceName).to.equal('service-to-be-downloaded');
+      });
+    });
+
     it('should download and rename the service based directories in the GitHub URL', async () => {
       const url = 'https://github.com/serverless/examples/tree/master/rest-api-with-dynamodb';
       const name = 'new-service-name';
@@ -288,6 +306,27 @@ describe('downloadTemplateFromRepo', () => {
         expect(downloadStub.calledOnce).to.equal(true);
         const yml = readFileSync(path.join(newServicePath, 'serverless.yml'));
         expect(yml.service).to.equal(name);
+        expect(serviceName).to.equal('rest-api-with-dynamodb');
+      });
+    });
+
+    it('should rename subdirectory downloads to the folder name when no name or path is provided', async () => {
+      const url = 'https://github.com/serverless/examples/tree/master/rest-api-with-dynamodb';
+      const targetPath = path.join(serviceDir, 'rest-api-with-dynamodb');
+
+      downloadStub.callsFake(async () => {
+        const slsYml = path.join(
+          os.tmpdir(),
+          'examples',
+          'rest-api-with-dynamodb',
+          'serverless.yml'
+        );
+        writeFileSync(slsYml, 'service: service-name');
+      });
+
+      return expect(downloadTemplateFromRepo(url)).to.be.fulfilled.then((serviceName) => {
+        const yml = readFileSync(path.join(targetPath, 'serverless.yml'));
+        expect(yml.service).to.equal('rest-api-with-dynamodb');
         expect(serviceName).to.equal('rest-api-with-dynamodb');
       });
     });

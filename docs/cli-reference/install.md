@@ -1,6 +1,6 @@
 # AWS - Install
 
-Installs a service from a GitHub URL in the current working directory.
+Installs a service from a remote Git URL into a new directory in the current working directory.
 
 ```bash
 serverless install --url https://github.com/some/service
@@ -9,42 +9,43 @@ serverless install --url https://github.com/some/service
 ## Options
 
 - `--url` or `-u` The services Git URL (can be a plain Git or a Code Hosting Platform URL). **Required**.
-- `--name` or `-n` Name for the service.
+- `--name` or `-n` Name for the service. Also used as the target directory name.
 
 ## Provided lifecycle events
 
 - `install:install`
 
-## Supported Code Hosting Platforms
+## Supported Remote Sources
 
+- Plain Git URLs
 - GitHub
 - GitHub Enterprise
 - GitLab
-- BitBucket
-- BitBucket Server
+- Bitbucket
+- Bitbucket Server
 
 ## Examples
 
-### Installing a service from a GitHub URL
+### Installing a service from a remote URL
 
 ```bash
 serverless install --url https://github.com/pmuens/serverless-crud
 ```
 
-This example will download the .zip file of the `serverless-crud` service from GitHub, create a new directory with the name `serverless-crud` in the current working directory and unzips the files in this directory.
+This example downloads the `serverless-crud` service from the remote repository, creates a new directory named `serverless-crud` in the current working directory, and unzips the files into it.
 
-### Installing a service from a GitHub URL with a new service name
+### Installing a service from a remote URL with a new service name
 
 ```bash
 serverless install --url https://github.com/pmuens/serverless-crud --name my-crud
 ```
 
-This example will download the .zip file of the `serverless-crud` service from GitHub, create a new directory with the name `my-crud` in the current working directory and unzips the files in this directory and renames the service to `my-crud` if `serverless.yml` exists in the service root.
+This example downloads the `serverless-crud` service from the remote repository, creates a new directory named `my-crud` in the current working directory, and renames the service to `my-crud` if `serverless.yml` exists in the service root.
 
-### Installing a service from a directory in a GitHub URL
+### Installing a service from a repository subdirectory URL
 
 ```bash
 serverless install --url https://github.com/serverless/examples/tree/master/aws-node-rest-api-with-dynamodb
 ```
 
-This example will download the `aws-node-rest-api-with-dynamodb` service from GitHub.
+This example downloads the `aws-node-rest-api-with-dynamodb` service from a repository subdirectory.
