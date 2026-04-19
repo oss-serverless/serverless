@@ -41,22 +41,20 @@ describe('test/unit/lib/plugins/create/create.test.js', () => {
         noService: true,
         command: 'create',
         options: {
-          template: 'aws-nodejs',
+          'template-path': path.join(fixturesPath, 'aws'),
           path: tmpDir,
         },
       })
     ).to.eventually.be.rejected.and.have.property('code', 'TARGET_FOLDER_ALREADY_EXISTS');
   });
 
-  it('should error out when trying to create project from nonexistent template', async () => {
+  it('should error out when no template source is provided', async () => {
     await expect(
       runServerless({
         noService: true,
         command: 'create',
-        options: {
-          template: 'aws-nodejs-nonexistent',
-        },
+        options: {},
       })
-    ).to.eventually.be.rejected.and.have.property('code', 'NOT_SUPPORTED_TEMPLATE');
+    ).to.eventually.be.rejected.and.have.property('code', 'MISSING_TEMPLATE_CLI_PARAM');
   });
 });

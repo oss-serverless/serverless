@@ -37,6 +37,12 @@ describe('AwsProvider', () => {
   });
   afterEach(() => restoreEnv());
 
+  describe('#getRuntime()', () => {
+    it('should default to "nodejs24.x" when no runtime is configured', () => {
+      expect(awsProvider.getRuntime()).to.equal('nodejs24.x');
+    });
+  });
+
   describe('runtime schema parity', () => {
     it('should keep `awsLambdaRuntime` in sync with `AwsLambdaRuntime`', () => {
       const localServerless = new Serverless({ ...options, commands: [], options: {} });

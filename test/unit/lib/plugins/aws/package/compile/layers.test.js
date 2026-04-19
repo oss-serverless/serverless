@@ -211,6 +211,26 @@ describe('lib/plugins/aws/package/compile/layers/index.test.js', () => {
     ).to.deep.equal(['java25']);
   });
 
+  it('should reject deprecated `layers[].compatibleRuntimes` values', () => {
+    return expect(
+      runServerless({
+        fixture: 'layer',
+        command: 'package',
+        configExt: {
+          layers: {
+            layer: {
+              compatibleRuntimes: ['go1.x'],
+            },
+          },
+        },
+        awsRequestStubMap,
+      })
+    ).to.eventually.be.rejected.and.have.property(
+      'code',
+      'INVALID_NON_SCHEMA_COMPLIANT_CONFIGURATION'
+    );
+  });
+
   it('should support `layers[].compatibleArchitectures`', () => {
     const layerResourceName = naming.getLambdaLayerLogicalId('LayerTwo');
     const layerOne = cfResources[layerResourceName];

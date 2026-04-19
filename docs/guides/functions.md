@@ -12,7 +12,7 @@ service: myService
 
 provider:
   name: aws
-  runtime: nodejs20.x
+  runtime: nodejs24.x
   runtimeManagement: auto # optional, set how Lambda controls all functions runtime. AWS default is auto; this can either be 'auto' or 'onFunctionUpdate'. For 'manual', see example in hello function below (syntax for both is identical)
   memorySize: 512 # optional, in MB, default is 1024
   timeout: 10 # optional, in seconds, default is 6
@@ -25,7 +25,7 @@ functions:
     handler: handler.hello # required, handler set in AWS Lambda
     name: ${sls:stage}-lambdaName # optional, Deployed Lambda name
     description: Description of what the lambda function does # optional, Description to publish to AWS
-    runtime: python3.11 # optional overwrite, default is provider runtime
+    runtime: python3.14 # optional overwrite, default is provider runtime
     runtimeManagement:
       mode: manual # syntax required for manual, mode property also supports 'auto' or 'onFunctionUpdate' (see provider.runtimeManagement)
       arn: <aws runtime arn> # required when mode is manual
@@ -36,11 +36,17 @@ functions:
     tracing: PassThrough # optional, overwrite, can be 'Active' or 'PassThrough'
 ```
 
+If `provider.runtime` is omitted for AWS services, Serverless defaults to the latest supported Node.js Lambda runtime. Today that is `nodejs24.x`.
+
+We still recommend explicitly setting the runtime you want to deploy, either at `provider.runtime` or per function, so your service does not change runtimes when that default advances.
+
+For new services, prefer `nodejs24.x`, `python3.14`, `java25`, `dotnet10`, `ruby3.4`, and `provided.al2023` for custom runtimes.
+
 The `handler` property points to the file and module containing the code you want to run in your function.
 
 ```javascript
 // handler.js
-module.exports.functionOne = function (event, context, callback) {};
+module.exports.functionOne = async (event) => {};
 ```
 
 You can add as many functions as you want within this property.
@@ -52,7 +58,7 @@ service: myService
 
 provider:
   name: aws
-  runtime: nodejs20.x
+  runtime: nodejs24.x
 
 functions:
   functionOne:
@@ -72,7 +78,7 @@ service: myService
 
 provider:
   name: aws
-  runtime: nodejs20.x
+  runtime: nodejs24.x
   memorySize: 512 # will be inherited by all functions
 
 functions:
@@ -88,7 +94,7 @@ service: myService
 
 provider:
   name: aws
-  runtime: nodejs20.x
+  runtime: nodejs24.x
 
 functions:
   functionOne:
@@ -124,7 +130,7 @@ service: myService
 
 provider:
   name: aws
-  runtime: nodejs20.x
+  runtime: nodejs24.x
   iam:
     role:
       statements: # permissions for all of your functions can be set here
@@ -445,7 +451,7 @@ To enable SnapStart for your lambda function you can add the `snapStart` object 
 functions:
   hello:
     ...
-    runtime: java11
+    runtime: java25
     snapStart: true
 ```
 
@@ -669,7 +675,7 @@ functions:
 Real-world use cases where tagging your functions is helpful include:
 
 - Cost estimations (tag functions with an environment tag: `environment: Production`)
-- Keeping track of legacy code (e.g. tag functions which use outdated runtimes: `runtime: nodejs0.10`)
+- Keeping track of legacy code (e.g. tag functions which use outdated runtimes: `runtime: legacy`)
 - ...
 
 ## Layers
@@ -685,7 +691,7 @@ functions:
       - arn:aws:lambda:region:XXXXXX:layer:LayerName:Y
 ```
 
-Layers can be used in combination with `runtime: provided` to implement your own custom runtime on
+Layers can be used in combination with `runtime: provided.al2023` to implement your own custom runtime on
 AWS Lambda.
 
 To publish Lambda Layers, check out the [Layers](./layers.md) documentation.
@@ -742,7 +748,7 @@ service: service
 
 provider:
   name: aws
-  runtime: nodejs20.x
+  runtime: nodejs24.x
 
 functions:
   hello:
@@ -795,7 +801,7 @@ service: myService
 
 provider:
   name: aws
-  runtime: nodejs20.x
+  runtime: nodejs24.x
   tracing:
     lambda: true
 ```

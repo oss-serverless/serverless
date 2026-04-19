@@ -51,33 +51,24 @@ export type AwsLogRetentionInDays =
 export type AwsLambdaMemorySize = number;
 export type AwsLambdaRole = string | AwsCfSub | AwsCfImport | AwsCfGetAtt;
 export type AwsLambdaRuntime =
-  | 'dotnet6'
   | 'dotnet8'
   | 'dotnet9'
   | 'dotnet10'
-  | 'go1.x'
   | 'java25'
   | 'java21'
   | 'java17'
   | 'java11'
-  | 'java8'
   | 'java8.al2'
   | 'nodejs20.x'
   | 'nodejs22.x'
   | 'nodejs24.x'
-  | 'provided'
   | 'provided.al2'
   | 'provided.al2023'
-  | 'python3.7'
-  | 'python3.8'
-  | 'python3.9'
   | 'python3.10'
   | 'python3.11'
   | 'python3.12'
   | 'python3.13'
   | 'python3.14'
-  | 'ruby2.7'
-  | 'ruby3.2'
   | 'ruby3.3'
   | 'ruby3.4';
 export type AwsLambdaRuntimeManagement =

@@ -106,18 +106,16 @@ functions:
 
 'use strict';
 
-module.exports.hello = function (event, context, callback) {
+module.exports.hello = async (event) => {
   console.log(event); // Contains incoming request data (e.g., query params, headers and more)
 
-  const response = {
+  return {
     statusCode: 200,
     headers: {
       'x-custom-header': 'My Header Value',
     },
     body: JSON.stringify({ message: 'Hello World!' }),
   };
-
-  callback(null, response);
 };
 ```
 
@@ -356,8 +354,8 @@ If you want to use CORS with the lambda-proxy integration, remember to include t
 
 'use strict';
 
-module.exports.hello = function (event, context, callback) {
-  const response = {
+module.exports.hello = async () => {
+  return {
     statusCode: 200,
     headers: {
       // Required for CORS support to work
@@ -367,8 +365,6 @@ module.exports.hello = function (event, context, callback) {
     },
     body: JSON.stringify({ message: 'Hello World!' }),
   };
-
-  callback(null, response);
 };
 ```
 
@@ -1167,12 +1163,14 @@ the `${file(templatefile)}` syntax.
 Serverless ships with default status codes you can use to e.g. signal that a resource could not be found (404) or that
 the user is not authorized to perform the action (401). Those status codes are regex definitions that will be added to your API Gateway configuration.
 
-**_Note:_** Status codes as documented in this chapter relate to `lambda` integration method (as documented at the top of this page). If using default integration method `lambda-proxy` object with status code and message should be returned as in the example below:
+**_Note:_** Status codes as documented in this chapter relate to `lambda` integration method (as documented at the top of this page). If using default integration method `lambda-proxy`, return an object with the status code and message as in the example below:
 
 ```javascript
-module.exports.hello = (event, context, callback) => {
-  callback(null, { statusCode: 404, body: 'Not found', headers: { 'Content-Type': 'text/plain' } });
-};
+module.exports.hello = async () => ({
+  statusCode: 404,
+  body: 'Not found',
+  headers: { 'Content-Type': 'text/plain' },
+});
 ```
 
 #### Available Status Codes
@@ -1190,14 +1188,13 @@ module.exports.hello = (event, context, callback) => {
 
 #### Using Status Codes
 
-To return a given status code you simply need to add square brackets with the status code of your choice to your
-returned message like this: `[401] You are not authorized to access this resource!`.
+To return a given status code with `lambda` integration, add square brackets with the status code of your choice to the error message like this: `[401] You are not authorized to access this resource!`.
 
-Here's an example which shows you how you can raise a 404 HTTP status from within your lambda function.
+Here's an example which shows you how you can raise a 404 HTTP status from within your Lambda function.
 
 ```javascript
-module.exports.hello = (event, context, callback) => {
-  callback(new Error('[404] Not found'));
+module.exports.hello = async () => {
+  throw new Error('[404] Not found');
 };
 ```
 
@@ -1473,7 +1470,7 @@ service: my-api
 
 provider:
   name: aws
-  runtime: nodejs20.x
+  runtime: nodejs24.x
   stage: dev
   region: eu-west-2
 
@@ -1662,7 +1659,7 @@ Resource policies are policy documents that are used to control the invocation o
 ```yml
 provider:
   name: aws
-  runtime: nodejs20.x
+  runtime: nodejs24.x
 
   apiGateway:
     resourcePolicy:

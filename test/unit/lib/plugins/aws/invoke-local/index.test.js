@@ -440,17 +440,6 @@ describe('AwsInvokeLocal', () => {
       ).to.be.equal(true);
     });
 
-    it('should call invokeLocalPython when python3.9 runtime is set', async () => {
-      awsInvokeLocal.options.functionObj.runtime = 'python3.9';
-      await awsInvokeLocal.invokeLocal();
-      // NOTE: this is important so that tests on Windows won't fail
-      const runtime = process.platform === 'win32' ? 'python.exe' : 'python3.9';
-      expect(invokeLocalPythonStub.calledOnce).to.be.equal(true);
-      expect(
-        invokeLocalPythonStub.calledWithExactly(runtime, 'handler', 'hello', {}, undefined)
-      ).to.be.equal(true);
-    });
-
     it('should call invokeLocalPython when python3.10 runtime is set', async () => {
       awsInvokeLocal.options.functionObj.runtime = 'python3.10';
       await awsInvokeLocal.invokeLocal();
@@ -506,7 +495,7 @@ describe('AwsInvokeLocal', () => {
       ).to.be.equal(true);
     });
 
-    ['java8', 'java8.al2', 'java11', 'java17', 'java21', 'java25'].forEach((runtime) => {
+    ['java8.al2', 'java11', 'java17', 'java21', 'java25'].forEach((runtime) => {
       it(`should call invokeLocalJava when ${runtime} runtime is set`, async () => {
         awsInvokeLocal.options.functionObj.runtime = runtime;
         await awsInvokeLocal.invokeLocal();
@@ -541,28 +530,6 @@ describe('AwsInvokeLocal', () => {
       ).to.be.equal(true);
     });
 
-    it('should call invokeLocalRuby when ruby2.7 runtime is set', async () => {
-      awsInvokeLocal.options.functionObj.runtime = 'ruby2.7';
-      await awsInvokeLocal.invokeLocal();
-      // NOTE: this is important so that tests on Windows won't fail
-      const runtime = process.platform === 'win32' ? 'ruby.exe' : 'ruby';
-      expect(invokeLocalRubyStub.calledOnce).to.be.equal(true);
-      expect(
-        invokeLocalRubyStub.calledWithExactly(runtime, 'handler', 'hello', {}, undefined)
-      ).to.be.equal(true);
-    });
-
-    it('should call invokeLocalRuby when ruby3.2 runtime is set', async () => {
-      awsInvokeLocal.options.functionObj.runtime = 'ruby3.2';
-      await awsInvokeLocal.invokeLocal();
-      // NOTE: this is important so that tests on Windows won't fail
-      const runtime = process.platform === 'win32' ? 'ruby.exe' : 'ruby';
-      expect(invokeLocalRubyStub.calledOnce).to.be.equal(true);
-      expect(
-        invokeLocalRubyStub.calledWithExactly(runtime, 'handler', 'hello', {}, undefined)
-      ).to.be.equal(true);
-    });
-
     it('should call invokeLocalRuby when ruby3.3 runtime is set', async () => {
       awsInvokeLocal.options.functionObj.runtime = 'ruby3.3';
       await awsInvokeLocal.invokeLocal();
@@ -585,8 +552,8 @@ describe('AwsInvokeLocal', () => {
       ).to.be.equal(true);
     });
 
-    it('should call invokeLocalDocker if using runtime provided', async () => {
-      awsInvokeLocal.options.functionObj.runtime = 'provided';
+    it('should call invokeLocalDocker if using runtime provided.al2023', async () => {
+      awsInvokeLocal.options.functionObj.runtime = 'provided.al2023';
       awsInvokeLocal.options.functionObj.handler = 'handler.foobar';
       await awsInvokeLocal.invokeLocal();
       expect(invokeLocalDockerStub.calledOnce).to.be.equal(true);
@@ -1397,6 +1364,6 @@ describe('test/unit/lib/plugins/aws/invokeLocal/index.test.js', () => {
     // - Ensure all other tests are skipped
 
     testRuntime('callback', ['--docker']);
-    it('TODO: should support "provided" runtime in docker invocation', () => {});
+    it('TODO: should support custom runtimes in docker invocation', () => {});
   });
 });

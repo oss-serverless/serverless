@@ -20,20 +20,14 @@ Here is an example in Node.js of how to follow the practices above. The job this
 const db = require('db').connect();
 const mailer = require('mailer');
 
-module.exports.saveUser = (event, context, callback) => {
+module.exports.saveUser = async (event) => {
   const user = {
     email: event.email,
     created_at: Date.now(),
   };
 
-  db.saveUser(user, function (err) {
-    if (err) {
-      callback(err);
-    } else {
-      mailer.sendWelcomeEmail(event.email);
-      callback();
-    }
-  });
+  await db.saveUser(user);
+  await mailer.sendWelcomeEmail(event.email);
 };
 ```
 
@@ -53,20 +47,14 @@ class Users {
     this.mailer = mailer;
   }
 
-  save(email, callback) {
+  async save(email) {
     const user = {
-      email: email,
+      email,
       created_at: Date.now(),
     };
 
-    this.db.saveUser(user, function (err) {
-      if (err) {
-        callback(err);
-      } else {
-        this.mailer.sendWelcomeEmail(email);
-        callback();
-      }
-    });
+    await this.db.saveUser(user);
+    await this.mailer.sendWelcomeEmail(email);
   }
 }
 
@@ -78,16 +66,16 @@ const db = require('db').connect();
 const mailer = require('mailer');
 const Users = require('users');
 
-let users = new Users(db, mailer);
+const users = new Users(db, mailer);
 
-module.exports.saveUser = (event, context, callback) => {
-  users.save(event.email, callback);
+module.exports.saveUser = async (event) => {
+  await users.save(event.email);
 };
 ```
 
 Now, the above class keeps business logic separate. Further, the code responsible for setting up dependencies, injecting them, calling business logic functions and interacting with AWS Lambda is in its own file, which will be changed less often. This way, the business logic is not provider dependent, easier to re-use, and easier to test.
 
-Further, this code doesn't require running any external services. Instead of a real `db` and `mailer` services, we can pass mocks and assert if `saveUser` and `sendWelcomeEmail` has been called with proper arguments.
+Further, this code doesn't require running any external services. Instead of real `db` and `mailer` services, we can pass mocks and assert that `db.saveUser` and `mailer.sendWelcomeEmail` have been called with the proper arguments.
 
 Unit Tests can easily be written to cover the above class. An integration test can be added by invoking the function (`serverless invoke`) with fixture email address, check if user is actually saved to DB and check if email was received to see if everything is working together.
 

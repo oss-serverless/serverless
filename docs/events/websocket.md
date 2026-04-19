@@ -31,7 +31,7 @@ functions:
           route: $disconnect
 ```
 
-This code will setup a [RouteResponse](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-websocket-api-route-response.html), enabling you to respond to websocket messages by using the `body` parameter of your handler's callback response:
+This code will setup a [RouteResponse](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-websocket-api-route-response.html), enabling you to respond to websocket messages by returning an object whose `body` is sent back to the client:
 
 ```yml
 functions:
@@ -61,7 +61,7 @@ service: serverless-ws-test
 
 provider:
   name: aws
-  runtime: nodejs20.x
+  runtime: nodejs24.x
   websocketsApiName: custom-websockets-api-name
   websocketsApiRouteSelectionExpression: $request.body.action # custom routes are selected by the value of the action property in the body
   websocketsDescription: Custom Serverless Websockets
@@ -164,33 +164,26 @@ It uses the URL of the websocket API and most importantly the `connectionId` of 
 Example on how to respond with the complete `event` to the same ws-client:
 
 ```js
-const sendMessageToClient = (url, connectionId, payload) =>
-  new Promise((resolve, reject) => {
-    const apigatewaymanagementapi = new AWS.ApiGatewayManagementApi({
-      apiVersion: '2018-11-29',
-      endpoint: url,
-    });
-    apigatewaymanagementapi.postToConnection(
-      {
-        ConnectionId: connectionId, // connectionId of the receiving ws-client
-        Data: JSON.stringify(payload),
-      },
-      (err, data) => {
-        if (err) {
-          console.log('err is', err);
-          reject(err);
-        }
-        resolve(data);
-      }
-    );
-  });
+const {
+  ApiGatewayManagementApiClient,
+  PostToConnectionCommand,
+} = require('@aws-sdk/client-apigatewaymanagementapi');
 
-module.exports.defaultHandler = async (event, context) => {
-  const domain = event.requestContext.domainName;
-  const stage = event.requestContext.stage;
-  const connectionId = event.requestContext.connectionId;
-  const callbackUrlForAWS = util.format(util.format('https://%s/%s', domain, stage)); //construct the needed url
-  await sendMessageToClient(callbackUrlForAWS, connectionId, event);
+const sendMessageToClient = async (endpoint, connectionId, payload) => {
+  const client = new ApiGatewayManagementApiClient({ endpoint });
+
+  await client.send(
+    new PostToConnectionCommand({
+      ConnectionId: connectionId,
+      Data: Buffer.from(JSON.stringify(payload)),
+    })
+  );
+};
+
+module.exports.defaultHandler = async (event) => {
+  const { domainName, stage, connectionId } = event.requestContext;
+  const endpoint = `https://${domainName}/${stage}`;
+  await sendMessageToClient(endpoint, connectionId, event);
 
   return {
     statusCode: 200,
@@ -198,9 +191,11 @@ module.exports.defaultHandler = async (event, context) => {
 };
 ```
 
+**Note:** For `nodejs24.x`, use the modular AWS SDK v3 package `@aws-sdk/client-apigatewaymanagementapi`. Lambda includes SDK v3 in the runtime, but AWS recommends bundling your own dependency for version control and performance optimization.
+
 ## Respond to a ws-client message
 
-To respond to a websocket message from your handler function, [Route Responses](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-websocket-api-route-response.html) can be used. Set the `routeResponseSelectionExpression` option to enable this. This option allows you to respond to a websocket message using the `body` parameter.
+To respond to a websocket message from your handler function, [Route Responses](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-websocket-api-route-response.html) can be used. Set the `routeResponseSelectionExpression` option to enable this. Your async handler can then return an object whose `body` is sent back to the websocket client.
 
 ```yml
 functions:
@@ -213,7 +208,7 @@ functions:
 ```
 
 ```js
-module.exports.helloHandler = async (event, context) => {
+module.exports.sayHello = async (event) => {
   const body = JSON.parse(event.body);
   return {
     statusCode: 200,

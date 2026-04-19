@@ -335,7 +335,7 @@ describe('AwsCompileFunctions', () => {
           Handler: 'func.function.handler',
           MemorySize: 1024,
           Role: { 'Fn::GetAtt': ['IamRoleLambdaExecution', 'Arn'] },
-          Runtime: 'nodejs20.x',
+          Runtime: 'nodejs24.x',
           Timeout: 6,
         },
       };
@@ -395,7 +395,7 @@ describe('AwsCompileFunctions', () => {
               Handler: 'func.function.handler',
               MemorySize: 1024,
               Role: { 'Fn::GetAtt': ['IamRoleLambdaExecution', 'Arn'] },
-              Runtime: 'nodejs20.x',
+              Runtime: 'nodejs24.x',
               Timeout: 6,
               DeadLetterConfig: {
                 TargetArn: 'arn:aws:sns:region:accountid:foo',
@@ -446,7 +446,7 @@ describe('AwsCompileFunctions', () => {
               Handler: 'func.function.handler',
               MemorySize: 1024,
               Role: { 'Fn::GetAtt': ['IamRoleLambdaExecution', 'Arn'] },
-              Runtime: 'nodejs20.x',
+              Runtime: 'nodejs24.x',
               Timeout: 6,
               DeadLetterConfig: {
                 TargetArn: {
@@ -488,7 +488,7 @@ describe('AwsCompileFunctions', () => {
               Handler: 'func.function.handler',
               MemorySize: 1024,
               Role: { 'Fn::GetAtt': ['IamRoleLambdaExecution', 'Arn'] },
-              Runtime: 'nodejs20.x',
+              Runtime: 'nodejs24.x',
               Timeout: 6,
               DeadLetterConfig: {
                 TargetArn: {
@@ -530,7 +530,7 @@ describe('AwsCompileFunctions', () => {
               Handler: 'func.function.handler',
               MemorySize: 1024,
               Role: { 'Fn::GetAtt': ['IamRoleLambdaExecution', 'Arn'] },
-              Runtime: 'nodejs20.x',
+              Runtime: 'nodejs24.x',
               Timeout: 6,
               DeadLetterConfig: {
                 TargetArn: {
@@ -572,7 +572,7 @@ describe('AwsCompileFunctions', () => {
               Handler: 'func.function.handler',
               MemorySize: 1024,
               Role: { 'Fn::GetAtt': ['IamRoleLambdaExecution', 'Arn'] },
-              Runtime: 'nodejs20.x',
+              Runtime: 'nodejs24.x',
               Timeout: 6,
               DeadLetterConfig: {
                 TargetArn: 'arn:aws:sns:region:accountid:foo',
@@ -639,7 +639,7 @@ describe('AwsCompileFunctions', () => {
               Handler: 'func.function.handler',
               MemorySize: 1024,
               Role: { 'Fn::GetAtt': ['IamRoleLambdaExecution', 'Arn'] },
-              Runtime: 'nodejs20.x',
+              Runtime: 'nodejs24.x',
               Timeout: 6,
               TracingConfig: {
                 Mode: 'Active',
@@ -696,7 +696,7 @@ describe('AwsCompileFunctions', () => {
           Handler: 'func.function.handler',
           MemorySize: 1024,
           Role: { 'Fn::GetAtt': ['IamRoleLambdaExecution', 'Arn'] },
-          Runtime: 'nodejs20.x',
+          Runtime: 'nodejs24.x',
           Timeout: 6,
           Environment: {
             Variables: {
@@ -763,7 +763,7 @@ describe('AwsCompileFunctions', () => {
           Handler: 'func.function.handler',
           MemorySize: 128,
           Role: { 'Fn::GetAtt': ['IamRoleLambdaExecution', 'Arn'] },
-          Runtime: 'nodejs20.x',
+          Runtime: 'nodejs24.x',
           Timeout: 10,
         },
       };
@@ -862,7 +862,7 @@ describe('AwsCompileFunctions', () => {
           MemorySize: 1024,
           ReservedConcurrentExecutions: 5,
           Role: { 'Fn::GetAtt': ['IamRoleLambdaExecution', 'Arn'] },
-          Runtime: 'nodejs20.x',
+          Runtime: 'nodejs24.x',
           Timeout: 6,
         },
       };
@@ -918,7 +918,7 @@ describe('AwsCompileFunctions', () => {
           MemorySize: 1024,
           ReservedConcurrentExecutions: 0,
           Role: { 'Fn::GetAtt': ['IamRoleLambdaExecution', 'Arn'] },
-          Runtime: 'nodejs20.x',
+          Runtime: 'nodejs24.x',
           Timeout: 6,
         },
       };
@@ -991,7 +991,7 @@ describe('AwsCompileFunctions', () => {
           Handler: 'func.function.handler',
           MemorySize: 1024,
           Role: { 'Fn::GetAtt': ['IamRoleLambdaExecution', 'Arn'] },
-          Runtime: 'nodejs20.x',
+          Runtime: 'nodejs24.x',
           Timeout: 6,
         },
       };
@@ -1029,7 +1029,7 @@ describe('AwsCompileFunctions', () => {
           Handler: 'func.function.handler',
           MemorySize: 1024,
           Role: { 'Fn::GetAtt': ['IamRoleLambdaExecution', 'Arn'] },
-          Runtime: 'nodejs20.x',
+          Runtime: 'nodejs24.x',
           Timeout: 6,
           Layers: ['arn:aws:xxx:*:*'],
         },
@@ -1380,6 +1380,42 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
       );
       expect(localResources[localNaming.getLambdaLogicalId('other')].Properties.Runtime).to.equal(
         'nodejs20.x'
+      );
+    });
+
+    it('should reject deprecated `provider.runtime` values', () => {
+      return expect(
+        runServerless({
+          fixture: 'function',
+          command: 'package',
+          configExt: {
+            provider: {
+              runtime: 'provided',
+            },
+          },
+        })
+      ).to.eventually.be.rejected.and.have.property(
+        'code',
+        'INVALID_NON_SCHEMA_COMPLIANT_CONFIGURATION'
+      );
+    });
+
+    it('should reject deprecated `functions[].runtime` values', () => {
+      return expect(
+        runServerless({
+          fixture: 'function',
+          command: 'package',
+          configExt: {
+            functions: {
+              basic: {
+                runtime: 'python3.9',
+              },
+            },
+          },
+        })
+      ).to.eventually.be.rejected.and.have.property(
+        'code',
+        'INVALID_NON_SCHEMA_COMPLIANT_CONFIGURATION'
       );
     });
 
@@ -1931,7 +1967,7 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
       // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L1784-L1820
     });
 
-    it('should default to "nodejs20.x" runtime`', () => {
+    it('should default to the fixture provider runtime`', () => {
       const funcResource = cfResources[naming.getLambdaLogicalId('target')];
       expect(funcResource.Properties.Runtime).to.equal('nodejs20.x');
     });

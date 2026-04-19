@@ -17,10 +17,13 @@ const serverlessExec = require('./serverless-binary');
 
 describe('Service Lifecyle Integration Test', function () {
   this.timeout(1000 * 60 * 10); // Involves time-taking deploys
-  const templateName = 'aws-nodejs';
   const tmpDir = getTmpDirPath();
+  const templatePath = path.resolve(
+    __dirname,
+    'fixtures/programmatic/basic-lifecycle-nodejs24'
+  );
   const env = resolveAwsEnv();
-  const spawnOptions = {
+  const createSpawnOptions = {
     cwd: tmpDir,
     env,
     // As in invoke we optionally read stdin, we need to ensure it's closed
@@ -28,10 +31,12 @@ describe('Service Lifecyle Integration Test', function () {
     shouldCloseStdin: true,
   };
   let serviceName;
+  let serviceDir;
   let StackName;
 
   before(() => {
     serviceName = `test-basic-${process.hrtime()[1]}`;
+    serviceDir = path.join(tmpDir, serviceName);
     StackName = `${serviceName}-dev`;
     log.notice(`Temporary path: ${tmpDir}`);
     fse.mkdirsSync(tmpDir);
@@ -49,21 +54,21 @@ describe('Service Lifecyle Integration Test', function () {
       if (error.message.indexOf('does not exist') > -1) return;
       throw error;
     }
-    await spawn(serverlessExec, ['remove'], { cwd: tmpDir, env });
+    await spawn(serverlessExec, ['remove'], { cwd: serviceDir, env });
   });
 
   it('should create service in tmp directory', async () => {
     await spawn(
       serverlessExec,
-      ['create', '--template', templateName, '--name', serviceName],
-      spawnOptions
+      ['create', '--template-path', templatePath, '--name', serviceName],
+      createSpawnOptions
     );
-    expect(fs.existsSync(path.join(tmpDir, 'serverless.yml'))).to.be.equal(true);
-    expect(fs.existsSync(path.join(tmpDir, 'handler.js'))).to.be.equal(true);
+    expect(fs.existsSync(path.join(serviceDir, 'serverless.yml'))).to.be.equal(true);
+    expect(fs.existsSync(path.join(serviceDir, 'handler.js'))).to.be.equal(true);
   });
 
   it('should deploy service to aws', async () => {
-    await spawn(serverlessExec, ['deploy'], { cwd: tmpDir, env });
+    await spawn(serverlessExec, ['deploy'], { cwd: serviceDir, env });
 
     const d = await awsRequest(CloudFormationService, 'describeStacks', { StackName });
     expect(d.Stacks[0].StackStatus).to.be.equal('UPDATE_COMPLETE');
@@ -73,7 +78,7 @@ describe('Service Lifecyle Integration Test', function () {
     const { stdoutBuffer: invoked } = await spawn(
       serverlessExec,
       ['invoke', '--function', 'hello'],
-      spawnOptions
+      { ...createSpawnOptions, cwd: serviceDir }
     );
     const result = JSON.parse(invoked);
     // parse it once again because the body is stringified to be LAMBDA-PROXY ready
@@ -83,25 +88,30 @@ describe('Service Lifecyle Integration Test', function () {
 
   it('should deploy updated service to aws', () => {
     const newHandler = `
-        'use strict';
+'use strict';
 
-        module.exports.hello = (event, context, cb) => cb(null,
-          { message: 'Service Update Succeeded' }
-        );
-      `;
+module.exports.hello = async (event) => ({
+  statusCode: 200,
+  body: JSON.stringify({
+    message: 'Service Update Succeeded',
+    input: event,
+  }),
+});
+`;
 
-    fs.writeFileSync(path.join(tmpDir, 'handler.js'), newHandler);
-    return spawn(serverlessExec, ['deploy'], spawnOptions);
+    fs.writeFileSync(path.join(serviceDir, 'handler.js'), newHandler);
+    return spawn(serverlessExec, ['deploy'], { ...createSpawnOptions, cwd: serviceDir });
   });
 
   it('should invoke updated function from aws', async () => {
     const { stdoutBuffer: invoked } = await spawn(
       serverlessExec,
       ['invoke', '--function', 'hello'],
-      spawnOptions
+      { ...createSpawnOptions, cwd: serviceDir }
     );
     const result = JSON.parse(invoked);
-    expect(result.message).to.be.equal('Service Update Succeeded');
+    const message = JSON.parse(result.body).message;
+    expect(message).to.be.equal('Service Update Succeeded');
   });
 
   it('should list existing deployments and roll back to first deployment', async () => {
@@ -109,7 +119,7 @@ describe('Service Lifecyle Integration Test', function () {
     const { stdoutBuffer: listDeploys } = await spawn(
       serverlessExec,
       ['deploy', 'list'],
-      spawnOptions
+      { ...createSpawnOptions, cwd: serviceDir }
     );
     const output = stripAnsi(listDeploys.toString());
     const match = output.match(new RegExp('Timestamp: (.+)'));
@@ -118,12 +128,15 @@ describe('Service Lifecyle Integration Test', function () {
     }
     expect(timestamp).to.not.undefined;
 
-    await spawn(serverlessExec, ['rollback', '-t', timestamp], { cwd: tmpDir, env });
+    await spawn(serverlessExec, ['rollback', '-t', timestamp], {
+      ...createSpawnOptions,
+      cwd: serviceDir,
+    });
 
     const { stdoutBuffer: invoked } = await spawn(
       serverlessExec,
       ['invoke', '--function', 'hello'],
-      spawnOptions
+      { ...createSpawnOptions, cwd: serviceDir }
     );
     const result = JSON.parse(invoked);
     // parse it once again because the body is stringified to be LAMBDA-PROXY ready
@@ -132,7 +145,7 @@ describe('Service Lifecyle Integration Test', function () {
   });
 
   it('should remove service from aws', async () => {
-    await spawn(serverlessExec, ['remove'], { cwd: tmpDir, env });
+    await spawn(serverlessExec, ['remove'], { ...createSpawnOptions, cwd: serviceDir });
 
     const d = await (async () => {
       try {

@@ -45,13 +45,13 @@ Example handler function that returns timestamp in the response headers. More ex
 // index.handler
 'use strict';
 
-module.exports.handler = (event, context, callback) => {
+module.exports.handler = (event) => {
   const response = event.Records[0].cf.response;
   const headers = response.headers;
 
   headers['x-serverless-time'] = [{ key: 'x-serverless-time', value: Date.now().toString() }];
 
-  return callback(null, response);
+  return response;
 };
 ```
 

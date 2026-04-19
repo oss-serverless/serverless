@@ -1,0 +1,11 @@
+service: new-service
+
+frameworkVersion: '*'
+
+provider:
+  name: aws
+  runtime: nodejs24.x
+
+functions:
+  hello:
+    handler: handler.hello

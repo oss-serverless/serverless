@@ -31,10 +31,10 @@ The `serverless` command will guide you to:
 
 Your new serverless project will contain a `serverless.yml` file. This file features simple syntax for deploying infrastructure to AWS, such as AWS Lambda functions, infrastructure that triggers those functions with events, and additional infrastructure your AWS Lambda functions may need for various use-cases. You can learn more about this in the [Core Concepts documentation](./guides/intro.md).
 
-The `serverless` command will give you a variety of templates to choose from. If those do not fit your needs, check out the [project examples from Serverless Inc. and our community](https://github.com/serverless/examples). You can install any example by passing a GitHub URL using the `--template-url` option:
+If you want to start from an example project, check out the [project examples from Serverless Inc. and our community](https://github.com/serverless/examples). You can install any example by passing a GitHub URL using the `--template-url` option:
 
 ```base
-serverless --template-url=https://github.com/serverless/examples/tree/v3/...
+serverless create --template-url=https://github.com/serverless/examples/tree/v3/...
 ```
 
 Please note that you can use `serverless` or `sls` to run Serverless Framework commands.

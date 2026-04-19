@@ -7,6 +7,7 @@ const sinon = require('sinon');
 const { listFileProperties, listZipFiles } = require('../../../../../utils/fs');
 const runServerless = require('../../../../../utils/run-serverless');
 const fixtures = require('../../../../../fixtures/programmatic');
+const packageService = require('../../../../../../lib/plugins/package/lib/package-service');
 
 // Configure chai
 chai.use(require('chai-as-promised'));
@@ -31,6 +32,14 @@ describe('test/unit/lib/plugins/package/lib/packageService.test.js', () => {
       },
     },
   };
+
+  describe('#getRuntime()', () => {
+    it('should default to "nodejs24.x" when no runtime is configured', () => {
+      expect(
+        packageService.getRuntime.call({ serverless: { service: { provider: {} } } }, undefined)
+      ).to.equal('nodejs24.x');
+    });
+  });
 
   describe('service wide', () => {
     let serverless;
@@ -125,7 +134,7 @@ describe('test/unit/lib/plugins/package/lib/packageService.test.js', () => {
     });
 
     (process.platform === 'win32' ? it : it.skip)(
-      'should mark go runtime handler files as executable on windows',
+      'should mark packaged handler files as executable on windows',
       () => {
         expect(fnFileProperties['main.go'].unixPermissions).to.equal(Math.pow(2, 15) + 0o755);
       }

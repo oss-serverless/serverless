@@ -1324,9 +1324,9 @@ describe('PluginManager', () => {
           usage: 'Create new Serverless service',
           lifecycleEvents: ['create'],
           options: {
-            template: {
-              usage: 'Template for the service. Available templates: ", "aws-nodejs", "..."',
-              shortcut: 't',
+            'template-url': {
+              usage: 'Template URL for the service. Supports: GitHub, BitBucket',
+              shortcut: 'u',
             },
           },
           key: 'create',

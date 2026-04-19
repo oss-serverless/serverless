@@ -140,7 +140,7 @@ functions:
 When this option is enabled, the event structure is changed:
 
 ```javascript
-module.exports.hello = async (event, context, callback) => {
+module.exports.hello = async (event) => {
   const headers = event.multiValueHeaders;
   const queryString = event.multiValueQueryStringParameters;
 
@@ -152,8 +152,8 @@ module.exports.hello = async (event, context, callback) => {
     isBase64Encoded: false,
     multiValueHeaders: {
       'Content-Type': ['application/json'],
-      'Set-Cookie': ['language=en-us', 'theme=rust']
-    }
+      'Set-Cookie': ['language=en-us', 'theme=rust'],
+    },
   };
 };
 ```
