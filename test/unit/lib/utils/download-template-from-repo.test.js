@@ -87,13 +87,41 @@ describe('downloadTemplateFromRepo', () => {
       ).to.be.eventually.rejected.and.have.property('code', 'INVALID_TEMPLATE_PROVIDER');
     });
 
-    it('should reject an error if a directory with the same service name is already present', () => {
+    it('should reject with a user-facing default target path if a directory already exists', async () => {
       const serviceDirName = path.join(serviceDir, 'existing-service');
       fse.mkdirsSync(serviceDirName);
 
-      return expect(
-        downloadTemplateFromRepo('https://github.com/johndoe/existing-service')
-      ).to.be.eventually.rejected.and.have.property('code', 'TARGET_FOLDER_ALREADY_EXISTS');
+      try {
+        await downloadTemplateFromRepo('https://github.com/johndoe/existing-service');
+      } catch (error) {
+        expect(error).to.have.property('code', 'TARGET_FOLDER_ALREADY_EXISTS');
+        expect(error).to.have.property(
+          'message',
+          'A folder named "./existing-service" already exists.'
+        );
+        return;
+      }
+
+      throw new Error('Expected downloadTemplateFromRepo to reject');
+    });
+
+    it('should reject with the provided path if a target directory already exists', async () => {
+      const url = 'https://github.com/johndoe/service-to-be-downloaded';
+      const downloadPath = path.join('nested', 'existing-service');
+      fse.mkdirsSync(path.join(serviceDir, downloadPath));
+
+      try {
+        await downloadTemplateFromRepo(url, undefined, downloadPath);
+      } catch (error) {
+        expect(error).to.have.property('code', 'TARGET_FOLDER_ALREADY_EXISTS');
+        expect(error).to.have.property(
+          'message',
+          `A folder named "${downloadPath}" already exists.`
+        );
+        return;
+      }
+
+      throw new Error('Expected downloadTemplateFromRepo to reject');
     });
 
     it('should download the service based on a regular .git URL', async () => {
