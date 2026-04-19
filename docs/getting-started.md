@@ -33,7 +33,7 @@ Your new serverless project will contain a `serverless.yml` file. This file feat
 
 If you want to start from an example project, check out the [project examples from Serverless Inc. and our community](https://github.com/serverless/examples). You can install any example by passing a GitHub URL using the `--template-url` option:
 
-```base
+```bash
 serverless create --template-url=https://github.com/serverless/examples/tree/v3/...
 ```
 

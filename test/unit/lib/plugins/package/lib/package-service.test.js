@@ -134,9 +134,9 @@ describe('test/unit/lib/plugins/package/lib/packageService.test.js', () => {
     });
 
     (process.platform === 'win32' ? it : it.skip)(
-      'should mark packaged handler files as executable on windows',
+      'should force packaged files to be executable on windows',
       () => {
-        expect(fnFileProperties['main.go'].unixPermissions).to.equal(Math.pow(2, 15) + 0o755);
+        expect(fnFileProperties['index.js'].unixPermissions).to.equal(Math.pow(2, 15) + 0o755);
       }
     );
 
