@@ -42,7 +42,7 @@ describe('test/unit/lib/plugins/create/create.test.js', () => {
         command: 'create',
         options: {
           'template-path': path.join(fixturesPath, 'aws'),
-          path: tmpDir,
+          'path': tmpDir,
         },
       })
     ).to.eventually.be.rejected.and.have.property('code', 'TARGET_FOLDER_ALREADY_EXISTS');

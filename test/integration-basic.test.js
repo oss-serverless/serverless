@@ -18,10 +18,7 @@ const serverlessExec = require('./serverless-binary');
 describe('Service Lifecyle Integration Test', function () {
   this.timeout(1000 * 60 * 10); // Involves time-taking deploys
   const tmpDir = getTmpDirPath();
-  const templatePath = path.resolve(
-    __dirname,
-    'fixtures/programmatic/basic-lifecycle-nodejs24'
-  );
+  const templatePath = path.resolve(__dirname, 'fixtures/programmatic/basic-lifecycle-nodejs24');
   const env = resolveAwsEnv();
   const createSpawnOptions = {
     cwd: tmpDir,
@@ -116,11 +113,10 @@ module.exports.hello = async (event) => ({
 
   it('should list existing deployments and roll back to first deployment', async () => {
     let timestamp;
-    const { stdoutBuffer: listDeploys } = await spawn(
-      serverlessExec,
-      ['deploy', 'list'],
-      { ...createSpawnOptions, cwd: serviceDir }
-    );
+    const { stdoutBuffer: listDeploys } = await spawn(serverlessExec, ['deploy', 'list'], {
+      ...createSpawnOptions,
+      cwd: serviceDir,
+    });
     const output = stripAnsi(listDeploys.toString());
     const match = output.match(new RegExp('Timestamp: (.+)'));
     if (match) {
