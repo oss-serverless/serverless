@@ -31,7 +31,7 @@ functions:
           route: $disconnect
 ```
 
-This code will setup a [RouteResponse](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-websocket-api-route-response.html), enabling you to respond to websocket messages by returning an object whose `body` is sent back to the client:
+This code will set up a [RouteResponse](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-websocket-api-route-response.html), enabling you to respond to websocket messages by returning an object whose `body` is sent back to the client:
 
 ```yml
 functions:
