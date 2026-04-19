@@ -1967,7 +1967,7 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
       // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L1784-L1820
     });
 
-    it('should default to the fixture provider runtime`', () => {
+    it('should default to the fixture provider runtime', () => {
       const funcResource = cfResources[naming.getLambdaLogicalId('target')];
       expect(funcResource.Properties.Runtime).to.equal('nodejs20.x');
     });
