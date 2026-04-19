@@ -18,15 +18,17 @@ const fixturesPath = path.resolve(__dirname, '../../../../fixtures/programmatic'
 const loadCreate = ({ downloadTemplateFromRepoStub, dirExistsSyncStub } = {}) => {
   const noticeStub = sinon.stub();
   noticeStub.success = sinon.stub();
+  const copyDirContentsSyncStub = sinon.stub();
+  const renameServiceStub = sinon.stub();
 
   const Create = proxyquire.noCallThru().load('../../../../../lib/plugins/create/create', {
     '../../utils/download-template-from-repo': {
       downloadTemplateFromRepo: downloadTemplateFromRepoStub || sinon.stub(),
     },
     '../../utils/fs/dir-exists-sync': dirExistsSyncStub || sinon.stub().returns(false),
-    '../../utils/fs/copy-dir-contents-sync': sinon.stub(),
+    '../../utils/fs/copy-dir-contents-sync': copyDirContentsSyncStub,
     '../../utils/rename-service': {
-      renameService: sinon.stub(),
+      renameService: renameServiceStub,
     },
     '@serverless/utils/log': {
       progress: {
@@ -43,7 +45,9 @@ const loadCreate = ({ downloadTemplateFromRepoStub, dirExistsSyncStub } = {}) =>
 
   return {
     Create,
+    copyDirContentsSyncStub,
     noticeSuccessStub: noticeStub.success,
+    renameServiceStub,
   };
 };
 
@@ -186,6 +190,31 @@ describe('test/unit/lib/plugins/create/create.test.js', () => {
   });
 
   describe('local template path flow', () => {
+    it('should default the target directory to the template folder name', async () => {
+      const { Create, copyDirContentsSyncStub, noticeSuccessStub, renameServiceStub } =
+        loadCreate();
+
+      await new Create(
+        {
+          pluginManager: {
+            commandRunStartTime: Date.now(),
+          },
+        },
+        {
+          'template-path': path.join(fixturesPath, 'aws'),
+        }
+      ).create();
+
+      expect(copyDirContentsSyncStub.calledOnce).to.equal(true);
+      expect(copyDirContentsSyncStub.firstCall.args[0]).to.equal(path.join(fixturesPath, 'aws'));
+      expect(copyDirContentsSyncStub.firstCall.args[1]).to.equal(path.join(process.cwd(), 'aws'));
+      expect(renameServiceStub.called).to.equal(false);
+      expect(noticeSuccessStub.calledOnce).to.equal(true);
+      expect(noticeSuccessStub.firstCall.args[0]).to.contain(
+        'Project successfully created in "./aws"'
+      );
+    });
+
     it('should report the provided local target path when the directory already exists', async () => {
       const { Create } = loadCreate({
         dirExistsSyncStub: sinon.stub().returns(true),
