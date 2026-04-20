@@ -37,9 +37,9 @@ module.exports = async ({ configuration, serviceDir, configurationFilename, opti
   await installPlugin(context);
   // Check if plugin is already added
   const pluginAlreadyPresentInConfig =
-    (_.get(configuration, 'plugins.modules') &&
-      configuration.plugin.modules.includes(pluginName)) ||
-    (configuration.plugins && configuration.plugins.includes(pluginName));
+    (Array.isArray(_.get(configuration, 'plugins.modules')) &&
+      configuration.plugins.modules.includes(pluginName)) ||
+    (Array.isArray(configuration.plugins) && configuration.plugins.includes(pluginName));
   if (!pluginAlreadyPresentInConfig) {
     await addPluginToServerlessFile(context);
   }
