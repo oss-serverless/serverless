@@ -26,7 +26,9 @@ Notes:
   `get('frameworkId')` and `get('meta.created_at')` lookups that Bref v2/v3 use
   for best-effort telemetry if a future compatibility shim routes
   `@serverless/utils/config` here.
-- Resolver/alias compatibility is intentionally out of scope for this subtree.
+- Runtime compatibility aliases are intentionally narrow. Today osls only maps
+  `@serverless/utils/config` and `@serverless/utils/log` (plus their `.js`
+  variants) to this vendored subtree.
 
 When updating this subtree:
 1. Update `policy.js`.

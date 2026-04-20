@@ -158,6 +158,31 @@ describe('Serverless', () => {
       expect(semverRegex().test(serverless.getVersion())).to.equal(true);
     });
   });
+
+  describe('compatibility aliases', () => {
+    it('resolves @serverless/utils/config through require.main.require', () => {
+      const config = require.main.require('@serverless/utils/config');
+      const configJs = require.main.require('@serverless/utils/config.js');
+      const vendoredConfig = require('../../../lib/utils/serverless-utils/config');
+
+      expect(config).to.equal(vendoredConfig);
+      expect(configJs).to.equal(vendoredConfig);
+      expect(typeof config.get).to.equal('function');
+      expect(typeof config.getConfig).to.equal('function');
+    });
+
+    it('resolves @serverless/utils/log through require.main.require', () => {
+      const log = require.main.require('@serverless/utils/log');
+      const logJs = require.main.require('@serverless/utils/log.js');
+      const vendoredLog = require('../../../lib/utils/serverless-utils/log');
+
+      expect(log).to.equal(vendoredLog);
+      expect(logJs).to.equal(vendoredLog);
+      expect(typeof log.log).to.equal('function');
+      expect(typeof log.writeText).to.equal('function');
+      expect(typeof log.progress.create).to.equal('function');
+    });
+  });
 });
 
 describe('test/unit/lib/serverless.test.js', () => {
