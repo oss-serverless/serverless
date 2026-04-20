@@ -6,29 +6,30 @@ const path = require('path');
 const fse = require('fs-extra');
 const { expect } = require('chai');
 const requireUncached = require('ncjsm/require-uncached');
+const sinon = require('sinon');
 const overrideEnv = require('process-utils/override-env');
 const overrideCwd = require('process-utils/override-cwd');
 
 const loadConfigModule = () =>
   requireUncached(() => require('../../../../../lib/utils/serverless-utils/config'));
 
-const cleanupConfigArtifacts = async (...configFileNames) => {
-  const names = configFileNames.length
-    ? configFileNames
-    : ['.serverlessrc', '.serverlessstagingrc'];
-  const paths = names.flatMap((configFileName) => [
-    path.join(os.homedir(), configFileName),
-    path.join(os.homedir(), `${configFileName}.bak`),
-    path.join(os.homedir(), '.config', configFileName),
-    path.join(os.homedir(), '.config', `${configFileName}.bak`),
-  ]);
+const withIsolatedHome = async (name, callback) => {
+  const homeDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), `${name}-home-`));
 
-  await Promise.all(paths.map((filePath) => fse.remove(filePath)));
-  await fse.remove(path.join(os.homedir(), '.config'));
+  return overrideEnv({ asCopy: true }, async () => {
+    const homedirStub = sinon.stub(os, 'homedir').returns(homeDir);
+
+    try {
+      return await callback(homeDir);
+    } finally {
+      homedirStub.restore();
+      await fse.remove(homeDir);
+    }
+  });
 };
 
-const withLocalDir = async (name, callback) => {
-  const localDir = path.join(os.homedir(), name);
+const withLocalDir = async (homeDir, name, callback) => {
+  const localDir = path.join(homeDir, name);
   await fse.ensureDir(localDir);
 
   const { restoreCwd } = overrideCwd(localDir);
@@ -37,207 +38,244 @@ const withLocalDir = async (name, callback) => {
     return await callback(localDir);
   } finally {
     restoreCwd();
-    await fse.remove(localDir);
   }
 };
 
 describe('serverless-utils/config', () => {
-  afterEach(async () => {
-    await cleanupConfigArtifacts();
-  });
-
-  it('should have CONFIG_FILE_NAME', () => {
+  it('exports the generic config helpers only', () => {
     const config = loadConfigModule();
 
-    expect(config.CONFIG_FILE_NAME).to.exist;
+    expect(config).to.have.keys(['CONFIG_FILE_NAME', 'delete', 'get', 'getConfig', 'set']);
+    expect(config).to.not.have.property('getLoggedInUser');
   });
 
   it('prefers the default global config when both global locations exist', async () => {
-    const config = loadConfigModule();
-    const homeConfigDir = path.join(os.homedir(), '.config');
-    const homeConfigPath = path.join(homeConfigDir, config.CONFIG_FILE_NAME);
-    const defaultGlobalPath = path.join(os.homedir(), config.CONFIG_FILE_NAME);
+    await withIsolatedHome('config-both-globals', async (homeDir) => {
+      const config = loadConfigModule();
+      const homeConfigDir = path.join(homeDir, '.config');
+      const homeConfigPath = path.join(homeConfigDir, config.CONFIG_FILE_NAME);
+      const defaultGlobalPath = path.join(homeDir, config.CONFIG_FILE_NAME);
 
-    await withLocalDir('config-both-globals', async () => {
-      await fse.ensureDir(homeConfigDir);
-      await Promise.all([
-        fs.promises.writeFile(homeConfigPath, JSON.stringify({ trackingDisabled: true }, null, 2)),
-        fs.promises.writeFile(
-          defaultGlobalPath,
-          JSON.stringify({ trackingDisabled: false, enterpriseDisabled: true }, null, 2)
-        ),
-      ]);
+      await withLocalDir(homeDir, 'service', async () => {
+        await fse.ensureDir(homeConfigDir);
+        await Promise.all([
+          fs.promises.writeFile(homeConfigPath, JSON.stringify({ featureFlag: 'home' }, null, 2)),
+          fs.promises.writeFile(
+            defaultGlobalPath,
+            JSON.stringify({ featureFlag: 'default', releaseChannel: 'stable' }, null, 2)
+          ),
+        ]);
 
-      expect(config.getConfig()).to.deep.equal({
-        trackingDisabled: false,
-        enterpriseDisabled: true,
+        expect(config.getConfig()).to.deep.equal({
+          featureFlag: 'default',
+          releaseChannel: 'stable',
+        });
       });
     });
   });
 
   it('merges local and global config and updates only the local config on set/delete', async () => {
-    const config = loadConfigModule();
+    await withIsolatedHome('config-local-and-global', async (homeDir) => {
+      const config = loadConfigModule();
 
-    await withLocalDir('config-local-and-global', async (localDir) => {
-      const localConfigPath = path.join(localDir, config.CONFIG_FILE_NAME);
-      const globalConfigPath = path.join(os.homedir(), config.CONFIG_FILE_NAME);
+      await withLocalDir(homeDir, 'service', async (localDir) => {
+        const localConfigPath = path.join(localDir, config.CONFIG_FILE_NAME);
+        const globalConfigPath = path.join(homeDir, config.CONFIG_FILE_NAME);
 
-      await Promise.all([
-        fs.promises.writeFile(localConfigPath, JSON.stringify({ trackingDisabled: true }, null, 2)),
-        fs.promises.writeFile(
-          globalConfigPath,
-          JSON.stringify({ trackingDisabled: false, enterpriseDisabled: true }, null, 2)
-        ),
-      ]);
+        await Promise.all([
+          fs.promises.writeFile(localConfigPath, JSON.stringify({ featureFlag: true }, null, 2)),
+          fs.promises.writeFile(
+            globalConfigPath,
+            JSON.stringify({ featureFlag: false, releaseChannel: 'stable' }, null, 2)
+          ),
+        ]);
 
-      expect(config.getConfig()).to.deep.equal({
-        trackingDisabled: true,
-        enterpriseDisabled: true,
+        expect(config.getConfig()).to.deep.equal({
+          featureFlag: true,
+          releaseChannel: 'stable',
+        });
+
+        config.set('custom.value', 'somevalue');
+        expect(JSON.parse(await fs.promises.readFile(localConfigPath, 'utf8')).custom.value).to.equal(
+          'somevalue'
+        );
+        expect(JSON.parse(await fs.promises.readFile(globalConfigPath, 'utf8'))).to.not.have.property(
+          'custom'
+        );
+
+        config.delete('featureFlag');
+        expect(JSON.parse(await fs.promises.readFile(localConfigPath, 'utf8'))).to.not.have.property(
+          'featureFlag'
+        );
+        expect(JSON.parse(await fs.promises.readFile(globalConfigPath, 'utf8'))).to.have.property(
+          'featureFlag'
+        );
       });
-
-      config.set('newKey', 'somevalue');
-      expect(JSON.parse(await fs.promises.readFile(localConfigPath, 'utf8')).newKey).to.equal(
-        'somevalue'
-      );
-      expect(JSON.parse(await fs.promises.readFile(globalConfigPath, 'utf8'))).to.not.have.property(
-        'newKey'
-      );
-
-      config.delete('trackingDisabled');
-      expect(JSON.parse(await fs.promises.readFile(localConfigPath, 'utf8'))).to.not.have.property(
-        'trackingDisabled'
-      );
-      expect(JSON.parse(await fs.promises.readFile(globalConfigPath, 'utf8'))).to.have.property(
-        'trackingDisabled'
-      );
     });
   });
 
-  it('creates a default global config when no config files exist', async () => {
-    const config = loadConfigModule();
+  it('creates a Bref-compatible default global config when no config files exist', async () => {
+    await withIsolatedHome('config-create-default', async (homeDir) => {
+      const config = loadConfigModule();
 
-    await withLocalDir('config-create-default', async () => {
-      const globalConfigPath = path.join(os.homedir(), config.CONFIG_FILE_NAME);
+      await withLocalDir(homeDir, 'service', async () => {
+        const globalConfigPath = path.join(homeDir, config.CONFIG_FILE_NAME);
 
-      config.get('notImportant');
+        expect(config.get('meta.created_at')).to.be.a('number');
+        expect(config.get('frameworkId')).to.be.a('string');
+        expect((await fs.promises.stat(globalConfigPath)).isFile()).to.equal(true);
 
-      expect((await fs.promises.stat(globalConfigPath)).isFile()).to.equal(true);
+        const result = config.getConfig();
+        expect(result.frameworkId).to.be.a('string');
+        expect(result.meta.created_at).to.be.a('number');
+        expect(result.meta.updated_at).to.be.a('number');
 
-      const result = config.getConfig();
-      expect(result.frameworkId).to.be.a('string');
-      expect(result.meta.created_at).to.not.equal(null);
-      expect(result.meta.updated_at).to.not.equal(null);
-
-      delete result.frameworkId;
-      delete result.meta;
-      expect(result).to.deep.equal({
-        trackingDisabled: false,
-        enterpriseDisabled: false,
-        userId: null,
+        delete result.frameworkId;
+        delete result.meta;
+        expect(result).to.deep.equal({});
       });
     });
   });
 
   it('uses the ~/.config global config when it exists alone', async () => {
-    const config = loadConfigModule();
+    await withIsolatedHome('config-home-config-only', async (homeDir) => {
+      const config = loadConfigModule();
 
-    await withLocalDir('config-home-config-only', async () => {
-      const homeConfigDir = path.join(os.homedir(), '.config');
-      const homeConfigPath = path.join(homeConfigDir, config.CONFIG_FILE_NAME);
-      const defaultGlobalPath = path.join(os.homedir(), config.CONFIG_FILE_NAME);
+      await withLocalDir(homeDir, 'service', async () => {
+        const homeConfigDir = path.join(homeDir, '.config');
+        const homeConfigPath = path.join(homeConfigDir, config.CONFIG_FILE_NAME);
+        const defaultGlobalPath = path.join(homeDir, config.CONFIG_FILE_NAME);
 
-      await fse.ensureDir(homeConfigDir);
-      await fs.promises.writeFile(
-        homeConfigPath,
-        JSON.stringify({ trackingDisabled: true, enterpriseDisabled: true }, null, 2)
-      );
+        await fse.ensureDir(homeConfigDir);
+        await fs.promises.writeFile(
+          homeConfigPath,
+          JSON.stringify({ featureFlag: true, releaseChannel: 'beta' }, null, 2)
+        );
 
-      expect(config.getConfig()).to.deep.equal({
-        trackingDisabled: true,
-        enterpriseDisabled: true,
+        expect(config.getConfig()).to.deep.equal({
+          featureFlag: true,
+          releaseChannel: 'beta',
+        });
+        expect(await fse.pathExists(defaultGlobalPath)).to.equal(false);
       });
-      expect(await fse.pathExists(defaultGlobalPath)).to.equal(false);
     });
   });
 
   it('backs up malformed local config files and treats them as empty', async () => {
-    const config = loadConfigModule();
+    await withIsolatedHome('config-malformed-local', async (homeDir) => {
+      const config = loadConfigModule();
 
-    await withLocalDir('config-malformed-local', async (localDir) => {
-      const localConfigPath = path.join(localDir, config.CONFIG_FILE_NAME);
+      await withLocalDir(homeDir, 'service', async (localDir) => {
+        const localConfigPath = path.join(localDir, config.CONFIG_FILE_NAME);
 
-      await fs.promises.writeFile(localConfigPath, '{"broken"');
+        await fs.promises.writeFile(localConfigPath, '{"broken"');
 
-      const result = config.getConfig();
+        const result = config.getConfig();
 
-      expect(result).to.be.an('object');
-      expect(await fse.pathExists(`${localConfigPath}.bak`)).to.equal(true);
+        expect(result.frameworkId).to.be.a('string');
+        expect(await fse.pathExists(`${localConfigPath}.bak`)).to.equal(true);
+      });
     });
   });
 
   it('backs up malformed ~/.config global files and recreates the default global config', async () => {
-    const config = loadConfigModule();
+    await withIsolatedHome('config-malformed-global', async (homeDir) => {
+      const config = loadConfigModule();
 
-    await withLocalDir('config-malformed-global', async () => {
-      const homeConfigDir = path.join(os.homedir(), '.config');
-      const homeConfigPath = path.join(homeConfigDir, config.CONFIG_FILE_NAME);
-      const defaultGlobalPath = path.join(os.homedir(), config.CONFIG_FILE_NAME);
+      await withLocalDir(homeDir, 'service', async () => {
+        const homeConfigDir = path.join(homeDir, '.config');
+        const homeConfigPath = path.join(homeConfigDir, config.CONFIG_FILE_NAME);
+        const defaultGlobalPath = path.join(homeDir, config.CONFIG_FILE_NAME);
 
-      await fse.ensureDir(homeConfigDir);
-      await fs.promises.writeFile(homeConfigPath, '{"broken"');
+        await fse.ensureDir(homeConfigDir);
+        await fs.promises.writeFile(homeConfigPath, '{"broken"');
 
-      const result = config.getConfig();
+        const result = config.getConfig();
 
-      expect(result.frameworkId).to.be.a('string');
-      expect(await fse.pathExists(`${homeConfigPath}.bak`)).to.equal(true);
-      expect(await fse.pathExists(defaultGlobalPath)).to.equal(true);
+        expect(result.frameworkId).to.be.a('string');
+        expect(await fse.pathExists(`${homeConfigPath}.bak`)).to.equal(true);
+        expect(await fse.pathExists(defaultGlobalPath)).to.equal(true);
+      });
     });
   });
 
-  it('returns null from getLoggedInUser when no dashboard user is present', async () => {
-    const config = loadConfigModule();
+  it('supports deleting nested property paths', async () => {
+    await withIsolatedHome('config-nested-delete', async (homeDir) => {
+      const config = loadConfigModule();
 
-    await withLocalDir('config-get-logged-in-user-null', async (localDir) => {
-      await fs.promises.writeFile(
-        path.join(localDir, config.CONFIG_FILE_NAME),
-        JSON.stringify({ userId: 'user-1', users: {} }, null, 2)
-      );
+      await withLocalDir(homeDir, 'service', async () => {
+        const globalConfigPath = path.join(homeDir, config.CONFIG_FILE_NAME);
 
-      expect(config.getLoggedInUser()).to.equal(null);
+        await fs.promises.writeFile(
+          globalConfigPath,
+          JSON.stringify(
+            {
+              items: {
+                id1: { name: 'John' },
+                id2: { name: 'James' },
+              },
+              otherItems: {
+                firstKey: { prop: 'nested' },
+                secondKey: { prop: 'secondnested' },
+              },
+            },
+            null,
+            2
+          )
+        );
+
+        config.delete(['items.id1', 'otherItems.secondKey']);
+
+        expect(config.getConfig()).to.deep.include({
+          items: {
+            id2: { name: 'James' },
+          },
+          otherItems: {
+            firstKey: { prop: 'nested' },
+          },
+        });
+      });
     });
   });
 
-  it('returns the logged in dashboard user when configured', async () => {
-    const config = loadConfigModule();
+  it('preserves existing legacy keys when updating config', async () => {
+    await withIsolatedHome('config-preserve-legacy', async (homeDir) => {
+      const config = loadConfigModule();
 
-    await withLocalDir('config-get-logged-in-user', async (localDir) => {
-      await fs.promises.writeFile(
-        path.join(localDir, config.CONFIG_FILE_NAME),
-        JSON.stringify(
-          {
-            userId: 'user-1',
-            users: {
-              'user-1': {
-                dashboard: {
-                  username: 'jdoe',
-                  accessKeys: ['key-1'],
-                  idToken: 'id-token',
-                  refreshToken: 'refresh-token',
+      await withLocalDir(homeDir, 'service', async () => {
+        const globalConfigPath = path.join(homeDir, config.CONFIG_FILE_NAME);
+
+        await fs.promises.writeFile(
+          globalConfigPath,
+          JSON.stringify(
+            {
+              trackingDisabled: true,
+              enterpriseDisabled: true,
+              userId: 'user-1',
+              users: {
+                'user-1': {
+                  dashboard: {
+                    username: 'jdoe',
+                  },
                 },
               },
             },
-          },
-          null,
-          2
-        )
-      );
+            null,
+            2
+          )
+        );
 
-      expect(config.getLoggedInUser()).to.deep.equal({
-        userId: 'user-1',
-        username: 'jdoe',
-        accessKeys: ['key-1'],
-        idToken: 'id-token',
-        refreshToken: 'refresh-token',
+        config.set('custom.value', 'somevalue');
+
+        const stored = JSON.parse(await fs.promises.readFile(globalConfigPath, 'utf8'));
+
+        expect(stored).to.include({
+          trackingDisabled: true,
+          enterpriseDisabled: true,
+          userId: 'user-1',
+        });
+        expect(stored.users['user-1'].dashboard.username).to.equal('jdoe');
+        expect(stored.custom.value).to.equal('somevalue');
       });
     });
   });

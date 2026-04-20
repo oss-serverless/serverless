@@ -140,6 +140,25 @@ module.exports = MyPlugin;
 
 **Note:** configuration values are only resolved _after_ plugins are initialized. Do not try to read configuration in the plugin constructor, as variables aren't resolved yet. Read configuration in lifecycle events only.
 
+## Constructor-injected utilities
+
+The framework may pass utility helpers as the third constructor argument:
+
+```javascript
+class MyPlugin {
+  constructor(serverless, options, { log, progress, writeText }) {
+    this.serverless = serverless;
+    this.options = options;
+    this.log = log;
+    this.progress = progress;
+    this.writeText = writeText;
+  }
+}
+```
+
+Use these injected helpers for CLI I/O instead of relying on undocumented
+framework internals.
+
 ## CLI options
 
 The `options` parameter provides access to the CLI options provided to the command:

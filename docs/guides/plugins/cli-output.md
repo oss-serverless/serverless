@@ -246,8 +246,9 @@ class MyPlugin {
 }
 ```
 
-However, it is also possible to retrieve it from any JavaScript file by requiring the `@serverless/utils` package:
+The I/O API is injected into plugin constructors and should be the default way
+to access framework-provided output helpers.
 
-```js
-const { writeText, log, progress } = require('@serverless/utils/log');
-```
+Do not rely on undocumented internal paths such as
+`lib/utils/serverless-utils/*` or other framework internals. Those are
+implementation details and may change without notice.

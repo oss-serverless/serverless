@@ -47,6 +47,10 @@ custom:
 
 Note for plugin authors: read [Extending the configuration](custom-configuration.md) to learn how to enhance `serverless.yml` with configuration validation.
 
+Only helpers documented in the plugin guides are considered supported for
+plugin authors. Avoid importing files from the framework's internal `lib/**`
+tree.
+
 ## Service local plugin
 
 If you are working on a plugin, or have a plugin that is just designed for one project, it can be loaded from local files:
