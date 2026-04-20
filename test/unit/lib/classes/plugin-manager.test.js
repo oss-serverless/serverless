@@ -1588,6 +1588,8 @@ describe('test/unit/lib/classes/PluginManager.test.js', () => {
     expect(typeof plugin.utils.log).to.equal('function');
     expect(typeof plugin.utils.progress.create).to.equal('function');
     expect(typeof plugin.utils.writeText).to.equal('function');
+    expect(plugin.utils.log.namespace).to.equal('serverless:plugin:--plugin');
+    expect(plugin.utils.log.pluginName).to.equal('./plugin');
   });
 
   it('should error out for duplicate plugin definiton', async () => {

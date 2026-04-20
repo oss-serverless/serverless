@@ -1,8 +1,12 @@
 'use strict';
 
+const http = require('http');
+const fsp = require('fs').promises;
 const chai = require('chai');
 const sinon = require('sinon');
+const os = require('os');
 const path = require('path');
+const AdmZip = require('adm-zip');
 const EventEmitter = require('events');
 const fse = require('fs-extra');
 const log = require('log').get('serverless:test');
@@ -767,6 +771,192 @@ describe('AwsInvokeLocal', () => {
           '{}',
         ],
       ]);
+    });
+  });
+
+  describe('#getLayerPaths()', () => {
+    it('downloads remote layers from the provider content location', async () => {
+      const cacheDirPath = path.join(os.tmpdir(), 'serverless-cache');
+      const downloadStub = sinon.stub().resolves();
+      const dirExistsStub = sinon.stub().resolves(false);
+      const ensureDirStub = sinon.stub().resolves();
+      const copyStub = sinon.stub().resolves();
+      const spawnExtLocalStub = sinon.stub().resolves({
+        stdoutBuffer: Buffer.from('Mocked output'),
+      });
+
+      const ProxyquiredAwsInvokeLocal = proxyquire
+        .noCallThru()
+        .load('../../../../../../lib/plugins/aws/invoke-local/index', {
+          'get-stdin': sinon.stub().resolves(''),
+          'child-process-ext/spawn': spawnExtLocalStub,
+          'fs-extra': {
+            ensureDir: ensureDirStub,
+            copy: copyStub,
+          },
+          'cachedir': sinon.stub().returns(cacheDirPath),
+          '../../../utils/fs/dir-exists': dirExistsStub,
+          '../../../utils/serverless-utils/download': downloadStub,
+        });
+
+      const localOptions = {
+        stage: 'dev',
+        region: 'us-east-1',
+        function: 'first',
+      };
+      const localServerless = new Serverless({ commands: [], options: {} });
+      localServerless.serviceDir = 'servicePath';
+      localServerless.cli = new CLI(localServerless);
+      localServerless.processedInput = { commands: ['invoke'] };
+      localServerless.service.layers = {};
+
+      const localProvider = new AwsProvider(localServerless, localOptions);
+      localServerless.setProvider('aws', localProvider);
+
+      const invokeLocal = new ProxyquiredAwsInvokeLocal(localServerless, localOptions);
+      invokeLocal.provider = localProvider;
+      invokeLocal.options.functionObj = {
+        layers: ['arn:aws:lambda:us-east-1:123456789012:layer:my-layer:3'],
+      };
+
+      const requestStub = sinon.stub(localProvider, 'request').resolves({
+        Content: {
+          Location: 'https://layers.example.test/download?Signature=opaque',
+        },
+      });
+
+      const expectedLayerPath = path.join('.serverless', 'layers', 'my-layer', '3');
+      const expectedCachePath = path.join(cacheDirPath, 'invokeLocal', 'layers', 'my-layer', '3');
+
+      const result = await invokeLocal.getLayerPaths();
+
+      expect(dirExistsStub.firstCall.args[0]).to.equal(expectedLayerPath);
+      expect(dirExistsStub.secondCall.args[0]).to.equal(expectedCachePath);
+      expect(ensureDirStub.calledOnceWithExactly(expectedCachePath)).to.equal(true);
+      expect(
+        requestStub.calledOnceWithExactly('Lambda', 'getLayerVersion', {
+          LayerName: 'arn:aws:lambda:us-east-1:123456789012:layer:my-layer',
+          VersionNumber: 3,
+        })
+      ).to.equal(true);
+      expect(
+        downloadStub.calledOnceWithExactly(
+          'https://layers.example.test/download?Signature=opaque',
+          expectedCachePath,
+          { extract: true }
+        )
+      ).to.equal(true);
+      expect(copyStub.calledOnceWithExactly(expectedCachePath, expectedLayerPath)).to.equal(true);
+      expect(result).to.deep.equal([expectedLayerPath]);
+    });
+
+    it('downloads, extracts, caches, and copies a remote layer from an opaque content location', async () => {
+      const originalCwd = process.cwd();
+      const tempRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'invoke-local-layer-'));
+      const zip = new AdmZip();
+      zip.addFile('nodejs/node_modules/test-dep/index.js', Buffer.from('module.exports = 123;'));
+      const zipBuffer = zip.toBuffer();
+
+      const server = http.createServer((req, res) => {
+        if (req.url === '/layer-download?Signature=opaque') {
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/zip');
+          res.end(zipBuffer);
+          return;
+        }
+
+        res.statusCode = 404;
+        res.end();
+      });
+
+      await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+      const baseUrl = `http://127.0.0.1:${server.address().port}`;
+
+      const ProxyquiredAwsInvokeLocal = proxyquire
+        .noCallThru()
+        .load('../../../../../../lib/plugins/aws/invoke-local/index', {
+          'get-stdin': sinon.stub().resolves(''),
+          'child-process-ext/spawn': sinon.stub().resolves({
+            stdoutBuffer: Buffer.from('Mocked output'),
+          }),
+          'cachedir': sinon.stub().returns(path.join(tempRoot, 'cache-root')),
+        });
+
+      try {
+        process.chdir(tempRoot);
+
+        const localOptions = {
+          stage: 'dev',
+          region: 'us-east-1',
+          function: 'first',
+        };
+        const localServerless = new Serverless({ commands: [], options: {} });
+        localServerless.serviceDir = tempRoot;
+        localServerless.cli = new CLI(localServerless);
+        localServerless.processedInput = { commands: ['invoke'] };
+        localServerless.service.layers = {};
+
+        const localProvider = new AwsProvider(localServerless, localOptions);
+        localServerless.setProvider('aws', localProvider);
+
+        const invokeLocal = new ProxyquiredAwsInvokeLocal(localServerless, localOptions);
+        invokeLocal.provider = localProvider;
+        invokeLocal.options.functionObj = {
+          layers: ['arn:aws:lambda:us-east-1:123456789012:layer:my-layer:3'],
+        };
+
+        const requestStub = sinon.stub(localProvider, 'request').resolves({
+          Content: {
+            Location: `${baseUrl}/layer-download?Signature=opaque`,
+          },
+        });
+
+        const result = await invokeLocal.getLayerPaths();
+        const expectedLayerPath = path.join('.serverless', 'layers', 'my-layer', '3');
+        const copiedFilePath = path.join(
+          tempRoot,
+          expectedLayerPath,
+          'nodejs',
+          'node_modules',
+          'test-dep',
+          'index.js'
+        );
+        const cachedFilePath = path.join(
+          tempRoot,
+          'cache-root',
+          'invokeLocal',
+          'layers',
+          'my-layer',
+          '3',
+          'nodejs',
+          'node_modules',
+          'test-dep',
+          'index.js'
+        );
+
+        expect(
+          requestStub.calledOnceWithExactly('Lambda', 'getLayerVersion', {
+            LayerName: 'arn:aws:lambda:us-east-1:123456789012:layer:my-layer',
+            VersionNumber: 3,
+          })
+        ).to.equal(true);
+        expect(result).to.deep.equal([expectedLayerPath]);
+        expect(await fsp.readFile(copiedFilePath, 'utf8')).to.equal('module.exports = 123;');
+        expect(await fsp.readFile(cachedFilePath, 'utf8')).to.equal('module.exports = 123;');
+      } finally {
+        process.chdir(originalCwd);
+        await new Promise((resolve, reject) => {
+          server.close((error) => {
+            if (error) {
+              reject(error);
+              return;
+            }
+
+            resolve();
+          });
+        });
+        await fse.remove(tempRoot);
+      }
     });
   });
 

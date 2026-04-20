@@ -72,6 +72,50 @@ describe('test/unit/lib/cli/triage/index.test.js', () => {
           }
         );
       });
+
+      it('should not resolve to `@osls/compose` for "config" when compose config is present', async () => {
+        await overrideArgv({ args: ['sls', 'config'] }, async () =>
+          overrideCwd(
+            path.resolve(fixturesDirname, '@osls/compose', 'yml', 'project'),
+            async () => {
+              expect(await triage()).to.equal('serverless');
+            }
+          )
+        );
+      });
+
+      it('should not resolve to `@osls/compose` for "config credentials" when compose config is present', async () => {
+        await overrideArgv({ args: ['sls', 'config', 'credentials'] }, async () =>
+          overrideCwd(
+            path.resolve(fixturesDirname, '@osls/compose', 'yml', 'project'),
+            async () => {
+              expect(await triage()).to.equal('serverless');
+            }
+          )
+        );
+      });
+
+      it('should not resolve to `@osls/compose` for "config --help" when compose config is present', async () => {
+        await overrideArgv({ args: ['sls', 'config', '--help'] }, async () =>
+          overrideCwd(
+            path.resolve(fixturesDirname, '@osls/compose', 'yml', 'project'),
+            async () => {
+              expect(await triage()).to.equal('serverless');
+            }
+          )
+        );
+      });
+
+      it('should not resolve to `@osls/compose` for "config credentials --help" when compose config is present', async () => {
+        await overrideArgv({ args: ['sls', 'config', 'credentials', '--help'] }, async () =>
+          overrideCwd(
+            path.resolve(fixturesDirname, '@osls/compose', 'yml', 'project'),
+            async () => {
+              expect(await triage()).to.equal('serverless');
+            }
+          )
+        );
+      });
     });
 
     describe('--help handling', () => {

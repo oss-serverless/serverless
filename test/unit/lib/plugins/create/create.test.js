@@ -1,8 +1,10 @@
 'use strict';
 
+const http = require('http');
 const chai = require('chai');
 const fsp = require('fs').promises;
 const path = require('path');
+const AdmZip = require('adm-zip');
 const fse = require('fs-extra');
 const proxyquire = require('proxyquire');
 const sinon = require('sinon');
@@ -186,6 +188,102 @@ describe('test/unit/lib/plugins/create/create.test.js', () => {
       }
 
       throw new Error('Expected create() to reject');
+    });
+  });
+
+  describe('remote template URL integration', () => {
+    it('should create from --template-url through the real downloader stack and default the service name to the target basename', async () => {
+      const zip = new AdmZip();
+      zip.addFile('template-main/serverless.yml', Buffer.from('service: template-name\n'));
+      zip.addFile(
+        'template-main/package.json',
+        Buffer.from(JSON.stringify({ name: 'template-name' }, null, 2))
+      );
+      zip.addFile(
+        'template-main/handler.js',
+        Buffer.from("'use strict';\nmodule.exports.hello = async () => 'ok';\n")
+      );
+      const zipBuffer = zip.toBuffer();
+      const requests = [];
+      const expectedTemplateUrl = 'https://github.com/johndoe/template/archive/master.zip';
+      const tempRoot = getTmpDirPath();
+      const targetDir = path.join(tempRoot, 'nested', 'custom-target-directory');
+      const server = http.createServer((req, res) => {
+        requests.push(req.url);
+
+        if (req.url === '/archive.zip') {
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/zip');
+          res.end(zipBuffer);
+          return;
+        }
+
+        res.statusCode = 404;
+        res.end();
+      });
+
+      await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+      const baseUrl = `http://127.0.0.1:${server.address().port}`;
+      const realGot = require('got');
+      const requestedUrls = [];
+      const wrappedGot = Object.assign(
+        (...args) => {
+          const [uri, options] = args;
+          const stringUri = String(uri);
+          requestedUrls.push(stringUri);
+          return realGot(
+            stringUri === expectedTemplateUrl ? `${baseUrl}/archive.zip` : uri,
+            options
+          );
+        },
+        realGot,
+        {
+          stream: (uri, options) => {
+            const stringUri = String(uri);
+            requestedUrls.push(stringUri);
+            return realGot.stream(
+              stringUri === expectedTemplateUrl ? `${baseUrl}/archive.zip` : uri,
+              options
+            );
+          },
+        }
+      );
+
+      try {
+        await runServerless({
+          noService: true,
+          command: 'create',
+          options: {
+            'template-url': 'https://github.com/johndoe/template',
+            'path': targetDir,
+          },
+          modulesCacheStub: {
+            got: wrappedGot,
+          },
+        });
+
+        const serverlessYml = await fsp.readFile(path.join(targetDir, 'serverless.yml'), 'utf8');
+        const packageJson = JSON.parse(
+          await fsp.readFile(path.join(targetDir, 'package.json'), 'utf8')
+        );
+
+        expect(serverlessYml).to.include('service: custom-target-directory');
+        expect(packageJson.name).to.equal('custom-target-directory');
+        expect(requestedUrls).to.deep.equal([expectedTemplateUrl]);
+        expect(requests).to.deep.equal(['/archive.zip']);
+      } finally {
+        await new Promise((resolve, reject) => {
+          server.close((error) => {
+            if (error) {
+              reject(error);
+              return;
+            }
+
+            resolve();
+          });
+        });
+        await fse.remove(tempRoot);
+      }
     });
   });
 

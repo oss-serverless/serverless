@@ -1,5 +1,6 @@
 'use strict';
 
+const path = require('path');
 const chai = require('chai');
 const sinon = require('sinon');
 const yaml = require('js-yaml');
@@ -7,11 +8,32 @@ const fse = require('fs-extra');
 const proxyquire = require('proxyquire');
 const fixturesEngine = require('../../fixtures/programmatic');
 const resolveConfigurationPath = require('../../../lib/cli/resolve-configuration-path');
+const cloudformationSchema = require('../../../lib/utils/serverless-utils/cloudformation-schema');
 const { expect } = require('chai');
 
 chai.use(require('chai-as-promised'));
 
 const npmCommand = 'npm';
+
+const writeRawConfiguration = async (serviceDir, rawYaml) => {
+  const configurationFilePath = await resolveConfigurationPath({
+    cwd: serviceDir,
+  });
+  await fse.writeFile(configurationFilePath, rawYaml);
+  return {
+    configurationFilePath,
+    configuration: yaml.load(rawYaml, {
+      filename: configurationFilePath,
+      schema: cloudformationSchema,
+    }),
+  };
+};
+
+const readParsedConfiguration = async (configurationFilePath) =>
+  yaml.load(await fse.readFile(configurationFilePath, 'utf8'), {
+    filename: configurationFilePath,
+    schema: cloudformationSchema,
+  });
 
 describe('test/unit/commands/plugin-install.test.js', async () => {
   const spawnFake = sinon.fake();
@@ -96,6 +118,104 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
         filename: configurationFilePath,
       });
       expect(serverlessFileObj.plugins).not.to.include(pluginName);
+    });
+  });
+
+  describe('with intrinsic-tagged yaml', () => {
+    it('preserves shorthand intrinsic tags when adding a plugin to array-form yaml', async () => {
+      const fixture = await fixturesEngine.setup('function');
+      const serviceDir = fixture.servicePath;
+      const rawYaml = [
+        'service: raw-plugin-yaml',
+        'configValidationMode: error',
+        "frameworkVersion: '*'",
+        '',
+        'custom:',
+        '  pluginLogGroupArn: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${self:service}-${sls:stage}:*',
+        '',
+        'provider:',
+        '  name: aws',
+        '  runtime: nodejs20.x',
+        '',
+        'functions:',
+        '  basic:',
+        '    handler: handler.hello',
+        '',
+      ].join('\n');
+
+      const { configurationFilePath, configuration } = await writeRawConfiguration(
+        serviceDir,
+        rawYaml
+      );
+
+      await installPlugin({
+        configuration,
+        serviceDir,
+        configurationFilename: path.basename(configurationFilePath),
+        options: {
+          name: pluginName,
+        },
+      });
+
+      const fileText = await fse.readFile(configurationFilePath, 'utf8');
+      const parsed = await readParsedConfiguration(configurationFilePath);
+
+      expect(fileText).to.include(
+        'pluginLogGroupArn: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${self:service}-${sls:stage}:*'
+      );
+      expect(fileText).to.include(`- ${pluginName}`);
+      expect(parsed.plugins).to.include(pluginName);
+      expect(parsed.custom.pluginLogGroupArn).to.deep.equal({
+        'Fn::Sub':
+          'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${self:service}-${sls:stage}:*',
+      });
+    });
+
+    it('preserves sibling shorthand tags when adding a plugin to object-form plugins.modules', async () => {
+      const fixture = await fixturesEngine.setup('function');
+      const serviceDir = fixture.servicePath;
+      const rawYaml = [
+        'service: raw-plugin-yaml',
+        'configValidationMode: error',
+        "frameworkVersion: '*'",
+        '',
+        'plugins:',
+        '  localPath: ./.serverless_plugins',
+        '  modules:',
+        '    - existing-plugin',
+        '',
+        'custom:',
+        '  taggedValue: !Sub ${AWS::Region}',
+        '',
+        'provider:',
+        '  name: aws',
+        '  runtime: nodejs20.x',
+        '',
+      ].join('\n');
+
+      const { configurationFilePath, configuration } = await writeRawConfiguration(
+        serviceDir,
+        rawYaml
+      );
+
+      await installPlugin({
+        configuration,
+        serviceDir,
+        configurationFilename: path.basename(configurationFilePath),
+        options: {
+          name: pluginName,
+        },
+      });
+
+      const fileText = await fse.readFile(configurationFilePath, 'utf8');
+      const parsed = await readParsedConfiguration(configurationFilePath);
+
+      expect(fileText).to.include('taggedValue: !Sub ${AWS::Region}');
+      expect(parsed.plugins.localPath).to.equal('./.serverless_plugins');
+      expect(parsed.plugins.modules).to.deep.equal(['existing-plugin', pluginName]);
+      expect(parsed.custom.taggedValue).to.deep.equal({
+        'Fn::Sub': '${AWS::Region}',
+      });
     });
   });
 });
