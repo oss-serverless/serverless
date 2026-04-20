@@ -96,17 +96,17 @@ describe('serverless-utils/config', () => {
         });
 
         config.set('custom.value', 'somevalue');
-        expect(JSON.parse(await fs.promises.readFile(localConfigPath, 'utf8')).custom.value).to.equal(
-          'somevalue'
-        );
-        expect(JSON.parse(await fs.promises.readFile(globalConfigPath, 'utf8'))).to.not.have.property(
-          'custom'
-        );
+        expect(
+          JSON.parse(await fs.promises.readFile(localConfigPath, 'utf8')).custom.value
+        ).to.equal('somevalue');
+        expect(
+          JSON.parse(await fs.promises.readFile(globalConfigPath, 'utf8'))
+        ).to.not.have.property('custom');
 
         config.delete('featureFlag');
-        expect(JSON.parse(await fs.promises.readFile(localConfigPath, 'utf8'))).to.not.have.property(
-          'featureFlag'
-        );
+        expect(
+          JSON.parse(await fs.promises.readFile(localConfigPath, 'utf8'))
+        ).to.not.have.property('featureFlag');
         expect(JSON.parse(await fs.promises.readFile(globalConfigPath, 'utf8'))).to.have.property(
           'featureFlag'
         );

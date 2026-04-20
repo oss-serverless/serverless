@@ -34,7 +34,9 @@ describe('lib/utils/get-framework-id', () => {
       const { restoreCwd } = overrideCwd(serviceDir);
 
       try {
-        const getFrameworkId = requireUncached(() => require('../../../../lib/utils/get-framework-id'));
+        const getFrameworkId = requireUncached(() =>
+          require('../../../../lib/utils/get-framework-id')
+        );
 
         const firstValue = getFrameworkId();
         const secondValue = getFrameworkId();
