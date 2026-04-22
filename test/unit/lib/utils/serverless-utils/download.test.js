@@ -116,4 +116,65 @@ describe('serverless-utils/download', () => {
 
     expect(await fsp.readFile(path.join(tmpDir, 'file.txt'), 'utf8')).to.equal('fixture');
   });
+
+  it('preserves authorization across approved redirect hostnames', async () => {
+    let initialAuthorization;
+    let redirectedAuthorization;
+
+    const redirectedServer = http.createServer((req, res) => {
+      redirectedAuthorization = req.headers.authorization;
+      res.statusCode = 200;
+      res.end('redirected payload');
+    });
+
+    await new Promise((resolve) => redirectedServer.listen(0, '127.0.0.1', resolve));
+
+    const redirectingServer = http.createServer((req, res) => {
+      initialAuthorization = req.headers.authorization;
+      res.statusCode = 302;
+      res.setHeader('Location', `http://127.0.0.1:${redirectedServer.address().port}/final`);
+      res.end();
+    });
+
+    await new Promise((resolve) => redirectingServer.listen(0, '127.0.0.1', resolve));
+
+    try {
+      const result = await download(
+        `http://127.0.0.1:${redirectingServer.address().port}/start`,
+        {
+          responseType: 'text',
+          username: 'user',
+          password: 'pass',
+          allowedAuthRedirectHostnames: ['127.0.0.1'],
+        }
+      );
+
+      expect(result).to.equal('redirected payload');
+      expect(initialAuthorization).to.equal('Basic dXNlcjpwYXNz');
+      expect(redirectedAuthorization).to.equal('Basic dXNlcjpwYXNz');
+    } finally {
+      await Promise.all([
+        new Promise((resolve, reject) => {
+          redirectingServer.close((error) => {
+            if (error) {
+              reject(error);
+              return;
+            }
+
+            resolve();
+          });
+        }),
+        new Promise((resolve, reject) => {
+          redirectedServer.close((error) => {
+            if (error) {
+              reject(error);
+              return;
+            }
+
+            resolve();
+          });
+        }),
+      ]);
+    }
+  });
 });

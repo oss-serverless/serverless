@@ -225,6 +225,21 @@ describe('downloadTemplateFromRepo', () => {
       });
     });
 
+    it('passes the GitHub auth redirect allowlist through to the downloader', async () => {
+      const url = 'https://username:password@github.com/serverless/serverless';
+
+      await downloadTemplateFromRepo(url);
+
+      expect(downloadStub.calledOnce).to.equal(true);
+      expect(downloadStub.firstCall.args[2]).to.deep.include({
+        username: 'username',
+        password: 'password',
+      });
+      expect(downloadStub.firstCall.args[2].allowedAuthRedirectHostnames).to.deep.equal([
+        'codeload.github.com',
+      ]);
+    });
+
     it('should download into the provided path and rename the service to the provided name', async () => {
       const url = 'https://github.com/johndoe/service-to-be-downloaded';
       const name = 'new-service-name';

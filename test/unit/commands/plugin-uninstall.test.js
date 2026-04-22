@@ -220,5 +220,47 @@ describe('test/unit/commands/plugin-uninstall.test.js', async () => {
         'Fn::Sub': '${AWS::Region}',
       });
     });
+
+    it('removes plugins from a quoted top level plugins array without leaving a duplicate section', async () => {
+      const fixture = await fixturesEngine.setup('function');
+      const fixtureServiceDir = fixture.servicePath;
+      const rawYaml = [
+        'service: raw-plugin-yaml',
+        'configValidationMode: error',
+        "frameworkVersion: '*'",
+        '',
+        '"plugins":',
+        `  - ${pluginName}`,
+        '',
+        'custom:',
+        '  taggedValue: !Sub ${AWS::Region}',
+        '',
+        'provider:',
+        '  name: aws',
+        '  runtime: nodejs20.x',
+        '',
+      ].join('\n');
+
+      const { configurationFilePath: fixtureConfigurationPath, configuration } =
+        await writeRawConfiguration(fixtureServiceDir, rawYaml);
+
+      await uninstallPlugin({
+        configuration,
+        serviceDir: fixtureServiceDir,
+        configurationFilename: path.basename(fixtureConfigurationPath),
+        options: {
+          name: pluginName,
+        },
+      });
+
+      const fileText = await fse.readFile(fixtureConfigurationPath, 'utf8');
+      const parsed = await readParsedConfiguration(fixtureConfigurationPath);
+
+      expect(fileText.match(/^(?:"plugins"|plugins):/gm)).to.equal(null);
+      expect(parsed.plugins).to.equal(undefined);
+      expect(parsed.custom.taggedValue).to.deep.equal({
+        'Fn::Sub': '${AWS::Region}',
+      });
+    });
   });
 });

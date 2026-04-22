@@ -214,5 +214,49 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
         'Fn::Sub': '${AWS::Region}',
       });
     });
+
+    it('updates a quoted top level plugins array without duplicating the section', async () => {
+      const fixture = await fixturesEngine.setup('function');
+      const serviceDir = fixture.servicePath;
+      const rawYaml = [
+        'service: raw-plugin-yaml',
+        'configValidationMode: error',
+        "frameworkVersion: '*'",
+        '',
+        '"plugins":',
+        '  - existing-plugin',
+        '',
+        'custom:',
+        '  taggedValue: !Sub ${AWS::Region}',
+        '',
+        'provider:',
+        '  name: aws',
+        '  runtime: nodejs20.x',
+        '',
+      ].join('\n');
+
+      const { configurationFilePath, configuration } = await writeRawConfiguration(
+        serviceDir,
+        rawYaml
+      );
+
+      await installPlugin({
+        configuration,
+        serviceDir,
+        configurationFilename: path.basename(configurationFilePath),
+        options: {
+          name: pluginName,
+        },
+      });
+
+      const fileText = await fse.readFile(configurationFilePath, 'utf8');
+      const parsed = await readParsedConfiguration(configurationFilePath);
+
+      expect(fileText.match(/^(?:"plugins"|plugins):/gm)).to.have.length(1);
+      expect(parsed.plugins).to.deep.equal(['existing-plugin', pluginName]);
+      expect(parsed.custom.taggedValue).to.deep.equal({
+        'Fn::Sub': '${AWS::Region}',
+      });
+    });
   });
 });
