@@ -7,24 +7,27 @@
 const isMainModule = !EvalError.$serverlessCommandStartTime;
 if (isMainModule) EvalError.$serverlessCommandStartTime = process.hrtime();
 
-const nodeVersionMajor = Number(process.version.split('.')[0].slice(1));
-const nodeVersionMinor = Number(process.version.split('.')[1]);
+const isSupportedNodeVersion = require('../lib/cli/is-supported-node-version');
+
 const minimumSupportedVersionMajor = 20;
 const minimumSupportedVersionMinor = 0;
 
-if (
-  nodeVersionMajor < minimumSupportedVersionMajor ||
-  (nodeVersionMajor === minimumSupportedVersionMajor &&
-    nodeVersionMinor < minimumSupportedVersionMinor)
-) {
-  const serverlessVersion = Number(require('../package.json').version.split('.')[0]);
+if (!isSupportedNodeVersion(process.version)) {
+  const serverlessVersion = require('../package.json').version;
   process.stderr.write(
-    `\x1b[91mError: Serverless Framework v${serverlessVersion} does not support ` +
+    `Error: Serverless Framework v${serverlessVersion} does not support ` +
       `Node.js ${process.version}. Please upgrade Node.js to the latest ` +
-      `LTS version (v${minimumSupportedVersionMajor}.${minimumSupportedVersionMinor}.0 is a minimum supported version)\x1b[39m\n`
+      'LTS release. Minimum supported version: ' +
+      `v${minimumSupportedVersionMajor}.${minimumSupportedVersionMinor}.0.\n`
   );
   process.exit(1);
 }
+
+const crashAsync = (error) => {
+  process.nextTick(() => {
+    throw error;
+  });
+};
 
 if (isMainModule) {
   if (require('../lib/utils/is-standalone-executable')) {
@@ -32,20 +35,15 @@ if (isMainModule) {
   }
 }
 
-require('../lib/cli/triage')().then((cliName) => {
-  switch (cliName) {
-    case 'serverless':
-      require('../scripts/serverless');
-      return;
-    case '@osls/compose':
-      require('../lib/cli/run-compose')().catch((error) => {
-        // Expose eventual resolution error as regular crash, and not unhandled rejection
-        process.nextTick(() => {
-          throw error;
-        });
-      });
-      return;
-    default:
-      throw new Error(`Unrecognized CLI name "${cliName}"`);
-  }
-});
+require('../lib/cli/triage')()
+  .then((cliName) => {
+    switch (cliName) {
+      case 'serverless':
+        return require('../scripts/serverless');
+      case '@osls/compose':
+        return require('../lib/cli/run-compose')();
+      default:
+        throw new Error(`Unrecognized CLI name "${cliName}"`);
+    }
+  })
+  .catch(crashAsync);

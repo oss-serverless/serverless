@@ -45,38 +45,35 @@ jobs:
       - run: npm version $RELEASE_VERSION --no-git-tag-version
 
       - name: Build local package
-        run: npm pack
+        run: echo "PACKAGE_TGZ=$(npm pack --silent)" >> $GITHUB_ENV
 
       - name: Run tests against version packaged with npm pack
         run: |
-          TEMP_ARRAY=($(echo $GITHUB_REF | tr "/" "\n"))
-          TAG=${TEMP_ARRAY[@]: -1}
-          PACKAGE_VERSION=${TAG:1}
+          PACKAGE_VERSION=${PACKAGE_TGZ#osls-}
+          PACKAGE_VERSION=${PACKAGE_VERSION%.tgz}
           mkdir "serverless-${PACKAGE_VERSION}"
-          tar zxf "osls-${PACKAGE_VERSION}.tgz" -C "serverless-${PACKAGE_VERSION}"
+          tar zxf "$PACKAGE_TGZ" -C "serverless-${PACKAGE_VERSION}"
           cp -R test "serverless-${PACKAGE_VERSION}/package"
           ln -s "$(pwd)"/node_modules "serverless-${PACKAGE_VERSION}/package/node_modules"
           cd "serverless-${PACKAGE_VERSION}/package"
           script -e -c "npm test -- -b"
 
+      - name: Upload tested tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-package
+          path: ${{ env.PACKAGE_TGZ }}
+          if-no-files-found: error
+
   npmPublish:
     name: Publish to NPM
     needs: prePublishPackageTest
     runs-on: ubuntu-latest
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Retrieve dependencies from cache
-        uses: actions/cache@v4
-        id: cacheNpm
+      - name: Download tested tarball
+        uses: actions/download-artifact@v4
         with:
-          path: |
-            ~/.npm
-            node_modules
-          key: npm-v22-${{ runner.os }}-refs/heads/main-${{ hashFiles('package.json') }}
+          name: npm-package
 
       - name: Install Node.js and npm
         uses: actions/setup-node@v4
@@ -84,23 +81,5 @@ jobs:
           node-version: 22.x
           registry-url: https://registry.npmjs.org
 
-      # Normally we have a guarantee that deps are already there, still it may not be the case when:
-      # - `main` build for same commit failed (and we still pushed tag manually)
-      # - We've pushed tag manually before `main` build finalized
-      - name: Install dependencies
-        if: steps.cacheNpm.outputs.cache-hit != 'true'
-        run: |
-          npm update --no-save
-          npm update --save-dev --no-save
-
-      # Ensure npm 11.5.1 or later for trusted publishing
-      - run: npm install -g npm@latest
-
-      # Store the name of the release
-      # See https://stackoverflow.com/questions/58177786/get-the-current-pushed-tag-in-github-actions
-      - run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
-
-      - run: npm version $RELEASE_VERSION --no-git-tag-version
-
       - name: Publish new version
-        run: npm publish --access public --tag=latest
+        run: npm publish ./*.tgz --access public --tag=latest
