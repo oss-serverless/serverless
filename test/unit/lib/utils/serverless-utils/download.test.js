@@ -139,15 +139,12 @@ describe('serverless-utils/download', () => {
     await new Promise((resolve) => redirectingServer.listen(0, '127.0.0.1', resolve));
 
     try {
-      const result = await download(
-        `http://127.0.0.1:${redirectingServer.address().port}/start`,
-        {
-          responseType: 'text',
-          username: 'user',
-          password: 'pass',
-          allowedAuthRedirectHostnames: ['127.0.0.1'],
-        }
-      );
+      const result = await download(`http://127.0.0.1:${redirectingServer.address().port}/start`, {
+        responseType: 'text',
+        username: 'user',
+        password: 'pass',
+        allowedAuthRedirectHostnames: ['127.0.0.1'],
+      });
 
       expect(result).to.equal('redirected payload');
       expect(initialAuthorization).to.equal('Basic dXNlcjpwYXNz');

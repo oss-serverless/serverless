@@ -164,9 +164,12 @@ describe('#yamlAstParser', () => {
     });
 
     it('should add an item under a quoted top level key', () => {
-      const yamlContent = ['"plugins":', '  - existing-plugin', 'custom:', '  taggedValue: keep-me'].join(
-        '\n'
-      );
+      const yamlContent = [
+        '"plugins":',
+        '  - existing-plugin',
+        'custom:',
+        '  taggedValue: keep-me',
+      ].join('\n');
       const expectedResult = {
         plugins: ['existing-plugin', 'foo'],
         custom: {
