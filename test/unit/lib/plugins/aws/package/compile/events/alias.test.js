@@ -1,11 +1,9 @@
 'use strict';
 
 const runServerless = require('../../../../../../../utils/run-serverless');
-const { use: chaiUse, expect } = require('chai');
-const chaiAsPromised = require('chai-as-promised');
+const { expect } = require('chai');
 const naming = require('../../../../../../../../lib/plugins/aws/lib/naming');
 
-chaiUse(chaiAsPromised);
 describe('test/unit/lib/plugins/aws/package/compile/events/alias.test.js', () => {
   let lambdaResourceCount = 0;
 

@@ -1,14 +1,11 @@
 'use strict';
 
 const path = require('path');
-const chai = require('chai');
 const writeFileSync = require('../../../../lib/utils/fs/write-file-sync');
 const readFileSync = require('../../../../lib/utils/fs/read-file-sync');
 const yamlAstParser = require('../../../../lib/utils/yaml-ast-parser');
-const chaiAsPromised = require('chai-as-promised');
 const { getTmpDirPath } = require('../../../utils/fs');
 
-chai.use(chaiAsPromised);
 const expect = require('chai').expect;
 
 describe('#yamlAstParser', () => {

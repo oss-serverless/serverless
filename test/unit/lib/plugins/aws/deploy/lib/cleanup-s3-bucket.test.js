@@ -8,9 +8,6 @@ const AwsProvider = require('../../../../../../../lib/plugins/aws/provider');
 const AwsDeploy = require('../../../../../../../lib/plugins/aws/deploy/index');
 const Serverless = require('../../../../../../../lib/serverless');
 
-chai.use(require('chai-as-promised'));
-chai.use(require('sinon-chai'));
-
 const expect = chai.expect;
 
 describe('cleanupS3Bucket', () => {

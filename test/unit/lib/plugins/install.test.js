@@ -1,6 +1,5 @@
 'use strict';
 
-const chai = require('chai');
 const Serverless = require('../../../../lib/serverless');
 const Install = require('../../../../lib/plugins/install.js');
 const sinon = require('sinon');
@@ -9,7 +8,6 @@ const fse = require('fs-extra');
 const path = require('path');
 const { getTmpDirPath } = require('../../../utils/fs');
 
-chai.use(require('sinon-chai'));
 const { expect } = require('chai');
 
 describe('Install', () => {

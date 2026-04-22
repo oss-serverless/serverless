@@ -5,9 +5,6 @@
 const chai = require('chai');
 const runServerless = require('../../../../../../../../utils/run-serverless');
 
-chai.use(require('chai-as-promised'));
-chai.use(require('sinon-chai'));
-
 const expect = chai.expect;
 
 const NAME_OVER_64_CHARS = 'oneVeryLongAndVeryStrangeAndVeryComplicatedFunctionNameOver64Chars';

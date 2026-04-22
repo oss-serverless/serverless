@@ -1,12 +1,9 @@
 'use strict';
 
 const path = require('path');
-const chai = require('chai');
 const fileExists = require('../../../../../lib/utils/fs/file-exists');
 
 // Configure chai
-chai.use(require('chai-as-promised'));
-chai.use(require('sinon-chai'));
 const expect = require('chai').expect;
 
 describe('#fileExists()', () => {

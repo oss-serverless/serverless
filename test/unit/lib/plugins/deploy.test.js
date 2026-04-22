@@ -4,7 +4,6 @@ const Deploy = require('../../../../lib/plugins/deploy');
 const Serverless = require('../../../../lib/serverless');
 const sinon = require('sinon');
 const chai = require('chai');
-chai.use(require('chai-as-promised'));
 
 const expect = chai.expect;
 

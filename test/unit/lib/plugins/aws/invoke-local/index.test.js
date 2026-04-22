@@ -22,11 +22,22 @@ const spawnExt = require('child-process-ext/spawn');
 
 const tmpServicePath = __dirname;
 
-chai.use(require('chai-as-promised'));
-
 chai.should();
 
 const expect = chai.expect;
+
+const parseJsonOutput = (output) => {
+  const objectStartIndex = output.indexOf('{');
+  const arrayStartIndex = output.indexOf('[');
+  const startIndex = [objectStartIndex, arrayStartIndex]
+    .filter((index) => index !== -1)
+    .sort((left, right) => left - right)[0];
+  const objectEndIndex = output.lastIndexOf('}');
+  const arrayEndIndex = output.lastIndexOf(']');
+  const endIndex = Math.max(objectEndIndex, arrayEndIndex);
+
+  return JSON.parse(output.slice(startIndex, endIndex + 1));
+};
 
 describe('AwsInvokeLocal', () => {
   let AwsInvokeLocal;
@@ -1264,7 +1275,7 @@ describe('test/unit/lib/plugins/aws/invokeLocal/index.test.js', () => {
         });
         const outputAsJson = (() => {
           try {
-            return JSON.parse(response.output);
+            return parseJsonOutput(response.output);
           } catch (error) {
             log.error('Unexpected response output: %s', response.output);
             throw error;
@@ -1433,7 +1444,7 @@ describe('test/unit/lib/plugins/aws/invokeLocal/index.test.js', () => {
         options: { function: 'remainingTime' },
       });
 
-      const body = JSON.parse(output).body;
+      const body = parseJsonOutput(output).body;
       const [firstRemainingMs, secondRemainingMs, thirdRemainingMs] = JSON.parse(body).data;
       expect(firstRemainingMs).to.be.lte(3000);
       expect(secondRemainingMs).to.be.lte(2910);
@@ -1488,7 +1499,7 @@ describe('test/unit/lib/plugins/aws/invokeLocal/index.test.js', () => {
           options: { function: 'pythonRemainingTime' },
         });
 
-        const { start, stop } = JSON.parse(output);
+        const { start, stop } = parseJsonOutput(output);
         expect(start).to.lte(3000);
         expect(stop).to.lte(2910);
       });
@@ -1523,7 +1534,7 @@ describe('test/unit/lib/plugins/aws/invokeLocal/index.test.js', () => {
         options: { function: 'rubyRemainingTime' },
       });
 
-      const { start, stop } = JSON.parse(output);
+      const { start, stop } = parseJsonOutput(output);
       expect(start).to.lte(6000);
       expect(stop).to.lte(5910);
     });
@@ -1534,7 +1545,7 @@ describe('test/unit/lib/plugins/aws/invokeLocal/index.test.js', () => {
         options: { function: 'rubyDeadline' },
       });
 
-      const { deadlineMs } = JSON.parse(output);
+      const { deadlineMs } = parseJsonOutput(output);
       expect(deadlineMs).to.be.gt(Date.now());
     });
   });

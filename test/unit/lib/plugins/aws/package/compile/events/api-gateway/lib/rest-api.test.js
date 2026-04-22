@@ -7,7 +7,6 @@ const AwsProvider = require('../../../../../../../../../../lib/plugins/aws/provi
 const runServerless = require('../../../../../../../../../utils/run-serverless');
 
 const expect = chai.expect;
-chai.use(require('chai-as-promised'));
 
 describe('#compileRestApi()', () => {
   let serverless;

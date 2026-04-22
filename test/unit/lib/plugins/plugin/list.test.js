@@ -6,8 +6,6 @@ const PluginList = require('../../../../../lib/plugins/plugin/list');
 const Serverless = require('../../../../../lib/serverless');
 const CLI = require('../../../../../lib/classes/cli');
 
-chai.use(require('sinon-chai'));
-
 const expect = chai.expect;
 
 describe('PluginList', () => {

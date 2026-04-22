@@ -1,13 +1,10 @@
 'use strict';
 
 const path = require('path');
-const chai = require('chai');
 const createZipFile = require('../../../../../lib/utils/fs/create-zip-file');
 const { createTmpFile, listZipFiles } = require('../../../../utils/fs');
 
 // Configure chai
-chai.use(require('chai-as-promised'));
-chai.use(require('sinon-chai'));
 const expect = require('chai').expect;
 
 describe('#createZipFile()', () => {

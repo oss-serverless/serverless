@@ -1,12 +1,9 @@
 'use strict';
 
-const chai = require('chai');
 const path = require('path');
 const spawn = require('child-process-ext/spawn');
 const { expect } = require('chai');
 const fixturesEngine = require('../../fixtures/programmatic');
-
-chai.use(require('chai-as-promised'));
 
 const serverlessPath = path.resolve(__dirname, '../../../scripts/serverless.js');
 

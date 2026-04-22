@@ -6,8 +6,6 @@ const {
   getConfigurationValidationResult,
 } = require('../../../../../lib/classes/config-schema-handler');
 
-chai.use(require('chai-as-promised'));
-
 const expect = chai.expect;
 const FUNCTION_NAME_PATTERN = '^[a-zA-Z0-9-_]+$';
 

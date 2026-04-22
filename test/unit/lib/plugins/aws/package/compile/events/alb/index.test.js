@@ -2,10 +2,7 @@
 
 const runServerless = require('../../../../../../../../utils/run-serverless');
 const ServerlessError = require('../../../../../../../../../lib/serverless-error');
-const { use: chaiUse, expect } = require('chai');
-const chaiAsPromised = require('chai-as-promised');
-
-chaiUse(chaiAsPromised);
+const { expect } = require('chai');
 
 describe('test/unit/lib/plugins/aws/package/compile/events/alb/index.test.js', () => {
   let cfResources;

@@ -5,7 +5,6 @@ const CLI = require('../../../../lib/classes/cli');
 const Serverless = require('../../../../lib/serverless');
 
 const { expect } = chai;
-chai.use(require('sinon-chai'));
 
 describe('CLI', () => {
   let cli;

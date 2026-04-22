@@ -9,16 +9,12 @@ if (isMainModule) EvalError.$serverlessCommandStartTime = process.hrtime();
 
 const isSupportedNodeVersion = require('../lib/cli/is-supported-node-version');
 
-const minimumSupportedVersionMajor = 20;
-const minimumSupportedVersionMinor = 0;
-
 if (!isSupportedNodeVersion(process.version)) {
   const serverlessVersion = require('../package.json').version;
   process.stderr.write(
     `Error: Serverless Framework v${serverlessVersion} does not support ` +
-      `Node.js ${process.version}. Please upgrade Node.js to the latest ` +
-      'LTS release. Minimum supported version: ' +
-      `v${minimumSupportedVersionMajor}.${minimumSupportedVersionMinor}.0.\n`
+      `Node.js ${process.version}. Please use a supported release. ` +
+      `Supported versions: ${isSupportedNodeVersion.supportedRange}.\n`
   );
   process.exit(1);
 }

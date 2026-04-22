@@ -1,12 +1,10 @@
 'use strict';
 
-const chai = require('chai');
 const path = require('path');
 const overrideEnv = require('process-utils/override-env');
 const fsp = require('fs').promises;
 const conditionallyLoadDotenv = require('../../../../lib/cli/conditionally-load-dotenv');
 
-chai.use(require('chai-as-promised'));
 const expect = require('chai').expect;
 
 describe('test/unit/lib/cli/conditionally-load-dotenv.test.js', () => {

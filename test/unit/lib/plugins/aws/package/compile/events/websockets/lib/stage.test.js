@@ -13,8 +13,6 @@ const AwsProvider = require('../../../../../../../../../../lib/plugins/aws/provi
 const { createTmpDir } = require('../../../../../../../../../utils/fs');
 const runServerless = require('../../../../../../../../../utils/run-serverless');
 
-chai.use(require('chai-as-promised'));
-
 describe('#compileStage()', () => {
   let awsCompileWebsocketsEvents;
   let stageLogicalId;
@@ -72,9 +70,8 @@ describe('#compileStage()', () => {
   });
 
   describe('logs', () => {
-    before(() => sinon.stub(childProcess, 'execAsync'));
-    after(() => childProcess.execAsync.restore());
     beforeEach(() => {
+      sinon.stub(childProcess, 'execAsync');
       // setting up Websocket logs
       awsCompileWebsocketsEvents.serverless.service.provider.logs = {
         websocket: true,

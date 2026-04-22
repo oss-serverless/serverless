@@ -2,7 +2,6 @@
 
 /* eslint-disable no-unused-expressions */
 
-const chai = require('chai');
 const os = require('os');
 const path = require('path');
 const JsZip = require('jszip');
@@ -17,8 +16,6 @@ const Serverless = require('../../../../../../lib/serverless');
 const { getTmpDirPath } = require('../../../../../utils/fs');
 
 // Configure chai
-chai.use(require('chai-as-promised'));
-chai.use(require('sinon-chai'));
 const { expect } = require('chai');
 
 describe('zipService', () => {

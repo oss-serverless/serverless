@@ -5,8 +5,6 @@ const Info = require('../../../../lib/plugins/info');
 const Serverless = require('../../../../lib/serverless');
 
 const expect = chai.expect;
-chai.use(require('chai-as-promised'));
-chai.use(require('sinon-chai'));
 
 describe('Info', () => {
   let info;

@@ -1,13 +1,10 @@
 'use strict';
 
-const chai = require('chai');
 const writeFile = require('../../../../../lib/utils/fs/write-file');
 const readFile = require('../../../../../lib/utils/fs/read-file');
 const { getTmpFilePath } = require('../../../../utils/fs');
 
 // Configure chai
-chai.use(require('chai-as-promised'));
-chai.use(require('sinon-chai'));
 const expect = require('chai').expect;
 
 describe('#readFile()', () => {

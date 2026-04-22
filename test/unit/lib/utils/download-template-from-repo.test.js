@@ -13,8 +13,6 @@ const { getTmpDirPath } = require('../../../utils/fs');
 const writeFileSync = require('../../../../lib/utils/fs/write-file-sync');
 const readFileSync = require('../../../../lib/utils/fs/read-file-sync');
 
-chai.use(require('chai-as-promised'));
-
 describe('downloadTemplateFromRepo', () => {
   let downloadTemplateFromRepo;
   let spawnStub;

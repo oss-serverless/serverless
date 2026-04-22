@@ -10,8 +10,6 @@ const Serverless = require('../../../../../../../../../lib/serverless');
 const runServerless = require('../../../../../../../../utils/run-serverless');
 
 const { expect } = chai;
-chai.use(require('sinon-chai'));
-chai.use(require('chai-as-promised'));
 
 describe('AwsCompileS3Events', () => {
   let serverless;

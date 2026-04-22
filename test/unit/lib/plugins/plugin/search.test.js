@@ -1,11 +1,9 @@
 'use strict';
 
-const chai = require('chai');
 const sinon = require('sinon');
 const PluginSearch = require('../../../../../lib/plugins/plugin/search');
 const Serverless = require('../../../../../lib/serverless');
 const CLI = require('../../../../../lib/classes/cli');
-chai.use(require('chai-as-promised'));
 const expect = require('chai').expect;
 
 describe('PluginSearch', () => {

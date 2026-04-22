@@ -7,8 +7,6 @@ const AwsProvider = require('../../../../../../lib/plugins/aws/provider');
 const CLI = require('../../../../../../lib/classes/cli');
 const monitorStack = require('../../../../../../lib/plugins/aws/lib/monitor-stack');
 
-chai.use(require('chai-as-promised'));
-
 const { expect } = chai;
 
 describe('monitorStack', () => {

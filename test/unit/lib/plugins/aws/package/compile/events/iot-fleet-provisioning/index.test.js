@@ -4,8 +4,6 @@ const chai = require('chai');
 const runServerless = require('../../../../../../../../utils/run-serverless');
 const templateBody = require('../../../../../../../../fixtures/programmatic/iot-fleet-provisioning/template.json');
 
-chai.use(require('chai-as-promised'));
-
 const { expect } = chai;
 
 describe('lib/plugins/aws/package/compile/events/iotFleetProvisioning/index.test.js', () => {

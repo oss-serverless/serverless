@@ -4,14 +4,12 @@
  * Test: YamlParser Function Class
  */
 
-const chai = require('chai');
 const yaml = require('js-yaml');
 const path = require('path');
 const Serverless = require('../../../../lib/serverless');
 const { getTmpFilePath, getTmpDirPath } = require('../../../utils/fs');
 
 // Configure chai
-chai.use(require('chai-as-promised'));
 const expect = require('chai').expect;
 
 const serverless = new Serverless({ commands: [], options: {} });

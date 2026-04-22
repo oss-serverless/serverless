@@ -4,7 +4,6 @@ const chai = require('chai');
 const runServerless = require('../../../../../../../../../utils/run-serverless');
 
 const expect = chai.expect;
-chai.use(require('chai-as-promised'));
 
 describe('#compileRequestValidators() - schemas', () => {
   let cfResources;

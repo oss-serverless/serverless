@@ -1,7 +1,5 @@
 'use strict';
 
-const chai = require('chai');
-chai.use(require('chai-as-promised'));
 const expect = require('chai').expect;
 const sinon = require('sinon');
 const AwsInfo = require('../../../../../../lib/plugins/aws/info/index');

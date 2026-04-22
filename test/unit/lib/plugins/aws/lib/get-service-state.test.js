@@ -8,7 +8,6 @@ const AwsProvider = require('../../../../../../lib/plugins/aws/provider');
 const getServiceState = require('../../../../../../lib/plugins/aws/lib/get-service-state');
 
 const expect = chai.expect;
-chai.use(require('sinon-chai'));
 
 describe('#getServiceState()', () => {
   let serverless;

@@ -8,9 +8,6 @@ const runServerless = require('../../../../utils/run-serverless');
 const ServerlessError = require('../../../../../lib/serverless-error');
 const fixtures = require('../../../../fixtures/programmatic');
 
-chai.use(require('chai-as-promised'));
-chai.use(require('sinon-chai'));
-
 const expect = chai.expect;
 
 describe('test/unit/lib/plugins/aws/invoke.test.js', () => {

@@ -4,8 +4,6 @@ const path = require('path');
 const fsp = require('fs').promises;
 const chai = require('chai');
 
-chai.use(require('chai-as-promised'));
-
 const { expect } = chai;
 const requireWithImportFallback = require('../../../../lib/utils/require-with-import-fallback');
 

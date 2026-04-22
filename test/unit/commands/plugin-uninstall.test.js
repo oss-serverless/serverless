@@ -1,7 +1,6 @@
 'use strict';
 
 const path = require('path');
-const chai = require('chai');
 const sinon = require('sinon');
 const yaml = require('js-yaml');
 const fse = require('fs-extra');
@@ -10,8 +9,6 @@ const fixturesEngine = require('../../fixtures/programmatic');
 const resolveConfigurationPath = require('../../../lib/cli/resolve-configuration-path');
 const cloudformationSchema = require('../../../lib/utils/serverless-utils/cloudformation-schema');
 const { expect } = require('chai');
-
-chai.use(require('chai-as-promised'));
 
 const npmCommand = 'npm';
 const pluginName = 'serverless-plugin-1';

@@ -2,7 +2,6 @@
 
 const path = require('path');
 const fsp = require('fs').promises;
-const chai = require('chai');
 const sinon = require('sinon');
 const { listFileProperties, listZipFiles } = require('../../../../../utils/fs');
 const runServerless = require('../../../../../utils/run-serverless');
@@ -10,8 +9,6 @@ const fixtures = require('../../../../../fixtures/programmatic');
 const packageService = require('../../../../../../lib/plugins/package/lib/package-service');
 
 // Configure chai
-chai.use(require('chai-as-promised'));
-chai.use(require('sinon-chai'));
 const { expect } = require('chai');
 
 describe('test/unit/lib/plugins/package/lib/packageService.test.js', () => {

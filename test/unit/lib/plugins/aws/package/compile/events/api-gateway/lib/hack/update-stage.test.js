@@ -15,9 +15,6 @@ const {
 const runServerless = require('../../../../../../../../../../utils/run-serverless');
 const fixtures = require('../../../../../../../../../../fixtures/programmatic');
 
-chai.use(require('sinon-chai'));
-chai.use(require('chai-as-promised'));
-
 const { expect } = chai;
 
 describe('#updateStage()', () => {

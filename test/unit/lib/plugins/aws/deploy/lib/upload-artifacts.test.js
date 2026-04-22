@@ -15,9 +15,6 @@ const Serverless = require('../../../../../../../lib/serverless');
 const { getTmpDirPath, createTmpDir } = require('../../../../../../utils/fs');
 const runServerless = require('../../../../../../utils/run-serverless');
 
-chai.use(require('chai-as-promised'));
-chai.use(require('sinon-chai'));
-
 const expect = chai.expect;
 
 describe('uploadArtifacts', () => {

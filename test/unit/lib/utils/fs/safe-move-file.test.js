@@ -2,16 +2,12 @@
 
 const fse = require('fs-extra');
 const sinon = require('sinon');
-const chai = require('chai');
 const provisionTempDir = require('../../../../lib/provision-tmp-dir');
 const { join } = require('path');
 const { expect } = require('chai');
 const fsp = require('fs').promises;
 const fs = require('fs');
-const sinonChai = require('sinon-chai');
 const safeMoveFile = require('../../../../../lib/utils/fs/safe-move-file');
-
-chai.use(sinonChai);
 
 /**
  * Returns and Error object that resembles the EXDEV errors that are thrown

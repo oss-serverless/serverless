@@ -1,11 +1,9 @@
 'use strict';
 
-const chai = require('chai');
 const runServerless = require('../../../utils/run-serverless');
 const { version } = require('../../../../package');
 
 // Configure chai
-chai.use(require('chai-as-promised'));
 const expect = require('chai').expect;
 
 describe('Service', () => {

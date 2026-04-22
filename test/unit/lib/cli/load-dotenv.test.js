@@ -1,6 +1,5 @@
 'use strict';
 
-const chai = require('chai');
 const path = require('path');
 const sinon = require('sinon');
 const overrideEnv = require('process-utils/override-env');
@@ -9,7 +8,6 @@ const loadEnv = require('../../../../lib/cli/load-dotenv');
 const dotenv = require('dotenv');
 const ServerlessError = require('../../../../lib/serverless-error');
 
-chai.use(require('chai-as-promised'));
 const expect = require('chai').expect;
 
 describe('test/unit/lib/cli/load-dotenv.test.js', () => {

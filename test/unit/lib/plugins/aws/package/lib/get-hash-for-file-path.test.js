@@ -5,8 +5,6 @@ const getHashForFilePath = require('../../../../../../../lib/plugins/aws/package
 const fsp = require('fs').promises;
 const path = require('path');
 
-chai.use(require('chai-as-promised'));
-
 const expect = chai.expect;
 
 describe('getHashForFilePath', () => {

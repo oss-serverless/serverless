@@ -9,8 +9,6 @@ const { getTmpDirPath } = require('../../../utils/fs');
 
 const fixturesPath = path.resolve(__dirname, '../../../fixtures/programmatic');
 
-chai.use(require('chai-as-promised'));
-
 const expect = chai.expect;
 
 describe('test/unit/lib/utils/create-from-local-template.test.js', () => {

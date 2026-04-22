@@ -128,7 +128,7 @@
     "jszip": "^3.10.1",
     "lint-staged": "^16.2.7",
     "minimist": "^1.2.8",
-    "mocha": "^11.7.5",
+    "mocha": "12.0.0-beta-9.2",
     "mock-require": "^3.0.3",
     "p-limit": "^3.1.0",
     "prettier": "^2.8.8",
@@ -426,16 +426,6 @@
     "/lib/plugins/aws/custom-resources/node_modules/**",
     "!/test/fixtures/programmatic/locallyInstalledServerless/node_modules/**"
   ],
-  "mocha": {
-    "require": [
-      "./test/mocha-patch",
-      "./test/lib/setup/log",
-      "./test/lib/setup/mock-homedir",
-      "./test/lib/setup/mock-cwd",
-      "./test/lib/setup/restore-env"
-    ],
-    "timeout": 60000
-  },
   "lint-staged": {
     "*.js": [
       "eslint"
@@ -446,9 +436,9 @@
   },
   "scripts": {
     "integration-test-cleanup": "node test/utils/aws-cleanup.js",
-    "integration-test-run-all": "node test/lib/bin/mocha-isolated.js --pass-through-aws-creds --skip-fs-cleanup-check --max-workers=20 \"test/integration/**/*.test.js\"",
-    "integration-test-run-basic": "mocha test/integration-basic.test.js",
-    "integration-test-run-package": "node test/lib/bin/mocha-isolated.js --skip-fs-cleanup-check test/integration-package/**/*.tests.js",
+    "integration-test-run-all": "mocha --config test/mocha/integration.cjs --parallel --jobs 20 \"test/integration/**/*.test.js\"",
+    "integration-test-run-basic": "mocha --config test/mocha/integration.cjs test/integration-basic.test.js",
+    "integration-test-run-package": "mocha --config test/mocha/package.cjs \"test/integration-package/**/*.tests.js\"",
     "integration-test-setup": "node ./scripts/test/integration-setup/index.js",
     "integration-test-teardown": "node ./scripts/test/integration-teardown.js",
     "lint": "eslint .",
@@ -457,12 +447,12 @@
     "prettier-check:updated": "pipe-git-updated --ext=css --ext=html --ext=js --ext=json --ext=md --ext=yaml --ext=yml --base=main -- prettier -c",
     "prettify": "prettier --write \"**/*.{css,html,js,json,md,yaml,yml}\"",
     "prettify:updated": "pipe-git-updated --ext=css --ext=html --ext=js --ext=json --ext=md --ext=yaml --ext=yml --base=main -- prettier --write",
-    "test": "mocha \"test/unit/**/*.test.js\"",
+    "test": "mocha --config test/mocha/unit.cjs --parallel \"test/unit/**/*.test.js\"",
     "test:ci": "npm run prettier-check:updated && npm run lint:updated && npm run test:isolated",
-    "test:isolated": "node test/lib/bin/mocha-isolated.js \"test/unit/**/*.test.js\""
+    "test:isolated": "mocha --config test/mocha/unit.cjs --parallel \"test/unit/**/*.test.js\""
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": "^20.19.0 || >=22.12.0"
   },
   "license": "MIT"
 }

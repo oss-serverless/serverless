@@ -5,8 +5,6 @@ const runServerless = require('../../../../../../../../utils/run-serverless');
 
 const { expect } = chai;
 
-chai.use(require('chai-as-promised'));
-
 describe('AwsCompileMSKEvents', () => {
   const arn = 'arn:aws:kafka:us-east-1:111111111111:cluster/ClusterName/a1a1a1a1a1a1a1a1a';
   const topic = 'TestingTopic';

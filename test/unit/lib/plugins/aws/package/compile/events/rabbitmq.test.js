@@ -5,8 +5,6 @@ const runServerless = require('../../../../../../../utils/run-serverless');
 
 const { expect } = chai;
 
-chai.use(require('chai-as-promised'));
-
 describe('test/unit/lib/plugins/aws/package/compile/events/rabbitmq.test.js', () => {
   const brokerArn = 'arn:aws:mq:us-east-1:0000:broker:ExampleMQBroker:b-xxx-xxx';
   const basicAuthArn = 'arn:aws:secretsmanager:us-east-1:01234567890:secret:MyBrokerSecretName';

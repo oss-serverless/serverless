@@ -13,8 +13,6 @@ const {
 const runServerless = require('../../../../../utils/run-serverless');
 
 const expect = chai.expect;
-chai.use(require('sinon-chai'));
-chai.use(require('chai-as-promised'));
 
 describe('#addCustomResourceToService()', () => {
   let tmpDirPath;

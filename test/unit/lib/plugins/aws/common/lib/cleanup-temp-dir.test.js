@@ -6,8 +6,6 @@ const Package = require('../../../../../../../lib/plugins/aws/common/index');
 const Serverless = require('../../../../../../../lib/serverless');
 const { getTmpDirPath } = require('../../../../../../utils/fs');
 
-chai.use(require('chai-as-promised'));
-
 const expect = chai.expect;
 
 describe('#cleanupTempDir()', () => {

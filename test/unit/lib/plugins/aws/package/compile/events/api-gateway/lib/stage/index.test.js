@@ -200,9 +200,8 @@ describe('#compileStage()', () => {
   });
 
   describe('logs', () => {
-    before(() => sinon.stub(childProcess, 'execAsync'));
-    after(() => childProcess.execAsync.restore());
     beforeEach(() => {
+      sinon.stub(childProcess, 'execAsync');
       // setting up API Gateway logs
       awsCompileApigEvents.serverless.service.provider.logs = {
         restApi: true,

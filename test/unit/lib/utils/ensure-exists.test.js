@@ -11,8 +11,6 @@ const fsp = require('fs').promises;
 const crypto = require('crypto');
 
 const expect = chai.expect;
-chai.use(require('chai-as-promised'));
-chai.use(require('sinon-chai'));
 
 describe('test/unit/lib/utils/ensureExists.test.js', () => {
   const testCacheDir = getTmpDirPath();

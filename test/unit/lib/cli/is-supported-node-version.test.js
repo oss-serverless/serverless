@@ -9,11 +9,23 @@ describe('test/unit/lib/cli/is-supported-node-version.test.js', () => {
     expect(isSupportedNodeVersion('v18.20.0')).to.equal(false);
   });
 
-  it('accepts Node 20', () => {
-    expect(isSupportedNodeVersion('v20.0.0')).to.equal(true);
+  it('rejects Node 20 releases before 20.19.0', () => {
+    expect(isSupportedNodeVersion('v20.18.1')).to.equal(false);
   });
 
-  it('accepts Node 22', () => {
-    expect(isSupportedNodeVersion('v22.1.0')).to.equal(true);
+  it('accepts Node 20.19.0 and newer 20.x releases', () => {
+    expect(isSupportedNodeVersion('v20.19.0')).to.equal(true);
+  });
+
+  it('rejects unsupported odd-numbered majors', () => {
+    expect(isSupportedNodeVersion('v21.7.0')).to.equal(false);
+  });
+
+  it('rejects Node 22 releases before 22.12.0', () => {
+    expect(isSupportedNodeVersion('v22.11.0')).to.equal(false);
+  });
+
+  it('accepts Node 22.12.0 and newer releases', () => {
+    expect(isSupportedNodeVersion('v22.12.0')).to.equal(true);
   });
 });

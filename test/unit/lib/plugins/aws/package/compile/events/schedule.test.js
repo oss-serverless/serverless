@@ -2,13 +2,10 @@
 
 const runServerless = require('../../../../../../../utils/run-serverless');
 const ServerlessError = require('../../../../../../../../lib/serverless-error');
-const { use: chaiUse, expect } = require('chai');
-const chaiAsPromised = require('chai-as-promised');
+const { expect } = require('chai');
 
 const METHOD_SCHEDULER = 'scheduler';
 const METHOD_EVENT_BUS = 'eventBus';
-
-chaiUse(chaiAsPromised);
 
 async function run(events, options = {}) {
   const params = {

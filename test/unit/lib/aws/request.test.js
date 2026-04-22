@@ -7,9 +7,6 @@ const overrideEnv = require('process-utils/override-env');
 
 const expect = chai.expect;
 
-chai.use(require('chai-as-promised'));
-chai.use(require('sinon-chai'));
-
 describe('#request', () => {
   describe('Credentials support', () => {
     // awsRequest supports credentials from two sources:

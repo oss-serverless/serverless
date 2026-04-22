@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 30
 
@@ -32,26 +32,21 @@ jobs:
 
       - name: Retrieve dependencies from cache
         id: cacheNpm
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
-          path: |
-            ~/.npm
-            node_modules
-          key: npm-v22-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('package.json') }}
+          path: ~/.npm
+          key: npm-v22-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('package-lock.json') }}
           restore-keys: |
             npm-v22-${{ runner.os }}-${{ github.ref }}-
             npm-v22-${{ runner.os }}-refs/heads/main-
 
       - name: Install Node.js and npm
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22.x
 
       - name: Install dependencies
-        if: steps.cacheNpm.outputs.cache-hit != 'true'
-        run: |
-          npm update --no-save
-          npm update --save-dev --no-save
+        run: npm ci
       - name: Validate formatting
         run: npm run prettier-check:updated
       - name: Validate lint rules
@@ -87,62 +82,52 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Retrieve dependencies from cache
         id: cacheNpm
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
-          path: |
-            ~/.npm
-            node_modules
-          key: npm-v22-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('package.json') }}
+          path: ~/.npm
+          key: npm-v22-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('package-lock.json') }}
           restore-keys: |
             npm-v22-${{ runner.os }}-${{ github.ref }}-
             npm-v22-${{ runner.os }}-refs/heads/main-
 
       - name: Install Node.js and npm
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22.x
 
       - name: Install dependencies
-        if: steps.cacheNpm.outputs.cache-hit != 'true'
-        run: |
-          npm update --no-save
-          npm update --save-dev --no-save
+        run: npm ci
       - name: Unit tests
         run: npm test -- -b
 
   linuxNode20:
-    name: '[Linux] Node 20: Isolated unit tests'
+    name: '[Linux] Node 20: Unit tests'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Retrieve dependencies from cache
         id: cacheNpm
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
-          path: |
-            ~/.npm
-            node_modules
-          key: npm-v20-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('package.json') }}
+          path: ~/.npm
+          key: npm-v20-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('package-lock.json') }}
           restore-keys: |
             npm-v20-${{ runner.os }}-${{ github.ref }}-
             npm-v20-${{ runner.os }}-refs/heads/main-
 
       - name: Install Node.js and npm
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 20.x
 
       - name: Install dependencies
-        if: steps.cacheNpm.outputs.cache-hit != 'true'
-        run: |
-          npm update --no-save
-          npm update --save-dev --no-save
+        run: npm ci
       - name: Unit tests
         # Some tests depend on TTY support, which is missing in GA runner
         # Workaround taken from https://github.com/actions/runner/issues/241#issuecomment-577360161

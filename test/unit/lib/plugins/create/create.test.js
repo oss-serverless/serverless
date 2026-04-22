@@ -1,7 +1,6 @@
 'use strict';
 
 const http = require('http');
-const chai = require('chai');
 const fsp = require('fs').promises;
 const path = require('path');
 const AdmZip = require('adm-zip');
@@ -12,7 +11,6 @@ const ServerlessError = require('../../../../../lib/serverless-error');
 const { getTmpDirPath } = require('../../../../utils/fs');
 const runServerless = require('../../../../utils/run-serverless');
 
-chai.use(require('chai-as-promised'));
 const { expect } = require('chai');
 
 const fixturesPath = path.resolve(__dirname, '../../../../fixtures/programmatic');

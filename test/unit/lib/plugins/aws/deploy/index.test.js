@@ -1,12 +1,9 @@
 'use strict';
 
-const chai = require('chai');
 const sinon = require('sinon');
 
 const runServerless = require('../../../../../utils/run-serverless');
 
-chai.use(require('chai-as-promised'));
-chai.use(require('sinon-chai'));
 const expect = require('chai').expect;
 
 describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {

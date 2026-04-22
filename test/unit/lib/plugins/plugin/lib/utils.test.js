@@ -8,8 +8,6 @@ const Serverless = require('../../../../../../lib/serverless');
 const CLI = require('../../../../../../lib/classes/cli');
 const observeOutput = require('../../../../../lib/observe-output');
 
-chai.use(require('chai-as-promised'));
-
 const expect = chai.expect;
 
 describe('PluginUtils', () => {

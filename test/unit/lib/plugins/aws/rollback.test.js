@@ -8,9 +8,6 @@ const chai = require('chai');
 const assert = require('chai').assert;
 const sinon = require('sinon');
 
-chai.use(require('chai-as-promised'));
-chai.use(require('sinon-chai'));
-
 const expect = chai.expect;
 
 describe('AwsRollback', () => {

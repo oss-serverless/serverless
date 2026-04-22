@@ -10,9 +10,6 @@ const Serverless = require('../../../../../lib/serverless');
 const runServerless = require('../../../../utils/run-serverless');
 const { getTmpDirPath } = require('../../../../utils/fs');
 
-chai.use(require('chai-as-promised'));
-chai.use(require('sinon-chai'));
-
 const expect = chai.expect;
 
 const consoleLayerArn = 'arn:aws:lambda:us-east-1:321667558080:layer:sls-sdk:1';

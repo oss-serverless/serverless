@@ -1,6 +1,5 @@
 'use strict';
 
-const chai = require('chai');
 const sinon = require('sinon');
 const proxyquire = require('proxyquire');
 const AwsProvider = require('../../../../../lib/plugins/aws/provider');
@@ -8,7 +7,6 @@ const AwsLogs = require('../../../../../lib/plugins/aws/logs');
 const Serverless = require('../../../../../lib/serverless');
 
 // Configure chai
-chai.use(require('chai-as-promised'));
 const expect = require('chai').expect;
 
 describe('AwsLogs', () => {

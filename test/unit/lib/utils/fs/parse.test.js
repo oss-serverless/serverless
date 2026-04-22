@@ -1,11 +1,8 @@
 'use strict';
 
-const chai = require('chai');
 const parse = require('../../../../../lib/utils/fs/parse');
 
 // Configure chai
-chai.use(require('chai-as-promised'));
-chai.use(require('sinon-chai'));
 const expect = require('chai').expect;
 
 const shortHandOptions = [

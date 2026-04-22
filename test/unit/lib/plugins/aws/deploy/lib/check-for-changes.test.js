@@ -7,7 +7,6 @@ const fs = require('fs');
 const path = require('path');
 const globby = require('globby');
 const sandbox = require('sinon');
-const chai = require('chai');
 const proxyquire = require('proxyquire');
 const normalizeFiles = require('../../../../../../../lib/plugins/aws/lib/normalize-files');
 const AwsProvider = require('../../../../../../../lib/plugins/aws/provider');
@@ -19,8 +18,6 @@ const runServerless = require('../../../../../../utils/run-serverless');
 const fsp = fs.promises;
 
 // Configure chai
-chai.use(require('chai-as-promised'));
-chai.use(require('sinon-chai'));
 const expect = require('chai').expect;
 
 describe('checkForChanges', () => {

@@ -1,13 +1,10 @@
 'use strict';
 
-const chai = require('chai');
 const Package = require('../../../../../lib/plugins/package/package');
 const Serverless = require('../../../../../lib/serverless');
 const sinon = require('sinon');
 
 // Configure chai
-chai.use(require('chai-as-promised'));
-chai.use(require('sinon-chai'));
 const expect = require('chai').expect;
 
 describe('Package', () => {

@@ -8,9 +8,6 @@ const AwsDeploy = require('../../../../../../../lib/plugins/aws/deploy/index');
 const Serverless = require('../../../../../../../lib/serverless');
 const { getTmpDirPath } = require('../../../../../../utils/fs');
 
-chai.use(require('sinon-chai'));
-chai.use(require('chai-as-promised'));
-
 const expect = chai.expect;
 
 describe('extendedValidate', () => {

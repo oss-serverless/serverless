@@ -8,8 +8,6 @@ const path = require('path');
 const os = require('os');
 const fsp = require('fs').promises;
 
-chai.use(require('chai-as-promised'));
-
 const expect = chai.expect;
 
 describe('test/unit/lib/classes/ConfigSchemaHandler/resolveAjvValidate.test.js', () => {

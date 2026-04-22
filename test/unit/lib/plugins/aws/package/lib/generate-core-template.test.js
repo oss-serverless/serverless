@@ -1,11 +1,7 @@
 'use strict';
 
-const chai = require('chai');
 const runServerless = require('../../../../../../utils/run-serverless');
 const expect = require('chai').expect;
-
-chai.use(require('chai-as-promised'));
-chai.use(require('sinon-chai'));
 
 describe('#generateCoreTemplate()', () => {
   it('should reject non-HTTPS requests to the deployment bucket', async () =>
