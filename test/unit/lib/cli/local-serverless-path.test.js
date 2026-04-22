@@ -6,7 +6,7 @@ const os = require('os');
 const fsp = require('fs').promises;
 const fse = require('fs-extra');
 
-describe('test/unit/lib/cli/local-serverless.test.js', () => {
+describe('test/unit/lib/cli/local-serverless-path.test.js', () => {
   const resolveLocalServerlessPath = require('../../../../lib/cli/local-serverless-path');
 
   it('should resolve with `null` when no local installation is found', () => {

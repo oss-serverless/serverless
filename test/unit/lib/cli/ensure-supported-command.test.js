@@ -17,7 +17,7 @@ describe('test/unit/lib/cli/ensure-supported-command.test.js', () => {
     );
   });
 
-  it('should do nothing on container commmand', async () => {
+  it('should do nothing on container command', async () => {
     triggeredDeprecations.clear();
     overrideArgv(
       {

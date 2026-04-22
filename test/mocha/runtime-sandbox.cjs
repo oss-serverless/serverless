@@ -1,6 +1,7 @@
 'use strict';
 
 const fs = require('node:fs');
+const path = require('node:path');
 
 const bootstrapState = global.__SERVERLESS_TEST_BOOTSTRAP__;
 const originalCwd = process.cwd();
@@ -18,6 +19,24 @@ const restoreEnv = (targetEnv, sourceEnv) => {
   }
 };
 
+const removePathSync = (targetPath) => {
+  fs.rmSync(targetPath, {
+    recursive: true,
+    force: true,
+    maxRetries: process.platform === 'win32' ? 10 : 0,
+    retryDelay: 50,
+  });
+};
+
+// Keep the mocked home path stable across files because some tests and modules
+// capture os.homedir() at load time. Only clear its contents between files.
+const clearDirectoryContentsSync = (directoryPath) => {
+  fs.mkdirSync(directoryPath, { recursive: true });
+  for (const entry of fs.readdirSync(directoryPath)) {
+    removePathSync(path.join(directoryPath, entry));
+  }
+};
+
 class RuntimeSandbox {
   constructor() {
     this.baseEnv = null;
@@ -29,8 +48,7 @@ class RuntimeSandbox {
 
   prepareSuite() {
     process.chdir(originalCwd);
-    fs.rmSync(bootstrapState.workerHomeDir, { recursive: true, force: true });
-    fs.mkdirSync(bootstrapState.workerHomeDir, { recursive: true });
+    clearDirectoryContentsSync(bootstrapState.workerHomeDir);
 
     this.baseEnv = Object.assign(Object.create(null), originalEnv, {
       HOME: bootstrapState.workerHomeDir,
