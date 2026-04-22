@@ -7,6 +7,17 @@ const overrideEnv = require('process-utils/override-env');
 
 const expect = chai.expect;
 
+const createDeferred = () => {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  return { promise, resolve, reject };
+};
+
 describe('#request', () => {
   describe('Credentials support', () => {
     // awsRequest supports credentials from two sources:
@@ -357,6 +368,57 @@ describe('#request', () => {
       {}
     );
     return expect(service.useAccelerateEndpoint).to.be.true;
+  });
+
+  it('should limit concurrent AWS requests to two at a time', async () => {
+    const requestDeferreds = [createDeferred(), createDeferred(), createDeferred()];
+    let activeRequests = 0;
+    let maxActiveRequests = 0;
+    let requestIndex = 0;
+
+    class FakeS3 {
+      putObject() {
+        const currentRequest = requestDeferreds[requestIndex];
+        requestIndex += 1;
+        activeRequests += 1;
+        maxActiveRequests = Math.max(maxActiveRequests, activeRequests);
+
+        return {
+          promise: () =>
+            currentRequest.promise.finally(() => {
+              activeRequests -= 1;
+            }),
+        };
+      }
+    }
+
+    const awsRequest = proxyquire('../../../../lib/aws/request', {
+      './sdk-v2': { S3: FakeS3 },
+    });
+
+    const requests = [
+      awsRequest({ name: 'S3' }, 'putObject', {}),
+      awsRequest({ name: 'S3' }, 'putObject', {}),
+      awsRequest({ name: 'S3' }, 'putObject', {}),
+    ];
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(requestIndex).to.equal(2);
+
+    requestDeferreds[0].resolve({ id: 1 });
+    await requests[0];
+    await Promise.resolve();
+
+    expect(requestIndex).to.equal(3);
+
+    requestDeferreds[1].resolve({ id: 2 });
+    requestDeferreds[2].resolve({ id: 3 });
+
+    await Promise.all(requests);
+
+    expect(maxActiveRequests).to.equal(2);
   });
 
   describe('Caching through memoize', () => {

@@ -323,5 +323,31 @@ describe('#yamlAstParser', () => {
         expectedResult
       );
     });
+
+    it('preserves sibling properties after removing the last nested array item', () => {
+      const yamlContent = [
+        'plugins:',
+        '  modules:',
+        '    - foo',
+        '  localPath: ./.serverless_plugins',
+        'custom:',
+        '  taggedValue: keep-me',
+      ].join('\n');
+      const expectedResult = {
+        plugins: {
+          localPath: './.serverless_plugins',
+        },
+        custom: {
+          taggedValue: 'keep-me',
+        },
+      };
+
+      return removeExistingArrayItemAndVerifyResult(
+        yamlContent,
+        'plugins.modules',
+        'foo',
+        expectedResult
+      );
+    });
   });
 });

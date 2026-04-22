@@ -137,6 +137,39 @@ describe('serverless-utils/config', () => {
     });
   });
 
+  it('preserves an existing frameworkId when updating config', async () => {
+    await withIsolatedHome('config-preserve-framework-id', async (homeDir) => {
+      const config = loadConfigModule();
+
+      await withLocalDir(homeDir, 'service', async () => {
+        const globalConfigPath = path.join(homeDir, config.CONFIG_FILE_NAME);
+        const legacyFrameworkId = 'f81d4fae-7dec-11d0-a765-00a0c91e6bf6';
+
+        await fs.promises.writeFile(
+          globalConfigPath,
+          JSON.stringify(
+            {
+              frameworkId: legacyFrameworkId,
+              meta: {
+                created_at: 123,
+                updated_at: 123,
+              },
+            },
+            null,
+            2
+          )
+        );
+
+        expect(config.get('frameworkId')).to.equal(legacyFrameworkId);
+
+        config.set('custom.value', 'somevalue');
+
+        const storedConfig = JSON.parse(await fs.promises.readFile(globalConfigPath, 'utf8'));
+        expect(storedConfig.frameworkId).to.equal(legacyFrameworkId);
+      });
+    });
+  });
+
   it('uses the ~/.config global config when it exists alone', async () => {
     await withIsolatedHome('config-home-config-only', async (homeDir) => {
       const config = loadConfigModule();

@@ -1,6 +1,6 @@
 'use strict';
 
-const uuid = require('uuid');
+const { randomUUID } = require('node:crypto');
 const { expect } = require('chai');
 const fixtures = require('../../fixtures/programmatic');
 const awsRequest = require('../../lib/aws-request');
@@ -11,7 +11,7 @@ const { createBucket, deleteBucket } = require('../../utils/s3');
 describe('Base AWS provider test', function () {
   this.timeout(1000 * 60 * 10);
 
-  const bucketName = `serverless-test-${uuid.v4()}`;
+  const bucketName = `serverless-test-${randomUUID()}`;
   let serviceDir;
 
   before(async () => {

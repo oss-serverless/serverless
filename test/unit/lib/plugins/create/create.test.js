@@ -206,6 +206,7 @@ describe('test/unit/lib/plugins/create/create.test.js', () => {
       const expectedTemplateUrl = 'https://github.com/johndoe/template/archive/master.zip';
       const tempRoot = getTmpDirPath();
       const targetDir = path.join(tempRoot, 'nested', 'custom-target-directory');
+      const originalFetch = globalThis.fetch;
       const server = http.createServer((req, res) => {
         requests.push(req.url);
 
@@ -222,30 +223,15 @@ describe('test/unit/lib/plugins/create/create.test.js', () => {
 
       await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
       const baseUrl = `http://127.0.0.1:${server.address().port}`;
-      const realGot = require('got');
       const requestedUrls = [];
-      const wrappedGot = Object.assign(
-        (...args) => {
-          const [uri, options] = args;
-          const stringUri = String(uri);
-          requestedUrls.push(stringUri);
-          return realGot(
-            stringUri === expectedTemplateUrl ? `${baseUrl}/archive.zip` : uri,
-            options
-          );
-        },
-        realGot,
-        {
-          stream: (uri, options) => {
-            const stringUri = String(uri);
-            requestedUrls.push(stringUri);
-            return realGot.stream(
-              stringUri === expectedTemplateUrl ? `${baseUrl}/archive.zip` : uri,
-              options
-            );
-          },
-        }
-      );
+      globalThis.fetch = async (uri, options) => {
+        const stringUri = String(uri);
+        requestedUrls.push(stringUri);
+        return originalFetch(
+          stringUri === expectedTemplateUrl ? `${baseUrl}/archive.zip` : stringUri,
+          options
+        );
+      };
 
       try {
         await runServerless({
@@ -254,9 +240,6 @@ describe('test/unit/lib/plugins/create/create.test.js', () => {
           options: {
             'template-url': 'https://github.com/johndoe/template',
             'path': targetDir,
-          },
-          modulesCacheStub: {
-            got: wrappedGot,
           },
         });
 
@@ -270,6 +253,7 @@ describe('test/unit/lib/plugins/create/create.test.js', () => {
         expect(requestedUrls).to.deep.equal([expectedTemplateUrl]);
         expect(requests).to.deep.equal(['/archive.zip']);
       } finally {
+        globalThis.fetch = originalFetch;
         await new Promise((resolve, reject) => {
           server.close((error) => {
             if (error) {

@@ -129,7 +129,7 @@ process.once('uncaughtException', (error) => {
     }
 
     const path = require('path');
-    const uuid = require('uuid');
+    const { randomUUID } = require('node:crypto');
     const _ = require('lodash');
     const clear = require('ext/object/clear');
     const Serverless = require('../lib/serverless');
@@ -503,7 +503,7 @@ process.once('uncaughtException', (error) => {
     });
 
     try {
-      serverless.invocationId = uuid.v4();
+      serverless.invocationId = randomUUID();
       processLog.debug('initialize Serverless instance');
       await serverless.init();
 

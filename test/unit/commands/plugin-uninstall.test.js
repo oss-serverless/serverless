@@ -173,5 +173,52 @@ describe('test/unit/commands/plugin-uninstall.test.js', async () => {
         'Fn::Sub': '${AWS::Region}',
       });
     });
+
+    it('preserves later plugins siblings when removing the last object-form plugin entry', async () => {
+      const fixture = await fixturesEngine.setup('function');
+      const fixtureServiceDir = fixture.servicePath;
+      const rawYaml = [
+        'service: raw-plugin-yaml',
+        'configValidationMode: error',
+        "frameworkVersion: '*'",
+        '',
+        'plugins:',
+        '  modules:',
+        `    - ${pluginName}`,
+        '  localPath: ./.serverless_plugins',
+        '',
+        'custom:',
+        '  taggedValue: !Sub ${AWS::Region}',
+        '',
+        'provider:',
+        '  name: aws',
+        '  runtime: nodejs20.x',
+        '',
+      ].join('\n');
+
+      const { configurationFilePath: fixtureConfigurationPath, configuration } =
+        await writeRawConfiguration(fixtureServiceDir, rawYaml);
+
+      await uninstallPlugin({
+        configuration,
+        serviceDir: fixtureServiceDir,
+        configurationFilename: path.basename(fixtureConfigurationPath),
+        options: {
+          name: pluginName,
+        },
+      });
+
+      const fileText = await fse.readFile(fixtureConfigurationPath, 'utf8');
+      const parsed = await readParsedConfiguration(fixtureConfigurationPath);
+
+      expect(fileText).to.include('localPath: ./.serverless_plugins');
+      expect(fileText).to.include('taggedValue: !Sub ${AWS::Region}');
+      expect(fileText).to.not.include(`- ${pluginName}`);
+      expect(parsed.plugins.localPath).to.equal('./.serverless_plugins');
+      expect(parsed.plugins.modules).to.equal(undefined);
+      expect(parsed.custom.taggedValue).to.deep.equal({
+        'Fn::Sub': '${AWS::Region}',
+      });
+    });
   });
 });

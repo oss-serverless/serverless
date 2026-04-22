@@ -1,7 +1,7 @@
 'use strict';
 
 const path = require('path');
-const globby = require('globby');
+const globby = require('../../../../../../lib/utils/glob');
 const requireUncached = require('ncjsm/require-uncached');
 const { listZipFiles } = require('../../../../../utils/fs');
 const { expect } = require('chai');
