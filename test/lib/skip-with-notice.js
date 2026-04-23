@@ -1,6 +1,6 @@
 'use strict';
 
-const chalk = require('chalk');
+const colors = require('../../lib/utils/colors');
 
 module.exports = (context, reason, afterCallback) => {
   if (!context || typeof context.skip !== 'function') {
@@ -8,7 +8,7 @@ module.exports = (context, reason, afterCallback) => {
   }
   if (process.env.CI) return; // Do not tolerate skips in CI environment
 
-  process.stdout.write(chalk.yellow(`\n Skipped due to: ${chalk.red(reason)}\n\n`));
+  process.stdout.write(colors.yellow(`\n Skipped due to: ${colors.red(reason)}\n\n`));
 
   if (afterCallback) {
     try {
@@ -16,7 +16,7 @@ module.exports = (context, reason, afterCallback) => {
       // (Mocha fails to do it -> https://github.com/mochajs/mocha/issues/3740)
       afterCallback();
     } catch (error) {
-      process.stdout.write(chalk.error(`after callback crashed with: ${error.stack}\n`));
+      process.stdout.write(colors.red(`after callback crashed with: ${error.stack}\n`));
     }
   }
   context.skip();

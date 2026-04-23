@@ -55,7 +55,6 @@
     "aws-sdk": "^2.1693.0",
     "bluebird": "^3.7.2",
     "cachedir": "^2.3.0",
-    "chalk": "^4.1.2",
     "child-process-ext": "^3.0.2",
     "ci-info": "^3.9.0",
     "cli-progress-footer": "^2.3.2",
@@ -95,8 +94,6 @@
     "require-from-string": "^2.0.2",
     "semver": "^7.5.3",
     "signal-exit": "^3.0.7",
-    "strip-ansi": "^6.0.1",
-    "supports-color": "^8.1.1",
     "timers-ext": "^0.1.7",
     "tsx": "^4.20.3",
     "type": "^2.7.2",
@@ -115,13 +112,10 @@
     "eslint-plugin-import": "^2.27.5",
     "eslint-plugin-n": "^17.24.0",
     "git-list-updated": "^1.2.1",
-    "husky": "^4.3.8",
     "jszip": "^3.10.1",
-    "lint-staged": "^16.2.7",
     "minimist": "^1.2.8",
     "mocha": "12.0.0-beta-9.2",
     "mock-require": "^3.0.3",
-    "p-limit": "^3.1.0",
     "prettier": "^2.8.8",
     "proxyquire": "^2.1.3",
     "semver-regex": "^3.1.4",
@@ -417,14 +411,6 @@
     "/lib/plugins/aws/custom-resources/node_modules/**",
     "!/test/fixtures/programmatic/locallyInstalledServerless/node_modules/**"
   ],
-  "lint-staged": {
-    "*.js": [
-      "eslint"
-    ],
-    "*.{css,html,js,json,md,yaml,yml}": [
-      "prettier -c"
-    ]
-  },
   "scripts": {
     "integration-test-cleanup": "node test/utils/aws-cleanup.js",
     "integration-test-run-all": "mocha --config test/mocha/integration.cjs --parallel --jobs 20 \"test/integration/**/*.test.js\"",

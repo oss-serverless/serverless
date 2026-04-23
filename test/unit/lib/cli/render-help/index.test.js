@@ -9,43 +9,46 @@ const observeOutput = require('../../../../lib/observe-output');
 describe('test/unit/lib/cli/render-help/index.test.js', () => {
   it('should show general help on main command', async () => {
     resolveInput.clear();
-    overrideArgv(
+    const output = await overrideArgv(
       {
         args: ['serverless', '--help'],
       },
-      () => resolveInput()
+      () => observeOutput(() => renderHelp(new Set()))
     );
-    const output = await observeOutput(() => renderHelp(new Set()));
     expect(output).to.have.string('Usage');
     expect(output).to.have.string('deploy function');
   });
 
   it('should show general help on help command', async () => {
     resolveInput.clear();
-    overrideArgv(
+    const output = await overrideArgv(
       {
         args: ['serverless', 'help'],
       },
-      () => resolveInput()
+      () => observeOutput(() => renderHelp(new Set()))
     );
-    const output = await observeOutput(() => renderHelp(new Set()));
     expect(output).to.have.string('Usage');
     expect(output).to.have.string('deploy function');
   });
 
   it('should show specific commmand help with specific command', async () => {
     resolveInput.clear();
-    const { commandsSchema } = overrideArgv(
+    const output = await overrideArgv(
       {
         args: ['serverless', 'deploy', '--help'],
       },
-      () => resolveInput()
+      () => {
+        const { commandsSchema } = resolveInput();
+        return {
+          commandsSchema,
+          observedOutput: observeOutput(() => renderHelp(new Set())),
+        };
+      }
     );
-    const output = await observeOutput(() => renderHelp(new Set()));
-    expect(output).to.have.string('deploy');
-    expect(output).to.have.string('deploy function');
-    expect(output).to.have.string('--help');
-    expect(output).to.have.string(commandsSchema.get('deploy').usage);
-    expect(output).to.have.string(commandsSchema.get('deploy function').usage);
+    expect(output.observedOutput).to.have.string('deploy');
+    expect(output.observedOutput).to.have.string('deploy function');
+    expect(output.observedOutput).to.have.string('--help');
+    expect(output.observedOutput).to.have.string(output.commandsSchema.get('deploy').usage);
+    expect(output.observedOutput).to.have.string(output.commandsSchema.get('deploy function').usage);
   });
 });
