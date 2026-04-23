@@ -461,9 +461,7 @@ describe('#naming()', () => {
 
   describe('#getModelLogicalId()', () => {
     it('preserves acronym boundaries', () => {
-      expect(sdk.naming.getModelLogicalId('HTTPRequest')).to.equal(
-        'ApiGatewayHttpRequestModel'
-      );
+      expect(sdk.naming.getModelLogicalId('HTTPRequest')).to.equal('ApiGatewayHttpRequestModel');
     });
   });
 
@@ -487,11 +485,7 @@ describe('#naming()', () => {
 
     it('preserves acronym boundaries in content types', () => {
       expect(
-        sdk.naming.getEndpointModelLogicalId(
-          'ResourceId',
-          'get',
-          'application/HTTPRequest+json'
-        )
+        sdk.naming.getEndpointModelLogicalId('ResourceId', 'get', 'application/HTTPRequest+json')
       ).to.equal('ApiGatewayMethodResourceIdGetApplicationHTTPRequestJsonModel');
     });
   });

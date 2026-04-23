@@ -93,6 +93,11 @@ describe('AwsInvokeLocal', () => {
     awsInvokeLocal.provider = provider;
   });
 
+  afterEach(() => {
+    delete Object.prototype.polluted;
+    delete Object.prototype.adversarial;
+  });
+
   describe('#extendedValidate()', () => {
     let backupIsTTY;
     beforeEach(() => {
@@ -324,6 +329,31 @@ describe('AwsInvokeLocal', () => {
         KEEP_ME: 'yes',
       });
       expect(serverless.service.provider.environment.SHARED).to.equal(providerValue);
+    });
+
+    it('does not drop or pollute when provider env contains an own __proto__ key', () => {
+      const providerEnv = JSON.parse('{"__proto__":{"polluted":"yes"},"REGULAR":"value"}');
+      serverless.service.provider.environment = providerEnv;
+      awsInvokeLocal.options.functionObj = { environment: {} };
+
+      const result = awsInvokeLocal.getConfiguredEnvVars();
+
+      expect(result.REGULAR).to.equal('value');
+      expect(Object.prototype.hasOwnProperty.call(result, '__proto__')).to.equal(true);
+      expect({}.polluted).to.equal(undefined);
+    });
+
+    it('preserves function env values including __proto__ without silent drops', () => {
+      const functionEnv = JSON.parse('{"__proto__":"value","NORMAL":"yes"}');
+      serverless.service.provider.environment = {};
+      awsInvokeLocal.options.functionObj = { environment: functionEnv };
+
+      const result = awsInvokeLocal.getConfiguredEnvVars();
+
+      expect(result.NORMAL).to.equal('yes');
+      expect(Reflect.get(result, '__proto__')).to.equal('value');
+      expect(Object.prototype.hasOwnProperty.call(result, '__proto__')).to.equal(true);
+      expect({}.polluted).to.equal(undefined);
     });
   });
 
@@ -1216,6 +1246,47 @@ describe('AwsInvokeLocal', () => {
       const envVarsFromOptions = awsInvokeLocal.getEnvVarsFromOptions();
 
       expect(envVarsFromOptions).to.be.eql({ SOME_ENV_VAR: 'value1=value2' });
+    });
+
+    it('accepts --env __proto__=value without polluting Object.prototype', () => {
+      awsInvokeLocal.options.env = '__proto__=adversarial';
+
+      const result = awsInvokeLocal.getEnvVarsFromOptions();
+
+      expect(Reflect.get(result, '__proto__')).to.equal('adversarial');
+      expect(Object.prototype.hasOwnProperty.call(result, '__proto__')).to.equal(true);
+      expect({}.adversarial).to.equal(undefined);
+      expect({}.polluted).to.equal(undefined);
+    });
+
+    it('accepts --env constructor=value without changing Object.prototype.constructor', () => {
+      awsInvokeLocal.options.env = 'constructor=fake';
+      const originalConstructor = Object.prototype.constructor;
+
+      const result = awsInvokeLocal.getEnvVarsFromOptions();
+
+      expect(result.constructor).to.equal('fake');
+      expect(Object.prototype.constructor).to.equal(originalConstructor);
+    });
+
+    it('accepts multiple unsafe-named --env flags together', () => {
+      awsInvokeLocal.options.env = [
+        '__proto__=one',
+        'constructor=two',
+        'prototype=three',
+        'SAFE=four',
+      ];
+
+      const result = awsInvokeLocal.getEnvVarsFromOptions();
+
+      expect(Object.keys(result).sort()).to.deep.equal(
+        ['__proto__', 'SAFE', 'constructor', 'prototype'].sort()
+      );
+      expect(Reflect.get(result, '__proto__')).to.equal('one');
+      expect(result.constructor).to.equal('two');
+      expect(result.prototype).to.equal('three');
+      expect(result.SAFE).to.equal('four');
+      expect({}.polluted).to.equal(undefined);
     });
   });
 

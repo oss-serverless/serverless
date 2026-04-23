@@ -64,4 +64,42 @@ describe('object-path', () => {
     expect(unsetByPath(target, '__proto__.polluted')).to.equal(false);
     expect({}.polluted).to.equal(undefined);
   });
+
+  it('refuses bracket-notation unsafe paths for setByPath', () => {
+    expect(setByPath({}, '["__proto__"].polluted', 'yes')).to.equal(false);
+    expect({}.polluted).to.equal(undefined);
+  });
+
+  it('refuses bracket-notation unsafe paths for getByPath', () => {
+    expect(getByPath({}, '["__proto__"].polluted')).to.equal(undefined);
+  });
+
+  it('refuses bracket-notation unsafe paths for unsetByPath', () => {
+    expect(unsetByPath({}, '["__proto__"].polluted')).to.equal(false);
+  });
+
+  it('refuses bracket-notation with single-quoted unsafe segments', () => {
+    expect(setByPath({}, "['constructor']['prototype'].polluted", 'yes')).to.equal(false);
+    expect({}.polluted).to.equal(undefined);
+  });
+
+  it('refuses constructor.prototype paths for set/get/unset', () => {
+    const target = {};
+    expect(setByPath(target, 'constructor.prototype.polluted', 'yes')).to.equal(false);
+    expect(getByPath(target, 'constructor.prototype')).to.equal(undefined);
+    expect(unsetByPath(target, 'constructor.prototype.polluted')).to.equal(false);
+    expect({}.polluted).to.equal(undefined);
+  });
+
+  it('refuses constructor at depth inside the path', () => {
+    expect(setByPath({}, 'safe.constructor.prototype.polluted', 'yes')).to.equal(false);
+    expect(getByPath({ safe: {} }, 'safe.constructor.prototype.polluted')).to.equal(undefined);
+    expect({}.polluted).to.equal(undefined);
+  });
+
+  it('refuses bracket-notation __proto__ and constructor segments with double quotes', () => {
+    expect(setByPath({}, 'safe["__proto__"].x', 'y')).to.equal(false);
+    expect(setByPath({}, 'safe["constructor"].x', 'y')).to.equal(false);
+    expect({}.x).to.equal(undefined);
+  });
 });

@@ -439,6 +439,42 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
     expect(updateFunctionConfigurationStub).not.to.be.called;
   });
 
+  it('should treat null remote image config as different from an empty local image config', async () => {
+    await runServerless({
+      fixture: 'function',
+      command: 'deploy function',
+      options: { function: 'basic' },
+      awsRequestStubMap: {
+        ...awsRequestStubMap,
+        Lambda: {
+          ...awsRequestStubMap.Lambda,
+          getFunction: {
+            Configuration: {
+              LastModified: '2020-05-20T15:34:16.494+0000',
+              CodeSha256: imageSha,
+              State: 'Active',
+              LastUpdateStatus: 'Successful',
+              ImageConfigResponse: {
+                ImageConfig: null,
+              },
+            },
+          },
+        },
+      },
+      configExt: {
+        functions: {
+          basic: {
+            image: imageWithSha,
+          },
+        },
+      },
+    });
+
+    expect(updateFunctionCodeStub).not.to.be.called;
+    expect(updateFunctionConfigurationStub).to.be.calledOnce;
+    expect(updateFunctionConfigurationStub.args[0][0].ImageConfig).to.deep.equal({});
+  });
+
   it('should skip deployment if image sha did not change', async () => {
     await runServerless({
       fixture: 'function',

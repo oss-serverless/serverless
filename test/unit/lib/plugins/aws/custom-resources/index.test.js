@@ -412,9 +412,9 @@ describe('#addCustomResourceToService()', () => {
     await addCustomResourceToService(provider, 's3', iamRoleStatements);
 
     const { Resources } = serverless.service.provider.compiledCloudFormationTemplate;
-    expect(Resources.CustomDashresourceDashexistingDashs3LambdaFunction.Properties.Code.S3Bucket).to.equal(
-      'custom-bucket'
-    );
+    expect(
+      Resources.CustomDashresourceDashexistingDashs3LambdaFunction.Properties.Code.S3Bucket
+    ).to.equal('custom-bucket');
   });
 
   it('should set Architectures from provider.architecture', async () => {

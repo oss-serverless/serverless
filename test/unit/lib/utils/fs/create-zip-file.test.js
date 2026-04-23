@@ -54,11 +54,11 @@ describe('#createZipFile()', () => {
     const createZipFileProxy = proxyquire
       .noCallThru()
       .load('../../../../../lib/utils/fs/create-zip-file', {
-        fs: {
+        'fs': {
           createWriteStream: () => output,
           lstatSync: () => ({ isFile: () => true }),
         },
-        yazl: { ZipFile: FakeZipFile },
+        'yazl': { ZipFile: FakeZipFile },
         './walk-dir-sync': () => ['/tmp/source/foo.json'],
       });
 
@@ -84,11 +84,11 @@ describe('#createZipFile()', () => {
     const createZipFileProxy = proxyquire
       .noCallThru()
       .load('../../../../../lib/utils/fs/create-zip-file', {
-        fs: {
+        'fs': {
           createWriteStream: () => output,
           lstatSync: () => ({ isFile: () => true }),
         },
-        yazl: { ZipFile: FakeZipFile },
+        'yazl': { ZipFile: FakeZipFile },
         './walk-dir-sync': () => ['/tmp/source/foo.json'],
       });
 

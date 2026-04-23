@@ -318,12 +318,13 @@ describe('YamlParser', () => {
         },
       });
 
-      return expect(serverless.yamlParser.parse(path.join(tmpDirPath, 'test.yml'))).to.eventually
-        .deep.equal({
-          main: {
-            $ref: './bad.yml',
-          },
-        });
+      return expect(
+        serverless.yamlParser.parse(path.join(tmpDirPath, 'test.yml'))
+      ).to.eventually.deep.equal({
+        main: {
+          $ref: './bad.yml',
+        },
+      });
     });
 
     it('should leave invalid external pointers untouched', async () => {
@@ -336,12 +337,13 @@ describe('YamlParser', () => {
         },
       });
 
-      return expect(serverless.yamlParser.parse(path.join(tmpDirPath, 'test.yml'))).to.eventually
-        .deep.equal({
-          main: {
-            $ref: './ref.yml#/missing',
-          },
-        });
+      return expect(
+        serverless.yamlParser.parse(path.join(tmpDirPath, 'test.yml'))
+      ).to.eventually.deep.equal({
+        main: {
+          $ref: './ref.yml#/missing',
+        },
+      });
     });
 
     it('should allow explicit file refs', async () => {
@@ -394,6 +396,201 @@ describe('YamlParser', () => {
           })
         );
       }
+    });
+  });
+
+  describe('#parse() - security hardening', () => {
+    afterEach(() => {
+      delete Object.prototype.polluted;
+    });
+
+    it('preserves __proto__ in parsed root YAML as an own property without polluting prototype', async () => {
+      const tmpFilePath = getTmpFilePath('proto-root.yml');
+
+      serverless.utils.writeFileSync(tmpFilePath, '__proto__:\n  polluted: yes\nfoo: bar\n');
+
+      const result = await serverless.yamlParser.parse(tmpFilePath);
+
+      expect(Object.hasOwn(result, '__proto__')).to.equal(true);
+      expect(result.foo).to.equal('bar');
+      expect(Object.getPrototypeOf(result)).to.equal(Object.prototype);
+      expect(result.polluted).to.equal(undefined);
+      expect({}.polluted).to.equal(undefined);
+    });
+
+    it('preserves __proto__ in YAML resolved via external $ref', async () => {
+      const tmpDirPath = getTmpDirPath();
+      const refPath = path.join(tmpDirPath, 'ref.yml');
+      const testPath = path.join(tmpDirPath, 'test.yml');
+
+      serverless.utils.writeFileSync(refPath, '__proto__:\n  polluted: yes\nfoo: bar\n');
+      serverless.utils.writeFileSync(testPath, { main: { $ref: './ref.yml' } });
+
+      const result = await serverless.yamlParser.parse(testPath);
+
+      expect(Object.hasOwn(result.main, '__proto__')).to.equal(true);
+      expect(result.main.foo).to.equal('bar');
+      expect(Object.getPrototypeOf(result.main)).to.equal(Object.prototype);
+      expect(result.main.polluted).to.equal(undefined);
+      expect({}.polluted).to.equal(undefined);
+    });
+
+    it('does not resolve JSON Pointers that target inherited prototype members (#/constructor)', async () => {
+      const tmpDirPath = getTmpDirPath();
+      const refPath = path.join(tmpDirPath, 'ref.yml');
+      const testPath = path.join(tmpDirPath, 'test.yml');
+
+      serverless.utils.writeFileSync(refPath, { safe: 'value' });
+      serverless.utils.writeFileSync(testPath, {
+        main: { $ref: './ref.yml#/constructor' },
+      });
+
+      const result = await serverless.yamlParser.parse(testPath);
+
+      expect(result).to.deep.equal({
+        main: { $ref: './ref.yml#/constructor' },
+      });
+    });
+
+    it('does not resolve JSON Pointers that target inherited toString', async () => {
+      const tmpDirPath = getTmpDirPath();
+      const refPath = path.join(tmpDirPath, 'ref.yml');
+      const testPath = path.join(tmpDirPath, 'test.yml');
+
+      serverless.utils.writeFileSync(refPath, { safe: 'value' });
+      serverless.utils.writeFileSync(testPath, { main: { $ref: './ref.yml#/toString' } });
+
+      const result = await serverless.yamlParser.parse(testPath);
+
+      expect(result).to.deep.equal({
+        main: { $ref: './ref.yml#/toString' },
+      });
+    });
+
+    it('resolves own YAML keys named toString when defined as data', async () => {
+      const tmpDirPath = getTmpDirPath();
+      const refPath = path.join(tmpDirPath, 'ref.yml');
+      const testPath = path.join(tmpDirPath, 'test.yml');
+
+      serverless.utils.writeFileSync(refPath, { toString: 'override' });
+      serverless.utils.writeFileSync(testPath, { main: { $ref: './ref.yml#/toString' } });
+
+      const result = await serverless.yamlParser.parse(testPath);
+
+      expect(result.main).to.equal('override');
+    });
+
+    it('does not resolve #/__proto__ pointers when target is absent', async () => {
+      const tmpDirPath = getTmpDirPath();
+      const refPath = path.join(tmpDirPath, 'ref.yml');
+      const testPath = path.join(tmpDirPath, 'test.yml');
+
+      serverless.utils.writeFileSync(refPath, { safe: 'value' });
+      serverless.utils.writeFileSync(testPath, { main: { $ref: './ref.yml#/__proto__' } });
+
+      const result = await serverless.yamlParser.parse(testPath);
+
+      expect(result).to.deep.equal({
+        main: { $ref: './ref.yml#/__proto__' },
+      });
+      expect({}.polluted).to.equal(undefined);
+    });
+
+    it('resolves an own __proto__ JSON pointer segment when the ref document has one', async () => {
+      const tmpDirPath = getTmpDirPath();
+      const refPath = path.join(tmpDirPath, 'ref.yml');
+      const testPath = path.join(tmpDirPath, 'test.yml');
+
+      serverless.utils.writeFileSync(refPath, '__proto__:\n  marker: value\nfoo: bar\n');
+      serverless.utils.writeFileSync(testPath, { main: { $ref: './ref.yml#/__proto__' } });
+
+      const result = await serverless.yamlParser.parse(testPath);
+
+      expect(result.main).to.deep.equal({ marker: 'value' });
+      expect({}.polluted).to.equal(undefined);
+    });
+
+    it('rejects self-referential YAML anchor cycles with a clear error', async () => {
+      const tmpFilePath = getTmpFilePath('self-cycle.yml');
+
+      serverless.utils.writeFileSync(tmpFilePath, 'a: &x\n  self: *x\n');
+
+      await expect(serverless.yamlParser.parse(tmpFilePath)).to.be.rejected.then((err) => {
+        expect(err.message).to.match(/Circular YAML reference/);
+        expect(err.code).to.equal('INVALID_YAML_CIRCULAR_REFERENCE');
+      });
+    });
+
+    it('rejects list-of-self cyclic YAML anchors', async () => {
+      const tmpFilePath = getTmpFilePath('list-cycle.yml');
+
+      serverless.utils.writeFileSync(tmpFilePath, 'a: &x\n  - *x\n');
+
+      await expect(serverless.yamlParser.parse(tmpFilePath)).to.be.rejected.then((err) => {
+        expect(err.message).to.match(/Circular YAML reference/);
+      });
+    });
+
+    it('rejects self-referential YAML anchor cycles in externally referenced files', async () => {
+      const tmpDirPath = getTmpDirPath();
+      const refPath = path.join(tmpDirPath, 'ref.yml');
+      const testPath = path.join(tmpDirPath, 'test.yml');
+
+      serverless.utils.writeFileSync(refPath, 'a: &x\n  self: *x\n');
+      serverless.utils.writeFileSync(testPath, { main: { $ref: './ref.yml#/a' } });
+
+      await expect(serverless.yamlParser.parse(testPath)).to.be.rejected.then((err) => {
+        expect(err.message).to.match(/Circular YAML reference/);
+        expect(err.code).to.equal('INVALID_YAML_CIRCULAR_REFERENCE');
+      });
+    });
+
+    it('does not stack-overflow on repeated non-cyclic aliases', async () => {
+      const tmpFilePath = getTmpFilePath('repeated-alias.yml');
+
+      const content = `${[
+        'defaults: &d',
+        '  foo: bar',
+        '  list:',
+        '    - one',
+        '    - two',
+        'first: *d',
+        'second: *d',
+        'third: *d',
+      ].join('\n')}\n`;
+
+      serverless.utils.writeFileSync(tmpFilePath, content);
+
+      const result = await serverless.yamlParser.parse(tmpFilePath);
+
+      expect(result.first).to.deep.equal({ foo: 'bar', list: ['one', 'two'] });
+      expect(result.second).to.deep.equal({ foo: 'bar', list: ['one', 'two'] });
+      expect(result.third).to.deep.equal({ foo: 'bar', list: ['one', 'two'] });
+      expect(result.first).to.equal(result.second);
+      expect(result.second).to.equal(result.third);
+      expect(() => JSON.stringify(result)).to.not.throw();
+    });
+
+    it('leaves direct external cycles as raw $refs (regression test)', async () => {
+      const tmpDirPath = getTmpDirPath();
+
+      serverless.utils.writeFileSync(path.join(tmpDirPath, 'a.yml'), {
+        schema: { fromA: true, next: { $ref: './b.yml#/schema' } },
+      });
+      serverless.utils.writeFileSync(path.join(tmpDirPath, 'b.yml'), {
+        schema: { fromB: true, next: { $ref: './a.yml#/schema' } },
+      });
+      serverless.utils.writeFileSync(path.join(tmpDirPath, 'test.yml'), {
+        main: { $ref: './a.yml#/schema' },
+      });
+
+      const result = await serverless.yamlParser.parse(path.join(tmpDirPath, 'test.yml'));
+
+      expect(result.main).to.deep.equal({
+        fromA: true,
+        next: { fromB: true, next: { $ref: './a.yml#/schema' } },
+      });
+      expect(() => JSON.stringify(result)).to.not.throw();
     });
   });
 });

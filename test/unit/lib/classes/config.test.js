@@ -54,9 +54,7 @@ describe('Config', () => {
     it('should ignore unsafe keys on update', () => {
       const configInstance = new Config(serverless);
 
-      configInstance.update(
-        JSON.parse('{"__proto__":{"polluted":"yes"},"custom":{"safe":true}}')
-      );
+      configInstance.update(JSON.parse('{"__proto__":{"polluted":"yes"},"custom":{"safe":true}}'));
 
       expect(configInstance.custom).to.deep.equal({ safe: true });
       expect({}.polluted).to.equal(undefined);
