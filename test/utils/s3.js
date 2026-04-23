@@ -67,7 +67,7 @@ async function emptyBucket(bucket) {
     const items = data.Contents;
     const numItems = items.length;
     if (numItems) {
-      const keys = items.map((item) => Object.assign({}, { Key: item.Key }));
+      const keys = items.map((item) => ({ Key: item.Key }));
       return s3.deleteObjects({
         Bucket: bucket,
         Delete: {

@@ -69,7 +69,7 @@ async function findRestApis(name) {
     return apiGateway.getRestApis(params).then((result) => {
       const matches = result.items.filter((restApi) => restApi.name.match(name));
       if (matches.length) {
-        Object.assign(found, matches);
+        found.push(...matches);
       }
       if (result.position) return recursiveFind(found, result.position);
       return found;
