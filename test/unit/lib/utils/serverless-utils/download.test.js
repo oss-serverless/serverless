@@ -174,4 +174,62 @@ describe('serverless-utils/download', () => {
       ]);
     }
   });
+
+  it('normalizes and strips capitalized Authorization headers on disallowed cross-origin redirects', async () => {
+    let initialAuthorization;
+    let redirectedAuthorization;
+
+    const redirectedServer = http.createServer((req, res) => {
+      redirectedAuthorization = req.headers.authorization;
+      res.statusCode = 200;
+      res.end('redirected payload');
+    });
+
+    await new Promise((resolve) => redirectedServer.listen(0, '127.0.0.1', resolve));
+
+    const redirectingServer = http.createServer((req, res) => {
+      initialAuthorization = req.headers.authorization;
+      res.statusCode = 302;
+      res.setHeader('Location', `http://127.0.0.1:${redirectedServer.address().port}/final`);
+      res.end();
+    });
+
+    await new Promise((resolve) => redirectingServer.listen(0, '127.0.0.1', resolve));
+
+    try {
+      const result = await download(`http://127.0.0.1:${redirectingServer.address().port}/start`, {
+        responseType: 'text',
+        headers: {
+          Authorization: '\tBearer token\t',
+        },
+      });
+
+      expect(result).to.equal('redirected payload');
+      expect(initialAuthorization).to.equal('Bearer token');
+      expect(redirectedAuthorization).to.equal(undefined);
+    } finally {
+      await Promise.all([
+        new Promise((resolve, reject) => {
+          redirectingServer.close((error) => {
+            if (error) {
+              reject(error);
+              return;
+            }
+
+            resolve();
+          });
+        }),
+        new Promise((resolve, reject) => {
+          redirectedServer.close((error) => {
+            if (error) {
+              reject(error);
+              return;
+            }
+
+            resolve();
+          });
+        }),
+      ]);
+    }
+  });
 });
