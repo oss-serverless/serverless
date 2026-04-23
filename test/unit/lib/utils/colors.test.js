@@ -68,14 +68,36 @@ describe('test/unit/lib/utils/colors.test.js', () => {
     expect(colors.brandRed('x')).to.equal('\u001B[38;2;253;87;80mx\u001B[0m');
   });
 
-  it('supports legacy named colors through colorize()', () => {
+  it('returns a reset formatter when colors are enabled', () => {
     const colors = createColors({
       stream: { isTTY: true, getColorDepth: () => 4 },
       env: {},
     });
 
-    expect(colors.colorize('x', 'green')).to.equal('\u001B[32mx\u001B[0m');
-    expect(colors.colorize('x', 'blueBright')).to.equal('\u001B[34mx\u001B[0m');
+    expect(colors.reset('x')).to.equal('\u001B[0mx\u001B[0m');
+  });
+
+  it('prefers exact CSS keyword colors through colorize()', () => {
+    const colors = createColors({
+      stream: { isTTY: true, getColorDepth: () => 24 },
+      env: {},
+    });
+
+    expect(colors.colorize('x', 'green')).to.equal('\u001B[38;2;0;128;0mx\u001B[0m');
+    expect(colors.colorize('x', 'gray')).to.equal('\u001B[38;2;128;128;128mx\u001B[0m');
+    expect(colors.colorize('x', 'purple')).to.equal('\u001B[38;2;128;0;128mx\u001B[0m');
+    expect(colors.colorize('x', 'pink')).to.equal('\u001B[38;2;255;192;203mx\u001B[0m');
+    expect(colors.colorize('x', 'teal')).to.equal('\u001B[38;2;0;128;128mx\u001B[0m');
+  });
+
+  it('supports non-standard bright aliases through colorize()', () => {
+    const colors = createColors({
+      stream: { isTTY: true, getColorDepth: () => 24 },
+      env: {},
+    });
+
+    expect(colors.colorize('x', 'blackBright')).to.equal('\u001B[90mx\u001B[0m');
+    expect(colors.colorize('x', 'blueBright')).to.equal('\u001B[94mx\u001B[0m');
     expect(colors.colorize('x', 'unknown')).to.equal('x');
   });
 

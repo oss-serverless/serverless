@@ -49,6 +49,8 @@ describe('test/unit/lib/cli/render-help/index.test.js', () => {
     expect(output.observedOutput).to.have.string('deploy function');
     expect(output.observedOutput).to.have.string('--help');
     expect(output.observedOutput).to.have.string(output.commandsSchema.get('deploy').usage);
-    expect(output.observedOutput).to.have.string(output.commandsSchema.get('deploy function').usage);
+    expect(output.observedOutput).to.have.string(
+      output.commandsSchema.get('deploy function').usage
+    );
   });
 });

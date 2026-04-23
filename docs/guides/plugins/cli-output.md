@@ -93,18 +93,25 @@ Take, for example, the `serverless invoke` command:
 
 ### Colors and formatting
 
-To format and color text output, use the [chalk](https://github.com/chalk/chalk) package. For example:
+Prefer plain text and the built-in helpers above. The CLI already formats standard message
+types such as success messages, warnings, errors, and interactive progress.
 
 ```js
-log.notice(chalk.gray('Here is a message'));
+log.notice('Here is a message');
+log.success('The task executed with success');
 ```
+
+If you still rely on the deprecated `serverless.cli.log(message, entity, { color, underline, bold })`
+formatting for backward compatibility, keep that formatting minimal. New plugins should avoid
+manual colorization.
 
 **Best practices:**
 
-- Write primary information in **white**, secondary information in **gray**.
-  - Primary information is the direct outcome of a command (e.g. deployment result of the `deploy` command, or result of the `invoke` command). Secondary information is everything else.
+- Prefer plain text and built-in helpers over manual colors.
+- Keep primary information concise and leave decorative formatting to the framework.
 - Plugins should generally not use any other color, nor introduce any other custom formatting. Output formatting is meant to be minimalistic.
 - Plugins should use built-in formats documented in this page: success messages (`log.success()`), interactive progress…
+- Avoid trying to reproduce the "Serverless red" accent in plugins; it is reserved for the framework's most attention-grabbing output.
 
 The "Serverless red" color (`#fd5750`) is used to grab the user's attention:
 
