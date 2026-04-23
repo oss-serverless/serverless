@@ -15,12 +15,13 @@ describe('test/unit/lib/utils/serverless-utils/lib/log-reporters/node/style.test
       title: (value) => value,
       warning: (value) => value,
     };
+    const logState = {
+      notice: (...tokens) => tokens.join(' '),
+    };
 
     proxyquire
       .noCallThru()
       .load('../../../../../../../../lib/utils/serverless-utils/lib/log-reporters/node/style', {
-        'd': (value) => value,
-        'd/auto-bind': (value) => value,
         'ext/function/identity': (value) => value,
         '../../../../colors': {
           stderrColors: {
@@ -32,7 +33,7 @@ describe('test/unit/lib/utils/serverless-utils/lib/log-reporters/node/style.test
         },
         '../../../log': {
           style: styleState,
-          log: { notice: () => {} },
+          log: logState,
         },
         '../../log/join-text-tokens': (tokens) => `${tokens.join('')}\n`,
       });
@@ -41,5 +42,6 @@ describe('test/unit/lib/utils/serverless-utils/lib/log-reporters/node/style.test
     expect(styleState.error('x')).to.equal('stderr-red(x)');
     expect(styleState.title('x')).to.equal('stderr-underline(x)');
     expect(styleState.warning('x')).to.equal('stderr-warning(x)');
+    expect(logState.success('ok')).to.equal('stderr-red(✔) ok');
   });
 });

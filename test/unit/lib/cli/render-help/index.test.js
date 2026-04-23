@@ -31,7 +31,7 @@ describe('test/unit/lib/cli/render-help/index.test.js', () => {
     expect(output).to.have.string('deploy function');
   });
 
-  it('should show specific commmand help with specific command', async () => {
+  it('should show specific command help with specific command', async () => {
     resolveInput.clear();
     const output = await overrideArgv(
       {

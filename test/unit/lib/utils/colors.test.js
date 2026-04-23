@@ -27,6 +27,44 @@ describe('test/unit/lib/utils/colors.test.js', () => {
     ).to.equal(0);
   });
 
+  it('treats COLORTERM=truecolor case-insensitively', () => {
+    expect(
+      getColorLevel({
+        stream: { isTTY: true, getColorDepth: () => 1 },
+        env: { COLORTERM: 'TRUECOLOR' },
+      })
+    ).to.equal(3);
+  });
+
+  it('treats COLORTERM=24bit as truecolor', () => {
+    expect(
+      getColorLevel({
+        stream: { isTTY: true, getColorDepth: () => 1 },
+        env: { COLORTERM: '24BIT' },
+      })
+    ).to.equal(3);
+  });
+
+  it('passes env through to getColorDepth', () => {
+    let receivedEnv;
+    const env = { TERM_PROGRAM: 'iTerm.app' };
+
+    expect(
+      getColorLevel({
+        stream: {
+          isTTY: true,
+          getColorDepth: (value) => {
+            receivedEnv = value;
+            return 8;
+          },
+        },
+        env,
+      })
+    ).to.equal(2);
+
+    expect(receivedEnv).to.equal(env);
+  });
+
   it('treats color depth 1 as no color', () => {
     expect(
       getColorLevel({
