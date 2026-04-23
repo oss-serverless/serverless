@@ -232,4 +232,62 @@ describe('serverless-utils/download', () => {
       ]);
     }
   });
+
+  it('cancels redirect bodies before following the next hop', async () => {
+    const originalFetch = globalThis.fetch;
+    const events = [];
+
+    const redirectBody = {
+      cancel: async () => {
+        events.push('cancel-redirect');
+      },
+    };
+    const finalBody = {
+      cancel: async () => {
+        events.push('cancel-final');
+      },
+    };
+
+    globalThis.fetch = async (url) => {
+      if (String(url) === 'http://example.com/start') {
+        events.push('fetch-redirect');
+        return {
+          status: 302,
+          headers: new globalThis.Headers({ location: 'http://example.com/final' }),
+          body: redirectBody,
+        };
+      }
+
+      if (String(url) === 'http://example.com/final') {
+        events.push('fetch-final');
+        return {
+          ok: true,
+          status: 200,
+          url: 'http://example.com/final',
+          headers: new globalThis.Headers({ 'content-type': 'text/plain' }),
+          body: finalBody,
+          arrayBuffer: async () => {
+            events.push('read-final');
+            return Buffer.from('ok');
+          },
+        };
+      }
+
+      throw new Error(`Unexpected fetch URL: ${String(url)}`);
+    };
+
+    try {
+      const result = await download('http://example.com/start', { responseType: 'text' });
+
+      expect(result).to.equal('ok');
+      expect(events).to.deep.equal([
+        'fetch-redirect',
+        'cancel-redirect',
+        'fetch-final',
+        'read-final',
+      ]);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });

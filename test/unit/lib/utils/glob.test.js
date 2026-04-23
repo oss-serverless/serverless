@@ -19,13 +19,34 @@ describe('test/unit/lib/utils/glob.test.js', () => {
     await fse.remove(tmpDir);
   });
 
-  it('honors leading negation patterns for async and sync calls', async () => {
+  it('matches globby order-sensitive leading negation behavior for async and sync calls', async () => {
+    await Promise.all([
+      fse.outputFile(path.join(tmpDir, 'keep.js'), 'keep\n'),
+      fse.outputFile(path.join(tmpDir, 'keep.ts'), 'keep\n'),
+      fse.outputFile(path.join(tmpDir, 'ignored', 'drop.js'), 'drop\n'),
+      fse.outputFile(path.join(tmpDir, 'ignored', 'drop.ts'), 'drop\n'),
+    ]);
+
+    expect(
+      (await glob(['!ignored/**/*', '**/*.js', '**/*.ts'], { cwd: tmpDir })).sort()
+    ).to.deep.equal(['ignored/drop.js', 'ignored/drop.ts', 'keep.js', 'keep.ts']);
+    expect(
+      glob.sync(['!ignored/**/*', '**/*.js', '**/*.ts'], { cwd: tmpDir }).sort()
+    ).to.deep.equal(['ignored/drop.js', 'ignored/drop.ts', 'keep.js', 'keep.ts']);
+  });
+
+  it('applies later negations to earlier positives and still supports re-inclusion', async () => {
     await Promise.all([
       fse.outputFile(path.join(tmpDir, 'keep.js'), 'keep\n'),
       fse.outputFile(path.join(tmpDir, 'ignored', 'drop.js'), 'drop\n'),
+      fse.outputFile(path.join(tmpDir, 'ignored', 'reinclude.js'), 'reinclude\n'),
     ]);
 
-    expect(await glob(['!ignored/**/*', '**/*.js'], { cwd: tmpDir })).to.deep.equal(['keep.js']);
-    expect(glob.sync(['!ignored/**/*', '**/*.js'], { cwd: tmpDir })).to.deep.equal(['keep.js']);
+    expect(
+      (await glob(['**/*.js', '!ignored/**/*', 'ignored/reinclude.js'], { cwd: tmpDir })).sort()
+    ).to.deep.equal(['ignored/reinclude.js', 'keep.js']);
+    expect(
+      glob.sync(['**/*.js', '!ignored/**/*', 'ignored/reinclude.js'], { cwd: tmpDir }).sort()
+    ).to.deep.equal(['ignored/reinclude.js', 'keep.js']);
   });
 });
