@@ -5,7 +5,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const globby = require('../../../../../../../lib/utils/glob');
+const glob = require('../../../../../../../lib/utils/glob');
 const sandbox = require('sinon');
 const proxyquire = require('proxyquire');
 const normalizeFiles = require('../../../../../../../lib/plugins/aws/lib/normalize-files');
@@ -221,14 +221,14 @@ describe('checkForChanges', () => {
 
   describe('#checkIfDeploymentIsNecessary()', () => {
     let normalizeCloudFormationTemplateStub;
-    let globbySyncStub;
+    let globSyncStub;
     let readFileStub;
 
     beforeEach(async () => {
       normalizeCloudFormationTemplateStub = sandbox
         .stub(normalizeFiles, 'normalizeCloudFormationTemplate')
         .returns();
-      globbySyncStub = sandbox.stub(globby, 'sync');
+      globSyncStub = sandbox.stub(glob, 'sync');
       readFileStub = sandbox
         .stub(fsp, 'readFile')
         .returns(Promise.resolve('{"service":{"provider":{}},"package":{}}'));
@@ -236,14 +236,14 @@ describe('checkForChanges', () => {
 
     afterEach(() => {
       normalizeFiles.normalizeCloudFormationTemplate.restore();
-      globby.sync.restore();
+      glob.sync.restore();
       fsp.readFile.restore();
     });
 
     it('should resolve if no input is provided', async () =>
       expect(awsDeploy.checkIfDeploymentIsNecessary([])).to.be.fulfilled.then(() => {
         expect(normalizeCloudFormationTemplateStub).to.not.have.been.called;
-        expect(globbySyncStub).to.not.have.been.called;
+        expect(globSyncStub).to.not.have.been.called;
         expect(readFileStub).to.not.have.been.called;
       }));
 
@@ -252,7 +252,7 @@ describe('checkForChanges', () => {
 
       return expect(awsDeploy.checkIfDeploymentIsNecessary(input)).to.be.fulfilled.then(() => {
         expect(normalizeCloudFormationTemplateStub).to.not.have.been.called;
-        expect(globbySyncStub).to.not.have.been.called;
+        expect(globSyncStub).to.not.have.been.called;
         expect(readFileStub).to.not.have.been.called;
       });
     });
@@ -631,7 +631,7 @@ const commonAwsSdkMock = {
 
 const generateMatchingListObjectsResponse = async (serverless) => {
   const packagePath = path.resolve(serverless.serviceDir, '.serverless');
-  const artifactNames = (await globby('*.zip', { cwd: packagePath })).map((filename) =>
+  const artifactNames = (await glob('*.zip', { cwd: packagePath })).map((filename) =>
     path.basename(filename)
   );
   artifactNames.push('compiled-cloudformation-template.json', 'serverless-state.json');

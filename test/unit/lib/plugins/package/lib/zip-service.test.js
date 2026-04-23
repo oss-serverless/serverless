@@ -5,7 +5,7 @@
 const os = require('os');
 const path = require('path');
 const JsZip = require('jszip');
-const globby = require('../../../../../../lib/utils/glob');
+const glob = require('../../../../../../lib/utils/glob');
 const _ = require('lodash');
 const BbPromise = require('bluebird');
 const fs = BbPromise.promisifyAll(require('fs'));
@@ -120,20 +120,20 @@ describe('zipService', () => {
     });
 
     describe('when dealing with Node.js runtimes', () => {
-      let globbySyncStub;
+      let globSyncStub;
       let execAsyncStub;
       let readFileAsyncStub;
       let serviceDir;
 
       beforeEach(() => {
         serviceDir = packagePlugin.serverless.serviceDir;
-        globbySyncStub = sinon.stub(globby, 'sync');
+        globSyncStub = sinon.stub(glob, 'sync');
         execAsyncStub = sinon.stub(childProcess, 'execAsync');
         readFileAsyncStub = sinon.stub(fs, 'readFileAsync');
       });
 
       afterEach(() => {
-        globby.sync.restore();
+        glob.sync.restore();
         childProcess.execAsync.restore();
         fs.readFileAsync.restore();
       });
@@ -141,14 +141,14 @@ describe('zipService', () => {
       it('should do nothing if no packages are used', async () => {
         const filePaths = [];
 
-        globbySyncStub.returns(filePaths);
+        globSyncStub.returns(filePaths);
 
         return expect(packagePlugin.excludeDevDependencies(params)).to.be.fulfilled.then(
           (updatedParams) => {
-            expect(globbySyncStub).to.have.been.calledOnce;
+            expect(globSyncStub).to.have.been.calledOnce;
             expect(execAsyncStub).to.not.have.been.called;
             expect(readFileAsyncStub).to.not.have.been.called;
-            expect(globbySyncStub).to.have.been.calledWithExactly(['**/package.json'], {
+            expect(globSyncStub).to.have.been.calledWithExactly(['**/package.json'], {
               cwd: packagePlugin.serverless.serviceDir,
               dot: true,
               silent: true,
@@ -165,17 +165,17 @@ describe('zipService', () => {
       it('should do nothing if no dependencies are found', async () => {
         const filePaths = ['package.json', 'node_modules'];
 
-        globbySyncStub.returns(filePaths);
+        globSyncStub.returns(filePaths);
         execAsyncStub.resolves();
         const depPaths = '';
         readFileAsyncStub.resolves(depPaths);
 
         return expect(packagePlugin.excludeDevDependencies(params)).to.be.fulfilled.then(
           (updatedParams) => {
-            expect(globbySyncStub).to.have.been.calledOnce;
+            expect(globSyncStub).to.have.been.calledOnce;
             expect(execAsyncStub).to.have.been.calledTwice;
             expect(readFileAsyncStub).to.have.been.calledTwice;
-            expect(globbySyncStub).to.have.been.calledWithExactly(['**/package.json'], {
+            expect(globSyncStub).to.have.been.calledWithExactly(['**/package.json'], {
               cwd: packagePlugin.serverless.serviceDir,
               dot: true,
               silent: true,
@@ -198,11 +198,11 @@ describe('zipService', () => {
       });
 
       it('should return excludes and includes if an error is thrown in the global scope', () => {
-        globbySyncStub.throws();
+        globSyncStub.throws();
 
         return expect(packagePlugin.excludeDevDependencies(params)).to.be.fulfilled.then(
           (updatedParams) => {
-            expect(globbySyncStub).to.have.been.calledOnce;
+            expect(globSyncStub).to.have.been.calledOnce;
             expect(execAsyncStub).to.not.have.been.called;
             expect(readFileAsyncStub).to.not.have.been.called;
             expect(updatedParams.exclude).to.deep.equal(['user-defined-exclude-me']);
@@ -215,14 +215,14 @@ describe('zipService', () => {
       it('should return excludes and includes if a exec Promise is rejected', async () => {
         const filePaths = ['package.json', 'node_modules'];
 
-        globbySyncStub.returns(filePaths);
+        globSyncStub.returns(filePaths);
         execAsyncStub.onCall(0).resolves();
         execAsyncStub.onCall(1).rejects();
         readFileAsyncStub.resolves();
 
         return expect(packagePlugin.excludeDevDependencies(params)).to.be.fulfilled.then(
           (updatedParams) => {
-            expect(globbySyncStub).to.been.calledOnce;
+            expect(globSyncStub).to.been.calledOnce;
             expect(execAsyncStub).to.have.been.calledTwice;
             expect(readFileAsyncStub).to.have.been.calledTwice;
             expect(updatedParams.exclude).to.deep.equal(['user-defined-exclude-me']);
@@ -235,7 +235,7 @@ describe('zipService', () => {
       it('should return excludes and includes if a readFile Promise is rejected', async () => {
         const filePaths = ['package.json', 'node_modules'];
 
-        globbySyncStub.returns(filePaths);
+        globSyncStub.returns(filePaths);
         execAsyncStub.resolves();
 
         readFileAsyncStub.onCall(0).resolves();
@@ -243,7 +243,7 @@ describe('zipService', () => {
 
         return expect(packagePlugin.excludeDevDependencies(params)).to.be.fulfilled.then(
           (updatedParams) => {
-            expect(globbySyncStub).to.been.calledOnce;
+            expect(globSyncStub).to.been.calledOnce;
             expect(execAsyncStub).to.have.been.calledTwice;
             expect(readFileAsyncStub).to.have.been.calledTwice;
             expect(updatedParams.exclude).to.deep.equal(['user-defined-exclude-me']);

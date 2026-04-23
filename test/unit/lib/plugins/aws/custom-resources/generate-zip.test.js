@@ -1,7 +1,7 @@
 'use strict';
 
 const path = require('path');
-const globby = require('../../../../../../lib/utils/glob');
+const glob = require('../../../../../../lib/utils/glob');
 const requireUncached = require('ncjsm/require-uncached');
 const { listZipFiles } = require('../../../../../utils/fs');
 const { expect } = require('chai');
@@ -22,7 +22,7 @@ describe('test/unit/lib/plugins/aws/customResources/generateZip.test.js', () => 
       // List the files in the zip to make sure it is valid
       const filesInZip = await listZipFiles(zipFilePath);
 
-      const filesInResourceDir = await globby('**', { cwd: resourcesDir });
+      const filesInResourceDir = await glob('**', { cwd: resourcesDir });
       expect(filesInZip).to.have.all.members(filesInResourceDir);
     });
   });
