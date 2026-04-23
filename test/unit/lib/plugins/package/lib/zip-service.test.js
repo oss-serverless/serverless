@@ -267,7 +267,7 @@ describe('zipService', () => {
           path.join('1st', '2nd', 'node_modules'),
         ];
 
-        globbySyncStub.returns(filePaths);
+        globSyncStub.returns(filePaths);
         execAsyncStub.onCall(0).resolves();
         execAsyncStub.onCall(1).resolves();
         execAsyncStub.onCall(2).rejects();
@@ -289,7 +289,7 @@ describe('zipService', () => {
 
         return expect(packagePlugin.excludeDevDependencies(params)).to.be.fulfilled.then(
           (updatedParams) => {
-            expect(globbySyncStub).to.have.been.calledOnce;
+            expect(globSyncStub).to.have.been.calledOnce;
             expect(execAsyncStub.callCount).to.equal(6);
             expect(readFileAsyncStub).to.have.callCount(6);
             expect(readFileAsyncStub).to.have.been.calledWith(
@@ -304,7 +304,7 @@ describe('zipService', () => {
             expect(readFileAsyncStub).to.have.been.calledWith(
               path.join(serviceDir, '1st', '2nd', 'node_modules', 'module-1', 'package.json')
             );
-            expect(globbySyncStub).to.have.been.calledWithExactly(['**/package.json'], {
+            expect(globSyncStub).to.have.been.calledWithExactly(['**/package.json'], {
               cwd: packagePlugin.serverless.serviceDir,
               dot: true,
               silent: true,
@@ -351,7 +351,7 @@ describe('zipService', () => {
       it('should exclude dev dependencies in the services root directory', async () => {
         const filePaths = ['package.json', 'node_modules'];
 
-        globbySyncStub.returns(filePaths);
+        globSyncStub.returns(filePaths);
         execAsyncStub.resolves();
         const depPaths = [
           path.join(serviceDir, 'node_modules', 'module-1'),
@@ -364,7 +364,7 @@ describe('zipService', () => {
 
         return expect(packagePlugin.excludeDevDependencies(params)).to.be.fulfilled.then(
           (updatedParams) => {
-            expect(globbySyncStub).to.have.been.calledOnce;
+            expect(globSyncStub).to.have.been.calledOnce;
             expect(execAsyncStub).to.have.been.calledTwice;
             expect(readFileAsyncStub).to.have.callCount(4);
             expect(readFileAsyncStub).to.have.been.calledWith(
@@ -373,7 +373,7 @@ describe('zipService', () => {
             expect(readFileAsyncStub).to.have.been.calledWith(
               path.join(serviceDir, 'node_modules', 'module-2', 'package.json')
             );
-            expect(globbySyncStub).to.have.been.calledWithExactly(['**/package.json'], {
+            expect(globSyncStub).to.have.been.calledWithExactly(['**/package.json'], {
               cwd: packagePlugin.serverless.serviceDir,
               dot: true,
               silent: true,
@@ -412,7 +412,7 @@ describe('zipService', () => {
           path.join('1st', '2nd', 'node_modules'),
         ];
 
-        globbySyncStub.returns(filePaths);
+        globSyncStub.returns(filePaths);
         execAsyncStub.resolves();
         const depPaths = [
           path.join(serviceDir, 'node_modules', 'module-1'),
@@ -433,10 +433,10 @@ describe('zipService', () => {
 
         return expect(packagePlugin.excludeDevDependencies(params)).to.be.fulfilled.then(
           (updatedParams) => {
-            expect(globbySyncStub).to.have.been.calledOnce;
+            expect(globSyncStub).to.have.been.calledOnce;
             expect(execAsyncStub.callCount).to.equal(6);
             expect(readFileAsyncStub).to.have.callCount(8);
-            expect(globbySyncStub).to.have.been.calledWithExactly(['**/package.json'], {
+            expect(globSyncStub).to.have.been.calledWithExactly(['**/package.json'], {
               cwd: packagePlugin.serverless.serviceDir,
               dot: true,
               silent: true,
@@ -485,7 +485,7 @@ describe('zipService', () => {
       it('should not include packages if in both dependencies and devDependencies', async () => {
         const filePaths = ['package.json', 'node_modules'];
 
-        globbySyncStub.returns(filePaths);
+        globSyncStub.returns(filePaths);
         execAsyncStub.resolves();
 
         const devDepPaths = [
@@ -500,13 +500,13 @@ describe('zipService', () => {
 
         return expect(packagePlugin.excludeDevDependencies(params)).to.be.fulfilled.then(
           (updatedParams) => {
-            expect(globbySyncStub).to.have.been.calledOnce;
+            expect(globSyncStub).to.have.been.calledOnce;
             expect(execAsyncStub).to.have.been.calledTwice;
             expect(readFileAsyncStub).to.have.been.calledThrice;
             expect(readFileAsyncStub).to.have.been.calledWith(
               path.join(serviceDir, 'node_modules', 'module-1', 'package.json')
             );
-            expect(globbySyncStub).to.have.been.calledWithExactly(['**/package.json'], {
+            expect(globSyncStub).to.have.been.calledWithExactly(['**/package.json'], {
               cwd: packagePlugin.serverless.serviceDir,
               dot: true,
               silent: true,
@@ -543,7 +543,7 @@ describe('zipService', () => {
 
         const filePaths = ['node_modules/', 'package.json'].concat(devPaths).concat(prodPaths);
 
-        globbySyncStub.returns(filePaths);
+        globSyncStub.returns(filePaths);
         execAsyncStub.resolves();
 
         const mapper = (depPath) => path.join(`${serviceDir}`, depPath);
@@ -565,7 +565,7 @@ describe('zipService', () => {
 
         return expect(packagePlugin.excludeDevDependencies(params)).to.be.fulfilled.then(
           (updatedParams) => {
-            expect(globbySyncStub).to.been.calledOnce;
+            expect(globSyncStub).to.been.calledOnce;
             expect(execAsyncStub).to.have.been.calledTwice;
 
             expect(readFileAsyncStub).to.have.callCount(5);
@@ -605,7 +605,7 @@ describe('zipService', () => {
           path.join('1st', '2nd', 'node_modules'),
         ];
 
-        globbySyncStub.returns(filePaths);
+        globSyncStub.returns(filePaths);
         execAsyncStub.resolves();
         const deps = [
           'node_modules/module-1',
@@ -639,7 +639,7 @@ describe('zipService', () => {
 
         return expect(packagePlugin.excludeDevDependencies(params)).to.be.fulfilled.then(
           (updatedParams) => {
-            expect(globbySyncStub).to.have.been.calledOnce;
+            expect(globSyncStub).to.have.been.calledOnce;
             expect(execAsyncStub.callCount).to.equal(6);
             expect(readFileAsyncStub).to.have.callCount(8);
             for (const depPath of deps) {
@@ -647,7 +647,7 @@ describe('zipService', () => {
                 path.join(serviceDir, depPath, 'package.json')
               );
             }
-            expect(globbySyncStub).to.have.been.calledWithExactly(['**/package.json'], {
+            expect(globSyncStub).to.have.been.calledWithExactly(['**/package.json'], {
               cwd: packagePlugin.serverless.serviceDir,
               dot: true,
               silent: true,
