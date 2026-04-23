@@ -3,8 +3,8 @@
 const expect = require('chai').expect;
 const sinon = require('sinon');
 const BbPromise = require('bluebird');
-const _ = require('lodash');
 const childProcess = BbPromise.promisifyAll(require('child_process'));
+const isObject = require('type/object/is');
 const AwsCompileApigEvents = require('../../../../../../../../../../../lib/plugins/aws/package/compile/events/api-gateway');
 const Serverless = require('../../../../../../../../../../../lib/serverless');
 const AwsProvider = require('../../../../../../../../../../../lib/plugins/aws/provider');
@@ -286,7 +286,7 @@ describe('#compileStage()', () => {
           awsCompileApigEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources;
 
         expect(
-          _.isObject(
+          isObject(
             resources[
               awsCompileApigEvents.provider.naming.getCustomResourceApiGatewayAccountCloudWatchRoleResourceLogicalId()
             ]
@@ -305,7 +305,7 @@ describe('#compileStage()', () => {
           awsCompileApigEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources;
 
         expect(
-          _.isObject(
+          isObject(
             resources[
               awsCompileApigEvents.provider.naming.getCustomResourceApiGatewayAccountCloudWatchRoleResourceLogicalId()
             ]

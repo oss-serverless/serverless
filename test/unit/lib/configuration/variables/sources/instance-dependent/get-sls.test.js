@@ -1,12 +1,12 @@
 'use strict';
 
 const { expect } = require('chai');
-const _ = require('lodash');
 
 const resolveMeta = require('../../../../../../../lib/configuration/variables/resolve-meta');
 const resolve = require('../../../../../../../lib/configuration/variables/resolve');
 const selfSource = require('../../../../../../../lib/configuration/variables/sources/self');
 const getSlsSource = require('../../../../../../../lib/configuration/variables/sources/instance-dependent/get-sls');
+const mergePlainObjects = require('../../../../../../../lib/utils/merge-plain-objects');
 const Serverless = require('../../../../../../../lib/serverless');
 
 describe('test/unit/lib/configuration/variables/sources/instance-dependent/get-sls.test.js', () => {
@@ -30,7 +30,7 @@ describe('test/unit/lib/configuration/variables/sources/instance-dependent/get-s
       },
     };
     if (configExt) {
-      configuration = _.merge(configuration, configExt);
+      configuration = mergePlainObjects(configuration, configExt);
     }
     variablesMeta = resolveMeta(configuration);
     serverlessInstance = new Serverless({

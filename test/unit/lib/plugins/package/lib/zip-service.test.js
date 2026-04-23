@@ -6,11 +6,11 @@ const os = require('os');
 const path = require('path');
 const JsZip = require('jszip');
 const glob = require('../../../../../../lib/utils/glob');
-const _ = require('lodash');
 const BbPromise = require('bluebird');
 const fs = BbPromise.promisifyAll(require('fs'));
 const childProcess = BbPromise.promisifyAll(require('child_process'));
 const sinon = require('sinon');
+const isObject = require('type/object/is');
 const Package = require('../../../../../../lib/plugins/package/package');
 const Serverless = require('../../../../../../lib/serverless');
 const { getTmpDirPath } = require('../../../../../utils/fs');
@@ -732,7 +732,7 @@ describe('zipService', () => {
         Object.keys(files).forEach((fileName) => {
           const filePath = path.join(dirPath, fileName);
           const fileValue = files[fileName];
-          const file = _.isObject(fileValue) ? fileValue : { content: fileValue };
+          const file = isObject(fileValue) ? fileValue : { content: fileValue };
 
           if (!file.content) {
             throw new Error('File content is required');
@@ -820,6 +820,24 @@ describe('zipService', () => {
             );
           }
         });
+    });
+
+    it('should produce stable zip bytes for identical inputs', async () => {
+      const filePaths = Object.entries(testDirectory).flatMap(([directoryName, files]) =>
+        Object.keys(files).map((fileName) => {
+          return directoryName === '.' ? fileName : path.join(directoryName, fileName);
+        })
+      );
+
+      params.zipFileName = getTestArtifactFileName('stable-zip-1');
+      const firstArtifact = await packagePlugin.zipFiles(filePaths, params.zipFileName);
+      const firstBytes = fs.readFileSync(firstArtifact);
+
+      params.zipFileName = getTestArtifactFileName('stable-zip-2');
+      const secondArtifact = await packagePlugin.zipFiles(filePaths, params.zipFileName);
+      const secondBytes = fs.readFileSync(secondArtifact);
+
+      expect(Buffer.compare(firstBytes, secondBytes)).to.equal(0);
     });
 
     it('should exclude with globs', async () => {

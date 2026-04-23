@@ -247,6 +247,16 @@ describe('AwsInvokeLocal', () => {
   });
 
   describe('#getCredentialEnvVars()', () => {
+    let getCredentialsStub;
+
+    beforeEach(() => {
+      getCredentialsStub = sinon.stub(provider, 'getCredentials').callsFake(() => {
+        return provider.cachedCredentials || {};
+      });
+    });
+
+    afterEach(() => getCredentialsStub.restore());
+
     it('returns empty object when credentials is not set', () => {
       provider.cachedCredentials = null;
 
@@ -272,12 +282,121 @@ describe('AwsInvokeLocal', () => {
         AWS_SESSION_TOKEN: 'TOKEN',
       });
     });
+
+    it('returns credential env vars from lazily loaded credentials', () => {
+      provider.cachedCredentials = null;
+      getCredentialsStub.returns({
+        credentials: {
+          accessKeyId: 'ID',
+          secretAccessKey: 'SECRET',
+        },
+      });
+
+      const credentialEnvVars = awsInvokeLocal.getCredentialEnvVars();
+
+      expect(credentialEnvVars).to.be.eql({
+        AWS_ACCESS_KEY_ID: 'ID',
+        AWS_SECRET_ACCESS_KEY: 'SECRET',
+      });
+    });
+  });
+
+  describe('#getConfiguredEnvVars()', () => {
+    it('merges provider and function env vars with function precedence and null filtering', () => {
+      const providerValue = { Ref: 'providerValue' };
+      const functionValue = { 'Fn::ImportValue': 'functionValue' };
+
+      serverless.service.provider.environment = {
+        SHARED: providerValue,
+        DROP_ME: null,
+      };
+      awsInvokeLocal.options.functionObj = {
+        environment: {
+          SHARED: functionValue,
+          KEEP_ME: 'yes',
+        },
+      };
+
+      const result = awsInvokeLocal.getConfiguredEnvVars();
+
+      expect(result).to.deep.equal({
+        SHARED: functionValue,
+        KEEP_ME: 'yes',
+      });
+      expect(serverless.service.provider.environment.SHARED).to.equal(providerValue);
+    });
+  });
+
+  describe('#resolveConfiguredEnvVars()', () => {
+    let requestStub;
+
+    beforeEach(() => {
+      requestStub = sinon.stub(provider, 'request');
+    });
+
+    afterEach(() => {
+      provider.request.restore();
+    });
+
+    it('resolves Fn::ImportValue env vars', async () => {
+      requestStub.resolves({
+        Exports: [{ Name: 'some-export', Value: 'imported-value' }],
+      });
+
+      const result = await awsInvokeLocal.resolveConfiguredEnvVars({
+        IMPORTED: {
+          'Fn::ImportValue': 'some-export',
+        },
+      });
+
+      expect(result).to.deep.equal({
+        IMPORTED: 'imported-value',
+      });
+    });
+
+    it('resolves Ref env vars', async () => {
+      requestStub.resolves({
+        StackResourceSummaries: [
+          {
+            LogicalResourceId: 'SomeResource',
+            PhysicalResourceId: 'physical-resource-id',
+          },
+        ],
+      });
+
+      const result = await awsInvokeLocal.resolveConfiguredEnvVars({
+        TARGET: {
+          Ref: 'SomeResource',
+        },
+      });
+
+      expect(result).to.deep.equal({
+        TARGET: 'physical-resource-id',
+      });
+    });
+
+    it('rejects unsupported environment variable objects', async () => {
+      return expect(
+        awsInvokeLocal.resolveConfiguredEnvVars({
+          TARGET: {
+            Unsupported: true,
+          },
+        })
+      ).to.be.rejected.then((error) => {
+        expect(error.code).to.equal('INVOKE_LOCAL_INVALID_ENV_VARIABLE');
+      });
+    });
   });
 
   describe('#loadEnvVars()', () => {
+    let getCredentialsStub;
     let restoreEnv;
+
     beforeEach(() => {
       ({ restoreEnv } = overrideEnv());
+      getCredentialsStub = sinon.stub(provider, 'getCredentials').callsFake(() => {
+        return provider.cachedCredentials || {};
+      });
       serverless.serviceDir = true;
       serverless.service.provider = {
         environment: {
@@ -296,7 +415,10 @@ describe('AwsInvokeLocal', () => {
       };
     });
 
-    afterEach(() => restoreEnv());
+    afterEach(() => {
+      restoreEnv();
+      getCredentialsStub.restore();
+    });
 
     it('it should load provider env vars', async () => {
       await awsInvokeLocal.loadEnvVars();
@@ -370,6 +492,23 @@ describe('AwsInvokeLocal', () => {
       expect('AWS_SECRET_ACCESS_KEY' in process.env).to.equal(false);
     });
 
+    it('loads credential env vars from lazily loaded credentials', async () => {
+      provider.cachedCredentials = null;
+      getCredentialsStub.returns({
+        credentials: {
+          accessKeyId: 'ID',
+          secretAccessKey: 'SECRET',
+          sessionToken: 'TOKEN',
+        },
+      });
+
+      await awsInvokeLocal.loadEnvVars();
+
+      expect(process.env.AWS_ACCESS_KEY_ID).to.equal('ID');
+      expect(process.env.AWS_SECRET_ACCESS_KEY).to.equal('SECRET');
+      expect(process.env.AWS_SESSION_TOKEN).to.equal('TOKEN');
+    });
+
     it('should fallback to service provider configuration when options are not available', async () => {
       awsInvokeLocal.provider.options.region = null;
       awsInvokeLocal.serverless.service.provider.region = 'us-west-1';
@@ -384,6 +523,73 @@ describe('AwsInvokeLocal', () => {
 
       await awsInvokeLocal.loadEnvVars();
       expect(process.env.providerVar).to.be.equal('providerValueOverwritten');
+    });
+  });
+
+  describe('#ensurePackage()', () => {
+    let accessStub;
+    let pluginSpawnStub;
+
+    beforeEach(() => {
+      accessStub = sinon.stub(fsp, 'access');
+      pluginSpawnStub = sinon.stub(serverless.pluginManager, 'spawn').resolves();
+      serverless.serviceDir = getTmpDirPath();
+    });
+
+    afterEach(() => {
+      fsp.access.restore();
+      serverless.pluginManager.spawn.restore();
+    });
+
+    it('skips packaging when skip-package is set and the state file exists', async () => {
+      awsInvokeLocal.options['skip-package'] = true;
+      accessStub.resolves();
+
+      await awsInvokeLocal.ensurePackage();
+
+      expect(accessStub).to.have.been.calledOnce;
+      expect(pluginSpawnStub).to.not.have.been.called;
+    });
+
+    it('packages when skip-package is set but the state file is missing', async () => {
+      awsInvokeLocal.options['skip-package'] = true;
+      accessStub.rejects(Object.assign(new Error('missing'), { code: 'ENOENT' }));
+
+      await awsInvokeLocal.ensurePackage();
+
+      expect(pluginSpawnStub).to.have.been.calledOnceWithExactly('package');
+    });
+  });
+
+  describe('#extractArtifact()', () => {
+    let chmodStub;
+
+    beforeEach(() => {
+      chmodStub = sinon.stub(fsp, 'chmod').resolves();
+      serverless.serviceDir = getTmpDirPath();
+      awsInvokeLocal.options.functionObj = {};
+      serverless.service.package = {};
+    });
+
+    afterEach(() => {
+      fsp.chmod.restore();
+    });
+
+    it('filters directory placeholders and chmods bootstrap to 755', async () => {
+      const artifactPath = path.join(serverless.serviceDir, 'artifact.zip');
+      const zip = new AdmZip();
+
+      zip.addFile('bootstrap', Buffer.from('#!/bin/sh\n'));
+      zip.addFile('nested/', Buffer.alloc(0));
+      zip.writeZip(artifactPath);
+
+      awsInvokeLocal.options.functionObj.package = {
+        artifact: artifactPath,
+      };
+
+      const destination = await awsInvokeLocal.extractArtifact();
+
+      expect(chmodStub).to.have.been.calledWith(path.join(destination, 'bootstrap'), '755');
     });
   });
 

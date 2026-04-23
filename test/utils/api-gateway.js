@@ -1,6 +1,5 @@
 'use strict';
 
-const _ = require('lodash');
 const awsRequest = require('../lib/aws-request');
 
 // Support for both AWS SDK v2 and v3
@@ -70,7 +69,7 @@ async function findRestApis(name) {
     return apiGateway.getRestApis(params).then((result) => {
       const matches = result.items.filter((restApi) => restApi.name.match(name));
       if (matches.length) {
-        _.merge(found, matches);
+        Object.assign(found, matches);
       }
       if (result.position) return recursiveFind(found, result.position);
       return found;

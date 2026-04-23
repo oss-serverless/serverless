@@ -2,7 +2,6 @@
 
 /* eslint-disable no-unused-expressions */
 
-const _ = require('lodash');
 const chai = require('chai');
 const path = require('path');
 const fs = require('fs-extra');
@@ -37,6 +36,61 @@ describe('AwsProvider', () => {
   describe('#getRuntime()', () => {
     it('should default to "nodejs24.x" when no runtime is configured', () => {
       expect(awsProvider.getRuntime()).to.equal('nodejs24.x');
+    });
+
+    it('should use provider.runtime when no explicit runtime is passed', () => {
+      serverless.service.provider.runtime = 'nodejs22.x';
+
+      expect(awsProvider.getRuntime()).to.equal('nodejs22.x');
+    });
+
+    it('should prefer an explicit runtime argument over provider.runtime', () => {
+      serverless.service.provider.runtime = 'nodejs22.x';
+
+      expect(awsProvider.getRuntime('python3.13')).to.equal('python3.13');
+    });
+  });
+
+  describe('#resolveFunctionRuntimeManagement()', () => {
+    it('should default runtime management to auto', () => {
+      expect(awsProvider.resolveFunctionRuntimeManagement()).to.deep.equal({
+        mode: 'auto',
+      });
+    });
+
+    it('should merge provider and function runtime management with function precedence', () => {
+      serverless.service.provider.runtimeManagement = 'manual';
+
+      expect(awsProvider.resolveFunctionRuntimeManagement({ mode: 'auto' })).to.deep.equal({
+        mode: 'auto',
+      });
+    });
+  });
+
+  describe('#getCustomDeploymentRole()', () => {
+    it('should prefer provider.iam.deploymentRole over cfnRole', () => {
+      serverless.service.provider.cfnRole = 'arn:aws:iam::123:role/cfn';
+      serverless.service.provider.iam = {
+        deploymentRole: 'arn:aws:iam::123:role/deploy',
+      };
+
+      expect(awsProvider.getCustomDeploymentRole()).to.equal('arn:aws:iam::123:role/deploy');
+    });
+
+    it('should fall back to cfnRole when iam.deploymentRole is undefined', () => {
+      serverless.service.provider.cfnRole = 'arn:aws:iam::123:role/cfn';
+      serverless.service.provider.iam = {};
+
+      expect(awsProvider.getCustomDeploymentRole()).to.equal('arn:aws:iam::123:role/cfn');
+    });
+
+    it('should preserve an explicit null deployment role', () => {
+      serverless.service.provider.cfnRole = 'arn:aws:iam::123:role/cfn';
+      serverless.service.provider.iam = {
+        deploymentRole: null,
+      };
+
+      expect(awsProvider.getCustomDeploymentRole()).to.equal(null);
     });
   });
 
@@ -169,13 +223,13 @@ describe('AwsProvider', () => {
     });
     describe('#firstValue', () => {
       it("should ignore entries without a 'value' attribute", () => {
-        const input = _.cloneDeep(getExpected);
+        const input = structuredClone(getExpected);
         delete input[0].value;
         delete input[2].value;
         expect(awsProvider.firstValue(input)).to.eql(getExpected[1]);
       });
       it("should ignore entries with an undefined 'value' attribute", () => {
-        const input = _.cloneDeep(getExpected);
+        const input = structuredClone(getExpected);
         input[0].value = undefined;
         input[2].value = undefined;
         expect(awsProvider.firstValue(input)).to.eql(getExpected[1]);
@@ -184,19 +238,19 @@ describe('AwsProvider', () => {
         expect(awsProvider.firstValue(getExpected)).to.equal(getExpected[0]);
       });
       it('should return the middle value', () => {
-        const input = _.cloneDeep(getExpected);
+        const input = structuredClone(getExpected);
         delete input[0].value;
         delete input[2].value;
         expect(awsProvider.firstValue(input)).to.equal(input[1]);
       });
       it('should return the last value', () => {
-        const input = _.cloneDeep(getExpected);
+        const input = structuredClone(getExpected);
         delete input[0].value;
         delete input[1].value;
         expect(awsProvider.firstValue(input)).to.equal(input[2]);
       });
       it('should return the last object if none have valid values', () => {
-        const input = _.cloneDeep(getExpected);
+        const input = structuredClone(getExpected);
         delete input[0].value;
         delete input[1].value;
         delete input[2].value;
@@ -239,6 +293,25 @@ describe('AwsProvider', () => {
         params: {
           ...awsProviderProxied.cachedCredentials,
           region: 'us-east-1',
+          isS3TransferAccelerationEnabled: false,
+        },
+      });
+    });
+
+    it('should respect a per-request region override', async () => {
+      awsProviderProxied.cachedCredentials = {
+        accessKeyId: 'accessKeyId',
+        secretAccessKey: 'secretAccessKey',
+      };
+
+      await awsProviderProxied.request('S3', 'getObject', {}, { region: 'eu-west-1' });
+
+      expect(awsRequestStub.args[0][0]).to.deep.equal({
+        name: 'S3',
+        params: {
+          accessKeyId: 'accessKeyId',
+          secretAccessKey: 'secretAccessKey',
+          region: 'eu-west-1',
           isS3TransferAccelerationEnabled: false,
         },
       });

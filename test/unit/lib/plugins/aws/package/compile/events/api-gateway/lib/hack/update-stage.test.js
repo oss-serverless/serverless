@@ -5,7 +5,6 @@
 
 const chai = require('chai');
 const sinon = require('sinon');
-const _ = require('lodash');
 const Serverless = require('../../../../../../../../../../../lib/serverless');
 const AwsProvider = require('../../../../../../../../../../../lib/plugins/aws/provider');
 const {
@@ -60,7 +59,13 @@ describe('#updateStage()', () => {
     context = {
       serverless,
       options,
-      state: _.cloneDeep(serverless),
+      state: {
+        service: {
+          service: serverless.service.service,
+          provider: structuredClone(serverless.service.provider),
+          functions: structuredClone(serverless.service.functions),
+        },
+      },
       provider: awsProvider,
     };
 

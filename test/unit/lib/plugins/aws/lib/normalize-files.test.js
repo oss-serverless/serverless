@@ -218,5 +218,35 @@ describe('normalizeFiles', () => {
         },
       });
     });
+
+    it('should not mutate the input template', () => {
+      const input = {
+        Resources: {
+          MyLambdaFunction: {
+            Type: 'AWS::Lambda::Function',
+            Properties: {
+              Code: {
+                S3Key: 'original-s3-key',
+              },
+            },
+          },
+        },
+      };
+
+      normalizeFiles.normalizeCloudFormationTemplate(input);
+
+      expect(input).to.deep.equal({
+        Resources: {
+          MyLambdaFunction: {
+            Type: 'AWS::Lambda::Function',
+            Properties: {
+              Code: {
+                S3Key: 'original-s3-key',
+              },
+            },
+          },
+        },
+      });
+    });
   });
 });

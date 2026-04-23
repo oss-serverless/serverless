@@ -42,6 +42,10 @@ const withLocalDir = async (homeDir, name, callback) => {
 };
 
 describe('serverless-utils/config', () => {
+  afterEach(() => {
+    delete Object.prototype.polluted;
+  });
+
   it('exports the generic config helpers only', () => {
     const config = loadConfigModule();
 
@@ -271,6 +275,39 @@ describe('serverless-utils/config', () => {
     });
   });
 
+  it('supports dot and bracket paths with array indices', async () => {
+    await withIsolatedHome('config-array-paths', async (homeDir) => {
+      const config = loadConfigModule();
+
+      await withLocalDir(homeDir, 'service', async () => {
+        const globalConfigPath = path.join(homeDir, config.CONFIG_FILE_NAME);
+
+        config.set('users.0.name', 'Jane');
+        config.set('users[1].name', 'John');
+
+        expect(config.get('users.0.name')).to.equal('Jane');
+        expect(config.get('users[1].name')).to.equal('John');
+
+        const stored = JSON.parse(await fs.promises.readFile(globalConfigPath, 'utf8'));
+
+        expect(stored.users).to.deep.equal([{ name: 'Jane' }, { name: 'John' }]);
+
+        config.delete('users[0].name');
+        expect(config.getConfig().users[0]).to.deep.equal({});
+      });
+    });
+  });
+
+  it('returns undefined for an undefined path', async () => {
+    await withIsolatedHome('config-undefined-path', async (homeDir) => {
+      const config = loadConfigModule();
+
+      await withLocalDir(homeDir, 'service', async () => {
+        expect(config.get(undefined)).to.equal(undefined);
+      });
+    });
+  });
+
   it('preserves existing legacy keys when updating config', async () => {
     await withIsolatedHome('config-preserve-legacy', async (homeDir) => {
       const config = loadConfigModule();
@@ -330,6 +367,77 @@ describe('serverless-utils/config', () => {
       const config = loadConfigModule();
 
       expect(config.CONFIG_FILE_NAME).to.equal('.serverlessrc');
+    });
+  });
+
+  it('supports quoted bracket keys containing dots', async () => {
+    await withIsolatedHome('config-quoted-dot-key', async (homeDir) => {
+      const config = loadConfigModule();
+
+      await withLocalDir(homeDir, 'service', async () => {
+        config.set('users["jane.doe"].dashboard.username', 'jdoe');
+
+        expect(config.get('users["jane.doe"].dashboard.username')).to.equal('jdoe');
+        expect(config.getConfig()).to.deep.include({
+          users: {
+            'jane.doe': {
+              dashboard: {
+                username: 'jdoe',
+              },
+            },
+          },
+        });
+      });
+    });
+  });
+
+  it('does not allow prototype pollution through string paths', async () => {
+    await withIsolatedHome('config-unsafe-set', async (homeDir) => {
+      const config = loadConfigModule();
+
+      await withLocalDir(homeDir, 'service', async () => {
+        config.set('__proto__.polluted', 'yes');
+
+        expect(config.get('__proto__.polluted')).to.equal(undefined);
+        expect({}.polluted).to.equal(undefined);
+      });
+    });
+  });
+
+  it('does not allow constructor.prototype pollution through string paths', async () => {
+    await withIsolatedHome('config-unsafe-constructor-set', async (homeDir) => {
+      const config = loadConfigModule();
+
+      await withLocalDir(homeDir, 'service', async () => {
+        config.set('constructor.prototype.polluted', 'yes');
+
+        expect({}.polluted).to.equal(undefined);
+      });
+    });
+  });
+
+  it('drops unsafe keys when merging config files', async () => {
+    await withIsolatedHome('config-unsafe-merge', async (homeDir) => {
+      const config = loadConfigModule();
+
+      await withLocalDir(homeDir, 'service', async (localDir) => {
+        const localConfigPath = path.join(localDir, config.CONFIG_FILE_NAME);
+        const globalConfigPath = path.join(homeDir, config.CONFIG_FILE_NAME);
+
+        await Promise.all([
+          fs.promises.writeFile(
+            globalConfigPath,
+            '{"releaseChannel":"stable","__proto__":{"polluted":"yes"}}'
+          ),
+          fs.promises.writeFile(localConfigPath, '{"featureFlag":true}'),
+        ]);
+
+        expect(config.getConfig()).to.deep.equal({
+          featureFlag: true,
+          releaseChannel: 'stable',
+        });
+        expect({}.polluted).to.equal(undefined);
+      });
     });
   });
 });

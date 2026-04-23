@@ -2,6 +2,7 @@
 
 const expect = require('chai').expect;
 const sinon = require('sinon');
+const proxyquire = require('proxyquire');
 const AwsProvider = require('../../../../../lib/plugins/aws/provider');
 const AwsMetrics = require('../../../../../lib/plugins/aws/metrics');
 const Serverless = require('../../../../../lib/serverless');
@@ -127,6 +128,14 @@ describe('AwsMetrics', () => {
       const translatedStartTime = dayjs(awsMetrics.options.startTime);
       const translatedDate = translatedStartTime.format('YYYY-M-D');
       expect(translatedDate).to.equal(yesterdaysDate);
+    });
+
+    it('should translate minute-based human friendly syntax for startTime', () => {
+      awsMetrics.options.startTime = '30m';
+
+      awsMetrics.extendedValidate();
+
+      expect(awsMetrics.options.startTime).to.be.instanceof(Date);
     });
 
     it('should set the endTime to today as the default value if not provided', () => {
@@ -368,6 +377,93 @@ describe('AwsMetrics', () => {
           sinon.match.has('Period', 24 * 3600)
         )
       ).to.equal(true);
+    });
+
+    it('should gather metrics with 1 hour period for exactly 24 hours', async () => {
+      awsMetrics.options.startTime = new Date('1970-01-01T00:00:00.000Z');
+      awsMetrics.options.endTime = new Date('1970-01-02T00:00:00.000Z');
+
+      await awsMetrics.getMetrics();
+
+      expect(
+        requestStub.calledWith(
+          sinon.match.string,
+          sinon.match.string,
+          sinon.match.has('Period', 3600)
+        )
+      ).to.equal(true);
+    });
+  });
+
+  describe('#showMetrics()', () => {
+    it('aggregates datapoints across functions and prints rounded output', () => {
+      const writeTextStub = sinon.stub();
+      const AwsMetricsProxy = proxyquire
+        .noCallThru()
+        .load('../../../../../lib/plugins/aws/metrics', {
+          '../../utils/serverless-utils/log': {
+            writeText: writeTextStub,
+            style: {
+              aside: (value) => value,
+            },
+          },
+        });
+
+      const proxiedMetrics = new AwsMetricsProxy(serverless, {
+        stage: 'dev',
+        region: 'us-east-1',
+      });
+
+      proxiedMetrics.options.startTime = new Date('1970-01-01T00:00:00.000Z');
+      proxiedMetrics.options.endTime = new Date('1970-01-01T01:00:00.000Z');
+
+      proxiedMetrics.showMetrics([
+        [
+          { Label: 'Invocations', Datapoints: [{ Sum: 3 }, { Sum: 2 }] },
+          { Label: 'Errors', Datapoints: [{ Sum: 1 }] },
+          { Label: 'Duration', Datapoints: [{ Average: 100 }, { Average: 200 }] },
+        ],
+        [
+          { Label: 'Invocations', Datapoints: [{ Sum: 4 }] },
+          { Label: 'Throttles', Datapoints: [{ Sum: 1 }] },
+          { Label: 'Duration', Datapoints: [{ Average: 50 }] },
+        ],
+      ]);
+
+      expect(writeTextStub).to.have.been.calledOnce;
+      expect(writeTextStub.firstCall.args[0]).to.include('invocations: 9');
+      expect(writeTextStub.firstCall.args[0]).to.include('throttles: 1');
+      expect(writeTextStub.firstCall.args[0]).to.include('errors: 1');
+      expect(writeTextStub.firstCall.args[0]).to.include('duration (avg.): 116.67ms');
+    });
+
+    it('prints the empty-state message when there are no metrics', () => {
+      const writeTextStub = sinon.stub();
+      const AwsMetricsProxy = proxyquire
+        .noCallThru()
+        .load('../../../../../lib/plugins/aws/metrics', {
+          '../../utils/serverless-utils/log': {
+            writeText: writeTextStub,
+            style: {
+              aside: (value) => value,
+            },
+          },
+        });
+
+      const proxiedMetrics = new AwsMetricsProxy(serverless, {
+        stage: 'dev',
+        region: 'us-east-1',
+      });
+
+      proxiedMetrics.options.startTime = new Date('1970-01-01T00:00:00.000Z');
+      proxiedMetrics.options.endTime = new Date('1970-01-01T01:00:00.000Z');
+
+      proxiedMetrics.showMetrics([]);
+
+      expect(writeTextStub).to.have.been.calledOnce;
+      expect(writeTextStub.firstCall.args[0]).to.include(
+        'There are no metrics to show for these options'
+      );
     });
   });
 });

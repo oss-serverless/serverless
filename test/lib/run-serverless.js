@@ -4,10 +4,8 @@ const ensureString = require('type/string/ensure');
 const ensureIterable = require('type/iterable/ensure');
 const ensurePlainObject = require('type/plain-object/ensure');
 const ensurePlainFunction = require('type/plain-function/ensure');
-const _ = require('lodash');
 const cjsResolveSync = require('ncjsm/resolve/sync');
 const { writeJson } = require('fs-extra');
-const { entries, values } = require('lodash');
 const path = require('path');
 const os = require('os');
 const overrideEnv = require('process-utils/override-env');
@@ -29,7 +27,7 @@ const resolveServerless = async (serverlessPath, modulesCacheStub, callback) => 
   const originalCache = Object.assign({}, require.cache);
   for (const key of Object.keys(require.cache)) delete require.cache[key];
   disableServerlessStatsRequests(serverlessPath);
-  for (const [key, value] of entries(modulesCacheStub)) {
+  for (const [key, value] of Object.entries(modulesCacheStub)) {
     require.cache[path.isAbsolute(key) ? key : cjsResolveSync(serverlessPath, key).realPath] = {
       exports: value,
     };
@@ -175,8 +173,8 @@ module.exports = async (
               args: [
                 'serverless',
                 ...command.split(' '),
-                ..._.flattenDeep(
-                  Object.entries(options).map(([optionName, optionValue]) => {
+                ...Object.entries(options)
+                  .map(([optionName, optionValue]) => {
                     if (optionValue === true) return `--${optionName}`;
                     if (optionValue === false) return `--no-${optionName}`;
                     if (optionValue === null) return null;
@@ -188,7 +186,8 @@ module.exports = async (
                     }
                     return [`--${optionName}`, optionValue];
                   })
-                ).filter(Boolean),
+                  .flat(Infinity)
+                  .filter(Boolean),
               ],
             },
             () => resolveInput(require(path.resolve(serverlessPath, 'lib/cli/commands-schema')))
@@ -257,7 +256,7 @@ module.exports = async (
                 lifecycleHooks[hookName] = lifecycleHooks[hookName].filter(
                   (hookData) =>
                     !blacklistedPlugins.some((blacklistedPlugin) =>
-                      values(blacklistedPlugin.hooks).includes(hookData.hook)
+                      Object.values(blacklistedPlugin.hooks).includes(hookData.hook)
                     )
                 );
               }

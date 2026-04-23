@@ -130,7 +130,6 @@ process.once('uncaughtException', (error) => {
 
     const path = require('path');
     const { randomUUID } = require('node:crypto');
-    const _ = require('lodash');
     const clear = require('ext/object/clear');
     const Serverless = require('../lib/serverless');
     const resolveVariables = require('../lib/configuration/variables/resolve');
@@ -544,7 +543,7 @@ process.once('uncaughtException', (error) => {
         // Validate result command and options
         if (hasFinalCommandSchema) require('../lib/cli/ensure-supported-command')(configuration);
         if (isHelpRequest) return;
-        if (!_.get(variablesMeta, 'size')) return;
+        if (!(variablesMeta && variablesMeta.size)) return;
         if (!resolverConfiguration) {
           // There were no variables in the initial configuration, yet it was extended by
           // the plugins with ones.

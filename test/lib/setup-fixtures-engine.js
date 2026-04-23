@@ -8,10 +8,10 @@ const wait = require('timers-ext/promise/sleep');
 const spawn = require('child-process-ext/spawn');
 const fse = require('fs-extra');
 const memoizee = require('memoizee');
-const _ = require('lodash');
 const log = require('log').get('serverless:test');
 const { load: loadYaml, dump: saveYaml } = require('js-yaml');
 const cloudformationSchema = require('../../lib/utils/serverless-utils/cloudformation-schema');
+const mergePlainObjects = require('../../lib/utils/merge-plain-objects');
 const provisionTmpDir = require('./provision-tmp-dir');
 
 const isFixtureConfigured = memoizee((fixturePath) => {
@@ -123,12 +123,12 @@ module.exports = memoizee((fixturesPath) => {
           }
         })();
       let isConfigUpdated = false;
-      if (_.get(configObject, 'service')) {
+      if (configObject && configObject.service) {
         configObject.service = `test-${fixtureName}-${(Date.now() - nameTimeBase).toString(32)}`;
         isConfigUpdated = true;
       }
       if (options.configExt) {
-        configObject = _.merge(configObject || {}, options.configExt);
+        configObject = mergePlainObjects(configObject || {}, options.configExt);
         isConfigUpdated = true;
       }
       if (isConfigUpdated) {
@@ -140,7 +140,7 @@ module.exports = memoizee((fixturesPath) => {
         serviceConfig: configObject,
         updateConfig: (configExt) => {
           ensurePlainObject(configExt);
-          _.merge(configObject, configExt);
+          mergePlainObjects(configObject, configExt);
           return fse.writeFile(path.join(fixturePath, 'serverless.yml'), saveYaml(configObject));
         },
       };

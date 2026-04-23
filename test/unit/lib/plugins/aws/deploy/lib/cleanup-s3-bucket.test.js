@@ -206,6 +206,36 @@ describe('cleanupS3Bucket', () => {
           awsDeploy.provider.request.restore();
         });
       });
+
+      it('should preserve zero when configuring the number of artifacts to preserve', async () => {
+        serverless.service.provider.deploymentBucketObject = {
+          maxPreviousDeploymentArtifacts: 0,
+        };
+
+        const serviceObjects = {
+          Contents: [
+            { Key: `${s3Key}/141321321541-2016-08-18T11:23:02/artifact.zip` },
+            { Key: `${s3Key}/141321321541-2016-08-18T11:23:02/cloudformation.json` },
+            { Key: `${s3Key}/151224711231-2016-08-18T15:42:00/artifact.zip` },
+            { Key: `${s3Key}/151224711231-2016-08-18T15:42:00/cloudformation.json` },
+            { Key: `${s3Key}/141264711231-2016-08-18T15:43:00/artifact.zip` },
+            { Key: `${s3Key}/141264711231-2016-08-18T15:43:00/cloudformation.json` },
+          ],
+        };
+
+        const listObjectsStub = sinon.stub(awsDeploy.provider, 'request').resolves(serviceObjects);
+
+        return awsDeploy.getObjectsToRemove().then((objectsToRemove) => {
+          expect(objectsToRemove).to.deep.equal(serviceObjects.Contents);
+
+          expect(listObjectsStub.calledOnce).to.be.equal(true);
+          expect(listObjectsStub).to.have.been.calledWithExactly('S3', 'listObjectsV2', {
+            Bucket: awsDeploy.bucketName,
+            Prefix: `${s3Key}`,
+          });
+          awsDeploy.provider.request.restore();
+        });
+      });
     });
   });
 

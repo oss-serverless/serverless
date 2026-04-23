@@ -230,6 +230,7 @@ describe('#addCustomResourceToService()', () => {
       Resources.CustomDashresourceDashexistingDashs3LambdaFunction.Properties.Role, // S3
       Resources.CustomDashresourceDashexistingDashcupLambdaFunction.Properties.Role, // Cognito User Pool
     ]).to.eql([role, role]);
+    expect(Resources.IamRoleCustomResourcesLambdaExecution).to.equal(undefined);
   });
 
   it('should setup CloudWatch Logs when logs.frameworkLambda is true', async () => {
@@ -347,7 +348,7 @@ describe('#addCustomResourceToService()', () => {
   });
 
   it('should use defined runtime', async () => {
-    serverless.service.provider.runtime = 'nodejs24.x';
+    serverless.service.provider.runtime = 'nodejs22.x';
     await Promise.all([
       // add the custom S3 resource
       addCustomResourceToService(provider, 's3', [
@@ -396,13 +397,24 @@ describe('#addCustomResourceToService()', () => {
 
     expect(
       Resources.CustomDashresourceDashexistingDashs3LambdaFunction.Properties.Runtime
-    ).to.equal('nodejs24.x');
+    ).to.equal('nodejs22.x');
     expect(
       Resources.CustomDashresourceDashexistingDashcupLambdaFunction.Properties.Runtime
-    ).to.equal('nodejs24.x');
+    ).to.equal('nodejs22.x');
     expect(
       Resources.CustomDashresourceDasheventDashbridgeLambdaFunction.Properties.Runtime
-    ).to.equal('nodejs24.x');
+    ).to.equal('nodejs22.x');
+  });
+
+  it('should use service.package.deploymentBucket when provided', async () => {
+    serverless.service.package.deploymentBucket = 'custom-bucket';
+
+    await addCustomResourceToService(provider, 's3', iamRoleStatements);
+
+    const { Resources } = serverless.service.provider.compiledCloudFormationTemplate;
+    expect(Resources.CustomDashresourceDashexistingDashs3LambdaFunction.Properties.Code.S3Bucket).to.equal(
+      'custom-bucket'
+    );
   });
 
   it('should set Architectures from provider.architecture', async () => {

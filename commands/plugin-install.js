@@ -4,7 +4,6 @@ const spawn = require('child-process-ext/spawn');
 const fsp = require('fs').promises;
 const fse = require('fs-extra');
 const path = require('path');
-const _ = require('lodash');
 const isPlainObject = require('type/plain-object/is');
 const yaml = require('js-yaml');
 const cloudformationSchema = require('../lib/utils/serverless-utils/cloudformation-schema');
@@ -37,7 +36,7 @@ module.exports = async ({ configuration, serviceDir, configurationFilename, opti
   await installPlugin(context);
   // Check if plugin is already added
   const pluginAlreadyPresentInConfig =
-    (Array.isArray(_.get(configuration, 'plugins.modules')) &&
+    (Array.isArray(configuration.plugins && configuration.plugins.modules) &&
       configuration.plugins.modules.includes(pluginName)) ||
     (Array.isArray(configuration.plugins) && configuration.plugins.includes(pluginName));
   if (!pluginAlreadyPresentInConfig) {
@@ -72,7 +71,7 @@ const addPluginToServerlessFile = async ({ configurationFilePath, pluginName }) 
     const newServerlessFileObj = serverlessFileObj;
     const isArrayPluginsObject = checkIsArrayPluginsObject(newServerlessFileObj.plugins);
     // null modules property is not supported
-    let plugins = isArrayPluginsObject
+    const plugins = isArrayPluginsObject
       ? newServerlessFileObj.plugins || []
       : newServerlessFileObj.plugins.modules;
 
@@ -83,8 +82,9 @@ const addPluginToServerlessFile = async ({ configurationFilePath, pluginName }) 
       );
     }
 
-    plugins.push(pluginName);
-    plugins = _.sortedUniq(plugins);
+    if (!plugins.includes(pluginName)) {
+      plugins.push(pluginName);
+    }
 
     if (isArrayPluginsObject) {
       newServerlessFileObj.plugins = plugins;

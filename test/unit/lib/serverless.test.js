@@ -19,7 +19,33 @@ const spawn = require('child-process-ext/spawn');
 const programmaticFixturesEngine = require('../../fixtures/programmatic');
 const path = require('path');
 const yaml = require('js-yaml');
-const _ = require('lodash');
+
+const getByPath = (source, pathSegments) => {
+  let current = source;
+  const segments = Array.isArray(pathSegments) ? pathSegments : pathSegments.split('.');
+
+  for (const segment of segments) {
+    if (current == null) return undefined;
+    current = current[segment];
+  }
+
+  return current;
+};
+
+const setByPath = (source, pathSegments, value) => {
+  let current = source;
+  const segments = Array.isArray(pathSegments) ? pathSegments : pathSegments.split('.');
+
+  segments.slice(0, -1).forEach((segment) => {
+    if (typeof current[segment] !== 'object' || current[segment] === null) {
+      current[segment] = {};
+    }
+    current = current[segment];
+  });
+
+  current[segments.at(-1)] = value;
+  return source;
+};
 
 describe('Serverless', () => {
   let serverless;
@@ -218,7 +244,7 @@ describe('test/unit/lib/serverless.test.js', () => {
         },
         custom: {},
       };
-      _.set(customExt, pluginConfig.overwriteValuePath, 'test_value');
+      setByPath(customExt, pluginConfig.overwriteValuePath, 'test_value');
 
       const { servicePath: serviceDir } = await programmaticFixturesEngine.setup('plugin', {
         configExt,
@@ -228,17 +254,80 @@ describe('test/unit/lib/serverless.test.js', () => {
       });
       const configuration = yaml.load(String(serverlessProcess.stdoutBuffer));
 
-      const targetValue = _.get(configuration, pluginConfig.targetValuePath);
+      const targetValue = getByPath(configuration, pluginConfig.targetValuePath);
       expect(targetValue, 'Target value should not be undefined').to.not.be.undefined;
 
-      const afterInitValue = _.get(configuration, pluginConfig.afterInitValuePath);
+      const afterInitValue = getByPath(configuration, pluginConfig.afterInitValuePath);
       expect(afterInitValue, 'afterInitValue should be undefined').to.be.undefined;
 
-      const refValue = _.get(configuration, pluginConfig.refValuePath);
+      const refValue = getByPath(configuration, pluginConfig.refValuePath);
       expect(refValue).to.deep.equal(targetValue, 'refValue should equal targetValue');
 
-      const overwriteValue = _.get(configuration, pluginConfig.overwriteValuePath);
+      const overwriteValue = getByPath(configuration, pluginConfig.overwriteValuePath);
       expect(overwriteValue).to.deep.equal(targetValue, 'overwriteValue should equal targetValue');
+    });
+
+    it('creates arrays for numeric path segments', () => {
+      const extendableServerless = new Serverless({
+        commands: ['print'],
+        options: {},
+        serviceDir: '/tmp/serverless-test',
+        configurationFilename: 'serverless.yml',
+        configuration: {
+          service: 'service',
+          provider: {
+            name: 'aws',
+          },
+          functions: {
+            foo: {},
+          },
+        },
+      });
+
+      extendableServerless.extendConfiguration(['functions', 'foo', 'events', '0'], {
+        http: {
+          path: '/',
+          method: 'get',
+        },
+      });
+
+      expect(extendableServerless.configurationInput.functions.foo.events).to.deep.equal([
+        {
+          http: {
+            path: '/',
+            method: 'get',
+          },
+        },
+      ]);
+    });
+
+    it('ignores unsafe configuration extension paths', () => {
+      const extendableServerless = new Serverless({
+        commands: ['print'],
+        options: {},
+        serviceDir: '/tmp/serverless-test',
+        configurationFilename: 'serverless.yml',
+        configuration: {
+          service: 'service',
+          provider: {
+            name: 'aws',
+          },
+          functions: {
+            foo: {},
+          },
+        },
+      });
+
+      extendableServerless.extendConfiguration(['provider', '__proto__', 'polluted'], 'yes');
+      extendableServerless.extendConfiguration(
+        ['provider', 'constructor', 'prototype', 'polluted'],
+        'yes'
+      );
+
+      expect({}.polluted).to.equal(undefined);
+      expect(extendableServerless.configurationInput.provider).to.deep.equal({
+        name: 'aws',
+      });
     });
   });
 });

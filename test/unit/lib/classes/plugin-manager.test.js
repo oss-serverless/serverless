@@ -907,6 +907,54 @@ describe('PluginManager', () => {
       expect(pluginManager.commands.deploy.commands).to.have.property('fn');
     });
 
+    it('should not mutate original plugin command definitions when merging commands', () => {
+      const firstPlugin = {
+        commands: {
+          deploy: {
+            lifecycleEvents: ['one'],
+            options: {
+              foo: {},
+            },
+            commands: {
+              fn: {
+                options: {
+                  bar: {},
+                },
+              },
+            },
+          },
+        },
+      };
+
+      const secondPlugin = {
+        commands: {
+          deploy: {
+            lifecycleEvents: ['one', 'two'],
+            options: {
+              baz: {},
+            },
+            commands: {
+              fn: {
+                options: {
+                  qux: {},
+                },
+              },
+            },
+          },
+        },
+      };
+
+      pluginManager.loadCommands(firstPlugin);
+      pluginManager.loadCommands(secondPlugin);
+
+      expect(firstPlugin.commands.deploy.options).to.deep.equal({
+        foo: {},
+      });
+      expect(firstPlugin.commands.deploy.commands.fn.options).to.deep.equal({
+        bar: {},
+      });
+    });
+
     it('should fail if there is already an alias for a command', () => {
       pluginManager.aliases = {
         deploy: {
@@ -1310,6 +1358,31 @@ describe('PluginManager', () => {
       const commands = pluginManager.getCommands();
       expect(commands).to.have.a.property('on').that.has.a.nested.property('commands.premise');
       expect(commands).to.have.a.property('premise');
+    });
+
+    it('should ignore aliases whose target path misses mid-traversal', () => {
+      pluginManager.commands = {
+        deploy: {
+          key: 'deploy',
+          commands: {
+            function: {
+              key: 'deploy:function',
+              commands: {},
+            },
+          },
+        },
+        create: {
+          key: 'create',
+          commands: {},
+        },
+      };
+      pluginManager.aliases = {
+        broken: {
+          command: 'deploy:missing:create',
+        },
+      };
+
+      expect(pluginManager.getCommands()).to.not.have.property('broken');
     });
   });
 

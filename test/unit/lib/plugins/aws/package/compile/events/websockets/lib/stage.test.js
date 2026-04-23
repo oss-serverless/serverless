@@ -5,8 +5,8 @@ const chai = require('chai');
 const expect = chai.expect;
 const sinon = require('sinon');
 const BbPromise = require('bluebird');
-const _ = require('lodash');
 const childProcess = BbPromise.promisifyAll(require('child_process'));
+const isObject = require('type/object/is');
 const AwsCompileWebsocketsEvents = require('../../../../../../../../../../lib/plugins/aws/package/compile/events/websockets/index');
 const Serverless = require('../../../../../../../../../../lib/serverless');
 const AwsProvider = require('../../../../../../../../../../lib/plugins/aws/provider');
@@ -181,7 +181,7 @@ describe('#compileStage()', () => {
             .Resources;
 
         expect(
-          _.isObject(
+          isObject(
             resources[
               awsCompileWebsocketsEvents.provider.naming.getCustomResourceApiGatewayAccountCloudWatchRoleResourceLogicalId()
             ]

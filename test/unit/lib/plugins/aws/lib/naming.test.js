@@ -1,10 +1,24 @@
 'use strict';
 
 const expect = require('chai').expect;
-const _ = require('lodash');
 
 const SDK = require('../../../../../../lib/plugins/aws/provider');
 const Serverless = require('../../../../../../lib/serverless');
+
+const setByPath = (source, path, value) => {
+  let current = source;
+  const segments = path.split('.');
+
+  segments.slice(0, -1).forEach((segment) => {
+    if (typeof current[segment] !== 'object' || current[segment] === null) {
+      current[segment] = {};
+    }
+    current = current[segment];
+  });
+
+  current[segments.at(-1)] = value;
+  return source;
+};
 
 describe('#naming()', () => {
   let options;
@@ -127,7 +141,7 @@ describe('#naming()', () => {
 
     it('uses custom role path', () => {
       const customRolePath = '/custom-role-path/';
-      _.set(sdk.naming.provider, 'serverless.service.provider.iam.role.path', customRolePath);
+      setByPath(sdk.naming.provider, 'serverless.service.provider.iam.role.path', customRolePath);
       expect(sdk.naming.getRolePath()).to.eql(customRolePath);
     });
   });
@@ -149,7 +163,7 @@ describe('#naming()', () => {
     });
     it('uses custom role name', () => {
       const customRoleName = 'custom-default-role';
-      _.set(sdk.naming.provider, 'serverless.service.provider.iam.role.name', customRoleName);
+      setByPath(sdk.naming.provider, 'serverless.service.provider.iam.role.name', customRoleName);
       expect(sdk.naming.getRoleName()).to.eql(customRoleName);
     });
   });
@@ -445,6 +459,21 @@ describe('#naming()', () => {
     });
   });
 
+  describe('#getModelLogicalId()', () => {
+    it('preserves acronym boundaries', () => {
+      expect(sdk.naming.getModelLogicalId('HTTPRequest')).to.equal(
+        'ApiGatewayHttpRequestModel'
+      );
+    });
+  });
+
+  describe('#toStartCase()', () => {
+    it('preserves all-caps tokens', () => {
+      expect(sdk.naming.toStartCase('XMLPayload')).to.equal('XMLPayload');
+      expect(sdk.naming.toStartCase('__FOO_BAR__')).to.equal('FOOBAR');
+    });
+  });
+
   describe('#getEndpointModelLogicalId()', () => {
     it('', () => {
       expect(
@@ -454,6 +483,16 @@ describe('#naming()', () => {
           'application/x-www-form-urlencoded'
         )
       ).to.equal('ApiGatewayMethodResourceIdGetApplicationXWwwFormUrlencodedModel');
+    });
+
+    it('preserves acronym boundaries in content types', () => {
+      expect(
+        sdk.naming.getEndpointModelLogicalId(
+          'ResourceId',
+          'get',
+          'application/HTTPRequest+json'
+        )
+      ).to.equal('ApiGatewayMethodResourceIdGetApplicationHTTPRequestJsonModel');
     });
   });
 

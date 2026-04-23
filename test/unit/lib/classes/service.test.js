@@ -110,6 +110,57 @@ describe('Service', () => {
           expect(functions.b).to.be.an('object');
         }
       ));
+
+    it('should deeply merge overlapping resource fragments given as an array', async () =>
+      runServerless({
+        fixture: 'aws',
+        configExt: {
+          resources: [
+            {
+              Resources: {
+                resource1: {
+                  Type: 'value',
+                  Properties: {
+                    first: 'value-1',
+                  },
+                },
+              },
+            },
+            {
+              Resources: {
+                resource1: {
+                  Properties: {
+                    second: 'value-2',
+                  },
+                },
+              },
+            },
+          ],
+        },
+        command: 'package',
+      }).then(({ cfTemplate: { Resources } }) => {
+        expect(Resources.resource1).to.deep.equal({
+          Type: 'value',
+          Properties: {
+            first: 'value-1',
+            second: 'value-2',
+          },
+        });
+      }));
+
+    it('should reject non-plain resource fragments given as an array', () =>
+      expect(
+        runServerless({
+          fixture: 'aws',
+          configExt: {
+            resources: [[]],
+          },
+          command: 'package',
+        })
+      ).to.eventually.be.rejected.and.have.property(
+        'code',
+        'LEGACY_CONFIGURATION_PROPERTY_MERGE_INVALID_INPUT'
+      ));
   });
 
   describe('#setFunctionNames()', () => {

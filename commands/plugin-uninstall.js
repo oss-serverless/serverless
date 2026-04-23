@@ -4,7 +4,6 @@ const spawn = require('child-process-ext/spawn');
 const fsp = require('fs').promises;
 const fse = require('fs-extra');
 const path = require('path');
-const _ = require('lodash');
 const isPlainObject = require('type/plain-object/is');
 const yaml = require('js-yaml');
 const cloudformationSchema = require('../lib/utils/serverless-utils/cloudformation-schema');
@@ -59,7 +58,10 @@ const removePluginFromServerlessFile = async ({ configurationFilePath, pluginNam
       : serverlessFileObj.plugins && serverlessFileObj.plugins.modules;
 
     if (plugins) {
-      _.pull(plugins, pluginName);
+      for (let index = plugins.indexOf(pluginName); index !== -1; ) {
+        plugins.splice(index, 1);
+        index = plugins.indexOf(pluginName);
+      }
       if (!plugins.length) {
         if (isArrayPluginsObject) {
           delete serverlessFileObj.plugins;

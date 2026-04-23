@@ -392,5 +392,16 @@ describe('#yamlAstParser', () => {
         expectedResult
       );
     });
+
+    it('should remove NaN values from arrays', () => {
+      const yamlContent = {
+        toplevel: [NaN, 'bar', NaN],
+      };
+      const expectedResult = {
+        toplevel: ['bar'],
+      };
+
+      return removeExistingArrayItemAndVerifyResult(yamlContent, 'toplevel', NaN, expectedResult);
+    });
   });
 });

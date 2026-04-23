@@ -15,7 +15,7 @@ env:
 
 jobs:
   linuxNode22:
-    name: '[Linux] Node 22: Lint, Formatting, Changelog, Unit & packaging tests'
+    name: '[Linux] Node 22: Lint, Formatting, Unit & packaging tests'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -50,13 +50,6 @@ jobs:
         run: npm run prettier-check:updated
       - name: Validate lint rules
         run: npm run lint:updated
-      - name: Validate changelog (if new version)
-        run: |
-          NEW_VERSION=`git diff -U0 main package.json | grep '"version": "' | tail -n 1 | grep -oE "[0-9]+\.[0-9]+\.[0-9]+"` || :
-          if [ -n "$NEW_VERSION" ];
-          then
-            npx dump-release-notes-from-cc-changelog $NEW_VERSION
-          fi
       - name: Unit tests (AWS SDK v2)
         # Some tests depend on TTY support, which is missing in GA runner
         # Workaround taken from https://github.com/actions/runner/issues/241#issuecomment-577360161

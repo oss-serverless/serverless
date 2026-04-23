@@ -6,7 +6,7 @@
   "homepage": "https://github.com/oss-serverless/serverless",
   "repository": {
     "type": "git",
-    "url": "https://github.com/oss-serverless/serverless"
+    "url": "git+https://github.com/oss-serverless/serverless.git"
   },
   "keywords": [
     "serverless",
@@ -21,11 +21,12 @@
   "main": "lib/serverless.js",
   "types": "types/index.d.ts",
   "bin": {
-    "serverless": "./bin/serverless.js",
-    "sls": "./bin/serverless.js",
-    "osls": "./bin/serverless.js"
+    "serverless": "bin/serverless.js",
+    "sls": "bin/serverless.js",
+    "osls": "bin/serverless.js"
   },
   "dependencies": {
+    "@apidevtools/json-schema-ref-parser": "^15.3.5",
     "@aws-sdk/client-api-gateway": "^3.975.0",
     "@aws-sdk/client-apigatewayv2": "^3.975.0",
     "@aws-sdk/client-cloudformation": "^3.975.0",
@@ -51,7 +52,6 @@
     "ajv": "^8.12.0",
     "ajv-formats": "^2.1.1",
     "archive-type": "^4.0.0",
-    "archiver": "^7.0.1",
     "aws-sdk": "^2.1693.0",
     "bluebird": "^3.7.2",
     "cachedir": "^2.3.0",
@@ -79,8 +79,6 @@
     "is-docker": "^2.2.1",
     "js-yaml": "^4.1.0",
     "json-cycle": "^1.5.0",
-    "json-refs": "^3.0.15",
-    "lodash": "^4.17.21",
     "log": "^6.3.1",
     "log-node": "^8.0.3",
     "memoizee": "^0.4.15",
@@ -101,7 +99,8 @@
     "uni-global": "^1.0.0",
     "untildify": "^4.0.0",
     "write-file-atomic": "^4.0.2",
-    "ws": "^7.5.9"
+    "ws": "^7.5.9",
+    "yazl": "^3.3.1"
   },
   "devDependencies": {
     "adm-zip": "^0.5.10",
@@ -120,8 +119,7 @@
     "proxyquire": "^2.1.3",
     "semver-regex": "^3.1.4",
     "sinon": "^13.0.2",
-    "sinon-chai": "^3.7.0",
-    "standard-version": "^9.5.0"
+    "sinon-chai": "^3.7.0"
   },
   "eslintConfig": {
     "extends": [
