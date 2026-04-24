@@ -85,6 +85,17 @@ describe('test/unit/lib/configuration/variables/resolve.test.js', () => {
         '${sourceDeferredNull:, sourceProperty(sharedPropertyRaceCondition1, sharedFinal)}',
       nullWithCustomErrorMessage: '${sourceDirectNull:}',
     };
+    configuration.arraySource = ['one', 'two', 'three'];
+    configuration.arraySourceLength = '${sourceProperty(arraySource, length)}';
+    configuration.inheritedConstructorName =
+      '${sourceProperty(arraySource, constructor, name), null}';
+    configuration.resolvesUnsafeOwnProtoObject = '${sourceResultVariables(protoObject)}';
+    Object.defineProperty(configuration, '__proto__', {
+      value: '${sourceDirect:}',
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
     let variablesMeta;
     const sources = {
       sourceParam: {
@@ -130,6 +141,8 @@ describe('test/unit/lib/configuration/variables/resolve.test.js', () => {
               return { value: { foo: '${sourceDirect:}' } };
             case 'array':
               return { value: [1, '${sourceDirect:}'] };
+            case 'protoObject':
+              return { value: JSON.parse('{"__proto__":"${sourceDirect:}"}') };
             case 'string':
               return { value: '${sourceDirect:}' };
             case 'stringInvalid':
@@ -287,6 +300,26 @@ describe('test/unit/lib/configuration/variables/resolve.test.js', () => {
       expect(configuration.resolvesResultVariablesObject).to.deep.equal({ foo: 234 });
       expect(configuration.resolvesResultVariablesArray).to.deep.equal([1, 234]);
       expect(configuration.resolvesResultVariablesString).to.equal(234);
+    });
+
+    it('should preserve own unsafe keys when resolving direct configuration properties', () => {
+      expect(Object.getPrototypeOf(configuration)).to.equal(Object.prototype);
+      expect(Object.getOwnPropertyDescriptor(configuration, '__proto__').value).to.equal(234);
+    });
+
+    it('should preserve own unsafe keys when resolving returned result objects', () => {
+      expect(Object.getPrototypeOf(configuration.resolvesUnsafeOwnProtoObject)).to.equal(
+        Object.prototype
+      );
+      expect(
+        Object.getOwnPropertyDescriptor(configuration.resolvesUnsafeOwnProtoObject, '__proto__')
+          .value
+      ).to.equal(234);
+    });
+
+    it('should resolve own array properties while ignoring inherited dependency paths', () => {
+      expect(configuration.arraySourceLength).to.equal(3);
+      expect(configuration.inheritedConstructorName).to.equal(null);
     });
 
     it('should resolve variables in resolved strings which are subject to concatenation', () => {

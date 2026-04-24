@@ -94,6 +94,44 @@ describe('AwsProvider', () => {
     });
   });
 
+  describe('#getCustomExecutionRole()', () => {
+    it('ignores inherited function roles', () => {
+      serverless.service.provider.role = 'OwnProviderRole';
+      const functionObj = Object.create({ role: 'InheritedFunctionRole' });
+
+      expect(awsProvider.getCustomExecutionRole(functionObj)).to.equal('OwnProviderRole');
+    });
+
+    it('ignores inherited provider iam roles', () => {
+      serverless.service.provider.iam = Object.create({ role: 'InheritedIamRole' });
+      serverless.service.provider.role = 'OwnProviderRole';
+
+      expect(awsProvider.getCustomExecutionRole({})).to.equal('OwnProviderRole');
+    });
+  });
+
+  describe('#resolveFunctionIamRoleResourceName()', () => {
+    it('ignores inherited Fn::GetAtt role references', () => {
+      const functionObj = {
+        role: Object.create({ 'Fn::GetAtt': ['InjectedRole', 'Arn'] }),
+      };
+
+      expect(awsProvider.resolveFunctionIamRoleResourceName(functionObj)).to.equal(
+        'IamRoleLambdaExecution'
+      );
+    });
+
+    it('ignores inherited Ref role references', () => {
+      const functionObj = {
+        role: Object.create({ Ref: 'ImportedRole' }),
+      };
+
+      expect(awsProvider.resolveFunctionIamRoleResourceName(functionObj)).to.equal(
+        'IamRoleLambdaExecution'
+      );
+    });
+  });
+
   describe('runtime schema parity', () => {
     it('should keep `awsLambdaRuntime` in sync with `AwsLambdaRuntime`', () => {
       const localServerless = new Serverless({ ...options, commands: [], options: {} });

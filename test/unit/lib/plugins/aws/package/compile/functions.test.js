@@ -735,6 +735,57 @@ describe('AwsCompileFunctions', () => {
       });
     });
 
+    it('should preserve unsafe environment variable names as own data properties', async () => {
+      awsCompileFunctions.serverless.service.provider.environment = JSON.parse(
+        '{"__proto__":{"Ref":"UnsafeProviderEnv"}}'
+      );
+      awsCompileFunctions.serverless.service.functions = {
+        func: {
+          handler: 'func.function.handler',
+          name: 'new-service-dev-func',
+          environment: JSON.parse('{"constructor":{"Ref":"UnsafeFunctionEnv"}}'),
+        },
+      };
+
+      await awsCompileFunctions.compileFunctions();
+
+      const variables =
+        awsCompileFunctions.serverless.service.provider.compiledCloudFormationTemplate.Resources
+          .FuncLambdaFunction.Properties.Environment.Variables;
+
+      expect(Object.getPrototypeOf(variables)).to.equal(Object.prototype);
+      expect(Object.getOwnPropertyDescriptor(variables, '__proto__').value).to.deep.equal({
+        Ref: 'UnsafeProviderEnv',
+      });
+      expect(Object.getOwnPropertyDescriptor(variables, 'constructor').value).to.deep.equal({
+        Ref: 'UnsafeFunctionEnv',
+      });
+    });
+
+    it('should preserve unsafe tag names as own data properties before rendering tag arrays', async () => {
+      awsCompileFunctions.serverless.service.provider.tags = JSON.parse(
+        '{"__proto__":"provider-tag"}'
+      );
+      awsCompileFunctions.serverless.service.functions = {
+        func: {
+          handler: 'func.function.handler',
+          name: 'new-service-dev-func',
+          tags: JSON.parse('{"constructor":"function-tag"}'),
+        },
+      };
+
+      await awsCompileFunctions.compileFunctions();
+
+      const tags =
+        awsCompileFunctions.serverless.service.provider.compiledCloudFormationTemplate.Resources
+          .FuncLambdaFunction.Properties.Tags;
+
+      expect(tags).to.deep.include.members([
+        { Key: '__proto__', Value: 'provider-tag' },
+        { Key: 'constructor', Value: 'function-tag' },
+      ]);
+    });
+
     it('should consider function based config when creating a function resource', async () => {
       const s3Folder = awsCompileFunctions.serverless.service.package.artifactDirectoryName;
       const s3FileName = awsCompileFunctions.serverless.service.package.artifact
@@ -964,6 +1015,19 @@ describe('AwsCompileFunctions', () => {
   });
 
   describe('#compileRole()', () => {
+    it('should ignore inherited Fn::GetAtt role markers', () => {
+      const compiledFunction = {
+        Properties: {},
+        DependsOn: [],
+      };
+      const role = Object.create({ 'Fn::GetAtt': ['InjectedRole', 'Arn'] });
+
+      awsCompileFunctions.compileRole(compiledFunction, role);
+
+      expect(compiledFunction.Properties.Role).to.equal(role);
+      expect(compiledFunction.DependsOn).to.deep.equal([]);
+    });
+
     it('should not set unset properties when not specified in yml (layers, vpc, etc)', async () => {
       const s3Folder = awsCompileFunctions.serverless.service.package.artifactDirectoryName;
       const s3FileName = awsCompileFunctions.serverless.service.package.artifact

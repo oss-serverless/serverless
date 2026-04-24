@@ -14,6 +14,16 @@ describe('#validate()', () => {
   let serverless;
   let awsCompileApigEvents;
 
+  afterEach(() => {
+    delete Object.prototype.headers;
+    delete Object.prototype.methods;
+    delete Object.prototype.origins;
+    delete Object.prototype.origin;
+    delete Object.prototype.allowCredentials;
+    delete Object.prototype.maxAge;
+    delete Object.prototype.cacheControl;
+  });
+
   beforeEach(() => {
     const options = {
       stage: 'dev',
@@ -1578,6 +1588,31 @@ describe('#validate()', () => {
         pattern: '([\\s\\S]*\\[504\\][\\s\\S]*)|(.*Task timed out after \\d+\\.\\d+ seconds$)',
       },
     });
+  });
+
+  it('should keep CORS data for __proto__ paths without touching Object.prototype', () => {
+    awsCompileApigEvents.serverless.service.functions = {
+      first: {
+        events: [
+          {
+            http: {
+              method: 'GET',
+              path: '/__proto__',
+              cors: true,
+            },
+          },
+        ],
+      },
+    };
+
+    const validated = awsCompileApigEvents.validate();
+
+    expect(Object.getPrototypeOf(validated.corsPreflight)).to.equal(null);
+    expect(
+      Object.getOwnPropertyDescriptor(validated.corsPreflight, '__proto__').value.methods
+    ).to.deep.equal(['OPTIONS', 'GET']);
+    expect({}.headers).to.equal(undefined);
+    expect({}.methods).to.equal(undefined);
   });
 });
 

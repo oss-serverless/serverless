@@ -327,6 +327,97 @@ describe('AwsCompileS3Events', () => {
       });
     });
 
+    it('preserves unsafe top-level provider bucket keys as own data without mutating prototypes', () => {
+      const providerBucket = {
+        notificationConfiguration: {
+          QueueConfigurations: [1, 2, 3],
+        },
+      };
+      Object.defineProperty(providerBucket, '__proto__', {
+        value: { marker: 'bucket-config' },
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
+
+      awsCompileS3Events.serverless.service.provider.s3 = {
+        bucketone: providerBucket,
+      };
+      awsCompileS3Events.serverless.service.functions = {
+        first: {
+          events: [
+            {
+              s3: {
+                bucket: 'bucketone',
+              },
+            },
+          ],
+        },
+      };
+
+      awsCompileS3Events.newS3Buckets();
+
+      const properties =
+        awsCompileS3Events.serverless.service.provider.compiledCloudFormationTemplate.Resources
+          .S3BucketBucketone.Properties;
+
+      expect(Object.getPrototypeOf(properties)).to.equal(Object.prototype);
+      expect(Object.getOwnPropertyDescriptor(properties, '__proto__').value).to.deep.equal({
+        marker: 'bucket-config',
+      });
+      expect({}.marker).to.equal(undefined);
+    });
+
+    it('preserves unsafe notification configuration keys as own data without mutating prototypes', () => {
+      const notificationConfiguration = {
+        QueueConfigurations: [1, 2, 3],
+      };
+      Object.defineProperty(notificationConfiguration, '__proto__', {
+        value: { marker: 'notification-config' },
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
+
+      awsCompileS3Events.serverless.service.provider.s3 = {
+        bucketone: {
+          notificationConfiguration,
+        },
+      };
+      awsCompileS3Events.serverless.service.functions = {
+        first: {
+          events: [
+            {
+              s3: {
+                bucket: 'bucketone',
+              },
+            },
+          ],
+        },
+      };
+
+      awsCompileS3Events.newS3Buckets();
+
+      const notificationConfig =
+        awsCompileS3Events.serverless.service.provider.compiledCloudFormationTemplate.Resources
+          .S3BucketBucketone.Properties.NotificationConfiguration;
+
+      expect(Object.getPrototypeOf(notificationConfig)).to.equal(Object.prototype);
+      expect(Object.getOwnPropertyDescriptor(notificationConfig, '__proto__').value).to.deep.equal({
+        marker: 'notification-config',
+      });
+      expect(notificationConfig.LambdaConfigurations).to.deep.equal([
+        {
+          Event: 's3:ObjectCreated:*',
+          Function: {
+            'Fn::GetAtt': ['FirstLambdaFunction', 'Arn'],
+          },
+        },
+      ]);
+      expect(notificationConfig.QueueConfigurations).to.deep.equal([1, 2, 3]);
+      expect({}.marker).to.equal(undefined);
+    });
+
     it('should convert camel case properties to pascal case', () => {
       awsCompileS3Events.serverless.service.provider.s3 = {
         bucketone: {

@@ -536,6 +536,30 @@ describe('AwsCompileCognitoUserPoolEvents', () => {
       });
     });
 
+    it('should preserve pool names named like __proto__ when tracking existing pools', async () => {
+      awsCompileCognitoUserPoolEvents.serverless.service.functions = {
+        first: {
+          name: 'first',
+          events: [
+            {
+              cognitoUserPool: {
+                pool: '__proto__',
+                trigger: 'CustomMessage',
+                existing: true,
+              },
+            },
+          ],
+        },
+      };
+
+      await awsCompileCognitoUserPoolEvents.existingCognitoUserPools();
+
+      expect(
+        awsCompileCognitoUserPoolEvents.serverless.service.provider.compiledCloudFormationTemplate
+          .Resources.FirstCustomCognitoUserPool1.Properties.UserPoolName
+      ).to.equal('__proto__');
+    });
+
     it('should support `forceDeploy` setting', async () => {
       const result = await runServerless({
         fixture: 'cognito-user-pool',

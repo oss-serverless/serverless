@@ -554,6 +554,33 @@ describe('AwsInvokeLocal', () => {
       await awsInvokeLocal.loadEnvVars();
       expect(process.env.providerVar).to.be.equal('providerValueOverwritten');
     });
+
+    it('loads unsafe env names onto process.env without prototype pollution', async () => {
+      const originalProcessEnvPrototype = Object.getPrototypeOf(process.env);
+      const originalConstructor = Object.prototype.constructor;
+
+      serverless.service.provider.environment = JSON.parse(
+        '{"__proto__":"proto-value","constructor":"ctor-value","prototype":"prototype-value"}'
+      );
+      awsInvokeLocal.options.functionObj.environment = {};
+
+      await awsInvokeLocal.loadEnvVars();
+
+      expect(Object.getPrototypeOf(process.env)).to.equal(originalProcessEnvPrototype);
+      expect(Object.prototype.hasOwnProperty.call(process.env, '__proto__')).to.equal(true);
+      expect(Object.prototype.hasOwnProperty.call(process.env, 'constructor')).to.equal(true);
+      expect(Object.prototype.hasOwnProperty.call(process.env, 'prototype')).to.equal(true);
+      expect(Reflect.get(process.env, '__proto__')).to.equal('proto-value');
+      expect(process.env.constructor).to.equal('ctor-value');
+      expect(process.env.prototype).to.equal('prototype-value');
+      expect(Object.keys(process.env)).to.include.members([
+        '__proto__',
+        'constructor',
+        'prototype',
+      ]);
+      expect(Object.prototype.constructor).to.equal(originalConstructor);
+      expect({}.polluted).to.equal(undefined);
+    });
   });
 
   describe('#ensurePackage()', () => {

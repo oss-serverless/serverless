@@ -30,6 +30,9 @@ describe('test/unit/lib/configuration/variables/sources/file.test.js', () => {
       jsPropertyFunctionResolveVariableMissingSource:
         '${file(file-property-function-variable-missing-source.js):property}',
       nestedVariablesAddressResolution: '${file(file-variables-nest-1.yaml):n1.n2.n3}',
+      arrayLengthAddress: '${file(file-array.json):items.length}',
+      unsafeOwnProtoAddress: '${file(file-unsafe-keys.json):__proto__.value}',
+      inheritedConstructorAddress: '${file(file-unsafe-keys.json):constructor.name, null}',
       nonExistingYaml: '${file(not-existing.yaml), null}',
       nonExistingJson: '${file(not-existing.json), null}',
       nonExistingJs: '${file(not-existing.js), null}',
@@ -117,6 +120,16 @@ describe('test/unit/lib/configuration/variables/sources/file.test.js', () => {
   it('should resolve variables across address resolution', () => {
     expect(configuration.nestedVariablesAddressResolution).to.deep.equal('result');
   });
+
+  it('should resolve own array properties across file address resolution', () => {
+    expect(configuration.arrayLengthAddress).to.equal(3);
+  });
+
+  it('should resolve own unsafe-key addresses without traversing inherited properties', () => {
+    expect(configuration.unsafeOwnProtoAddress).to.equal('unsafe-key');
+    expect(configuration.inheritedConstructorAddress).to.equal(null);
+  });
+
   it('should uncoditionally split "address" property keys by "."', () =>
     expect(configuration.ambiguousAddress).to.equal('object'));
 

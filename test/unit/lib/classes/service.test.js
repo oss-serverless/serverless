@@ -2,6 +2,7 @@
 
 const runServerless = require('../../../utils/run-serverless');
 const { version } = require('../../../../package');
+const Service = require('../../../../lib/classes/service');
 
 // Configure chai
 const expect = require('chai').expect;
@@ -189,6 +190,27 @@ describe('Service', () => {
         'code',
         'NON_OBJECT_FUNCTION_CONFIGURATION_ERROR'
       );
+    });
+  });
+
+  describe('#getFunction() / #getLayer()', () => {
+    it('ignores inherited names unless explicitly defined as own properties', () => {
+      const service = new Service({}, null);
+      service.functions = {};
+      service.layers = {};
+
+      expect(() => service.getFunction('constructor'))
+        .to.throw()
+        .and.have.property('code', 'FUNCTION_MISSING_IN_SERVICE');
+      expect(() => service.getLayer('constructor'))
+        .to.throw()
+        .and.have.property('code', 'LAYER_MISSING_IN_SERVICE');
+
+      service.functions.constructor = { handler: 'handler.run' };
+      service.layers.constructor = { path: 'layer' };
+
+      expect(service.getFunction('constructor')).to.equal(service.functions.constructor);
+      expect(service.getLayer('constructor')).to.equal(service.layers.constructor);
     });
   });
 });

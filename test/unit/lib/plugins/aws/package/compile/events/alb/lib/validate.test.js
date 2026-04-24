@@ -145,6 +145,30 @@ describe('#validate()', () => {
     });
   });
 
+  it('should not resolve inherited authorizer names as registered authorizers', () => {
+    const event = {
+      alb: {
+        authorizer: 'constructor',
+      },
+    };
+
+    expect(() => awsCompileAlbEvents.validateEventAuthorizers(event, {}, 'functionName')).to.throw(
+      'No match for "constructor" in function "functionName" found in registered ALB authorizers'
+    );
+  });
+
+  it('should allow explicitly defined authorizers named like inherited properties', () => {
+    const event = {
+      alb: {
+        authorizer: 'constructor',
+      },
+    };
+
+    expect(
+      awsCompileAlbEvents.validateEventAuthorizers(event, { constructor: {} }, 'functionName')
+    ).to.deep.equal(['constructor']);
+  });
+
   describe('#validateListenerArnAndExtractAlbId()', () => {
     it('returns the alb ID when given a valid listener ARN', () => {
       const listenerArn =

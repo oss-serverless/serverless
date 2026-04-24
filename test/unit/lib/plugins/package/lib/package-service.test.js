@@ -2,6 +2,7 @@
 
 const path = require('path');
 const fsp = require('fs').promises;
+const proxyquire = require('proxyquire').noCallThru();
 const sinon = require('sinon');
 const { listFileProperties, listZipFiles } = require('../../../../../utils/fs');
 const runServerless = require('../../../../../utils/run-serverless');
@@ -35,6 +36,27 @@ describe('test/unit/lib/plugins/package/lib/packageService.test.js', () => {
       expect(
         packageService.getRuntime.call({ serverless: { service: { provider: {} } } }, undefined)
       ).to.equal('nodejs24.x');
+    });
+  });
+
+  describe('#resolveFilePathsFromPatterns()', () => {
+    it('preserves file names named like __proto__', async () => {
+      const packageServiceWithStubbedGlob = proxyquire(
+        '../../../../../../lib/plugins/package/lib/package-service',
+        {
+          '../../../utils/glob': sinon.stub().resolves(['__proto__', 'keep.js']),
+        }
+      );
+
+      const filePaths = await packageServiceWithStubbedGlob.resolveFilePathsFromPatterns.call(
+        { serverless: { serviceDir: process.cwd() } },
+        {
+          include: [],
+          exclude: [],
+        }
+      );
+
+      expect(filePaths).to.deep.equal(['__proto__', 'keep.js']);
     });
   });
 

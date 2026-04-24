@@ -256,6 +256,26 @@ describe('#compileResources()', () => {
     ).to.deep.equal({});
   });
 
+  it('should safely preserve __proto__ resource paths as own entries', () => {
+    awsCompileApigEvents.validated.events = [
+      {
+        http: {
+          path: '__proto__',
+          method: 'GET',
+        },
+      },
+    ];
+
+    awsCompileApigEvents.compileResources();
+
+    expect(Object.getPrototypeOf(awsCompileApigEvents.apiGatewayResources)).to.equal(null);
+    expect(Object.keys(awsCompileApigEvents.apiGatewayResources)).to.deep.equal(['__proto__']);
+    expect(awsCompileApigEvents.getResourceName('__proto__')).to.equal('Proto');
+    expect(awsCompileApigEvents.getResourceId('__proto__')).to.deep.equal({
+      Ref: 'ApiGatewayResourceProto',
+    });
+  });
+
   it('should create child resources only if there are predefined parent resources', () => {
     awsCompileApigEvents.serverless.service.provider.apiGateway = {
       restApiId: '6fyzt1pfpk',

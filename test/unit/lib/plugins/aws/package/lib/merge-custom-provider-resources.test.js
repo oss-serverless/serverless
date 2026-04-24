@@ -266,6 +266,53 @@ describe('mergeCustomProviderResources', () => {
       });
     });
 
+    it('should not treat inherited resource names as existing when extending resources', () => {
+      awsPackage.serverless.service.provider.compiledCloudFormationTemplate.Resources = {};
+      awsPackage.serverless.service.resources = {
+        extensions: JSON.parse('{"__proto__":{"Properties":{"Unsafe":"value"}}}'),
+      };
+
+      expect(() => awsPackage.mergeCustomProviderResources())
+        .to.throw(ServerlessError)
+        .with.property('code', 'RESOURCE_EXTENSION_NOT_EXISTING');
+    });
+
+    it('should preserve unsafe keys in extension Properties and Metadata as own data properties', () => {
+      awsPackage.serverless.service.provider.compiledCloudFormationTemplate.Resources = {
+        SampleResource: {
+          Properties: {},
+          Metadata: {},
+        },
+      };
+      const unsafeProperties = JSON.parse('{"__proto__":{"safe":true}}');
+      const unsafeMetadata = JSON.parse('{"__proto__":{"meta":true}}');
+
+      awsPackage.serverless.service.resources = {
+        extensions: {
+          SampleResource: {
+            Properties: unsafeProperties,
+            Metadata: unsafeMetadata,
+          },
+        },
+      };
+
+      awsPackage.mergeCustomProviderResources();
+
+      const resource =
+        awsPackage.serverless.service.provider.compiledCloudFormationTemplate.Resources
+          .SampleResource;
+      expect(Object.getPrototypeOf(resource.Properties)).to.equal(Object.prototype);
+      expect(Object.getPrototypeOf(resource.Metadata)).to.equal(Object.prototype);
+      expect(Object.getOwnPropertyDescriptor(resource.Properties, '__proto__').value).to.deep.equal(
+        {
+          safe: true,
+        }
+      );
+      expect(Object.getOwnPropertyDescriptor(resource.Metadata, '__proto__').value).to.deep.equal({
+        meta: true,
+      });
+    });
+
     it('should merge for resources.extensions.*.DependsOn', async () => {
       const { cfTemplate } = await runServerless({
         config: {

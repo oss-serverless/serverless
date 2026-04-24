@@ -130,6 +130,27 @@ describe('AwsCompileCloudWatchLogEvents', () => {
       ).to.equal('AWS::Lambda::Permission');
     });
 
+    it('should preserve log groups named like __proto__', () => {
+      awsCompileCloudWatchLogEvents.serverless.service.functions = {
+        first: {
+          events: [
+            {
+              cloudwatchLog: {
+                logGroup: '__proto__',
+              },
+            },
+          ],
+        },
+      };
+
+      awsCompileCloudWatchLogEvents.compileCloudWatchLogEvents();
+
+      expect(
+        awsCompileCloudWatchLogEvents.serverless.service.provider.compiledCloudFormationTemplate
+          .Resources.FirstLogsSubscriptionFilterCloudWatchLog1.Properties.LogGroupName
+      ).to.equal('__proto__');
+    });
+
     it('should respect "filter" variable', () => {
       awsCompileCloudWatchLogEvents.serverless.service.functions = {
         first: {

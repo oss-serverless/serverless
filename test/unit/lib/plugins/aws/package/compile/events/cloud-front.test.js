@@ -162,6 +162,160 @@ describe('AwsCompileCloudFrontEvents', () => {
           .Resources.CloudFrontDistribution.Properties.DistributionConfig.Origins.length
       ).to.equal(1);
     });
+
+    it('should preserve unsafe origin and behavior keys as own data without mutating prototypes', () => {
+      const origin = {
+        DomainName: 'bucketname.s3.amazonaws.com',
+        S3OriginConfig: {},
+      };
+      Object.defineProperty(origin, '__proto__', {
+        value: { marker: 'origin' },
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
+      const behavior = {};
+      Object.defineProperty(behavior, '__proto__', {
+        value: { marker: 'behavior' },
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
+
+      awsCompileCloudFrontEvents.serverless.service.functions = {
+        first: {
+          name: 'first',
+          events: [
+            {
+              cloudFront: {
+                eventType: 'viewer-request',
+                origin,
+                behavior,
+              },
+            },
+          ],
+        },
+      };
+      awsCompileCloudFrontEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources =
+        {
+          FirstLambdaFunction: {
+            Type: 'AWS::Lambda::Function',
+            Properties: {
+              FunctionName: 'first',
+            },
+          },
+          FirstLambdaVersion: {
+            Type: 'AWS::Lambda::Version',
+            Properties: {
+              FunctionName: {
+                Ref: 'FirstLambdaFunction',
+              },
+            },
+          },
+        };
+
+      awsCompileCloudFrontEvents.compileCloudFrontEvents();
+
+      const distribution =
+        awsCompileCloudFrontEvents.serverless.service.provider.compiledCloudFormationTemplate
+          .Resources.CloudFrontDistribution.Properties.DistributionConfig;
+      const compiledOrigin = distribution.Origins[0];
+      const compiledBehavior = distribution.DefaultCacheBehavior;
+
+      expect(Object.getPrototypeOf(compiledOrigin)).to.equal(Object.prototype);
+      expect(Object.getPrototypeOf(compiledBehavior)).to.equal(Object.prototype);
+      expect(Object.getOwnPropertyDescriptor(compiledOrigin, '__proto__').value).to.deep.equal({
+        marker: 'origin',
+      });
+      expect(Object.getOwnPropertyDescriptor(compiledBehavior, '__proto__').value).to.deep.equal({
+        marker: 'behavior',
+      });
+    });
+
+    it('should populate own undefined origin branches from later events', () => {
+      const originAccessIdentity = {
+        'Fn::Join': ['', ['origin-access-identity/cloudfront/', { Ref: 'CloudFrontOAI' }]],
+      };
+
+      awsCompileCloudFrontEvents.serverless.service.functions = {
+        first: {
+          name: 'first',
+          events: [
+            {
+              cloudFront: {
+                eventType: 'viewer-request',
+                origin: {
+                  DomainName: 'bucketname.s3.amazonaws.com',
+                  OriginPath: '/app*',
+                  S3OriginConfig: {
+                    OriginAccessIdentity: undefined,
+                  },
+                },
+              },
+            },
+          ],
+        },
+        second: {
+          name: 'second',
+          events: [
+            {
+              cloudFront: {
+                eventType: 'origin-request',
+                origin: {
+                  DomainName: 'bucketname.s3.amazonaws.com',
+                  OriginPath: '/app*',
+                  S3OriginConfig: {
+                    OriginAccessIdentity: originAccessIdentity,
+                  },
+                },
+              },
+            },
+          ],
+        },
+      };
+
+      awsCompileCloudFrontEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources =
+        {
+          FirstLambdaFunction: {
+            Type: 'AWS::Lambda::Function',
+            Properties: {
+              FunctionName: 'first',
+            },
+          },
+          FirstLambdaVersion: {
+            Type: 'AWS::Lambda::Version',
+            Properties: {
+              FunctionName: {
+                Ref: 'FirstLambdaFunction',
+              },
+            },
+          },
+          SecondLambdaFunction: {
+            Type: 'AWS::Lambda::Function',
+            Properties: {
+              FunctionName: 'second',
+            },
+          },
+          SecondLambdaVersion: {
+            Type: 'AWS::Lambda::Version',
+            Properties: {
+              FunctionName: {
+                Ref: 'SecondLambdaFunction',
+              },
+            },
+          },
+        };
+
+      awsCompileCloudFrontEvents.compileCloudFrontEvents();
+
+      const distribution =
+        awsCompileCloudFrontEvents.serverless.service.provider.compiledCloudFormationTemplate
+          .Resources.CloudFrontDistribution.Properties.DistributionConfig;
+
+      expect(distribution.Origins[0].S3OriginConfig).to.deep.equal({
+        OriginAccessIdentity: originAccessIdentity,
+      });
+    });
   });
 });
 
