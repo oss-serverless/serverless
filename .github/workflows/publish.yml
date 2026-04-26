@@ -6,8 +6,8 @@ on:
     types: [published]
 
 permissions:
-  id-token: write # Required for OIDC
   contents: read
+  id-token: write # Required for OIDC
 
 jobs:
   prePublishPackageTest:
@@ -41,7 +41,10 @@ jobs:
 
       - run: npm version $RELEASE_VERSION --no-git-tag-version
 
-      - name: Build local package
+      - name: Verify package contents
+        run: npm pack --dry-run
+
+      - name: Build publish tarball
         run: echo "PACKAGE_TGZ=$(npm pack --silent)" >> $GITHUB_ENV
 
       - name: Run tests against version packaged with npm pack
