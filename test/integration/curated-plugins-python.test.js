@@ -2,7 +2,7 @@
 
 const { expect } = require('chai');
 const path = require('path');
-const spawn = require('child-process-ext/spawn');
+const spawn = require('../../lib/utils/spawn');
 const fixturesEngine = require('../fixtures/programmatic');
 const { listZipFiles } = require('../utils/fs');
 

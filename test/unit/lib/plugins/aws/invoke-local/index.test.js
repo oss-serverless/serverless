@@ -18,7 +18,7 @@ const CLI = require('../../../../../../lib/classes/cli');
 const { getTmpDirPath } = require('../../../../../utils/fs');
 const skipWithNotice = require('../../../../../lib/skip-with-notice');
 const runServerless = require('../../../../../utils/run-serverless');
-const spawnExt = require('child-process-ext/spawn');
+const spawnExt = require('../../../../../../lib/utils/spawn');
 
 const tmpServicePath = __dirname;
 
@@ -78,7 +78,7 @@ describe('AwsInvokeLocal', () => {
     stdinStub = sinon.stub().resolves('');
     AwsInvokeLocal = proxyquire('../../../../../../lib/plugins/aws/invoke-local/index', {
       'get-stdin': stdinStub,
-      'child-process-ext/spawn': spawnExtStub,
+      '../../../utils/spawn': spawnExtStub,
     });
     serverless = new Serverless({ commands: [], options: {} });
     serverless.serviceDir = 'servicePath';
@@ -853,7 +853,7 @@ describe('AwsInvokeLocal', () => {
     beforeEach(() => {
       AwsInvokeLocal = proxyquire('../../../../../../lib/plugins/aws/invoke-local/index', {
         'get-stdin': stdinStub,
-        'child-process-ext/spawn': spawnExtStub,
+        '../../../utils/spawn': spawnExtStub,
         'child_process': {
           spawn: spawnStub,
         },
@@ -1063,7 +1063,7 @@ describe('AwsInvokeLocal', () => {
         .noCallThru()
         .load('../../../../../../lib/plugins/aws/invoke-local/index', {
           'get-stdin': sinon.stub().resolves(''),
-          'child-process-ext/spawn': spawnExtLocalStub,
+          '../../../utils/spawn': spawnExtLocalStub,
           'fs-extra': {
             ensureDir: ensureDirStub,
             copy: copyStub,
@@ -1150,7 +1150,7 @@ describe('AwsInvokeLocal', () => {
         .noCallThru()
         .load('../../../../../../lib/plugins/aws/invoke-local/index', {
           'get-stdin': sinon.stub().resolves(''),
-          'child-process-ext/spawn': sinon.stub().resolves({
+          '../../../utils/spawn': sinon.stub().resolves({
             stdoutBuffer: Buffer.from('Mocked output'),
           }),
           'cachedir': sinon.stub().returns(path.join(tempRoot, 'cache-root')),

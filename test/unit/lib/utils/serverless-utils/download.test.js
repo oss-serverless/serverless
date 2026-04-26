@@ -14,12 +14,30 @@ describe('serverless-utils/download', () => {
   let server;
   let baseUrl;
   let zipBuffer;
+  let nestedZipBuffer;
+  let traversalZipBuffer;
+  let traversalFileName;
   let tmpDir;
 
   before(async () => {
     const zip = new AdmZip();
     zip.addFile('file.txt', Buffer.from('fixture'));
     zipBuffer = zip.toBuffer();
+
+    const nestedZip = new AdmZip();
+    nestedZip.addFile('template-main/serverless.yml', Buffer.from('service: fixture\n'));
+    nestedZipBuffer = nestedZip.toBuffer();
+
+    traversalFileName = `serverless-download-${Date.now()}-evil.txt`;
+    const traversalZip = new AdmZip();
+    traversalZip.addFile(`xx/${traversalFileName}`, Buffer.from('evil'));
+    traversalZipBuffer = traversalZip.toBuffer();
+    traversalZipBuffer = Buffer.from(
+      traversalZipBuffer
+        .toString('binary')
+        .replaceAll(`xx/${traversalFileName}`, `../${traversalFileName}`),
+      'binary'
+    );
 
     server = http.createServer((req, res) => {
       if (req.url === '/layer-download?Signature=opaque') {
@@ -45,6 +63,18 @@ describe('serverless-utils/download', () => {
       if (req.url === '/unknown-payload') {
         res.statusCode = 200;
         res.end(Buffer.from('plain text payload'));
+        return;
+      }
+
+      if (req.url === '/nested-zip') {
+        res.statusCode = 200;
+        res.end(nestedZipBuffer);
+        return;
+      }
+
+      if (req.url === '/traversal-zip') {
+        res.statusCode = 200;
+        res.end(traversalZipBuffer);
         return;
       }
 
@@ -115,6 +145,24 @@ describe('serverless-utils/download', () => {
     await download(`${baseUrl}/layer-download?Signature=opaque`, tmpDir, { extract: true });
 
     expect(await fsp.readFile(path.join(tmpDir, 'file.txt'), 'utf8')).to.equal('fixture');
+  });
+
+  it('extracts a zip archive with the requested strip depth', async () => {
+    await download(`${baseUrl}/nested-zip`, tmpDir, { extract: true, strip: 1 });
+
+    expect(await fsp.readFile(path.join(tmpDir, 'serverless.yml'), 'utf8')).to.equal(
+      'service: fixture\n'
+    );
+    expect(await fse.pathExists(path.join(tmpDir, 'template-main'))).to.equal(false);
+  });
+
+  it('does not write zip entries outside the destination', async () => {
+    await expect(download(`${baseUrl}/traversal-zip`, tmpDir, { extract: true })).to.be.rejected;
+
+    expect(await fse.pathExists(path.join(tmpDir, 'xx', traversalFileName))).to.equal(false);
+    expect(await fse.pathExists(path.join(path.dirname(tmpDir), traversalFileName))).to.equal(
+      false
+    );
   });
 
   it('preserves authorization across approved redirect hostnames', async () => {

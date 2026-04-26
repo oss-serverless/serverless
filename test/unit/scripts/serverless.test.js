@@ -4,7 +4,7 @@ const { expect } = require('chai');
 
 const path = require('path');
 const fsp = require('fs').promises;
-const spawn = require('child-process-ext/spawn');
+const spawn = require('../../../lib/utils/spawn');
 const { stripVTControlCharacters: stripAnsi } = require('node:util');
 const { version } = require('../../../package');
 const programmaticFixturesEngine = require('../../fixtures/programmatic');

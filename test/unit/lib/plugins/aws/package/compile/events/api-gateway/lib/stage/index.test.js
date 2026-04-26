@@ -2,14 +2,16 @@
 
 const expect = require('chai').expect;
 const sinon = require('sinon');
-const BbPromise = require('bluebird');
-const childProcess = BbPromise.promisifyAll(require('child_process'));
+const childProcess = require('child_process');
+const { promisify } = require('util');
 const isObject = require('type/object/is');
 const AwsCompileApigEvents = require('../../../../../../../../../../../lib/plugins/aws/package/compile/events/api-gateway');
 const Serverless = require('../../../../../../../../../../../lib/serverless');
 const AwsProvider = require('../../../../../../../../../../../lib/plugins/aws/provider');
 const { createTmpDir } = require('../../../../../../../../../../utils/fs');
 const runServerless = require('../../../../../../../../../../utils/run-serverless');
+
+if (!childProcess.execAsync) childProcess.execAsync = promisify(childProcess.exec);
 
 describe('#compileStage()', () => {
   let serverless;

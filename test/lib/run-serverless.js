@@ -146,7 +146,9 @@ module.exports = async (
   awsRequestStubMap = ensurePlainObject(awsRequestStubMap, { isOptional: true });
   if (shouldStubSpawn) {
     if (!modulesCacheStub) modulesCacheStub = {};
-    modulesCacheStub['child-process-ext/spawn'] = sinon.stub().resolves({});
+    modulesCacheStub[path.resolve(serverlessPath, '..', 'utils/spawn.js')] = sinon
+      .stub()
+      .resolves({});
   }
   const confirmedCwd = await resolveCwd({ cwd, config });
 

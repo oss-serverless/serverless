@@ -31,7 +31,7 @@ const loadRunCompose = ({ spawnStub, inquirerStub, progressFooterFactoryStub, fs
   delete require.cache[require.resolve(modulePath)];
 
   return proxyquire.noCallThru().load(modulePath, {
-    'child-process-ext/spawn': spawnStub,
+    '../utils/spawn': spawnStub,
     '../utils/serverless-utils/inquirer': inquirerStub,
     'cli-progress-footer': progressFooterFactoryStub,
     ...(fsStub ? { fs: fsStub } : {}),

@@ -1,6 +1,6 @@
 'use strict';
 
-const spawn = require('child-process-ext/spawn');
+const spawn = require('../lib/utils/spawn');
 const fsp = require('fs').promises;
 const fse = require('fs-extra');
 const path = require('path');

@@ -14,7 +14,7 @@ const npmCommand = 'npm';
 const pluginName = 'serverless-plugin-1';
 const spawnFake = sinon.fake();
 const uninstallPlugin = proxyquire('../../../commands/plugin-uninstall', {
-  'child-process-ext/spawn': spawnFake,
+  '../lib/utils/spawn': spawnFake,
 });
 
 const writeRawConfiguration = async (serviceDir, rawYaml) => {

@@ -3,7 +3,7 @@
 const path = require('path');
 const fsp = require('fs').promises;
 const fse = require('fs-extra');
-const spawn = require('child-process-ext/spawn');
+const spawn = require('../../lib/utils/spawn');
 const { getTmpDirPath } = require('../utils/fs');
 const { expect } = require('chai');
 

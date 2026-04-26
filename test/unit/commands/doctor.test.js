@@ -1,7 +1,7 @@
 'use strict';
 
 const path = require('path');
-const spawn = require('child-process-ext/spawn');
+const spawn = require('../../../lib/utils/spawn');
 const { expect } = require('chai');
 const fixturesEngine = require('../../fixtures/programmatic');
 

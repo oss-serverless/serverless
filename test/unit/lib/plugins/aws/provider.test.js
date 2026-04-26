@@ -13,6 +13,7 @@ const Serverless = require('../../../../../lib/serverless');
 const runServerless = require('../../../../utils/run-serverless');
 
 const expect = chai.expect;
+const spawnModulePath = path.resolve(__dirname, '../../../../../lib/utils/spawn.js');
 
 describe('AwsProvider', () => {
   let awsProvider;
@@ -1434,7 +1435,7 @@ aws_secret_access_key = CUSTOMSECRET
         stdBuffer: `digest: sha256:${imageSha} size: 1787`,
       });
       const modulesCacheStub = {
-        'child-process-ext/spawn': spawnExtStub,
+        [spawnModulePath]: spawnExtStub,
       };
 
       beforeEach(() => {
@@ -1645,7 +1646,7 @@ aws_secret_access_key = CUSTOMSECRET
           awsRequestStubMap,
           modulesCacheStub: {
             ...modulesCacheStub,
-            'child-process-ext/spawn': innerSpawnExtStub,
+            [spawnModulePath]: innerSpawnExtStub,
           },
         });
 
@@ -1709,7 +1710,7 @@ aws_secret_access_key = CUSTOMSECRET
           awsRequestStubMap,
           modulesCacheStub: {
             ...modulesCacheStub,
-            'child-process-ext/spawn': innerSpawnExtStub,
+            [spawnModulePath]: innerSpawnExtStub,
           },
         });
 
@@ -2109,7 +2110,7 @@ aws_secret_access_key = CUSTOMSECRET
             command: 'package',
             awsRequestStubMap: baseAwsRequestStubMap,
             modulesCacheStub: {
-              'child-process-ext/spawn': sinon.stub().throws(),
+              [spawnModulePath]: sinon.stub().throws(),
             },
           })
         ).to.be.eventually.rejected.and.have.property('code', 'DOCKER_COMMAND_NOT_AVAILABLE');
@@ -2123,7 +2124,7 @@ aws_secret_access_key = CUSTOMSECRET
             awsRequestStubMap: baseAwsRequestStubMap,
             modulesCacheStub: {
               ...modulesCacheStub,
-              'child-process-ext/spawn': sinon.stub().returns({}).onSecondCall().throws(),
+              [spawnModulePath]: sinon.stub().returns({}).onSecondCall().throws(),
             },
           })
         ).to.be.eventually.rejected.and.have.property('code', 'DOCKER_BUILD_ERROR');
@@ -2137,7 +2138,7 @@ aws_secret_access_key = CUSTOMSECRET
             awsRequestStubMap: baseAwsRequestStubMap,
             modulesCacheStub: {
               ...modulesCacheStub,
-              'child-process-ext/spawn': sinon.stub().returns({}).onCall(2).throws(),
+              [spawnModulePath]: sinon.stub().returns({}).onCall(2).throws(),
             },
           })
         ).to.be.eventually.rejected.and.have.property('code', 'DOCKER_TAG_ERROR');
@@ -2151,7 +2152,7 @@ aws_secret_access_key = CUSTOMSECRET
             awsRequestStubMap: baseAwsRequestStubMap,
             modulesCacheStub: {
               ...modulesCacheStub,
-              'child-process-ext/spawn': sinon.stub().returns({}).onCall(3).throws(),
+              [spawnModulePath]: sinon.stub().returns({}).onCall(3).throws(),
             },
           })
         ).to.be.eventually.rejected.and.have.property('code', 'DOCKER_PUSH_ERROR');
@@ -2165,7 +2166,7 @@ aws_secret_access_key = CUSTOMSECRET
             awsRequestStubMap: baseAwsRequestStubMap,
             modulesCacheStub: {
               ...modulesCacheStub,
-              'child-process-ext/spawn': sinon
+              [spawnModulePath]: sinon
                 .stub()
                 .returns({})
                 .onCall(3)

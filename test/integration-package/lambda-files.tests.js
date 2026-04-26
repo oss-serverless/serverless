@@ -4,7 +4,7 @@ const path = require('path');
 const { expect } = require('chai');
 const fs = require('fs').promises;
 const fse = require('fs-extra');
-const spawn = require('child-process-ext/spawn');
+const spawn = require('../../lib/utils/spawn');
 const serverlessExec = require('../serverless-binary');
 const { getTmpDirPath, listZipFiles } = require('../utils/fs');
 

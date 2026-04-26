@@ -35,7 +35,7 @@ const readParsedConfiguration = async (configurationFilePath) =>
 describe('test/unit/commands/plugin-install.test.js', async () => {
   const spawnFake = sinon.fake();
   const installPlugin = proxyquire('../../../commands/plugin-install', {
-    'child-process-ext/spawn': spawnFake,
+    '../lib/utils/spawn': spawnFake,
   });
   const pluginName = 'serverless-plugin-1';
 

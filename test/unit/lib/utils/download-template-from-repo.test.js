@@ -58,7 +58,7 @@ describe('downloadTemplateFromRepo', () => {
       '../../../../lib/utils/download-template-from-repo',
       {
         './serverless-utils/download': downloadStub,
-        'child-process-ext/spawn': spawnStub,
+        './spawn': spawnStub,
       }
     );
     downloadTemplateFromRepo = downloadTemplateFromRepoModule.downloadTemplateFromRepo;
