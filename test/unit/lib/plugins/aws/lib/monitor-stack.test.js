@@ -834,6 +834,189 @@ describe('monitorStack', () => {
       }
     );
 
+    it('should report root DELETE_IN_PROGRESS as a create failure', async () => {
+      const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+      const cfDataMock = {
+        StackId: 'new-service-dev',
+      };
+      const createStartEvent = {
+        StackEvents: [
+          {
+            EventId: '1a2b3c4d',
+            StackName: 'new-service-dev',
+            LogicalResourceId: 'new-service-dev',
+            ResourceType: 'AWS::CloudFormation::Stack',
+            Timestamp: new Date(),
+            ResourceStatus: 'CREATE_IN_PROGRESS',
+          },
+        ],
+      };
+      const deleteInProgressEvent = {
+        StackEvents: [
+          {
+            EventId: '1e2f3g4h',
+            StackName: 'new-service-dev',
+            LogicalResourceId: 'new-service-dev',
+            ResourceType: 'AWS::CloudFormation::Stack',
+            Timestamp: new Date(),
+            ResourceStatus: 'DELETE_IN_PROGRESS',
+            ResourceStatusReason: 'No export named missing-export found. Delete requested by user',
+          },
+        ],
+      };
+
+      describeStackEventsStub.onCall(0).resolves(createStartEvent);
+      describeStackEventsStub.onCall(1).resolves(deleteInProgressEvent);
+
+      try {
+        await expect(
+          awsPlugin.monitorStack('create', cfDataMock, { frequency: 10 })
+        ).to.eventually.be.rejectedWith(
+          'An error occurred: new-service-dev - No export named missing-export found. Delete requested by user.'
+        );
+        expect(describeStackEventsStub.callCount).to.be.equal(2);
+        expect(
+          describeStackEventsStub.calledWithExactly('CloudFormation', 'describeStackEvents', {
+            StackName: cfDataMock.StackId,
+          })
+        ).to.be.equal(true);
+      } finally {
+        describeStackEventsStub.restore();
+      }
+    });
+
+    it(
+      'should report root DELETE_IN_PROGRESS as a create failure with the ' +
+        '--verbose option after cleanup',
+      async () => {
+        awsPlugin.options.verbose = true;
+        const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+        const cfDataMock = {
+          StackId: 'new-service-dev',
+        };
+        const createStartEvent = {
+          StackEvents: [
+            {
+              EventId: '1a2b3c4d',
+              StackName: 'new-service-dev',
+              LogicalResourceId: 'new-service-dev',
+              ResourceType: 'AWS::CloudFormation::Stack',
+              Timestamp: new Date(),
+              ResourceStatus: 'CREATE_IN_PROGRESS',
+            },
+          ],
+        };
+        const deleteInProgressEvent = {
+          StackEvents: [
+            {
+              EventId: '1e2f3g4h',
+              StackName: 'new-service-dev',
+              LogicalResourceId: 'new-service-dev',
+              ResourceType: 'AWS::CloudFormation::Stack',
+              Timestamp: new Date(),
+              ResourceStatus: 'DELETE_IN_PROGRESS',
+              ResourceStatusReason:
+                'No export named missing-export found. Delete requested by user',
+            },
+          ],
+        };
+        const deleteCompleteEvent = {
+          StackEvents: [
+            {
+              EventId: '1i2j3k4l',
+              StackName: 'new-service-dev',
+              LogicalResourceId: 'new-service-dev',
+              ResourceType: 'AWS::CloudFormation::Stack',
+              Timestamp: new Date(),
+              ResourceStatus: 'DELETE_COMPLETE',
+            },
+          ],
+        };
+
+        describeStackEventsStub.onCall(0).resolves(createStartEvent);
+        describeStackEventsStub.onCall(1).resolves(deleteInProgressEvent);
+        describeStackEventsStub.onCall(2).resolves(deleteCompleteEvent);
+
+        try {
+          await expect(
+            awsPlugin.monitorStack('create', cfDataMock, { frequency: 10 })
+          ).to.eventually.be.rejectedWith(
+            'An error occurred: new-service-dev - No export named missing-export found. Delete requested by user.'
+          );
+          expect(describeStackEventsStub.callCount).to.be.equal(3);
+          expect(
+            describeStackEventsStub.calledWithExactly('CloudFormation', 'describeStackEvents', {
+              StackName: cfDataMock.StackId,
+            })
+          ).to.be.equal(true);
+        } finally {
+          describeStackEventsStub.restore();
+        }
+      }
+    );
+
+    it('should not report nested stack DELETE_IN_PROGRESS during update as a root stack failure', async () => {
+      const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+      const cfDataMock = {
+        StackId: 'new-service-dev',
+      };
+      const updateStartEvent = {
+        StackEvents: [
+          {
+            EventId: '1a2b3c4d',
+            StackName: 'new-service-dev',
+            LogicalResourceId: 'new-service-dev',
+            ResourceType: 'AWS::CloudFormation::Stack',
+            Timestamp: new Date(),
+            ResourceStatus: 'UPDATE_IN_PROGRESS',
+          },
+        ],
+      };
+      const nestedStackDeleteEvent = {
+        StackEvents: [
+          {
+            EventId: '1e2f3g4h',
+            StackName: 'new-service-dev',
+            LogicalResourceId: 'nested-stack-name',
+            ResourceType: 'AWS::CloudFormation::Stack',
+            Timestamp: new Date(),
+            ResourceStatus: 'DELETE_IN_PROGRESS',
+          },
+        ],
+      };
+      const updateCompleteEvent = {
+        StackEvents: [
+          {
+            EventId: '1i2j3k4l',
+            StackName: 'new-service-dev',
+            LogicalResourceId: 'new-service-dev',
+            ResourceType: 'AWS::CloudFormation::Stack',
+            Timestamp: new Date(),
+            ResourceStatus: 'UPDATE_COMPLETE',
+          },
+        ],
+      };
+
+      describeStackEventsStub.onCall(0).resolves(updateStartEvent);
+      describeStackEventsStub.onCall(1).resolves(nestedStackDeleteEvent);
+      describeStackEventsStub.onCall(2).resolves(updateCompleteEvent);
+
+      try {
+        const stackStatus = await awsPlugin.monitorStack('update', cfDataMock, {
+          frequency: 10,
+        });
+        expect(stackStatus).to.be.equal('UPDATE_COMPLETE');
+        expect(describeStackEventsStub.callCount).to.be.equal(3);
+        expect(
+          describeStackEventsStub.calledWithExactly('CloudFormation', 'describeStackEvents', {
+            StackName: cfDataMock.StackId,
+          })
+        ).to.be.equal(true);
+      } finally {
+        describeStackEventsStub.restore();
+      }
+    });
+
     it('should resolve properly first stack event (when CREATE fails and is followed with DELETE)', async () => {
       awsPlugin.options.verbose = true;
       const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
