@@ -2,11 +2,17 @@
 
 const os = require('os');
 const path = require('path');
-const fsp = require('fs').promises;
+const fs = require('fs');
+const fsp = fs.promises;
 const fse = require('fs-extra');
 const yazl = require('yazl');
 const { expect } = require('chai');
+const proxyquire = require('proxyquire');
+const sinon = require('sinon');
 const { extractZip, isZipBuffer } = require('../../../../lib/utils/extract-zip');
+
+const loadExtractZipWithFs = (fsStub) =>
+  proxyquire.noCallThru().load('../../../../lib/utils/extract-zip', { fs: fsStub });
 
 const createZipBuffer = (entries) =>
   new Promise((resolve, reject) => {
@@ -88,6 +94,16 @@ describe('extractZip', () => {
 
     expect(await fsp.readFile(path.join(tmpDir, 'dir', 'file.txt'), 'utf8')).to.equal('fixture');
     expect(files.map((file) => file.path)).to.deep.equal(['dir/file.txt']);
+  });
+
+  it('does not return buffered file data when output is provided', async () => {
+    const zipBuffer = await createZipBuffer([{ path: 'file.txt', data: 'fixture' }]);
+
+    const files = await extractZip(zipBuffer, tmpDir);
+
+    expect(await fsp.readFile(path.join(tmpDir, 'file.txt'), 'utf8')).to.equal('fixture');
+    expect(files[0]).to.include({ path: 'file.txt', type: 'file' });
+    expect(files[0]).to.have.property('data', undefined);
   });
 
   it('extracts from a file path', async () => {
@@ -242,6 +258,108 @@ describe('extractZip', () => {
     expect(Math.abs(stat.mtime.getTime() - mtime.getTime())).to.be.lessThan(2500);
   });
 
+  it('overwrites existing regular files after successful extraction', async () => {
+    await fsp.writeFile(path.join(tmpDir, 'file.txt'), 'original');
+    const zipBuffer = await createZipBuffer([{ path: 'file.txt', data: 'changed' }]);
+
+    await extractZip(zipBuffer, tmpDir);
+
+    expect(await fsp.readFile(path.join(tmpDir, 'file.txt'), 'utf8')).to.equal('changed');
+  });
+
+  it('closes streamed temp file handles before renaming', async () => {
+    const closeSpy = sinon.spy();
+    const fsStub = {
+      ...fs,
+      promises: {
+        ...fs.promises,
+        async open(...args) {
+          const handle = await fs.promises.open(...args);
+          return {
+            chmod: (...chmodArgs) => handle.chmod(...chmodArgs),
+            close: async () => {
+              closeSpy();
+              return handle.close();
+            },
+            utimes: (...utimesArgs) => handle.utimes(...utimesArgs),
+            write: (...writeArgs) => handle.write(...writeArgs),
+          };
+        },
+        async rename(...args) {
+          expect(closeSpy.calledOnce).to.equal(true);
+          return fs.promises.rename(...args);
+        },
+      },
+    };
+    const { extractZip: extractZipWithFsStub } = loadExtractZipWithFs(fsStub);
+    const zipBuffer = await createZipBuffer([{ path: 'file.txt', data: 'fixture' }]);
+
+    await extractZipWithFsStub(zipBuffer, tmpDir);
+
+    expect(closeSpy.calledOnce).to.equal(true);
+    expect(await fsp.readFile(path.join(tmpDir, 'file.txt'), 'utf8')).to.equal('fixture');
+  });
+
+  it('removes temporary files and preserves existing targets when streaming fails', async () => {
+    const writeError = new Error('write failed');
+    const fsStub = {
+      ...fs,
+      promises: {
+        ...fs.promises,
+        async open(...args) {
+          const handle = await fs.promises.open(...args);
+          return {
+            chmod: (...chmodArgs) => handle.chmod(...chmodArgs),
+            close: () => handle.close(),
+            utimes: (...utimesArgs) => handle.utimes(...utimesArgs),
+            write: sinon.stub().rejects(writeError),
+          };
+        },
+      },
+    };
+    const { extractZip: extractZipWithFsStub } = loadExtractZipWithFs(fsStub);
+    const targetPath = path.join(tmpDir, 'file.txt');
+    const zipBuffer = await createZipBuffer([{ path: 'file.txt', data: 'changed' }]);
+
+    await fsp.writeFile(targetPath, 'original');
+
+    const error = await expectRejected(extractZipWithFsStub(zipBuffer, tmpDir));
+
+    expect(error).to.equal(writeError);
+    expect(await fsp.readFile(targetPath, 'utf8')).to.equal('original');
+    expect(await fsp.readdir(tmpDir)).to.deep.equal(['file.txt']);
+  });
+
+  it('uses temporary names independent of long target basenames', async function () {
+    if (process.platform === 'win32') this.skip();
+
+    const longName = `${'a'.repeat(240)}.txt`;
+    const zipBuffer = await createZipBuffer([{ path: longName, data: 'fixture' }]);
+
+    await extractZip(zipBuffer, tmpDir);
+
+    expect(await fsp.readFile(path.join(tmpDir, longName), 'utf8')).to.equal('fixture');
+  });
+
+  it('removes temporary files and preserves existing targets when final rename fails', async () => {
+    const renameError = new Error('rename failed');
+    const targetPath = path.join(tmpDir, 'file.txt');
+    const zipBuffer = await createZipBuffer([{ path: 'file.txt', data: 'changed' }]);
+    const renameStub = sinon.stub(fsp, 'rename').rejects(renameError);
+
+    await fsp.writeFile(targetPath, 'original');
+
+    try {
+      const error = await expectRejected(extractZip(zipBuffer, tmpDir));
+
+      expect(error).to.equal(renameError);
+      expect(await fsp.readFile(targetPath, 'utf8')).to.equal('original');
+      expect(await fsp.readdir(tmpDir)).to.deep.equal(['file.txt']);
+    } finally {
+      renameStub.restore();
+    }
+  });
+
   it('rejects symlink entries', async () => {
     const zipBuffer = await createZipBuffer([{ path: 'link', data: 'target', mode: 0o120777 }]);
 
@@ -313,6 +431,7 @@ describe('extractZip', () => {
       const zipBuffer = await createZipBuffer([{ path: 'evil.txt', data: 'changed' }]);
 
       await expectRejected(extractZip(zipBuffer, tmpDir));
+      expect((await fsp.lstat(path.join(tmpDir, 'evil.txt'))).isSymbolicLink()).to.equal(true);
       expect(await fsp.readFile(outsideFile, 'utf8')).to.equal('original');
     } finally {
       await fse.remove(outsideDir);

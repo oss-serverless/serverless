@@ -1,7 +1,53 @@
 'use strict';
 
+const fs = require('fs').promises;
+const os = require('os');
+const path = require('path');
+const { EventEmitter } = require('events');
+const nodeStream = require('stream');
 const { expect } = require('chai');
+const proxyquire = require('proxyquire');
+const sinon = require('sinon');
 const spawn = require('../../../../lib/utils/spawn');
+
+const loadSpawnWithStubs = (stubs) =>
+  proxyquire.noCallThru().load('../../../../lib/utils/spawn', stubs);
+
+const waitFor = async (condition) => {
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    if (condition()) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+
+  throw new Error('Timed out waiting for condition');
+};
+
+const createFakeOutputStream = () => {
+  const outputStream = new EventEmitter();
+  let paused = false;
+
+  outputStream.pause = sinon.spy(() => {
+    paused = true;
+    return outputStream;
+  });
+  outputStream.resume = sinon.spy(() => {
+    paused = false;
+    return outputStream;
+  });
+  outputStream.isPaused = () => paused;
+
+  return outputStream;
+};
+
+const createFakeChild = () => {
+  const child = new EventEmitter();
+
+  child.stdout = createFakeOutputStream();
+  child.stderr = createFakeOutputStream();
+  child.stdin = { end: sinon.spy() };
+
+  return child;
+};
 
 const expectRejected = async (promise) => {
   try {
@@ -27,12 +73,43 @@ const assertRedaction = async ({ args, redacted, visible = [] }) => {
 };
 
 describe('spawn', () => {
-  it('executes package manager shims through cross-platform resolution', async () => {
-    const result = await spawn('npm', ['--version']);
+  it('executes PATH shims through cross-platform resolution', async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'spawn-shim-'));
+    const commandName = `spawn-shim-${process.pid}-${Date.now()}`;
+    const commandPath = path.join(
+      tempDir,
+      process.platform === 'win32' ? `${commandName}.cmd` : commandName
+    );
+    const pathKey = Object.keys(process.env).find((key) => key.toLowerCase() === 'path') || 'PATH';
+    const originalPath = process.env[pathKey] || process.env.PATH || '';
 
-    expect(String(result.stdoutBuffer).trim()).to.match(/^\d+\.\d+\.\d+/);
-    expect(result.code).to.equal(0);
-    expect(result.signal).to.equal(null);
+    try {
+      if (process.platform === 'win32') {
+        await fs.writeFile(commandPath, '@echo off\r\necho shim-ok\r\n');
+      } else {
+        await fs.writeFile(commandPath, '#!/bin/sh\nprintf "shim-ok\\n"\n', {
+          mode: 0o755,
+        });
+        await fs.chmod(commandPath, 0o755);
+      }
+
+      const env = {
+        ...process.env,
+        [pathKey]: `${tempDir}${path.delimiter}${originalPath}`,
+      };
+
+      if (process.platform === 'win32') {
+        env.PATHEXT = [process.env.PATHEXT, '.CMD'].filter(Boolean).join(';');
+      }
+
+      const result = await spawn(commandName, [], { env });
+
+      expect(String(result.stdoutBuffer).trim()).to.equal('shim-ok');
+      expect(result.code).to.equal(0);
+      expect(result.signal).to.equal(null);
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    }
   });
 
   it('closes stdin when shouldCloseStdin is enabled', async () => {
@@ -73,6 +150,96 @@ describe('spawn', () => {
     expect(String(Buffer.concat(stdChunks))).to.include('err');
     expect(result.code).to.equal(0);
     expect(result.signal).to.equal(null);
+  });
+
+  it('buffers output without concatenating on each chunk or retaining unread std', async () => {
+    const child = createFakeChild();
+    const spawnWithStubs = loadSpawnWithStubs({
+      'cross-spawn': () => child,
+    });
+    const concatSpy = sinon.spy(Buffer, 'concat');
+
+    try {
+      const execution = spawnWithStubs('fake-command');
+
+      child.stdout.emit('data', Buffer.from('out-'));
+      child.stdout.emit('data', Buffer.from('more'));
+      child.stderr.emit('data', Buffer.from('-err'));
+
+      expect(concatSpy.called).to.equal(false);
+      expect(execution.std.readableLength).to.equal(0);
+
+      child.emit('close', 0, null);
+      const result = await execution;
+
+      expect(String(result.stdoutBuffer)).to.equal('out-more');
+      expect(String(result.stderrBuffer)).to.equal('-err');
+      expect(String(result.stdBuffer)).to.equal('out-more-err');
+      expect(result.std).to.exist;
+      expect(result.std.readableLength).to.equal(0);
+      expect(concatSpy.callCount).to.be.at.most(3);
+    } finally {
+      concatSpy.restore();
+    }
+  });
+
+  it('treats std as live while stdBuffer preserves history', async () => {
+    const execution = spawn(process.execPath, [
+      '-e',
+      'process.stdout.write("early"); setTimeout(() => process.stdout.write("late"), 25);',
+    ]);
+
+    await waitFor(() => String(execution.stdoutBuffer).includes('early'));
+
+    const stdChunks = [];
+    execution.std.on('data', (chunk) => stdChunks.push(Buffer.from(chunk)));
+
+    const result = await execution;
+
+    expect(String(result.stdBuffer)).to.equal('earlylate');
+    expect(String(Buffer.concat(stdChunks))).to.equal('late');
+  });
+
+  it('pauses child output while consumed std applies backpressure', async () => {
+    const child = createFakeChild();
+    let stdStream;
+
+    class BackpressurePassThrough extends nodeStream.PassThrough {
+      constructor(...args) {
+        super(...args);
+        stdStream = this;
+      }
+
+      write(chunk) {
+        this.emit('data', Buffer.from(chunk));
+        return false;
+      }
+    }
+
+    const spawnWithStubs = loadSpawnWithStubs({
+      'cross-spawn': () => child,
+      'stream': { PassThrough: BackpressurePassThrough },
+    });
+    const execution = spawnWithStubs('fake-command');
+    const stdChunks = [];
+
+    execution.std.on('data', (chunk) => stdChunks.push(Buffer.from(chunk)));
+    child.stdout.emit('data', Buffer.from('out'));
+
+    expect(child.stdout.pause.calledOnce).to.equal(true);
+    expect(child.stderr.pause.calledOnce).to.equal(true);
+
+    stdStream.emit('drain');
+
+    expect(child.stdout.resume.calledOnce).to.equal(true);
+    expect(child.stderr.resume.calledOnce).to.equal(true);
+
+    child.stderr.emit('data', Buffer.from('err'));
+    child.emit('close', 0, null);
+    const result = await execution;
+
+    expect(String(result.stdBuffer)).to.equal('outerr');
+    expect(String(Buffer.concat(stdChunks))).to.equal('outerr');
   });
 
   it('rejects nonzero exits with buffers and redacted command arguments', async () => {
