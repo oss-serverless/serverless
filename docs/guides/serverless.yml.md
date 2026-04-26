@@ -256,6 +256,13 @@ provider:
     websocketApiId: xxxx
     # Disable the default 'execute-api' HTTP endpoint (default: false)
     disableDefaultEndpoint: true
+    # Optional REST API endpoint security settings
+    endpoint:
+      # TLS security policy for the generated REST API
+      securityPolicy: SecurityPolicy_TLS13_2025_EDGE
+      # Endpoint access mode for enhanced security policies: basic or strict
+      # Use "" only to unset access mode when reverting from enhanced to legacy policies
+      accessMode: strict
     # Source of API key for usage plan: HEADER or AUTHORIZER
     apiKeySourceType: HEADER
     # List of API keys for the REST API

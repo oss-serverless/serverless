@@ -184,6 +184,71 @@ describe('#compileRestApi()', () => {
     });
   });
 
+  it('should support `provider.apiGateway.endpoint.securityPolicy`', () => {
+    awsCompileApigEvents.serverless.service.provider.apiGateway = {
+      endpoint: {
+        securityPolicy: 'TLS_1_0',
+      },
+    };
+
+    awsCompileApigEvents.compileRestApi();
+    const resource =
+      awsCompileApigEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources
+        .ApiGatewayRestApi;
+
+    expect(resource.Properties.SecurityPolicy).to.equal('TLS_1_0');
+    expect(resource.Properties.EndpointAccessMode).to.equal(undefined);
+  });
+
+  it('should support `provider.apiGateway.endpoint.accessMode`', () => {
+    awsCompileApigEvents.serverless.service.provider.apiGateway = {
+      endpoint: {
+        securityPolicy: 'SecurityPolicy_TLS13_2025_EDGE',
+        accessMode: 'basic',
+      },
+    };
+
+    awsCompileApigEvents.compileRestApi();
+    const resource =
+      awsCompileApigEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources
+        .ApiGatewayRestApi;
+
+    expect(resource.Properties.SecurityPolicy).to.equal('SecurityPolicy_TLS13_2025_EDGE');
+    expect(resource.Properties.EndpointAccessMode).to.equal('BASIC');
+  });
+
+  it('should support strict endpoint access mode', () => {
+    awsCompileApigEvents.serverless.service.provider.apiGateway = {
+      endpoint: {
+        securityPolicy: 'SecurityPolicy_TLS13_2025_EDGE',
+        accessMode: 'STRICT',
+      },
+    };
+
+    awsCompileApigEvents.compileRestApi();
+    const resource =
+      awsCompileApigEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources
+        .ApiGatewayRestApi;
+
+    expect(resource.Properties.EndpointAccessMode).to.equal('STRICT');
+  });
+
+  it('should preserve empty `provider.apiGateway.endpoint.accessMode`', () => {
+    awsCompileApigEvents.serverless.service.provider.apiGateway = {
+      endpoint: {
+        securityPolicy: 'TLS_1_0',
+        accessMode: '',
+      },
+    };
+
+    awsCompileApigEvents.compileRestApi();
+    const resource =
+      awsCompileApigEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources
+        .ApiGatewayRestApi;
+
+    expect(resource.Properties).to.have.property('EndpointAccessMode', '');
+  });
+
   it('should throw error if endpointType property is not PRIVATE and vpcEndpointIds property is [id1]', () => {
     awsCompileApigEvents.serverless.service.provider.endpointType = 'Testing';
     awsCompileApigEvents.serverless.service.provider.vpcEndpointIds = ['id1'];
@@ -217,6 +282,94 @@ describe('lib/plugins/aws/package/compile/events/apiGateway/lib/restApi.test.js'
     const resource = cfTemplate.Resources.ApiGatewayRestApi;
 
     expect(resource.Properties.DisableExecuteApiEndpoint).to.equal(true);
+  });
+
+  it('should support `provider.apiGateway.endpoint.securityPolicy` and `accessMode`', async () => {
+    const { cfTemplate } = await runServerless({
+      fixture: 'api-gateway',
+      command: 'package',
+      configExt: {
+        provider: {
+          apiGateway: {
+            endpoint: {
+              securityPolicy: 'SecurityPolicy_TLS13_2025_EDGE',
+              accessMode: 'strict',
+            },
+          },
+        },
+      },
+    });
+    const resource = cfTemplate.Resources.ApiGatewayRestApi;
+
+    expect(resource.Properties.SecurityPolicy).to.equal('SecurityPolicy_TLS13_2025_EDGE');
+    expect(resource.Properties.EndpointAccessMode).to.equal('STRICT');
+  });
+
+  it('should support empty `provider.apiGateway.endpoint.accessMode`', async () => {
+    const { cfTemplate } = await runServerless({
+      fixture: 'api-gateway',
+      command: 'package',
+      configExt: {
+        provider: {
+          apiGateway: {
+            endpoint: {
+              securityPolicy: 'TLS_1_0',
+              accessMode: '',
+            },
+          },
+        },
+      },
+    });
+    const resource = cfTemplate.Resources.ApiGatewayRestApi;
+
+    expect(resource.Properties.SecurityPolicy).to.equal('TLS_1_0');
+    expect(resource.Properties).to.have.property('EndpointAccessMode', '');
+  });
+
+  it('should reject invalid `provider.apiGateway.endpoint.accessMode`', async () => {
+    let error;
+    try {
+      await runServerless({
+        fixture: 'api-gateway',
+        command: 'package',
+        configExt: {
+          provider: {
+            apiGateway: {
+              endpoint: {
+                accessMode: 'invalid',
+              },
+            },
+          },
+        },
+      });
+    } catch (caughtError) {
+      error = caughtError;
+    }
+
+    expect(error).to.have.property('code', 'INVALID_NON_SCHEMA_COMPLIANT_CONFIGURATION');
+  });
+
+  it('should reject unknown `provider.apiGateway.endpoint` properties', async () => {
+    let error;
+    try {
+      await runServerless({
+        fixture: 'api-gateway',
+        command: 'package',
+        configExt: {
+          provider: {
+            apiGateway: {
+              endpoint: {
+                unknownProperty: true,
+              },
+            },
+          },
+        },
+      });
+    } catch (caughtError) {
+      error = caughtError;
+    }
+
+    expect(error).to.have.property('code', 'INVALID_NON_SCHEMA_COMPLIANT_CONFIGURATION');
   });
 
   it('should support `provider.apiGateway.resourcePolicy[].Principal.AWS with Fn::If`', async () => {

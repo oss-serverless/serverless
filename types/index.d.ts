@@ -821,6 +821,10 @@ export interface AWS {
       binaryMediaTypes?: string[];
       description?: string;
       disableDefaultEndpoint?: boolean;
+      endpoint?: {
+        securityPolicy?: string;
+        accessMode?: string;
+      };
       metrics?: boolean;
       minimumCompressionSize?: number;
       resourcePolicy?: AwsResourcePolicyStatements;

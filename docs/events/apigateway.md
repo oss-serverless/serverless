@@ -24,6 +24,7 @@ Summary:
   - [Catching Exceptions In Your Lambda Function](#catching-exceptions-in-your-lambda-function)
   - [Setting API keys for your Rest API](#setting-api-keys-for-your-rest-api)
   - [Configuring endpoint types](#configuring-endpoint-types)
+  - [Security Policy](#security-policy)
   - [Request Parameters](#request-parameters)
   - [Request Schema Validators](#request-schema-validators)
   - [Setting source of API key for metering requests](#setting-source-of-api-key-for-metering-requests)
@@ -751,6 +752,66 @@ provider:
     - vpce-123
     - vpce-456
 ```
+
+### Security Policy
+
+You can configure the TLS security policy for the generated API Gateway REST API by setting `provider.apiGateway.endpoint.securityPolicy`. This maps to the [`SecurityPolicy`](https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-apigateway-restapi.html#cfn-apigateway-restapi-securitypolicy) property of the `AWS::ApiGateway::RestApi` CloudFormation resource.
+
+This applies only to REST APIs generated from `http` events. It does not apply to HTTP APIs generated from `httpApi` events, and it does not apply when you import an external REST API with `provider.apiGateway.restApiId`.
+
+For the default edge-optimized REST API endpoint, use an edge-compatible policy:
+
+```yml
+provider:
+  name: aws
+  apiGateway:
+    endpoint:
+      securityPolicy: SecurityPolicy_TLS13_2025_EDGE
+      accessMode: strict
+functions:
+  hello:
+    events:
+      - http:
+          path: user/create
+          method: get
+```
+
+For Regional or private REST APIs, set `provider.endpointType` and use a policy supported by that endpoint type:
+
+```yml
+provider:
+  name: aws
+  endpointType: REGIONAL
+  apiGateway:
+    endpoint:
+      securityPolicy: SecurityPolicy_TLS13_1_3_2025_09
+      accessMode: basic
+functions:
+  hello:
+    events:
+      - http:
+          path: user/create
+          method: get
+```
+
+AWS treats policies that start with `SecurityPolicy_` as enhanced security policies. When using an enhanced policy, you must also set `provider.apiGateway.endpoint.accessMode` to `basic` or `strict`.
+
+`strict` adds additional host and endpoint-type checks. AWS recommends migrating by first using `basic`, validating traffic, and then switching to `strict`.
+
+When changing an API from an enhanced policy back to a legacy policy, AWS requires endpoint access mode to be unset with an empty string:
+
+```yml
+provider:
+  name: aws
+  apiGateway:
+    endpoint:
+      securityPolicy: TLS_1_0
+      accessMode: ''
+```
+
+For normal legacy policy usage, omit `accessMode`.
+
+Supported security policies differ by endpoint type. See the [AWS supported security policies documentation](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-security-policies-list.html) for the current policy list.
 
 ### Request Parameters
 
