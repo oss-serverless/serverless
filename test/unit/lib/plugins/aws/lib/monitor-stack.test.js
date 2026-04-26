@@ -457,6 +457,136 @@ describe('monitorStack', () => {
       });
     });
 
+    it('should exit on failure with --verbose when stack status is CREATE_FAILED', async () => {
+      awsPlugin.options.verbose = true;
+      const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+      const cfDataMock = {
+        StackId: 'new-service-dev',
+      };
+      const createStartEvent = {
+        StackEvents: [
+          {
+            EventId: '1a2b3c4d',
+            StackName: 'new-service-dev',
+            LogicalResourceId: 'new-service-dev',
+            ResourceType: 'AWS::CloudFormation::Stack',
+            Timestamp: new Date(),
+            ResourceStatus: 'CREATE_IN_PROGRESS',
+          },
+        ],
+      };
+      const resourceFailedEvent = {
+        StackEvents: [
+          {
+            EventId: '1e2f3g4h',
+            StackName: 'new-service-dev',
+            LogicalResourceId: 'mochaLambda',
+            ResourceType: 'AWS::Lambda::Function',
+            Timestamp: new Date(),
+            ResourceStatus: 'CREATE_FAILED',
+            ResourceStatusReason: 'Resource creation cancelled',
+          },
+        ],
+      };
+      const stackCreateFailedEvent = {
+        StackEvents: [
+          {
+            EventId: '1i2j3k4l',
+            StackName: 'new-service-dev',
+            LogicalResourceId: 'new-service-dev',
+            ResourceType: 'AWS::CloudFormation::Stack',
+            Timestamp: new Date(),
+            ResourceStatus: 'CREATE_FAILED',
+          },
+        ],
+      };
+
+      describeStackEventsStub.onCall(0).resolves(createStartEvent);
+      describeStackEventsStub.onCall(1).resolves(resourceFailedEvent);
+      describeStackEventsStub.onCall(2).resolves(stackCreateFailedEvent);
+
+      try {
+        await expect(
+          awsPlugin.monitorStack('create', cfDataMock, { frequency: 10 })
+        ).to.eventually.be.rejectedWith(
+          'An error occurred: mochaLambda - Resource creation cancelled.'
+        );
+        expect(describeStackEventsStub.callCount).to.be.equal(3);
+        expect(
+          describeStackEventsStub.calledWithExactly('CloudFormation', 'describeStackEvents', {
+            StackName: cfDataMock.StackId,
+          })
+        ).to.be.equal(true);
+      } finally {
+        describeStackEventsStub.restore();
+      }
+    });
+
+    it('should exit on failure with --verbose when stack status is UPDATE_FAILED', async () => {
+      awsPlugin.options.verbose = true;
+      const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+      const cfDataMock = {
+        StackId: 'new-service-dev',
+      };
+      const updateStartEvent = {
+        StackEvents: [
+          {
+            EventId: '1a2b3c4d',
+            StackName: 'new-service-dev',
+            LogicalResourceId: 'new-service-dev',
+            ResourceType: 'AWS::CloudFormation::Stack',
+            Timestamp: new Date(),
+            ResourceStatus: 'UPDATE_IN_PROGRESS',
+          },
+        ],
+      };
+      const resourceFailedEvent = {
+        StackEvents: [
+          {
+            EventId: '1e2f3g4h',
+            StackName: 'new-service-dev',
+            LogicalResourceId: 'mochaApiGw',
+            ResourceType: 'AWS::ApiGateway::Deployment',
+            Timestamp: new Date(),
+            ResourceStatus: 'CREATE_FAILED',
+            ResourceStatusReason: 'Invalid stage identifier specified',
+          },
+        ],
+      };
+      const stackUpdateFailedEvent = {
+        StackEvents: [
+          {
+            EventId: '1i2j3k4l',
+            StackName: 'new-service-dev',
+            LogicalResourceId: 'new-service-dev',
+            ResourceType: 'AWS::CloudFormation::Stack',
+            Timestamp: new Date(),
+            ResourceStatus: 'UPDATE_FAILED',
+          },
+        ],
+      };
+
+      describeStackEventsStub.onCall(0).resolves(updateStartEvent);
+      describeStackEventsStub.onCall(1).resolves(resourceFailedEvent);
+      describeStackEventsStub.onCall(2).resolves(stackUpdateFailedEvent);
+
+      try {
+        await expect(
+          awsPlugin.monitorStack('update', cfDataMock, { frequency: 10 })
+        ).to.eventually.be.rejectedWith(
+          'An error occurred: mochaApiGw - Invalid stage identifier specified.'
+        );
+        expect(describeStackEventsStub.callCount).to.be.equal(3);
+        expect(
+          describeStackEventsStub.calledWithExactly('CloudFormation', 'describeStackEvents', {
+            StackName: cfDataMock.StackId,
+          })
+        ).to.be.equal(true);
+      } finally {
+        describeStackEventsStub.restore();
+      }
+    });
+
     it('should keep monitoring when 1st ResourceType is not "AWS::CloudFormation::Stack"', async () => {
       const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
       const cfDataMock = {
