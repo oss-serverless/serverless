@@ -57,7 +57,6 @@ describe('PluginSearch', () => {
     });
 
     it('should have a required option "query" for the "search" sub-command', () => {
-      // eslint-disable-next-line no-unused-expressions
       expect(pluginSearch.commands.plugin.commands.search.options.query.required).to.be.true;
     });
 

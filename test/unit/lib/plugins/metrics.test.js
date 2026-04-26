@@ -16,7 +16,6 @@ describe('Metrics', () => {
 
   describe('#constructor()', () => {
     it('should have the command "metrics"', () => {
-      // eslint-disable-next-line no-unused-expressions
       expect(metrics.commands.metrics).to.not.be.undefined;
     });
 

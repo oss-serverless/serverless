@@ -485,7 +485,6 @@ describe('AwsCompileSNSEvents', () => {
       ).to.equal('AWS::Lambda::Permission');
     });
 
-    // eslint-disable-next-line max-len
     it('should create SNS topic when arn object and topicName are given as object properties', () => {
       awsCompileSNSEvents.serverless.service.functions = {
         first: {
@@ -519,7 +518,6 @@ describe('AwsCompileSNSEvents', () => {
       ).to.equal('AWS::Lambda::Permission');
     });
 
-    // eslint-disable-next-line max-len
     it('should throw an error when arn object and no topicName are given as object properties', () => {
       awsCompileSNSEvents.serverless.service.functions = {
         first: {

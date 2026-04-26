@@ -103,312 +103,27 @@
     "yazl": "^3.3.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "adm-zip": "^0.5.10",
     "aws4": "^1.12.0",
     "chai": "^4.3.7",
     "chai-as-promised": "^7.1.1",
-    "eslint": "^8.57.1",
-    "eslint-plugin-import": "^2.27.5",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-n": "^17.24.0",
     "git-list-updated": "^1.2.1",
+    "globals": "^17.5.0",
     "jszip": "^3.10.1",
     "minimist": "^1.2.8",
     "mocha": "12.0.0-beta-9.2",
     "mock-require": "^3.0.3",
-    "prettier": "^2.8.8",
+    "prettier": "^3.8.3",
     "proxyquire": "^2.1.3",
     "semver-regex": "^3.1.4",
     "sinon": "^13.0.2",
     "sinon-chai": "^3.7.0"
   },
-  "eslintConfig": {
-    "extends": [
-      "eslint:recommended",
-      "plugin:n/recommended"
-    ],
-    "plugins": [
-      "import"
-    ],
-    "root": true,
-    "env": {
-      "es2023": true,
-      "node": true
-    },
-    "globals": {
-      "fetch": "readonly"
-    },
-    "rules": {
-      "array-callback-return": "error",
-      "block-scoped-var": "error",
-      "camelcase": [
-        "error",
-        {
-          "properties": "never"
-        }
-      ],
-      "consistent-return": "error",
-      "curly": [
-        "error",
-        "multi-line"
-      ],
-      "default-case": [
-        "error",
-        {
-          "commentPattern": "^no default$"
-        }
-      ],
-      "dot-notation": [
-        "error",
-        {
-          "allowKeywords": true
-        }
-      ],
-      "eqeqeq": [
-        "error",
-        "allow-null"
-      ],
-      "guard-for-in": "error",
-      "import/export": "error",
-      "import/newline-after-import": "error",
-      "import/no-amd": "error",
-      "import/no-duplicates": "error",
-      "import/no-extraneous-dependencies": [
-        "error",
-        {
-          "devDependencies": [
-            "**/*.test.js",
-            "**/scripts/**",
-            "**/test/**",
-            "**/tests/**",
-            "prettier.config.js"
-          ]
-        }
-      ],
-      "import/no-mutable-exports": "error",
-      "import/no-named-as-default": "error",
-      "import/no-named-as-default-member": "error",
-      "import/no-unresolved": [
-        "error",
-        {
-          "commonjs": true
-        }
-      ],
-      "import/prefer-default-export": "error",
-      "new-cap": [
-        "error",
-        {
-          "newIsCap": true
-        }
-      ],
-      "no-array-constructor": "error",
-      "no-caller": "error",
-      "no-confusing-arrow": [
-        "error",
-        {
-          "allowParens": false
-        }
-      ],
-      "no-console": "error",
-      "no-duplicate-imports": "error",
-      "no-else-return": "error",
-      "no-empty-function": [
-        "error",
-        {
-          "allow": [
-            "arrowFunctions",
-            "functions",
-            "methods"
-          ]
-        }
-      ],
-      "no-eval": "error",
-      "no-extra-bind": "error",
-      "no-extra-label": "error",
-      "no-extra-semi": "off",
-      "no-implied-eval": "error",
-      "no-iterator": "error",
-      "no-label-var": "error",
-      "no-lone-blocks": "error",
-      "no-lonely-if": "error",
-      "no-loop-func": "error",
-      "no-mixed-spaces-and-tabs": "off",
-      "no-multi-str": "error",
-      "no-nested-ternary": "error",
-      "no-new": "error",
-      "no-new-func": "error",
-      "no-new-object": "error",
-      "no-new-require": "error",
-      "no-new-wrappers": "error",
-      "no-octal-escape": "error",
-      "no-proto": "error",
-      "no-restricted-syntax": [
-        "error",
-        "DebuggerStatement",
-        "ForInStatement",
-        "WithStatement"
-      ],
-      "no-return-assign": "error",
-      "no-script-url": "error",
-      "no-self-compare": "error",
-      "no-sequences": "error",
-      "no-shadow": "error",
-      "no-throw-literal": "error",
-      "no-undef-init": "error",
-      "no-unexpected-multiline": "off",
-      "no-unneeded-ternary": [
-        "error",
-        {
-          "defaultAssignment": false
-        }
-      ],
-      "no-unused-expressions": [
-        "error"
-      ],
-      "no-unused-vars": [
-        "error",
-        {
-          "vars": "local",
-          "args": "after-used"
-        }
-      ],
-      "no-useless-computed-key": "error",
-      "no-useless-concat": "error",
-      "no-useless-constructor": "error",
-      "no-useless-rename": [
-        "error",
-        {
-          "ignoreDestructuring": false,
-          "ignoreImport": false,
-          "ignoreExport": false
-        }
-      ],
-      "no-var": "error",
-      "no-void": "error",
-      "object-shorthand": [
-        "error",
-        "always",
-        {
-          "ignoreConstructors": false,
-          "avoidQuotes": true
-        }
-      ],
-      "one-var": [
-        "error",
-        "never"
-      ],
-      "operator-assignment": [
-        "error",
-        "always"
-      ],
-      "quotes": [
-        "error",
-        "single",
-        {
-          "avoidEscape": true
-        }
-      ],
-      "prefer-arrow-callback": [
-        "error",
-        {
-          "allowNamedFunctions": false,
-          "allowUnboundThis": true
-        }
-      ],
-      "prefer-const": [
-        "error",
-        {
-          "destructuring": "any",
-          "ignoreReadBeforeAssign": true
-        }
-      ],
-      "prefer-rest-params": "error",
-      "prefer-spread": "error",
-      "prefer-template": "error",
-      "radix": "error",
-      "require-atomic-updates": "off",
-      "vars-on-top": "error",
-      "spaced-comment": [
-        "error",
-        "always",
-        {
-          "exceptions": [
-            "-",
-            "+"
-          ],
-          "markers": [
-            "=",
-            "!"
-          ]
-        }
-      ],
-      "strict": [
-        "error",
-        "safe"
-      ],
-      "yoda": "error",
-      "n/no-unsupported-features/node-builtins": [
-        "error",
-        {
-          "allowExperimental": true
-        }
-      ],
-      "n/no-extraneous-require": "off",
-      "n/no-unpublished-require": "off",
-      "n/no-missing-require": "off",
-      "n/no-process-exit": "off",
-      "n/no-deprecated-api": "off",
-      "n/hashbang": "off"
-    },
-    "overrides": [
-      {
-        "files": [
-          "**/*.mjs"
-        ],
-        "parserOptions": {
-          "sourceType": "module"
-        }
-      },
-      {
-        "files": [
-          "**/*.test.js",
-          "**/test/**"
-        ],
-        "env": {
-          "mocha": true
-        },
-        "rules": {
-          "no-unused-expressions": "off"
-        }
-      },
-      {
-        "files": [
-          "test/fixtures/**"
-        ],
-        "rules": {
-          "no-console": "off"
-        },
-        "globals": {
-          "awslambda": "readonly"
-        }
-      },
-      {
-        "files": [
-          "test/fixtures/programmatic/plugin/local-esm-plugin/**",
-          "test/fixtures/programmatic/plugin/node_modules/esm-plugin/**",
-          "test/fixtures/programmatic/invocation/esm/**"
-        ],
-        "parserOptions": {
-          "sourceType": "module"
-        }
-      }
-    ]
-  },
-  "eslintIgnore": [
-    "!/.github",
-    "/lib/plugins/create/templates/**",
-    "/lib/plugins/aws/custom-resources/node_modules/**",
-    "!/test/fixtures/programmatic/locallyInstalledServerless/node_modules/**"
-  ],
   "scripts": {
     "integration-test-cleanup": "node test/utils/aws-cleanup.js",
     "integration-test-run-all": "mocha --config test/mocha/integration.cjs --parallel --jobs 20 \"test/integration/**/*.test.js\"",
@@ -417,11 +132,11 @@
     "integration-test-setup": "node ./scripts/test/integration-setup/index.js",
     "integration-test-teardown": "node ./scripts/test/integration-teardown.js",
     "lint": "eslint .",
-    "lint:updated": "pipe-git-updated --ext=js --base=main -- eslint",
-    "prettier-check": "prettier -c \"**/*.{css,html,js,json,md,yaml,yml}\"",
-    "prettier-check:updated": "pipe-git-updated --ext=css --ext=html --ext=js --ext=json --ext=md --ext=yaml --ext=yml --base=main -- prettier -c",
-    "prettify": "prettier --write \"**/*.{css,html,js,json,md,yaml,yml}\"",
-    "prettify:updated": "pipe-git-updated --ext=css --ext=html --ext=js --ext=json --ext=md --ext=yaml --ext=yml --base=main -- prettier --write",
+    "lint:updated": "pipe-git-updated --ext=cjs --ext=js --ext=mjs --base=main -- eslint",
+    "prettier-check": "prettier -c \"**/*.{cjs,css,html,js,json,md,mjs,yaml,yml}\"",
+    "prettier-check:updated": "pipe-git-updated --ext=cjs --ext=css --ext=html --ext=js --ext=json --ext=md --ext=mjs --ext=yaml --ext=yml --base=main -- prettier -c",
+    "prettify": "prettier --write \"**/*.{cjs,css,html,js,json,md,mjs,yaml,yml}\"",
+    "prettify:updated": "pipe-git-updated --ext=cjs --ext=css --ext=html --ext=js --ext=json --ext=md --ext=mjs --ext=yaml --ext=yml --base=main -- prettier --write",
     "test": "mocha --config test/mocha/unit.cjs --parallel \"test/unit/**/*.test.js\"",
     "test:ci": "npm run prettier-check:updated && npm run lint:updated && npm run test:isolated",
     "test:isolated": "mocha --config test/mocha/unit.cjs --parallel \"test/unit/**/*.test.js\""

@@ -1,7 +1,5 @@
 'use strict';
 
-/* eslint-disable no-unused-expressions */
-
 const chai = require('chai');
 const AwsProvider = require('../../../../../../lib/plugins/aws/provider');
 const Serverless = require('../../../../../../lib/serverless');

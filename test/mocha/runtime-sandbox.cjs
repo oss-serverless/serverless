@@ -75,7 +75,9 @@ class RuntimeSandbox {
     restoreEnv(process.env, envToRestore);
     process.argv = (this.testArgv || originalArgv).slice();
     const commandStartTime =
-      this.testEnv != null ? this.testServerlessCommandStartTime : originalServerlessCommandStartTime;
+      this.testEnv != null
+        ? this.testServerlessCommandStartTime
+        : originalServerlessCommandStartTime;
 
     if (commandStartTime === undefined) {
       delete EvalError.$serverlessCommandStartTime;

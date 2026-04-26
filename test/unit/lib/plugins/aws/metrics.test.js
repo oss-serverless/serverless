@@ -41,7 +41,6 @@ describe('AwsMetrics', () => {
       expect(awsMetrics.provider).to.be.instanceof(AwsProvider));
 
     it('should have a "metrics:metrics" hook', () => {
-      // eslint-disable-next-line no-unused-expressions
       expect(awsMetrics.hooks['metrics:metrics']).to.not.be.undefined;
     });
 

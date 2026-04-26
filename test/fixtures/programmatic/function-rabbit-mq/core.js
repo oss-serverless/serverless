@@ -14,7 +14,6 @@ function consumer(event, context, callback) {
       messages.push(Buffer.from(message.data, 'base64').toString());
     });
   });
-  // eslint-disable-next-line no-console
   console.log(functionName, JSON.stringify(messages));
 
   return callback(null, event);

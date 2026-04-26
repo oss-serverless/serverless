@@ -1,7 +1,5 @@
 'use strict';
 
-/* eslint-disable no-unused-expressions */
-
 const os = require('os');
 const path = require('path');
 const JsZip = require('jszip');

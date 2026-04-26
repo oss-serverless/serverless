@@ -1,7 +1,5 @@
 'use strict';
 
-/* eslint-disable no-unused-expressions */
-
 const chai = require('chai');
 const runServerless = require('../../../../../../../../utils/run-serverless');
 

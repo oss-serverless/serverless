@@ -1,8 +1,5 @@
 'use strict';
 
-/* eslint-disable max-len */
-/* eslint-disable no-unused-expressions */
-
 const chai = require('chai');
 const sinon = require('sinon');
 const Serverless = require('../../../../../../../../../../../lib/serverless');

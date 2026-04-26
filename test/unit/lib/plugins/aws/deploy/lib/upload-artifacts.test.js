@@ -1,7 +1,5 @@
 'use strict';
 
-/* eslint-disable no-unused-expressions */
-
 const sinon = require('sinon');
 const fs = require('fs');
 const fse = require('fs-extra');

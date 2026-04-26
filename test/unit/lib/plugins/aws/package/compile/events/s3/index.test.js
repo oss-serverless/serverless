@@ -1,7 +1,5 @@
 'use strict';
 
-/* eslint-disable no-unused-expressions */
-
 const sinon = require('sinon');
 const chai = require('chai');
 const proxyquire = require('proxyquire').noCallThru();

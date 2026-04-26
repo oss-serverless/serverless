@@ -164,7 +164,7 @@ describe('test/unit/lib/configuration/variables/resolve.test.js', () => {
         resolve: ({ params }) => {
           switch (params && params[0]) {
             case 'non-error-exception':
-              throw null; // eslint-disable-line no-throw-literal
+              throw null;
             case 'serverless-error':
               throw new ServerlessError('Stop');
             case 'circular-ref': {

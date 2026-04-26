@@ -91,7 +91,6 @@ describe('AwsRollback', () => {
 
       const s3Objects = [
         {
-          // eslint-disable-next-line max-len
           Key: 'serverless/rollback/dev/1476779096930-2016-10-18T08:24:56.930Z/compiled-cloudformation-template.json',
         },
         {
@@ -140,7 +139,6 @@ describe('AwsRollback', () => {
     it('should reject in case this specific deployments is not available', async () => {
       const s3Objects = [
         {
-          // eslint-disable-next-line max-len
           Key: 'serverless/rollback/dev/2000000000000-2016-10-18T08:24:56.930Z/compiled-cloudformation-template.json',
         },
         {
@@ -174,7 +172,6 @@ describe('AwsRollback', () => {
     it('should resolve set the artifactDirectoryName and resolve', async () => {
       const s3Objects = [
         {
-          // eslint-disable-next-line max-len
           Key: 'serverless/rollback/dev/1476779096930-2016-10-18T08:24:56.930Z/compiled-cloudformation-template.json',
         },
         {

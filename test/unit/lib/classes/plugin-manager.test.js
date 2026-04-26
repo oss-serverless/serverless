@@ -1,7 +1,5 @@
 'use strict';
 
-/* eslint-disable no-unused-expressions */
-
 const chai = require('chai');
 const overrideEnv = require('process-utils/override-env');
 const overrideArgv = require('process-utils/override-argv');

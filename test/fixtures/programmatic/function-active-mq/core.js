@@ -7,7 +7,6 @@ const stompit = require('stompit');
 function consumer(event, context, callback) {
   const functionName = 'consumer';
   const messages = event.messages.map((message) => Buffer.from(message.data, 'base64').toString());
-  // eslint-disable-next-line no-console
   console.log(functionName, JSON.stringify(messages));
   return callback(null, event);
 }

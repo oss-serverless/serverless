@@ -149,10 +149,9 @@ module.exports = async (
   }
   const confirmedCwd = await resolveCwd({ cwd, config });
 
-  const resolveConfigurationPath = require(path.resolve(
-    serverlessPath,
-    'lib/cli/resolve-configuration-path'
-  ));
+  const resolveConfigurationPath = require(
+    path.resolve(serverlessPath, 'lib/cli/resolve-configuration-path')
+  );
   const readConfiguration = require(path.resolve(serverlessPath, 'lib/configuration/read'));
   const resolveVariables = require(path.resolve(serverlessPath, 'lib/configuration/variables'));
 

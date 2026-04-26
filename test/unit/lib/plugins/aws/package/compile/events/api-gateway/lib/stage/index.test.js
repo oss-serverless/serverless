@@ -92,7 +92,6 @@ describe('#compileStage()', () => {
         const resources =
           awsCompileApigEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources;
 
-        // eslint-disable-next-line
         expect(resources[stageLogicalId]).not.to.exist;
 
         expect(resources[awsCompileApigEvents.apiGatewayDeploymentLogicalId]).to.deep.equal({
@@ -237,7 +236,6 @@ describe('#compileStage()', () => {
               DestinationArn: {
                 'Fn::GetAtt': [logGroupLogicalId, 'Arn'],
               },
-              // eslint-disable-next-line
               Format:
                 'requestId: $context.requestId, ip: $context.identity.sourceIp, caller: $context.identity.caller, user: $context.identity.user, requestTime: $context.requestTime, httpMethod: $context.httpMethod, resourcePath: $context.resourcePath, status: $context.status, protocol: $context.protocol, responseLength: $context.responseLength',
             },

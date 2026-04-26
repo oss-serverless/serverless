@@ -94,9 +94,8 @@ describe('AwsCompileFunctions', () => {
 
     it('should download the file and replace the artifact path for function packages', async () => {
       awsCompileFunctions.serverless.service.package.individually = true;
-      awsCompileFunctions.serverless.service.functions[
-        functionName
-      ].package.artifact = `https://s3.amazonaws.com/${s3BucketName}/${s3ArtifactName}`;
+      awsCompileFunctions.serverless.service.functions[functionName].package.artifact =
+        `https://s3.amazonaws.com/${s3BucketName}/${s3ArtifactName}`;
 
       return expect(awsCompileFunctions.downloadPackageArtifacts()).to.be.fulfilled.then(() => {
         const artifactFileName = awsCompileFunctions.serverless.service.functions[

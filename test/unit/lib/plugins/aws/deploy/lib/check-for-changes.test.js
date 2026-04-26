@@ -1,7 +1,5 @@
 'use strict';
 
-/* eslint-disable no-unused-expressions */
-
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');

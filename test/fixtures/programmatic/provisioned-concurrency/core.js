@@ -11,7 +11,6 @@ function handler(event, context, callback) {
     }
     return '';
   });
-  // eslint-disable-next-line no-console
   console.log(functionName, JSON.stringify(messages));
   return callback(null, event);
 }

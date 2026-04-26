@@ -74,10 +74,8 @@ describe('AwsConfigCredentials', () => {
     });
 
     it('should have the req. options "key" and "secret" for the "credentials" sub-command', () => {
-      // eslint-disable-next-line no-unused-expressions
       expect(awsConfigCredentials.commands.config.commands.credentials.options.key.required).to.be
         .true;
-      // eslint-disable-next-line no-unused-expressions
       expect(awsConfigCredentials.commands.config.commands.credentials.options.secret.required).to
         .be.true;
     });
