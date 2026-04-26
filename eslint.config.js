@@ -2,7 +2,7 @@
 
 const js = require('@eslint/js');
 const globals = require('globals');
-const importPlugin = require('eslint-plugin-import');
+const importX = require('eslint-plugin-import-x');
 const n = require('eslint-plugin-n');
 const eslintConfigPrettier = require('eslint-config-prettier/flat');
 
@@ -26,7 +26,7 @@ module.exports = [
   },
   js.configs.recommended,
   n.configs['flat/recommended-script'],
-  importPlugin.flatConfigs.recommended,
+  importX.flatConfigs.recommended,
   eslintConfigPrettier,
   {
     files: ['**/*.{cjs,js,mjs}'],
@@ -39,13 +39,13 @@ module.exports = [
       },
     },
     rules: {
-      'import/no-extraneous-dependencies': [
+      'import-x/no-extraneous-dependencies': [
         'error',
         {
           devDependencies: devDependencyFiles,
         },
       ],
-      'import/no-unresolved': ['error', { commonjs: true }],
+      'import-x/no-unresolved': ['error', { commonjs: true }],
       'no-unused-vars': ['error', { caughtErrors: 'none' }],
       'n/no-unsupported-features/node-builtins': ['error', { allowExperimental: true }],
       'n/no-extraneous-require': 'off',

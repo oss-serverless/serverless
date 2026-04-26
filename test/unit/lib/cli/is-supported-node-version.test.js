@@ -21,11 +21,12 @@ describe('test/unit/lib/cli/is-supported-node-version.test.js', () => {
     expect(isSupportedNodeVersion('v21.7.0')).to.equal(false);
   });
 
-  it('rejects Node 22 releases before 22.12.0', () => {
-    expect(isSupportedNodeVersion('v22.11.0')).to.equal(false);
+  it('rejects Node 22 releases before 22.13.0', () => {
+    expect(isSupportedNodeVersion('v22.12.0')).to.equal(false);
   });
 
-  it('accepts Node 22.12.0 and newer releases', () => {
-    expect(isSupportedNodeVersion('v22.12.0')).to.equal(true);
+  it('accepts Node 22.13.0 and newer releases', () => {
+    expect(isSupportedNodeVersion('v22.13.0')).to.equal(true);
+    expect(isSupportedNodeVersion('v24.0.0')).to.equal(true);
   });
 });

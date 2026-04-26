@@ -1,6 +1,6 @@
 'use strict';
 // NOTE: `aws-iot-device-sdk-v2` is bundled into the deployment package
-// eslint-disable-next-line import/no-unresolved
+// eslint-disable-next-line import-x/no-unresolved
 const { mqtt, io, iot, iotidentity } = require('aws-iot-device-sdk-v2');
 
 const createDeferred = () => {

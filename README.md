@@ -20,7 +20,7 @@ This project is open-source and free to use. However, maintaining it requires ti
 
 ## Installation
 
-Requires Node.js `^20.19.0 || >=22.12.0`.
+Requires Node.js `^20.19.0 || ^22.13.0 || >=24`.
 
 ```sh
 npm remove -g serverless

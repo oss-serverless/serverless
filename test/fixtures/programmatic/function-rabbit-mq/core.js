@@ -1,7 +1,7 @@
 'use strict';
 
 // NOTE: `amqplib` is bundled into the deployment package
-// eslint-disable-next-line import/no-unresolved
+// eslint-disable-next-line import-x/no-unresolved
 const amqp = require('amqplib');
 
 function consumer(event, context, callback) {

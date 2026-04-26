@@ -54,7 +54,7 @@ const npmInstall = async (cwd, attempt = 0) => {
       if (code === 1) {
         if (String(stdoutBuffer).includes('cb() never called!')) {
           await wait(2000);
-          await npmInstall(cwd, ++attempt);
+          await npmInstall(cwd, attempt + 1);
           return;
         }
       }

@@ -1,7 +1,7 @@
 'use strict';
 
 // NOTE: `stompit` is bundled into the deployment package
-// eslint-disable-next-line import/no-unresolved
+// eslint-disable-next-line import-x/no-unresolved
 const stompit = require('stompit');
 
 function consumer(event, context, callback) {

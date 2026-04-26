@@ -81,7 +81,8 @@ module.exports = async (
   } catch (error) {
     throw new TypeError(
       `Provided 'serverlessPath' (${serverlessPath}) ` +
-        `doesn't point a working node module: ${error.message}`
+        `doesn't point a working node module: ${error.message}`,
+      { cause: error }
     );
   }
   cwd = ensureString(cwd, {

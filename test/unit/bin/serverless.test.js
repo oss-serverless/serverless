@@ -18,7 +18,7 @@ describe('test/unit/bin/serverless.test.js', () => {
 
   it('exits before CLI triage on unsupported Node versions', () => {
     const isSupportedNodeVersion = sinon.stub().returns(false);
-    isSupportedNodeVersion.supportedRange = '^20.19.0 || >=22.12.0';
+    isSupportedNodeVersion.supportedRange = '^20.19.0 || ^22.13.0 || >=24';
     const triage = sinon.stub();
     const stderrWrite = sinon.stub(process.stderr, 'write');
     const processExitError = new Error('process.exit');
@@ -38,7 +38,7 @@ describe('test/unit/bin/serverless.test.js', () => {
     expect(stderrWrite).to.have.been.calledOnceWithExactly(
       'Error: Serverless Framework v3.40.1 does not support ' +
         `Node.js ${process.version}. Please use a supported release. ` +
-        'Supported versions: ^20.19.0 || >=22.12.0.\n'
+        'Supported versions: ^20.19.0 || ^22.13.0 || >=24.\n'
     );
     expect(processExit).to.have.been.calledOnceWithExactly(1);
     expect(triage.called).to.equal(false);
@@ -48,7 +48,7 @@ describe('test/unit/bin/serverless.test.js', () => {
     const triage = sinon.stub().returns(Promise.resolve('@osls/compose'));
     const runCompose = sinon.stub().resolves();
     const isSupportedNodeVersion = sinon.stub().returns(true);
-    isSupportedNodeVersion.supportedRange = '^20.19.0 || >=22.12.0';
+    isSupportedNodeVersion.supportedRange = '^20.19.0 || ^22.13.0 || >=24';
 
     loadBin({
       '../lib/cli/is-supported-node-version': isSupportedNodeVersion,
