@@ -45,12 +45,22 @@ describe('AwsRollbackFunction', () => {
     let restoreFunctionStub;
 
     beforeEach(() => {
+      const func = { Code: { Location: 'https://example.test/function.zip' } };
+      const zipBuffer = Buffer.from('zip');
+      const restoreResult = { restored: true };
+
       validateStub = sinon.stub(awsRollbackFunction, 'validate').resolves();
       getFunctionToBeRestoredStub = sinon
         .stub(awsRollbackFunction, 'getFunctionToBeRestored')
-        .resolves();
-      fetchFunctionCodeStub = sinon.stub(awsRollbackFunction, 'fetchFunctionCode').resolves();
-      restoreFunctionStub = sinon.stub(awsRollbackFunction, 'restoreFunction').resolves();
+        .resolves(func);
+      fetchFunctionCodeStub = sinon
+        .stub(awsRollbackFunction, 'fetchFunctionCode')
+        .withArgs(func)
+        .resolves(zipBuffer);
+      restoreFunctionStub = sinon
+        .stub(awsRollbackFunction, 'restoreFunction')
+        .withArgs(zipBuffer)
+        .resolves(restoreResult);
     });
 
     afterEach(() => {
@@ -70,12 +80,15 @@ describe('AwsRollbackFunction', () => {
       expect(awsRollbackFunctionWithEmptyOptions.options).to.deep.equal({});
     });
 
-    it('should run promise chain in order', async () =>
-      awsRollbackFunction.hooks['rollback:function:rollback']().then(() => {
+    it('should run promise chain in order and pass resolved values forward', async () =>
+      awsRollbackFunction.hooks['rollback:function:rollback']().then((result) => {
+        expect(result).to.deep.equal({ restored: true });
         expect(validateStub.calledOnce).to.equal(true);
         expect(getFunctionToBeRestoredStub.calledAfter(validateStub)).to.equal(true);
         expect(fetchFunctionCodeStub.calledAfter(getFunctionToBeRestoredStub)).to.equal(true);
         expect(restoreFunctionStub.calledAfter(fetchFunctionCodeStub)).to.equal(true);
+        expect(fetchFunctionCodeStub.calledOnce).to.equal(true);
+        expect(restoreFunctionStub.calledOnce).to.equal(true);
       }));
   });
 

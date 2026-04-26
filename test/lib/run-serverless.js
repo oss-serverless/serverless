@@ -146,7 +146,7 @@ module.exports = async (
   awsRequestStubMap = ensurePlainObject(awsRequestStubMap, { isOptional: true });
   if (shouldStubSpawn) {
     if (!modulesCacheStub) modulesCacheStub = {};
-    modulesCacheStub[path.resolve(serverlessPath, '..', 'utils/spawn.js')] = sinon
+    modulesCacheStub[path.resolve(serverlessPath, 'lib/utils/spawn.js')] = sinon
       .stub()
       .resolves({});
   }

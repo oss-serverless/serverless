@@ -60,6 +60,20 @@ describe('serverless-utils/download', () => {
         return;
       }
 
+      if (req.url === '/html-fallback') {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.end(Buffer.from('<!doctype html>\n'));
+        return;
+      }
+
+      if (req.url === '/binary-fallback') {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/octet-stream');
+        res.end(Buffer.from('binary payload'));
+        return;
+      }
+
       if (req.url === '/unknown-payload') {
         res.statusCode = 200;
         res.end(Buffer.from('plain text payload'));
@@ -132,6 +146,23 @@ describe('serverless-utils/download', () => {
     expect(await fsp.readFile(filePath, 'utf8')).to.equal('a,b\n1,2\n');
   });
 
+  it('uses a broad MIME lookup for content-type extension fallback', async () => {
+    await download(`${baseUrl}/html-fallback`, tmpDir);
+
+    expect(await fsp.readFile(path.join(tmpDir, 'html-fallback.html'), 'utf8')).to.equal(
+      '<!doctype html>\n'
+    );
+  });
+
+  it('preserves the bare basename for generic binary content types', async () => {
+    await download(`${baseUrl}/binary-fallback`, tmpDir);
+
+    expect(await fsp.readFile(path.join(tmpDir, 'binary-fallback'), 'utf8')).to.equal(
+      'binary payload'
+    );
+    expect(await fse.pathExists(path.join(tmpDir, 'binary-fallback.bin'))).to.equal(false);
+  });
+
   it('preserves the bare basename when no extension can be inferred', async () => {
     await download(`${baseUrl}/unknown-payload`, tmpDir);
 
@@ -145,6 +176,12 @@ describe('serverless-utils/download', () => {
     await download(`${baseUrl}/layer-download?Signature=opaque`, tmpDir, { extract: true });
 
     expect(await fsp.readFile(path.join(tmpDir, 'file.txt'), 'utf8')).to.equal('fixture');
+  });
+
+  it('rejects non-ZIP payloads when extract is enabled', async () => {
+    await expect(download(`${baseUrl}/unknown-payload`, tmpDir, { extract: true })).to.be.rejected;
+
+    expect(await fse.pathExists(path.join(tmpDir, 'unknown-payload'))).to.equal(false);
   });
 
   it('extracts a zip archive with the requested strip depth', async () => {

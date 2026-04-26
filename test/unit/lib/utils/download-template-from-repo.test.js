@@ -238,6 +238,7 @@ describe('downloadTemplateFromRepo', () => {
       expect(downloadStub.firstCall.args[2].allowedAuthRedirectHostnames).to.deep.equal([
         'codeload.github.com',
       ]);
+      expect(downloadStub.firstCall.args[2]).to.not.have.property('mode');
     });
 
     it('should download into the provided path and rename the service to the provided name', async () => {
