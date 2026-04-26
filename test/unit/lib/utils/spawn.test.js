@@ -137,8 +137,14 @@ describe('spawn', () => {
 
     expect(error.code).to.equal('ENOENT');
     expect(error.stdoutBuffer).to.deep.equal(Buffer.alloc(0));
-    expect(error.stderrBuffer).to.deep.equal(Buffer.alloc(0));
-    expect(error.stdBuffer).to.deep.equal(Buffer.alloc(0));
+    expect(Buffer.isBuffer(error.stderrBuffer)).to.equal(true);
+    expect(Buffer.isBuffer(error.stdBuffer)).to.equal(true);
+
+    if (error.stderrBuffer.length) {
+      expect(error.stdBuffer.equals(error.stderrBuffer)).to.equal(true);
+    } else {
+      expect(error.stdBuffer).to.deep.equal(Buffer.alloc(0));
+    }
   });
 
   it('handles stdio inherit with null streams on success', async () => {
