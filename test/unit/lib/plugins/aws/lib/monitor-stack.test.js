@@ -518,7 +518,7 @@ describe('monitorStack', () => {
           })
         ).to.be.equal(true);
       } finally {
-        describeStackEventsStub.restore();
+        awsPlugin.provider.request.restore();
       }
     });
 
@@ -583,7 +583,7 @@ describe('monitorStack', () => {
           })
         ).to.be.equal(true);
       } finally {
-        describeStackEventsStub.restore();
+        awsPlugin.provider.request.restore();
       }
     });
 
@@ -661,7 +661,7 @@ describe('monitorStack', () => {
           })
         ).to.be.equal(true);
       } finally {
-        describeStackEventsStub.restore();
+        awsPlugin.provider.request.restore();
       }
     });
 
@@ -739,7 +739,7 @@ describe('monitorStack', () => {
           })
         ).to.be.equal(true);
       } finally {
-        describeStackEventsStub.restore();
+        awsPlugin.provider.request.restore();
       }
     });
 
