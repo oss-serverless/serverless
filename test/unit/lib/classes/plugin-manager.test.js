@@ -1614,7 +1614,7 @@ describe('PluginManager', () => {
       process.chdir(cwd);
       try {
         fse.removeSync(tmpDir);
-      } catch (e) {
+      } catch {
         // Couldn't delete temporary file
       }
     });

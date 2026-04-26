@@ -46,7 +46,12 @@ module.exports = [
         },
       ],
       'import-x/no-unresolved': ['error', { commonjs: true }],
-      'no-unused-vars': ['error', { caughtErrors: 'none' }],
+      'no-unused-vars': [
+        'error',
+        {
+          caughtErrors: 'all',
+        },
+      ],
       'n/no-unsupported-features/node-builtins': ['error', { allowExperimental: true }],
       'n/no-extraneous-require': 'off',
       'n/no-unpublished-require': 'off',
@@ -54,6 +59,12 @@ module.exports = [
       'n/no-process-exit': 'off',
       'n/no-deprecated-api': 'off',
       'n/hashbang': 'off',
+    },
+  },
+  {
+    files: ['bin/serverless.js', 'commands/**/*.js', 'lib/**/*.js', 'scripts/serverless.js'],
+    rules: {
+      'n/no-unpublished-require': 'error',
     },
   },
   {

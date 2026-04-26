@@ -101,7 +101,7 @@ describe('test/unit/lib/configSchema.test.js', () => {
         (err) => {
           try {
             expect(err.message).to.include(someCase.errorMessage);
-          } catch (error) {
+          } catch {
             throw err;
           }
         }

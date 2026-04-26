@@ -62,7 +62,7 @@ async function cleanup() {
     const promises = bucketsToRemove.map((bucket) => deleteBucket(bucket.PhysicalResourceId));
     try {
       await Promise.all(promises);
-    } catch (error) {
+    } catch {
       // do nothing... try to continue with cleanup
     }
   }
@@ -72,7 +72,7 @@ async function cleanup() {
     const promises = stacksToRemove.map((stack) => deleteStack(stack.StackName));
     try {
       await Promise.all(promises);
-    } catch (error) {
+    } catch {
       // do nothing... try to continue with cleanup
     }
   }
@@ -82,7 +82,7 @@ async function cleanup() {
     const promises = apisToRemove.map((api) => deleteRestApi(api.id));
     try {
       await Promise.all(promises);
-    } catch (error) {
+    } catch {
       // do nothing... try to continue with cleanup
     }
   }
@@ -92,7 +92,7 @@ async function cleanup() {
     const promises = userPoolsToRemove.map((userPool) => deleteUserPoolById(userPool.Id));
     try {
       await Promise.all(promises);
-    } catch (error) {
+    } catch {
       // do nothing... try to continue with cleanup
     }
   }

@@ -27,7 +27,7 @@ async function resolveServiceName(cwd) {
   const configObject = (() => {
     try {
       return loadYaml(configContent);
-    } catch (error) {
+    } catch {
       return null;
     }
   })();

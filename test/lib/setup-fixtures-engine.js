@@ -118,7 +118,7 @@ module.exports = memoizee((fixturesPath) => {
         (() => {
           try {
             return loadYaml(configContent, { schema: cloudformationSchema });
-          } catch (error) {
+          } catch {
             return null;
           }
         })();

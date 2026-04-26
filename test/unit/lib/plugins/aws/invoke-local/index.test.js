@@ -1789,7 +1789,7 @@ describe('test/unit/lib/plugins/aws/invokeLocal/index.test.js', () => {
       const executable = process.platform === 'win32' ? 'python.exe' : 'python';
       try {
         await spawnExt(executable, ['--version']);
-      } catch (err) {
+      } catch {
         skipWithNotice(this, 'Python runtime is not installed');
       }
     });
@@ -1815,7 +1815,7 @@ describe('test/unit/lib/plugins/aws/invokeLocal/index.test.js', () => {
       const executable = process.platform === 'win32' ? 'ruby.exe' : 'ruby';
       try {
         await spawnExt(executable, ['--version']);
-      } catch (err) {
+      } catch {
         skipWithNotice(this, 'Ruby runtime is not installed');
       }
     });

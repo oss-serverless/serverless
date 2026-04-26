@@ -28,13 +28,13 @@ module.exports = class TestPlugin {
 
     try {
       this.serverless.extendConfiguration([], { custom: {} });
-    } catch (error) {
+    } catch {
       // ignore this
     }
 
     try {
       this.serverless.extendConfiguration('custom.target.invalid', {});
-    } catch (error) {
+    } catch {
       // ignore this
     }
   }
@@ -42,7 +42,7 @@ module.exports = class TestPlugin {
   extendAfterInit() {
     try {
       this.serverless.extendConfiguration(pluginConfig.afterInitValuePath, 'value');
-    } catch (error) {
+    } catch {
       // ignore this
     }
   }

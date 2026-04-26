@@ -59,7 +59,7 @@ describe('AWS - API Gateway Websocket Integration Test', function () {
           promiseReject(error);
           try {
             ws.close();
-          } catch (closeError) {
+          } catch {
             // safe to ignore
           }
         })(reject);
@@ -102,7 +102,7 @@ describe('AWS - API Gateway Websocket Integration Test', function () {
           promiseReject(error);
           try {
             ws.close();
-          } catch (closeError) {
+          } catch {
             // safe to ignore
           }
         })(reject);
