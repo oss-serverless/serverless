@@ -494,4 +494,74 @@ describe('#request', () => {
       });
     });
   });
+
+  describe('AWS SDK v3 backend', () => {
+    it('sends mapped commands through the v3 client factory', async () => {
+      await overrideEnv(async () => {
+        process.env.SLS_AWS_SDK_V3 = '1';
+
+        const command = { command: true };
+        const sendStub = sinon.stub().resolves({ ok: true, $metadata: { requestId: 'id' } });
+        const createCommandStub = sinon.stub().returns(command);
+        const buildClientConfigStub = sinon.stub().returns({ region: 'us-east-1', maxAttempts: 1 });
+        const normalizeV3ResponseStub = sinon.stub().resolves({ ok: true });
+
+        class FakeAWSClientFactory {
+          send(...args) {
+            return sendStub(...args);
+          }
+        }
+
+        const awsRequest = proxyquire('../../../../lib/aws/request', {
+          './sdk-v2': { config: { httpOptions: {} } },
+          './client-factory': FakeAWSClientFactory,
+          './commands': { createCommand: createCommandStub },
+          './config': { buildClientConfig: buildClientConfigStub },
+          './credentials': { toV3CredentialsProvider: sinon.stub().returns('credentials') },
+          './response-normalizer': { normalizeV3Response: normalizeV3ResponseStub },
+        });
+
+        const result = await awsRequest(
+          { name: 'S3', params: { region: 'us-east-1' } },
+          'getObject',
+          { Bucket: 'bucket', Key: 'key' }
+        );
+
+        expect(result).to.deep.equal({ ok: true });
+        expect(createCommandStub).to.have.been.calledOnceWithExactly('S3', 'getObject', {
+          Bucket: 'bucket',
+          Key: 'key',
+        });
+        expect(buildClientConfigStub).to.have.been.calledOnce;
+        expect(buildClientConfigStub.firstCall.args[0]).to.include({
+          region: 'us-east-1',
+          credentials: 'credentials',
+          maxAttempts: 1,
+        });
+        expect(sendStub).to.have.been.calledOnceWithExactly('S3', command, {
+          region: 'us-east-1',
+          maxAttempts: 1,
+        });
+        expect(normalizeV3ResponseStub).to.have.been.calledOnce;
+      });
+    });
+
+    it('fails loudly for unmapped v3 commands', async () => {
+      await overrideEnv(async () => {
+        process.env.SLS_AWS_SDK_V3 = '1';
+        const mappingError = Object.assign(new Error('Unknown method'), {
+          code: 'AWS_SDK_V3_UNKNOWN_METHOD',
+        });
+
+        const awsRequest = proxyquire('../../../../lib/aws/request', {
+          './sdk-v2': { config: { httpOptions: {} } },
+          './commands': { createCommand: sinon.stub().throws(mappingError) },
+        });
+
+        await expect(awsRequest({ name: 'S3' }, 'unknownMethod', {})).to.be.rejectedWith(
+          'Unknown method'
+        );
+      });
+    });
+  });
 });
