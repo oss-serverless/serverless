@@ -5,7 +5,7 @@ const { expect } = require('chai');
 const awsRequest = require('../../lib/aws-request');
 const CloudFormationService = require('aws-sdk').CloudFormation;
 const log = require('log').get('serverless:test');
-const wait = require('timers-ext/promise/sleep');
+const wait = require('../../../lib/utils/sleep');
 const fixtures = require('../../fixtures/programmatic');
 
 const { confirmCloudWatchLogs } = require('../../utils/misc');

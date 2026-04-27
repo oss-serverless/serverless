@@ -2,7 +2,7 @@
 
 const { expect } = require('chai');
 
-const wait = require('timers-ext/promise/sleep');
+const wait = require('../../../../../lib/utils/sleep');
 const ServerlessError = require('../../../../../lib/serverless-error');
 const resolveMeta = require('../../../../../lib/configuration/variables/resolve-meta');
 const resolve = require('../../../../../lib/configuration/variables/resolve');

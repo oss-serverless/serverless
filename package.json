@@ -88,7 +88,6 @@
     "require-from-string": "^2.0.2",
     "semver": "^7.5.3",
     "signal-exit": "^3.0.7",
-    "timers-ext": "^0.1.7",
     "tsx": "^4.20.3",
     "type": "^2.7.2",
     "undici": "^6.21.0",

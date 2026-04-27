@@ -325,7 +325,7 @@ describe('AwsLogs', () => {
 
       const timersSleep = sinon.stub().rejects();
       const MockedAwsLogs = proxyquire('../../../../../lib/plugins/aws/logs', {
-        'timers-ext/promise/sleep': timersSleep,
+        '../../utils/sleep': timersSleep,
       });
 
       const options = {

@@ -585,7 +585,7 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
         },
       },
       modulesCacheStub: {
-        'timers-ext/promise/sleep': sinon.stub().returns({}),
+        [path.resolve(__dirname, '../../../../../lib/utils/sleep.js')]: sinon.stub().resolves(),
       },
       configExt: {
         functions: {

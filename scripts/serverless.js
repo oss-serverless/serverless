@@ -60,7 +60,7 @@ process.once('uncaughtException', (error) => {
 
 (async () => {
   try {
-    const wait = require('timers-ext/promise/sleep');
+    const wait = require('../lib/utils/sleep');
     await wait(); // Ensure access to "processSpanPromise"
 
     require('signal-exit/signals').forEach((signal) => {

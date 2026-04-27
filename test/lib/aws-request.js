@@ -6,7 +6,7 @@ const ensureConstructor = require('type/constructor/ensure');
 const ensurePlainObject = require('type/plain-object/ensure');
 const memoizeWeak = require('memoizee/weak');
 const awsLog = require('log').get('aws');
-const wait = require('timers-ext/promise/sleep');
+const wait = require('../../lib/utils/sleep');
 
 const getClientInstance = memoizeWeak(
   (Client, options) => {
