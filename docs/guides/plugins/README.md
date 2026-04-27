@@ -6,6 +6,8 @@ If you or your organization have a specific workflow, install a pre-written plug
 
 Since the Serverless Framework is a group of "core" plugins, custom plugins are written exactly the same way as core plugins. Learn more about [creating a custom plugin](creating-plugins.md).
 
+> **Security note:** Plugins are JavaScript code that Serverless Framework loads and executes. Treat configured plugins, local plugin paths, and `plugins.localPath` as trusted code. Do not run Serverless commands against untrusted projects, templates, or pull requests that configure plugins.
+
 Explore existing plugins in the [Serverless Framework Plugins repository](https://www.serverless.com/plugins).
 
 ## Installing plugins
@@ -61,6 +63,8 @@ plugins:
 ```
 
 The path must start with `./` and is relative to the root of your service.
+
+The legacy object form can also set `plugins.localPath` to change where non-relative plugin names are loaded from. Use `plugins.localPath` only with trusted directories.
 
 ## Load Order
 
