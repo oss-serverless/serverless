@@ -63,7 +63,9 @@ process.once('uncaughtException', (error) => {
     const wait = require('../lib/utils/sleep');
     await wait(); // Ensure access to "processSpanPromise"
 
-    require('signal-exit/signals').forEach((signal) => {
+    const { signals } = require('signal-exit/signals');
+
+    signals.forEach((signal) => {
       process.once(signal, () => {
         processLog.debug('exit signal %s', signal);
         // If there's another listener (e.g. we're in daemon context or reading stdin input)
