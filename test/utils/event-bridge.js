@@ -2,28 +2,7 @@
 
 const awsRequest = require('../lib/aws-request');
 
-// Support for both AWS SDK v2 and v3
 const getEventBridgeClient = () => {
-  if (process.env.SLS_AWS_SDK_V3 === '1') {
-    // AWS SDK v3
-    const { EventBridgeClient } = require('@aws-sdk/client-eventbridge');
-    const {
-      CreateEventBusCommand,
-      DeleteEventBusCommand,
-      DescribeEventBusCommand,
-      PutEventsCommand,
-    } = require('@aws-sdk/client-eventbridge');
-
-    const client = new EventBridgeClient({ region: 'us-east-1' });
-
-    return {
-      createEventBus: (params) => client.send(new CreateEventBusCommand(params)),
-      deleteEventBus: (params) => client.send(new DeleteEventBusCommand(params)),
-      describeEventBus: (params) => client.send(new DescribeEventBusCommand(params)),
-      putEvents: (params) => client.send(new PutEventsCommand(params)),
-    };
-  }
-  // AWS SDK v2
   const EventBridgeService = require('aws-sdk').EventBridge;
   return {
     createEventBus: (params) => awsRequest(EventBridgeService, 'createEventBus', params),

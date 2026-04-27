@@ -53,15 +53,8 @@ jobs:
       - name: Validate lint rules
         run: npm run lint:updated
 
-      - name: Packaging tests (AWS SDK v2)
+      - name: Packaging tests
         run: npm run integration-test-run-package
-        env:
-          SLS_AWS_SDK_V3: '0'
-
-      - name: Packaging tests (AWS SDK v3)
-        run: npm run integration-test-run-package
-        env:
-          SLS_AWS_SDK_V3: '1'
 
   linuxNode22:
     name: '[Linux] Node 22: Unit tests'
@@ -87,17 +80,10 @@ jobs:
       - name: Install dependencies
         run: npm install --package-lock=false
 
-      - name: Unit tests (AWS SDK v2)
+      - name: Unit tests
         # Some tests depend on TTY support, which is missing in GA runner
         # Workaround taken from https://github.com/actions/runner/issues/241#issuecomment-577360161
         run: script -e -c "npm test -- -b"
-        env:
-          SLS_AWS_SDK_V3: '0'
-
-      - name: Unit tests (AWS SDK v3)
-        run: script -e -c "npm test -- -b"
-        env:
-          SLS_AWS_SDK_V3: '1'
 
   windowsNode22:
     name: '[Windows] Node 22: Unit tests'

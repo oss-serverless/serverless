@@ -2,32 +2,7 @@
 
 const awsRequest = require('../lib/aws-request');
 
-// Support for both AWS SDK v2 and v3
 const getS3Client = () => {
-  if (process.env.SLS_AWS_SDK_V3 === '1') {
-    // AWS SDK v3
-    const { S3Client } = require('@aws-sdk/client-s3');
-    const {
-      CreateBucketCommand,
-      PutObjectCommand,
-      DeleteObjectCommand,
-      ListObjectsCommand,
-      DeleteObjectsCommand,
-      DeleteBucketCommand,
-    } = require('@aws-sdk/client-s3');
-
-    const client = new S3Client({ region: 'us-east-1' });
-
-    return {
-      createBucket: (params) => client.send(new CreateBucketCommand(params)),
-      putObject: (params) => client.send(new PutObjectCommand(params)),
-      deleteObject: (params) => client.send(new DeleteObjectCommand(params)),
-      listObjects: (params) => client.send(new ListObjectsCommand(params)),
-      deleteObjects: (params) => client.send(new DeleteObjectsCommand(params)),
-      deleteBucket: (params) => client.send(new DeleteBucketCommand(params)),
-    };
-  }
-  // AWS SDK v2
   const S3Service = require('aws-sdk').S3;
   return {
     createBucket: (params) => awsRequest(S3Service, 'createBucket', params),

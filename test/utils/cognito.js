@@ -3,36 +3,7 @@
 const awsLog = require('log').get('aws');
 const awsRequest = require('../lib/aws-request');
 
-// Support for both AWS SDK v2 and v3
 const getCognitoClient = () => {
-  if (process.env.SLS_AWS_SDK_V3 === '1') {
-    // AWS SDK v3
-    const { CognitoIdentityProviderClient } = require('@aws-sdk/client-cognito-identity-provider');
-    const {
-      CreateUserPoolCommand,
-      CreateUserPoolClientCommand,
-      DeleteUserPoolCommand,
-      ListUserPoolsCommand,
-      DescribeUserPoolCommand,
-      AdminCreateUserCommand,
-      AdminSetUserPasswordCommand,
-      InitiateAuthCommand,
-    } = require('@aws-sdk/client-cognito-identity-provider');
-
-    const client = new CognitoIdentityProviderClient({ region: 'us-east-1' });
-
-    return {
-      createUserPool: (params) => client.send(new CreateUserPoolCommand(params)),
-      createUserPoolClient: (params) => client.send(new CreateUserPoolClientCommand(params)),
-      deleteUserPool: (params) => client.send(new DeleteUserPoolCommand(params)),
-      listUserPools: (params) => client.send(new ListUserPoolsCommand(params)),
-      describeUserPool: (params) => client.send(new DescribeUserPoolCommand(params)),
-      adminCreateUser: (params) => client.send(new AdminCreateUserCommand(params)),
-      adminSetUserPassword: (params) => client.send(new AdminSetUserPasswordCommand(params)),
-      initiateAuth: (params) => client.send(new InitiateAuthCommand(params)),
-    };
-  }
-  // AWS SDK v2
   const CognitoIdentityServiceProviderService = require('aws-sdk').CognitoIdentityServiceProvider;
   return {
     createUserPool: (params) =>

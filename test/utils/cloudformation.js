@@ -2,28 +2,7 @@
 
 const awsRequest = require('../lib/aws-request');
 
-// Support for both AWS SDK v2 and v3
 const getCloudFormationClient = () => {
-  if (process.env.SLS_AWS_SDK_V3 === '1') {
-    // AWS SDK v3
-    const { CloudFormationClient } = require('@aws-sdk/client-cloudformation');
-    const {
-      ListStacksCommand,
-      DeleteStackCommand,
-      ListStackResourcesCommand,
-      DescribeStacksCommand,
-    } = require('@aws-sdk/client-cloudformation');
-
-    const client = new CloudFormationClient({ region: 'us-east-1' });
-
-    return {
-      listStacks: (params) => client.send(new ListStacksCommand(params)),
-      deleteStack: (params) => client.send(new DeleteStackCommand(params)),
-      listStackResources: (params) => client.send(new ListStackResourcesCommand(params)),
-      describeStacks: (params) => client.send(new DescribeStacksCommand(params)),
-    };
-  }
-  // AWS SDK v2
   const CloudFormationService = require('aws-sdk').CloudFormation;
   return {
     listStacks: (params) => awsRequest(CloudFormationService, 'listStacks', params),
@@ -120,8 +99,7 @@ async function isDependencyStackAvailable() {
     }
     return false;
   } catch (e) {
-    // Handle both v2 and v3 error patterns
-    if (e.code === 'ValidationError' || e.name === 'ValidationException') {
+    if (e.code === 'ValidationError') {
       return false;
     }
     throw e;

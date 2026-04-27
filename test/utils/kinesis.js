@@ -2,28 +2,7 @@
 
 const awsRequest = require('../lib/aws-request');
 
-// Support for both AWS SDK v2 and v3
 const getKinesisClient = () => {
-  if (process.env.SLS_AWS_SDK_V3 === '1') {
-    // AWS SDK v3
-    const { KinesisClient } = require('@aws-sdk/client-kinesis');
-    const {
-      CreateStreamCommand,
-      DeleteStreamCommand,
-      DescribeStreamCommand,
-      PutRecordCommand,
-    } = require('@aws-sdk/client-kinesis');
-
-    const client = new KinesisClient({ region: 'us-east-1' });
-
-    return {
-      createStream: (params) => client.send(new CreateStreamCommand(params)),
-      deleteStream: (params) => client.send(new DeleteStreamCommand(params)),
-      describeStream: (params) => client.send(new DescribeStreamCommand(params)),
-      putRecord: (params) => client.send(new PutRecordCommand(params)),
-    };
-  }
-  // AWS SDK v2
   const KinesisService = require('aws-sdk').Kinesis;
   return {
     createStream: (params) => awsRequest(KinesisService, 'createStream', params),

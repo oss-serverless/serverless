@@ -371,6 +371,80 @@ describe('AwsProvider', () => {
     });
   });
 
+  describe('#getAwsSdkV3Config()', () => {
+    it('returns SDK v3 config with explicit region and env credentials', async () => {
+      process.env.AWS_ACCESS_KEY_ID = 'accessKeyId';
+      process.env.AWS_SECRET_ACCESS_KEY = 'secretAccessKey';
+      process.env.AWS_SESSION_TOKEN = 'sessionToken';
+
+      const config = await awsProvider.getAwsSdkV3Config({ region: 'eu-west-1' });
+
+      expect(config.region).to.equal('eu-west-1');
+      expect(config.credentials).to.be.a('function');
+      await expect(config.credentials()).to.eventually.deep.equal({
+        accessKeyId: 'accessKeyId',
+        secretAccessKey: 'secretAccessKey',
+        sessionToken: 'sessionToken',
+      });
+    });
+
+    it('prefers stage-specific env credentials over standard env credentials', async () => {
+      process.env.AWS_ACCESS_KEY_ID = 'accessKeyId';
+      process.env.AWS_SECRET_ACCESS_KEY = 'secretAccessKey';
+      process.env.AWS_DEV_ACCESS_KEY_ID = 'stageAccessKeyId';
+      process.env.AWS_DEV_SECRET_ACCESS_KEY = 'stageSecretAccessKey';
+
+      const config = await awsProvider.getAwsSdkV3Config();
+
+      await expect(config.credentials()).to.eventually.deep.equal({
+        accessKeyId: 'stageAccessKeyId',
+        secretAccessKey: 'stageSecretAccessKey',
+        sessionToken: undefined,
+      });
+    });
+
+    it('includes SDK v3 request handler configuration', async () => {
+      process.env.AWS_CLIENT_TIMEOUT = '1234';
+
+      const config = await awsProvider.getAwsSdkV3Config();
+
+      expect(config.requestHandler).to.exist;
+    });
+
+    it('passes profile and custom options to the config helpers', async () => {
+      const buildClientConfigStub = sinon.stub().returns({ config: true });
+      const getAwsSdkV3CredentialsProviderStub = sinon.stub().returns('credentials');
+      const AwsProviderProxyquired = proxyquire
+        .noCallThru()
+        .load('../../../../../lib/plugins/aws/provider.js', {
+          '../../aws/config': { buildClientConfig: buildClientConfigStub },
+          '../../aws/credentials': {
+            getAwsSdkV3CredentialsProvider: getAwsSdkV3CredentialsProviderStub,
+          },
+        });
+      const provider = new AwsProviderProxyquired(serverless, options);
+
+      const config = await provider.getAwsSdkV3Config({
+        profile: 'custom-profile',
+        maxAttempts: 2,
+        retryMode: 'adaptive',
+      });
+
+      expect(config).to.deep.equal({ config: true });
+      expect(getAwsSdkV3CredentialsProviderStub).to.have.been.calledOnceWithExactly({
+        provider,
+        profile: 'custom-profile',
+      });
+      expect(buildClientConfigStub).to.have.been.calledOnceWithExactly({
+        profile: 'custom-profile',
+        maxAttempts: 2,
+        retryMode: 'adaptive',
+        region: 'us-east-1',
+        credentials: 'credentials',
+      });
+    });
+  });
+
   describe('#getServerlessDeploymentBucketName()', () => {
     it('should return the name of the serverless deployment bucket', async () => {
       const describeStackResourcesStub = sinon.stub(awsProvider, 'request').resolves({

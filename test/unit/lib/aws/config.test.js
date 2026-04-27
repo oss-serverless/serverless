@@ -66,17 +66,11 @@ describe('test/unit/lib/aws/config.test.js', () => {
     });
   });
 
-  it('detects S3 acceleration only for compatible methods', () => {
-    const { shouldUseS3Acceleration } = loadConfig();
+  it('passes custom user agent config through', () => {
+    const { buildClientConfig } = loadConfig();
 
-    expect(shouldUseS3Acceleration('upload', { isS3TransferAccelerationEnabled: true })).to.equal(
-      true
+    expect(buildClientConfig({ customUserAgent: 'custom-agent' }).customUserAgent).to.equal(
+      'custom-agent'
     );
-    expect(
-      shouldUseS3Acceleration('putObject', { isS3TransferAccelerationEnabled: true })
-    ).to.equal(true);
-    expect(
-      shouldUseS3Acceleration('getObject', { isS3TransferAccelerationEnabled: true })
-    ).to.equal(false);
   });
 });

@@ -2,30 +2,7 @@
 
 const awsRequest = require('../lib/aws-request');
 
-// Support for both AWS SDK v2 and v3
 const getApiGatewayV2Client = () => {
-  if (process.env.SLS_AWS_SDK_V3 === '1') {
-    // AWS SDK v3
-    const { ApiGatewayV2Client } = require('@aws-sdk/client-apigatewayv2');
-    const {
-      CreateApiCommand,
-      DeleteApiCommand,
-      CreateStageCommand,
-      DeleteStageCommand,
-      GetRoutesCommand,
-    } = require('@aws-sdk/client-apigatewayv2');
-
-    const client = new ApiGatewayV2Client({ region: 'us-east-1' });
-
-    return {
-      createApi: (params) => client.send(new CreateApiCommand(params)),
-      deleteApi: (params) => client.send(new DeleteApiCommand(params)),
-      createStage: (params) => client.send(new CreateStageCommand(params)),
-      deleteStage: (params) => client.send(new DeleteStageCommand(params)),
-      getRoutes: (params) => client.send(new GetRoutesCommand(params)),
-    };
-  }
-  // AWS SDK v2
   const ApiGatewayV2Service = require('aws-sdk').ApiGatewayV2;
   return {
     createApi: (params) => awsRequest(ApiGatewayV2Service, 'createApi', params),

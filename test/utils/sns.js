@@ -2,28 +2,7 @@
 
 const awsRequest = require('../lib/aws-request');
 
-// Support for both AWS SDK v2 and v3
 const getSNSClient = () => {
-  if (process.env.SLS_AWS_SDK_V3 === '1') {
-    // AWS SDK v3
-    const { SNSClient } = require('@aws-sdk/client-sns');
-    const {
-      CreateTopicCommand,
-      DeleteTopicCommand,
-      ListTopicsCommand,
-      PublishCommand,
-    } = require('@aws-sdk/client-sns');
-
-    const client = new SNSClient({ region: 'us-east-1' });
-
-    return {
-      createTopic: (params) => client.send(new CreateTopicCommand(params)),
-      deleteTopic: (params) => client.send(new DeleteTopicCommand(params)),
-      listTopics: (params) => client.send(new ListTopicsCommand(params)),
-      publish: (params) => client.send(new PublishCommand(params)),
-    };
-  }
-  // AWS SDK v2
   const SNSService = require('aws-sdk').SNS;
   return {
     createTopic: (params) => awsRequest(SNSService, 'createTopic', params),

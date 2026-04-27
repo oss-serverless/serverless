@@ -2,28 +2,7 @@
 
 const awsRequest = require('../lib/aws-request');
 
-// Support for both AWS SDK v2 and v3
 const getSQSClient = () => {
-  if (process.env.SLS_AWS_SDK_V3 === '1') {
-    // AWS SDK v3
-    const { SQSClient } = require('@aws-sdk/client-sqs');
-    const {
-      CreateQueueCommand,
-      DeleteQueueCommand,
-      GetQueueUrlCommand,
-      SendMessageCommand,
-    } = require('@aws-sdk/client-sqs');
-
-    const client = new SQSClient({ region: 'us-east-1' });
-
-    return {
-      createQueue: (params) => client.send(new CreateQueueCommand(params)),
-      deleteQueue: (params) => client.send(new DeleteQueueCommand(params)),
-      getQueueUrl: (params) => client.send(new GetQueueUrlCommand(params)),
-      sendMessage: (params) => client.send(new SendMessageCommand(params)),
-    };
-  }
-  // AWS SDK v2
   const SQSService = require('aws-sdk').SQS;
   return {
     createQueue: (params) => awsRequest(SQSService, 'createQueue', params),

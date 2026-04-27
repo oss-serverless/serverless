@@ -2,31 +2,7 @@
 
 const awsRequest = require('../lib/aws-request');
 
-// Support for both AWS SDK v2 and v3
 const getIoTClients = () => {
-  if (process.env.SLS_AWS_SDK_V3 === '1') {
-    // AWS SDK v3 - dual service pattern (IoT + IoTDataPlane)
-    const { IoTClient, DescribeEndpointCommand } = require('@aws-sdk/client-iot');
-    const { IoTDataPlaneClient, PublishCommand } = require('@aws-sdk/client-iot-data-plane');
-
-    const iotClient = new IoTClient({ region: 'us-east-1' });
-
-    return {
-      iot: {
-        describeEndpoint: (params) => iotClient.send(new DescribeEndpointCommand(params)),
-      },
-      createIoTDataClient: (endpoint) => {
-        const iotDataClient = new IoTDataPlaneClient({
-          region: 'us-east-1',
-          endpoint: `https://${endpoint}`,
-        });
-        return {
-          publish: (params) => iotDataClient.send(new PublishCommand(params)),
-        };
-      },
-    };
-  }
-  // AWS SDK v2
   const IotService = require('aws-sdk').Iot;
   const IotDataService = require('aws-sdk').IotData;
   return {
