@@ -14,8 +14,8 @@ env:
   SLS_SCHEMA_CACHE_BASE_DIR: '/home/runner'
 
 jobs:
-  linuxNode22:
-    name: '[Linux] Node 22: Lint, Formatting, Unit & packaging tests'
+  lint:
+    name: '[Linux] Node 24: Formatting, lint & packaging tests'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -34,6 +34,46 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.npm
+          key: npm-no-lock-v1-${{ runner.os }}-node24-${{ hashFiles('package.json') }}
+          restore-keys: |
+            npm-no-lock-v1-${{ runner.os }}-node24-
+
+      - name: Install Node.js and npm
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm install --package-lock=false
+
+      - name: Validate formatting
+        run: npm run prettier-check:updated
+
+      - name: Validate lint rules
+        run: npm run lint:updated
+
+      - name: Packaging tests (AWS SDK v2)
+        run: npm run integration-test-run-package
+        env:
+          SLS_AWS_SDK_V3: '0'
+
+      - name: Packaging tests (AWS SDK v3)
+        run: npm run integration-test-run-package
+        env:
+          SLS_AWS_SDK_V3: '1'
+
+  linuxNode22:
+    name: '[Linux] Node 22: Unit tests'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Restore npm cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.npm
           key: npm-no-lock-v1-${{ runner.os }}-node22-${{ hashFiles('package.json') }}
           restore-keys: |
             npm-no-lock-v1-${{ runner.os }}-node22-
@@ -46,26 +86,16 @@ jobs:
 
       - name: Install dependencies
         run: npm install --package-lock=false
-      - name: Validate formatting
-        run: npm run prettier-check:updated
-      - name: Validate lint rules
-        run: npm run lint:updated
+
       - name: Unit tests (AWS SDK v2)
         # Some tests depend on TTY support, which is missing in GA runner
         # Workaround taken from https://github.com/actions/runner/issues/241#issuecomment-577360161
         run: script -e -c "npm test -- -b"
         env:
           SLS_AWS_SDK_V3: '0'
+
       - name: Unit tests (AWS SDK v3)
         run: script -e -c "npm test -- -b"
-        env:
-          SLS_AWS_SDK_V3: '1'
-      - name: Packaging tests (AWS SDK v2)
-        run: npm run integration-test-run-package
-        env:
-          SLS_AWS_SDK_V3: '0'
-      - name: Packaging tests (AWS SDK v3)
-        run: npm run integration-test-run-package
         env:
           SLS_AWS_SDK_V3: '1'
 
@@ -92,6 +122,7 @@ jobs:
 
       - name: Install dependencies
         run: npm install --package-lock=false
+
       - name: Unit tests
         run: npm test -- -b
 
@@ -118,6 +149,7 @@ jobs:
 
       - name: Install dependencies
         run: npm install --package-lock=false
+
       - name: Unit tests
         # Some tests depend on TTY support, which is missing in GA runner
         # Workaround taken from https://github.com/actions/runner/issues/241#issuecomment-577360161
