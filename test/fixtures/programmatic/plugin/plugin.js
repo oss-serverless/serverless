@@ -9,6 +9,21 @@ module.exports = class TestPlugin {
       customCommand: {
         usage: 'Description of custom command',
         configDependent: false,
+        lifecycleEvents: ['run'],
+        options: {
+          pluginOption: {
+            usage: 'Plugin option',
+            type: 'string',
+          },
+        },
+      },
+    };
+
+    this.hooks = {
+      'customCommand:run': () => {
+        this.utils.writeText(
+          `customCommand invoked${this.options.pluginOption ? ` ${this.options.pluginOption}` : ''}`
+        );
       },
     };
   }

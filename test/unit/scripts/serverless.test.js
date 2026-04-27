@@ -278,6 +278,74 @@ describe('test/unit/scripts/serverless.test.js', () => {
     expect(output).to.include('stage');
   });
 
+  it('should include plugin commands in service help output', async () => {
+    const { servicePath: serviceDir } = await programmaticFixturesEngine.setup('plugin');
+
+    const output = stripAnsi(
+      String(
+        (
+          await spawn('node', [serverlessPath, '--help'], {
+            cwd: serviceDir,
+          })
+        ).stdoutBuffer
+      )
+    );
+
+    expect(output).to.include('TestPlugin');
+    expect(output).to.include('customCommand');
+    expect(output).to.include('Description of custom command');
+  });
+
+  it('should print plugin command help to stdout', async () => {
+    const { servicePath: serviceDir } = await programmaticFixturesEngine.setup('plugin');
+
+    const output = stripAnsi(
+      String(
+        (
+          await spawn('node', [serverlessPath, 'customCommand', '--help'], {
+            cwd: serviceDir,
+          })
+        ).stdoutBuffer
+      )
+    );
+
+    expect(output).to.include('customCommand');
+    expect(output).to.include('Description of custom command');
+    expect(output).to.include('pluginOption');
+  });
+
+  it('should dispatch plugin command', async () => {
+    const { servicePath: serviceDir } = await programmaticFixturesEngine.setup('plugin');
+
+    const output = stripAnsi(
+      String(
+        (
+          await spawn('node', [serverlessPath, 'customCommand'], {
+            cwd: serviceDir,
+          })
+        ).stdoutBuffer
+      )
+    );
+
+    expect(output).to.include('customCommand invoked');
+  });
+
+  it('should parse plugin command options from final plugin schema', async () => {
+    const { servicePath: serviceDir } = await programmaticFixturesEngine.setup('plugin');
+
+    const output = stripAnsi(
+      String(
+        (
+          await spawn('node', [serverlessPath, 'customCommand', '--pluginOption', 'abc'], {
+            cwd: serviceDir,
+          })
+        ).stdoutBuffer
+      )
+    );
+
+    expect(output).to.include('customCommand invoked abc');
+  });
+
   it('should print not integrated command --help to stdout', async () => {
     const output = String(
       (await spawn('node', [serverlessPath, 'plugin', 'install', '--help'])).stdoutBuffer

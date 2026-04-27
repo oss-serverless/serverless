@@ -4,8 +4,13 @@ const { expect } = require('chai');
 const overrideArgv = require('process-utils/override-argv');
 const resolveInput = require('../../../../lib/cli/resolve-input');
 const commandsSchema = require('../../../../lib/cli/commands-schema');
+const resolveFinalCommandsSchema = require('../../../../lib/cli/commands-schema/resolve-final');
 
 describe('test/unit/lib/cli/resolve-input.test.js', () => {
+  afterEach(() => {
+    resolveInput.clear();
+  });
+
   describe('when commands', () => {
     let data;
     before(() => {
@@ -222,6 +227,91 @@ describe('test/unit/lib/cli/resolve-input.test.js', () => {
         options: { env: ['foo=bar', 'bar=baz'] },
         commandsSchema,
       });
+    });
+  });
+
+  describe('cache', () => {
+    it('should return latest explicitly resolved input when later called without arguments', () => {
+      const plugin = {
+        commands: {
+          customCommand: {
+            usage: 'Description of custom command',
+            lifecycleEvents: ['run'],
+            options: {
+              pluginOption: { type: 'string', usage: 'Plugin option' },
+            },
+          },
+        },
+      };
+      const finalCommandsSchema = resolveFinalCommandsSchema(new Set([plugin]), {
+        providerName: 'aws',
+        configuration: {},
+      });
+
+      const resolved = resolveInput(finalCommandsSchema, [
+        'customCommand',
+        '--pluginOption',
+        'value',
+        '--help',
+      ]);
+
+      expect(resolved.command).to.equal('customCommand');
+      expect(resolved.commandSchema).to.equal(finalCommandsSchema.get('customCommand'));
+      expect(resolved.options).to.deep.equal({ pluginOption: 'value', help: true });
+      expect(resolved.isHelpRequest).to.equal(true);
+      expect(resolveInput()).to.equal(resolved);
+    });
+
+    it('should let final plugin schema overwrite an earlier non-plugin parse', () => {
+      const noServiceCommandsSchema = require('../../../../lib/cli/commands-schema/no-service');
+      const finalCommandsSchema = resolveFinalCommandsSchema(
+        new Set([
+          {
+            commands: {
+              customCommand: {
+                usage: 'Description of custom command',
+                lifecycleEvents: ['run'],
+                options: {},
+              },
+            },
+          },
+        ]),
+        { providerName: 'aws', configuration: {} }
+      );
+
+      const early = resolveInput(noServiceCommandsSchema, ['customCommand', '--help']);
+      expect(early.commandSchema).to.equal(undefined);
+
+      const final = resolveInput(finalCommandsSchema, ['customCommand', '--help']);
+      expect(final.commandSchema).to.equal(finalCommandsSchema.get('customCommand'));
+      expect(resolveInput()).to.equal(final);
+    });
+
+    it('should clear cached resolved input', () => {
+      const finalCommandsSchema = resolveFinalCommandsSchema(
+        new Set([
+          {
+            commands: {
+              customCommand: {
+                usage: 'Description of custom command',
+                lifecycleEvents: ['run'],
+                options: {},
+              },
+            },
+          },
+        ]),
+        { providerName: 'aws', configuration: {} }
+      );
+
+      const final = resolveInput(finalCommandsSchema, ['customCommand']);
+      expect(resolveInput()).to.equal(final);
+
+      resolveInput.clear();
+
+      const fallback = overrideArgv({ args: ['serverless', '--help'] }, () => resolveInput());
+
+      expect(fallback).to.not.equal(final);
+      expect(fallback.commandsSchema).to.equal(commandsSchema);
     });
   });
 });

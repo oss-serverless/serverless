@@ -104,11 +104,18 @@ process.once('uncaughtException', (error) => {
     const resolveInput = require('../lib/cli/resolve-input');
 
     let commands;
+    let cliInput;
+    const setCliInput = (resolvedInput) => {
+      cliInput = {
+        ...resolvedInput,
+        isContainerCommand: Boolean(resolvedInput.isContainerCommand),
+        isHelpRequest: Boolean(resolvedInput.isHelpRequest),
+      };
+      ({ command, commands, options, isHelpRequest, commandSchema } = cliInput);
+    };
     processLog.debug('resolve CLI input (no service schema)');
     // Parse args against schemas of commands which do not require to be run in service context
-    ({ command, commands, options, isHelpRequest, commandSchema } = resolveInput(
-      require('../lib/cli/commands-schema/no-service')
-    ));
+    setCliInput(resolveInput(require('../lib/cli/commands-schema/no-service')));
 
     // If version number request, show it and abort
     if (options.version) {
@@ -132,6 +139,7 @@ process.once('uncaughtException', (error) => {
     const { randomUUID } = require('node:crypto');
     const clear = require('ext/object/clear');
     const Serverless = require('../lib/serverless');
+    const { safeShallowAssign } = require('../lib/utils/safe-object');
     const resolveVariables = require('../lib/configuration/variables/resolve');
     const isPropertyResolved = require('../lib/configuration/variables/is-property-resolved');
     const eventuallyReportVariableResolutionErrors = require('../lib/configuration/variables/eventually-report-resolution-errors');
@@ -155,6 +163,17 @@ process.once('uncaughtException', (error) => {
         'INACCESSIBLE_CONFIGURATION_PROPERTY'
       );
     };
+    const eventuallyReportVariableResolutionErrorsForCliInput = (
+      serviceConfigurationPath,
+      serviceConfiguration,
+      serviceVariablesMeta
+    ) =>
+      eventuallyReportVariableResolutionErrors(
+        serviceConfigurationPath,
+        serviceConfiguration,
+        serviceVariablesMeta,
+        { isHelpRequest }
+      );
 
     if (!commandSchema || commandSchema.serviceDependencyMode) {
       // Command is potentially service specific, follow up with resolution of service config
@@ -163,17 +182,17 @@ process.once('uncaughtException', (error) => {
       // as they may influence configuration resolution
       processLog.debug('resolve CLI input (service schema)');
       resolveInput.clear();
-      ({ command, commands, options, isHelpRequest, commandSchema } = resolveInput(
-        require('../lib/cli/commands-schema/service')
-      ));
+      setCliInput(resolveInput(require('../lib/cli/commands-schema/service')));
 
       processLog.debug('resolve eventual service configuration');
       const resolveConfigurationPath = require('../lib/cli/resolve-configuration-path');
       const readConfiguration = require('../lib/configuration/read');
       const resolveProviderName = require('../lib/configuration/resolve-provider-name');
+      const resolveProviderNameForCliInput = (serviceConfiguration) =>
+        resolveProviderName(serviceConfiguration, { isHelpRequest });
 
       // Resolve eventual service configuration path
-      configurationPath = await resolveConfigurationPath();
+      configurationPath = await resolveConfigurationPath({ options: { ...options } });
       if (configurationPath) {
         processLog.debug('service configuration found at %s', configurationPath);
       } else processLog.debug('no service configuration found');
@@ -205,7 +224,7 @@ process.once('uncaughtException', (error) => {
           variablesMeta = resolveVariablesMeta(configuration);
 
           if (
-            eventuallyReportVariableResolutionErrors(
+            eventuallyReportVariableResolutionErrorsForCliInput(
               configurationPath,
               configuration,
               variablesMeta
@@ -220,7 +239,7 @@ process.once('uncaughtException', (error) => {
           if (!ensureResolvedProperty('deprecationNotificationMode')) return;
 
           if (isPropertyResolved(variablesMeta, 'provider\0name')) {
-            providerName = resolveProviderName(configuration);
+            providerName = resolveProviderNameForCliInput(configuration);
             if (providerName == null) {
               variablesMeta = null;
               return;
@@ -231,9 +250,7 @@ process.once('uncaughtException', (error) => {
             // parse args again also against schemas commands which require AWS service context
             processLog.debug('resolve CLI input (AWS service schema)');
             resolveInput.clear();
-            ({ command, commands, options, isHelpRequest, commandSchema } = resolveInput(
-              require('../lib/cli/commands-schema/aws-service')
-            ));
+            setCliInput(resolveInput(require('../lib/cli/commands-schema/aws-service')));
           }
 
           let envVarNamesNeededForDotenvResolution;
@@ -264,7 +281,7 @@ process.once('uncaughtException', (error) => {
             await resolveVariables(resolverConfiguration);
 
             if (
-              eventuallyReportVariableResolutionErrors(
+              eventuallyReportVariableResolutionErrorsForCliInput(
                 configurationPath,
                 configuration,
                 variablesMeta
@@ -276,7 +293,7 @@ process.once('uncaughtException', (error) => {
             }
 
             if (!providerName && isPropertyResolved(variablesMeta, 'provider\0name')) {
-              providerName = resolveProviderName(configuration);
+              providerName = resolveProviderNameForCliInput(configuration);
               if (providerName == null) {
                 variablesMeta = null;
                 return;
@@ -287,9 +304,7 @@ process.once('uncaughtException', (error) => {
                 // service
                 processLog.debug('resolve CLI input (AWS service schema)');
                 resolveInput.clear();
-                ({ command, commands, options, isHelpRequest, commandSchema } = resolveInput(
-                  require('../lib/cli/commands-schema/aws-service')
-                ));
+                setCliInput(resolveInput(require('../lib/cli/commands-schema/aws-service')));
 
                 if (commandSchema) {
                   processLog.debug('resolve variables in core properties #2');
@@ -299,7 +314,7 @@ process.once('uncaughtException', (error) => {
                   });
                   await resolveVariables(resolverConfiguration);
                   if (
-                    eventuallyReportVariableResolutionErrors(
+                    eventuallyReportVariableResolutionErrorsForCliInput(
                       configurationPath,
                       configuration,
                       variablesMeta
@@ -328,7 +343,7 @@ process.once('uncaughtException', (error) => {
                 propertyPathsToResolve: new Set(['provider\0stage', 'useDotenv']),
               });
               if (
-                eventuallyReportVariableResolutionErrors(
+                eventuallyReportVariableResolutionErrorsForCliInput(
                   configurationPath,
                   configuration,
                   variablesMeta
@@ -371,7 +386,7 @@ process.once('uncaughtException', (error) => {
               processLog.debug('resolve variables in "provider.name"');
               await resolveVariables(resolverConfiguration);
               if (
-                eventuallyReportVariableResolutionErrors(
+                eventuallyReportVariableResolutionErrorsForCliInput(
                   configurationPath,
                   configuration,
                   variablesMeta
@@ -387,7 +402,7 @@ process.once('uncaughtException', (error) => {
 
           if (!providerName) {
             if (!ensureResolvedProperty('provider\0name')) return;
-            providerName = resolveProviderName(configuration);
+            providerName = resolveProviderNameForCliInput(configuration);
             if (providerName == null) {
               variablesMeta = null;
               return;
@@ -395,9 +410,7 @@ process.once('uncaughtException', (error) => {
             if (!commandSchema && providerName === 'aws') {
               processLog.debug('resolve CLI input (AWS service schema)');
               resolveInput.clear();
-              ({ command, commands, options, isHelpRequest, commandSchema } = resolveInput(
-                require('../lib/cli/commands-schema/aws-service')
-              ));
+              setCliInput(resolveInput(require('../lib/cli/commands-schema/aws-service')));
               if (commandSchema) {
                 resolverConfiguration.options = filterSupportedOptions(options, {
                   commandSchema,
@@ -419,7 +432,7 @@ process.once('uncaughtException', (error) => {
 
           await resolveVariables(resolverConfiguration);
           if (
-            eventuallyReportVariableResolutionErrors(
+            eventuallyReportVariableResolutionErrorsForCliInput(
               configurationPath,
               configuration,
               variablesMeta
@@ -446,27 +459,23 @@ process.once('uncaughtException', (error) => {
 
         // Ensure to have full AWS commands schema loaded if we're in context of AWS provider
         // It's not the case if not AWS service specific command was resolved
-        if (configuration && resolveProviderName(configuration) === 'aws') {
+        if (configuration && resolveProviderNameForCliInput(configuration) === 'aws') {
           processLog.debug('resolve CLI input (AWS service schema)');
           resolveInput.clear();
-          ({ command, commands, options, isHelpRequest, commandSchema } = resolveInput(
-            require('../lib/cli/commands-schema/aws-service')
-          ));
+          setCliInput(resolveInput(require('../lib/cli/commands-schema/aws-service')));
         }
       } else {
         // In non-service context we recognize all AWS service commands
         processLog.debug('parsing of configuration file failed');
         processLog.debug('resolve CLI input (AWS service schema)');
         resolveInput.clear();
-        ({ command, commands, options, isHelpRequest, commandSchema } = resolveInput(
-          require('../lib/cli/commands-schema/aws-service')
-        ));
+        setCliInput(resolveInput(require('../lib/cli/commands-schema/aws-service')));
 
         // Validate result command and options
-        require('../lib/cli/ensure-supported-command')();
+        require('../lib/cli/ensure-supported-command')(null, cliInput);
       }
     } else {
-      require('../lib/cli/ensure-supported-command')();
+      require('../lib/cli/ensure-supported-command')(null, cliInput);
     }
 
     const configurationFilename = configuration && configurationPath.slice(serviceDir.length + 1);
@@ -479,7 +488,7 @@ process.once('uncaughtException', (error) => {
     if (!isHelpRequest) {
       if (isStandaloneCommand) {
         processLog.debug('run standalone command');
-        if (configuration) require('../lib/cli/ensure-supported-command')(configuration);
+        if (configuration) require('../lib/cli/ensure-supported-command')(configuration, cliInput);
         await require(`../commands/${commands.join('-')}`)({
           configuration,
           serviceDir,
@@ -496,8 +505,7 @@ process.once('uncaughtException', (error) => {
       configuration,
       serviceDir,
       configurationFilename,
-      commands,
-      options,
+      ...cliInput,
       variablesMeta,
     });
 
@@ -522,11 +530,7 @@ process.once('uncaughtException', (error) => {
               { providerName: providerName || 'aws', configuration }
             );
             resolveInput.clear();
-            ({ command, commands, options, isHelpRequest, commandSchema } =
-              resolveInput(commandsSchema));
-            serverless.processedInput.commands = serverless.pluginManager.cliCommands = commands;
-            serverless.processedInput.options = options;
-            Object.assign(clear(serverless.pluginManager.cliOptions), options);
+            setCliInput(resolveInput(commandsSchema));
             hasFinalCommandSchema = true;
           }
         }
@@ -534,14 +538,17 @@ process.once('uncaughtException', (error) => {
           // Invalid configuration, ensure to recognize all AWS commands
           processLog.debug('resolve CLI input (AWS service schema)');
           resolveInput.clear();
-          ({ command, commands, options, isHelpRequest, commandSchema } = resolveInput(
-            require('../lib/cli/commands-schema/aws-service')
-          ));
+          setCliInput(resolveInput(require('../lib/cli/commands-schema/aws-service')));
         }
         hasFinalCommandSchema = true;
 
+        Object.assign(serverless.processedInput, cliInput);
+        serverless.pluginManager.cliCommands = commands;
+        safeShallowAssign(clear(serverless.pluginManager.cliOptions), options);
+
         // Validate result command and options
-        if (hasFinalCommandSchema) require('../lib/cli/ensure-supported-command')(configuration);
+        if (hasFinalCommandSchema)
+          require('../lib/cli/ensure-supported-command')(configuration, cliInput);
         if (isHelpRequest) return;
         if (!(variablesMeta && variablesMeta.size)) return;
         if (!resolverConfiguration) {
@@ -595,7 +602,7 @@ process.once('uncaughtException', (error) => {
           await resolveVariables(resolverConfiguration);
           if (!variablesMeta.size) return;
           if (
-            eventuallyReportVariableResolutionErrors(
+            eventuallyReportVariableResolutionErrorsForCliInput(
               configurationPath,
               configuration,
               variablesMeta
@@ -644,7 +651,11 @@ process.once('uncaughtException', (error) => {
         await resolveVariables(resolverConfiguration);
         if (!variablesMeta.size) return;
         if (
-          eventuallyReportVariableResolutionErrors(configurationPath, configuration, variablesMeta)
+          eventuallyReportVariableResolutionErrorsForCliInput(
+            configurationPath,
+            configuration,
+            variablesMeta
+          )
         ) {
           return;
         }
@@ -671,7 +682,7 @@ process.once('uncaughtException', (error) => {
       if (isHelpRequest && serverless.pluginManager.externalPlugins) {
         // Show help
         processLog.debug('render help');
-        require('../lib/cli/render-help')(serverless.pluginManager.externalPlugins);
+        require('../lib/cli/render-help')(serverless.pluginManager.externalPlugins, cliInput);
       } else {
         processLog.debug('run Serverless instance');
         // Run command

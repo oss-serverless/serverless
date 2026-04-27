@@ -3,10 +3,32 @@
 const { expect } = require('chai');
 const overrideArgv = require('process-utils/override-argv');
 const resolveInput = require('../../../../../lib/cli/resolve-input');
+const resolveFinalCommandsSchema = require('../../../../../lib/cli/commands-schema/resolve-final');
 const renderHelp = require('../../../../../lib/cli/render-help');
 const observeOutput = require('../../../../lib/observe-output');
 
 describe('test/unit/lib/cli/render-help/index.test.js', () => {
+  class TestPlugin {
+    constructor() {
+      this.commands = {
+        customCommand: {
+          usage: 'Description of custom command',
+          lifecycleEvents: ['run'],
+          options: {
+            pluginOption: {
+              usage: 'Plugin option',
+              type: 'string',
+            },
+          },
+        },
+      };
+    }
+  }
+
+  afterEach(() => {
+    resolveInput.clear();
+  });
+
   it('should show general help on main command', async () => {
     resolveInput.clear();
     const output = await overrideArgv(
@@ -52,5 +74,53 @@ describe('test/unit/lib/cli/render-help/index.test.js', () => {
     expect(output.observedOutput).to.have.string(
       output.commandsSchema.get('deploy function').usage
     );
+  });
+
+  it('should include plugin commands in general help from explicit resolved input', async () => {
+    const plugin = new TestPlugin();
+    const loadedPlugins = new Set([plugin]);
+    const commandsSchema = resolveFinalCommandsSchema(loadedPlugins, {
+      providerName: 'aws',
+      configuration: {},
+    });
+
+    const output = await observeOutput(() =>
+      renderHelp(loadedPlugins, {
+        command: '',
+        commands: [],
+        options: { help: true },
+        commandSchema: commandsSchema.get(''),
+        commandsSchema,
+        isHelpRequest: true,
+      })
+    );
+
+    expect(output).to.include('TestPlugin');
+    expect(output).to.include('customCommand');
+    expect(output).to.include('Description of custom command');
+  });
+
+  it('should render plugin command help from explicit resolved input', async () => {
+    const plugin = new TestPlugin();
+    const loadedPlugins = new Set([plugin]);
+    const commandsSchema = resolveFinalCommandsSchema(loadedPlugins, {
+      providerName: 'aws',
+      configuration: {},
+    });
+
+    const output = await observeOutput(() =>
+      renderHelp(loadedPlugins, {
+        command: 'customCommand',
+        commands: ['customCommand'],
+        options: { help: true },
+        commandSchema: commandsSchema.get('customCommand'),
+        commandsSchema,
+        isHelpRequest: true,
+      })
+    );
+
+    expect(output).to.include('customCommand');
+    expect(output).to.include('Description of custom command');
+    expect(output).to.include('pluginOption');
   });
 });
