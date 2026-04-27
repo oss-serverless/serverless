@@ -91,7 +91,7 @@
     "timers-ext": "^0.1.7",
     "tsx": "^4.20.3",
     "type": "^2.7.2",
-    "undici": "^6.21.0",
+    "undici": "^7.25.0",
     "uni-global": "^1.0.0",
     "untildify": "^4.0.0",
     "write-file-atomic": "^4.0.2",
