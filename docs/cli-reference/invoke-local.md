@@ -11,9 +11,9 @@ serverless invoke local --function functionName
 ## Options
 
 - `--function` or `-f`: The name of the function in your service that you want to invoke locally. **Required**.
-- `--path` or `-p`: The path to a JSON file holding input data to be passed to the invoked function as the `event`. This path is relative to the root directory of the service.
+- `--path` or `-p`: The path to a JSON file holding input data to be passed to the invoked function as the `event`. Relative paths are resolved from the root directory of the service. Absolute paths are also accepted.
 - `--data` or `-d`: String containing data to be passed as an event to your function. Keep in mind that if you pass both `--path` and `--data`, the data included in the `--path` file will overwrite the data you passed with the `--data` flag.
-- `--contextPath` or `-x`: The path to a JSON file holding input context to be passed to the invoked function. This path is relative to the root directory of the service.
+- `--contextPath` or `-x`: The path to a JSON file holding input context to be passed to the invoked function. Relative paths are resolved from the root directory of the service. Absolute paths are also accepted.
 - `--context` or `-c`: String containing data to be passed as a context to your function. You can use this to overwrite specific parts of the default fake AWS context. As with `--data`, context included in `--contextPath` will overwrite the context you passed with `--context` flag.
 - `--raw`: By default, your input `data` and `context` strings are parsed as a JSON object. Set this option if you want them to be treated as raw strings instead.
 
@@ -21,6 +21,8 @@ serverless invoke local --function functionName
 * `--docker` Enable docker support for NodeJS/Python/Ruby/Java. Enabled by default for other
   runtimes.
 * `--docker-arg` Pass additional arguments to docker run command when `--docker` is option used. e.g. `--docker-arg '-p 9229:9229' --docker-arg '-v /var:/host_var'`
+
+> **Security note:** When `serverless invoke local` receives a `--path` or `--contextPath` value ending in `.js`, the Framework loads it with Node.js (`require()`), which executes the file so it can export event or context data. Treat JavaScript input files and paths supplied by scripts or CI as trusted input. Prefer JSON or YAML files for event and context data from untrusted sources.
 
 ## Environment
 

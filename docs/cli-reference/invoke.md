@@ -37,12 +37,13 @@ serverless invoke local --function functionName
 ## Options
 
 - `--function` or `-f` The name of the function in your service that you want to invoke locally. **Required**.
-- `--path` or `-p` The path to a json file holding input data to be passed to the invoked function as the `event`. This path is relative to the
-  root directory of the service.
+- `--path` or `-p` The path to a json file holding input data to be passed to the invoked function as the `event`. Relative paths are resolved from the root directory of the service. Absolute paths are also accepted.
 - `--data` or `-d` String data to be passed as an event to your function. Keep in mind that if you pass both `--path` and `--data`, the data included in the `--path` file will overwrite the data you passed with the `--data` flag.
 - `--raw` Pass data as a raw string even if it is JSON. If not set, JSON data are parsed and passed as an object.
-- `--contextPath` or `-x`, The path to a json file holding input context to be passed to the invoked function. This path is relative to the root directory of the service.
+- `--contextPath` or `-x`, The path to a json file holding input context to be passed to the invoked function. Relative paths are resolved from the root directory of the service. Absolute paths are also accepted.
 - `--context` or `-c`, String data to be passed as a context to your function. Same like with `--data`, context included in `--contextPath` will overwrite the context you passed with `--context` flag.
+
+> **Security note:** For `serverless invoke local`, `.js` files provided with `--path` or `--contextPath` are loaded with Node.js and executed. Treat those files and any paths supplied by scripts or CI as trusted input. Prefer JSON or YAML files for event and context data from untrusted sources.
 
 ## Examples
 
