@@ -138,7 +138,7 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
             name: '--prefix=/tmp/x',
           },
         })
-      ).to.be.rejected.and.have.property('code', 'INVALID_PLUGIN_NAME');
+      ).to.be.eventually.rejected.and.have.property('code', 'INVALID_PLUGIN_NAME');
 
       expect(spawnFake).to.not.have.been.called;
       expect(await fse.readFile(configurationFilePath, 'utf8')).to.equal(originalConfigurationText);

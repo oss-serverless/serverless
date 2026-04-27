@@ -109,7 +109,7 @@ describe('test/unit/commands/plugin-uninstall.test.js', async () => {
             name: '--prefix=/tmp/x',
           },
         })
-      ).to.be.rejected.and.have.property('code', 'INVALID_PLUGIN_NAME');
+      ).to.be.eventually.rejected.and.have.property('code', 'INVALID_PLUGIN_NAME');
 
       expect(spawnFake).to.not.have.been.called;
       expect(await fse.readFile(fixtureConfigurationPath, 'utf8')).to.equal(

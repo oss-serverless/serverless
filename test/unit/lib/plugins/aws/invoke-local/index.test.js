@@ -994,7 +994,7 @@ describe('AwsInvokeLocal', () => {
             tmpServicePath,
             {}
           )
-        ).to.be.rejected.and.have.property('code', 'JAVA_BRIDGE_BUILD_FAILED');
+        ).to.be.eventually.rejected.and.have.property('code', 'JAVA_BRIDGE_BUILD_FAILED');
 
         expect(callJavaBridgeStub).to.not.have.been.called;
         expect(spawnExtStub.calledOnce).to.be.equal(true);

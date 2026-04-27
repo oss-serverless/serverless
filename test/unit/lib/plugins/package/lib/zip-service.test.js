@@ -29,6 +29,9 @@ const expectNpmListCall = (stub, index, envName) => {
     '--all',
   ]);
   expect(call.args[2].cwd).to.match(/.+/);
+  expect(call.args[2].stdio[0]).to.equal('ignore');
+  expect(call.args[2].stdio[1]).to.be.a('number');
+  expect(call.args[2].stdio[2]).to.equal('ignore');
   expect(call.args[2]).to.not.have.property('shell');
 };
 
@@ -145,21 +148,28 @@ describe('zipService', () => {
 
     describe('when dealing with Node.js runtimes', () => {
       let globSyncStub;
-      let appendFileAsyncStub;
+      let closeFileStub;
+      let openFileAsyncStub;
       let readFileAsyncStub;
+      let nextFileDescriptor;
       let serviceDir;
 
       beforeEach(() => {
         serviceDir = packagePlugin.serverless.serviceDir;
+        nextFileDescriptor = 100;
         globSyncStub = sinon.stub(glob, 'sync');
         readFileAsyncStub = sinon.stub(fs.promises, 'readFile');
-        appendFileAsyncStub = sinon.stub(fs.promises, 'appendFile').resolves();
+        closeFileStub = sinon.stub().resolves();
+        openFileAsyncStub = sinon.stub(fs.promises, 'open').callsFake(async () => ({
+          fd: nextFileDescriptor++,
+          close: closeFileStub,
+        }));
       });
 
       afterEach(() => {
         glob.sync.restore();
         fs.promises.readFile.restore();
-        fs.promises.appendFile.restore();
+        fs.promises.open.restore();
       });
 
       it('does not add async helpers to core modules when loaded', () => {
@@ -221,7 +231,8 @@ describe('zipService', () => {
             });
             expectNpmListCall(spawnExtStub, 0, 'dev');
             expectNpmListCall(spawnExtStub, 1, 'prod');
-            expect(appendFileAsyncStub).to.have.been.calledTwice;
+            expect(openFileAsyncStub).to.have.been.calledTwice;
+            expect(closeFileStub).to.have.been.calledTwice;
             expect(updatedParams.exclude).to.deep.equal(['user-defined-exclude-me']);
             expect(updatedParams.include).to.deep.equal(['user-defined-include-me']);
             expect(updatedParams.zipFileName).to.equal(params.zipFileName);
@@ -229,21 +240,32 @@ describe('zipService', () => {
         );
       });
 
-      it('should append npm ls stdout without shell redirection', async () => {
+      it('should stream npm ls stdout to dependency files without shell redirection', async () => {
         const filePaths = ['package.json', 'node_modules'];
 
         globSyncStub.returns(filePaths);
-        resolveSpawnCall(spawnExtStub.onCall(0), 'dev-dependencies');
-        resolveSpawnCall(spawnExtStub.onCall(1), 'prod-dependencies');
+        resolveSpawnCall(spawnExtStub.onCall(0));
+        resolveSpawnCall(spawnExtStub.onCall(1));
         readFileAsyncStub.resolves('');
 
         return expect(packagePlugin.excludeDevDependencies(params)).to.be.fulfilled.then(() => {
           expectNpmListCall(spawnExtStub, 0, 'dev');
           expectNpmListCall(spawnExtStub, 1, 'prod');
-          expect(appendFileAsyncStub).to.have.been.calledTwice;
+          expect(openFileAsyncStub).to.have.been.calledTwice;
+          expect(openFileAsyncStub.getCalls().map((call) => call.args[1])).to.deep.equal([
+            'a',
+            'a',
+          ]);
+          const openedFiles = openFileAsyncStub
+            .getCalls()
+            .map((call) => path.basename(call.args[0]));
           expect(
-            appendFileAsyncStub.getCalls().map((call) => call.args[1].toString())
-          ).to.have.members(['dev-dependencies', 'prod-dependencies']);
+            openedFiles.some((fileName) => /^node-dependencies-.+-dev$/.test(fileName))
+          ).to.equal(true);
+          expect(
+            openedFiles.some((fileName) => /^node-dependencies-.+-prod$/.test(fileName))
+          ).to.equal(true);
+          expect(closeFileStub).to.have.been.calledTwice;
         });
       });
 
@@ -274,6 +296,7 @@ describe('zipService', () => {
           (updatedParams) => {
             expect(globSyncStub).to.been.calledOnce;
             expect(spawnExtStub).to.have.been.calledTwice;
+            expect(closeFileStub).to.have.been.calledTwice;
             expect(readFileAsyncStub).to.have.been.calledTwice;
             expect(updatedParams.exclude).to.deep.equal(['user-defined-exclude-me']);
             expect(updatedParams.include).to.deep.equal(['user-defined-include-me']);
