@@ -130,7 +130,8 @@ describe('downloadTemplateFromRepo', () => {
         expect(downloadStub.calledOnce).to.equal(false);
         expect(spawnStub.args[0][0]).to.equal('git');
         expect(spawnStub.args[0][1][0]).to.equal('clone');
-        expect(spawnStub.args[0][1][1]).to.equal(url);
+        expect(spawnStub.args[0][1][1]).to.equal('--');
+        expect(spawnStub.args[0][1][2]).to.equal(url);
       });
     });
 
@@ -151,7 +152,8 @@ describe('downloadTemplateFromRepo', () => {
         expect(downloadStub.calledOnce).to.equal(false);
         expect(spawnStub.args[0][0]).to.equal('git');
         expect(spawnStub.args[0][1][0]).to.equal('clone');
-        expect(spawnStub.args[0][1][1]).to.equal(url);
+        expect(spawnStub.args[0][1][1]).to.equal('--');
+        expect(spawnStub.args[0][1][2]).to.equal(url);
         const yml = readFileSync(path.join(newServicePath, 'serverless.yml'));
         expect(yml.service).to.equal(name);
         expect(serviceName).to.equal('sample-service');
@@ -166,7 +168,8 @@ describe('downloadTemplateFromRepo', () => {
         expect(downloadStub.calledOnce).to.equal(false);
         expect(spawnStub.args[0][0]).to.equal('git');
         expect(spawnStub.args[0][1][0]).to.equal('clone');
-        expect(spawnStub.args[0][1][1]).to.equal(url);
+        expect(spawnStub.args[0][1][1]).to.equal('--');
+        expect(spawnStub.args[0][1][2]).to.equal(url);
       });
     });
 
@@ -187,7 +190,8 @@ describe('downloadTemplateFromRepo', () => {
         expect(downloadStub.calledOnce).to.equal(false);
         expect(spawnStub.args[0][0]).to.equal('git');
         expect(spawnStub.args[0][1][0]).to.equal('clone');
-        expect(spawnStub.args[0][1][1]).to.equal(url);
+        expect(spawnStub.args[0][1][1]).to.equal('--');
+        expect(spawnStub.args[0][1][2]).to.equal(url);
         const yml = readFileSync(path.join(newServicePath, 'serverless.yml'));
         expect(yml.service).to.equal(name);
         expect(serviceName).to.equal('sample-service');

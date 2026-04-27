@@ -5,19 +5,35 @@ const path = require('path');
 const JsZip = require('jszip');
 const glob = require('../../../../../../lib/utils/glob');
 const fs = require('fs');
-const childProcess = require('child_process');
 const sinon = require('sinon');
 const proxyquire = require('proxyquire');
 const isObject = require('type/object/is');
-const Package = require('../../../../../../lib/plugins/package/package');
 const Serverless = require('../../../../../../lib/serverless');
 const { getTmpDirPath } = require('../../../../../utils/fs');
 
 // Configure chai
 const { expect } = require('chai');
 
-const resolveExecCall = (stub) => stub.callsArgWith(2, null, '', '');
-const rejectExecCall = (stub) => stub.callsArgWith(2, new Error('npm ls failed'));
+const resolveSpawnCall = (stub, output = '') =>
+  stub.resolves({ stdoutBuffer: Buffer.from(output) });
+const rejectSpawnCall = (stub) => stub.rejects(new Error('npm ls failed'));
+const expectNpmListCall = (stub, index, envName) => {
+  const call = stub.getCall(index);
+  expect(call.args[0]).to.equal('npm');
+  expect(call.args[1]).to.deep.equal([
+    'ls',
+    `--${envName}=true`,
+    '--parseable=true',
+    '--long=false',
+    '--silent',
+    '--all',
+  ]);
+  expect(call.args[2].cwd).to.match(/.+/);
+  expect(call.args[2]).to.not.have.property('shell');
+};
+
+let Package;
+let spawnExtStub;
 
 describe('zipService', () => {
   let tmpDirPath;
@@ -27,6 +43,13 @@ describe('zipService', () => {
 
   beforeEach(() => {
     tmpDirPath = getTmpDirPath();
+    spawnExtStub = sinon.stub().resolves({ stdoutBuffer: Buffer.alloc(0) });
+    const zipService = proxyquire('../../../../../../lib/plugins/package/lib/zip-service', {
+      '../../../utils/spawn': spawnExtStub,
+    });
+    Package = proxyquire('../../../../../../lib/plugins/package/package', {
+      './lib/zip-service': zipService,
+    });
     serverless = new Serverless({ commands: [], options: {} });
     serverless.service.service = 'first-service';
     serverless.serviceDir = tmpDirPath;
@@ -122,33 +145,33 @@ describe('zipService', () => {
 
     describe('when dealing with Node.js runtimes', () => {
       let globSyncStub;
-      let execAsyncStub;
+      let appendFileAsyncStub;
       let readFileAsyncStub;
       let serviceDir;
 
       beforeEach(() => {
         serviceDir = packagePlugin.serverless.serviceDir;
         globSyncStub = sinon.stub(glob, 'sync');
-        execAsyncStub = sinon.stub(childProcess, 'exec');
         readFileAsyncStub = sinon.stub(fs.promises, 'readFile');
+        appendFileAsyncStub = sinon.stub(fs.promises, 'appendFile').resolves();
       });
 
       afterEach(() => {
         glob.sync.restore();
-        childProcess.exec.restore();
         fs.promises.readFile.restore();
+        fs.promises.appendFile.restore();
       });
 
       it('does not add async helpers to core modules when loaded', () => {
-        const fakeChildProcess = { exec: () => {} };
         const fakeFs = { promises: { readFile: () => {} } };
+        const fakeSpawn = () => {};
 
         proxyquire.noCallThru().load('../../../../../../lib/plugins/package/lib/zip-service', {
-          child_process: fakeChildProcess,
-          fs: fakeFs,
+          'fs': fakeFs,
+          '../../../utils/spawn': fakeSpawn,
         });
 
-        expect(fakeChildProcess).to.not.have.property('execAsync');
+        expect(fakeSpawn).to.not.have.property('spawnAsync');
         expect(fakeFs).to.not.have.property('readFileAsync');
       });
 
@@ -160,7 +183,7 @@ describe('zipService', () => {
         return expect(packagePlugin.excludeDevDependencies(params)).to.be.fulfilled.then(
           (updatedParams) => {
             expect(globSyncStub).to.have.been.calledOnce;
-            expect(execAsyncStub).to.not.have.been.called;
+            expect(spawnExtStub).to.not.have.been.called;
             expect(readFileAsyncStub).to.not.have.been.called;
             expect(globSyncStub).to.have.been.calledWithExactly(['**/package.json'], {
               cwd: packagePlugin.serverless.serviceDir,
@@ -180,14 +203,14 @@ describe('zipService', () => {
         const filePaths = ['package.json', 'node_modules'];
 
         globSyncStub.returns(filePaths);
-        resolveExecCall(execAsyncStub);
+        resolveSpawnCall(spawnExtStub);
         const depPaths = '';
         readFileAsyncStub.resolves(depPaths);
 
         return expect(packagePlugin.excludeDevDependencies(params)).to.be.fulfilled.then(
           (updatedParams) => {
             expect(globSyncStub).to.have.been.calledOnce;
-            expect(execAsyncStub).to.have.been.calledTwice;
+            expect(spawnExtStub).to.have.been.calledTwice;
             expect(readFileAsyncStub).to.have.been.calledTwice;
             expect(globSyncStub).to.have.been.calledWithExactly(['**/package.json'], {
               cwd: packagePlugin.serverless.serviceDir,
@@ -196,19 +219,32 @@ describe('zipService', () => {
               follow: true,
               nosort: true,
             });
-            expect(execAsyncStub.args[0][0]).to.match(
-              /npm ls --dev=true --parseable=true --long=false --silent --all >> .+/
-            );
-            expect(execAsyncStub.args[0][1].cwd).to.match(/.+/);
-            expect(execAsyncStub.args[1][0]).to.match(
-              /npm ls --prod=true --parseable=true --long=false --silent --all >> .+/
-            );
-            expect(execAsyncStub.args[1][1].cwd).to.match(/.+/);
+            expectNpmListCall(spawnExtStub, 0, 'dev');
+            expectNpmListCall(spawnExtStub, 1, 'prod');
+            expect(appendFileAsyncStub).to.have.been.calledTwice;
             expect(updatedParams.exclude).to.deep.equal(['user-defined-exclude-me']);
             expect(updatedParams.include).to.deep.equal(['user-defined-include-me']);
             expect(updatedParams.zipFileName).to.equal(params.zipFileName);
           }
         );
+      });
+
+      it('should append npm ls stdout without shell redirection', async () => {
+        const filePaths = ['package.json', 'node_modules'];
+
+        globSyncStub.returns(filePaths);
+        resolveSpawnCall(spawnExtStub.onCall(0), 'dev-dependencies');
+        resolveSpawnCall(spawnExtStub.onCall(1), 'prod-dependencies');
+        readFileAsyncStub.resolves('');
+
+        return expect(packagePlugin.excludeDevDependencies(params)).to.be.fulfilled.then(() => {
+          expectNpmListCall(spawnExtStub, 0, 'dev');
+          expectNpmListCall(spawnExtStub, 1, 'prod');
+          expect(appendFileAsyncStub).to.have.been.calledTwice;
+          expect(
+            appendFileAsyncStub.getCalls().map((call) => call.args[1].toString())
+          ).to.have.members(['dev-dependencies', 'prod-dependencies']);
+        });
       });
 
       it('should return excludes and includes if an error is thrown in the global scope', () => {
@@ -217,7 +253,7 @@ describe('zipService', () => {
         return expect(packagePlugin.excludeDevDependencies(params)).to.be.fulfilled.then(
           (updatedParams) => {
             expect(globSyncStub).to.have.been.calledOnce;
-            expect(execAsyncStub).to.not.have.been.called;
+            expect(spawnExtStub).to.not.have.been.called;
             expect(readFileAsyncStub).to.not.have.been.called;
             expect(updatedParams.exclude).to.deep.equal(['user-defined-exclude-me']);
             expect(updatedParams.include).to.deep.equal(['user-defined-include-me']);
@@ -226,18 +262,18 @@ describe('zipService', () => {
         );
       });
 
-      it('should return excludes and includes if a exec Promise is rejected', async () => {
+      it('should return excludes and includes if an npm ls spawn is rejected', async () => {
         const filePaths = ['package.json', 'node_modules'];
 
         globSyncStub.returns(filePaths);
-        resolveExecCall(execAsyncStub.onCall(0));
-        rejectExecCall(execAsyncStub.onCall(1));
+        resolveSpawnCall(spawnExtStub.onCall(0));
+        rejectSpawnCall(spawnExtStub.onCall(1));
         readFileAsyncStub.resolves();
 
         return expect(packagePlugin.excludeDevDependencies(params)).to.be.fulfilled.then(
           (updatedParams) => {
             expect(globSyncStub).to.been.calledOnce;
-            expect(execAsyncStub).to.have.been.calledTwice;
+            expect(spawnExtStub).to.have.been.calledTwice;
             expect(readFileAsyncStub).to.have.been.calledTwice;
             expect(updatedParams.exclude).to.deep.equal(['user-defined-exclude-me']);
             expect(updatedParams.include).to.deep.equal(['user-defined-include-me']);
@@ -250,7 +286,7 @@ describe('zipService', () => {
         const filePaths = ['package.json', 'node_modules'];
 
         globSyncStub.returns(filePaths);
-        resolveExecCall(execAsyncStub);
+        resolveSpawnCall(spawnExtStub);
 
         readFileAsyncStub.onCall(0).resolves();
         readFileAsyncStub.onCall(1).rejects();
@@ -258,7 +294,7 @@ describe('zipService', () => {
         return expect(packagePlugin.excludeDevDependencies(params)).to.be.fulfilled.then(
           (updatedParams) => {
             expect(globSyncStub).to.been.calledOnce;
-            expect(execAsyncStub).to.have.been.calledTwice;
+            expect(spawnExtStub).to.have.been.calledTwice;
             expect(readFileAsyncStub).to.have.been.calledTwice;
             expect(updatedParams.exclude).to.deep.equal(['user-defined-exclude-me']);
             expect(updatedParams.include).to.deep.equal(['user-defined-include-me']);
@@ -282,12 +318,12 @@ describe('zipService', () => {
         ];
 
         globSyncStub.returns(filePaths);
-        resolveExecCall(execAsyncStub.onCall(0));
-        resolveExecCall(execAsyncStub.onCall(1));
-        rejectExecCall(execAsyncStub.onCall(2));
-        rejectExecCall(execAsyncStub.onCall(3));
-        resolveExecCall(execAsyncStub.onCall(4));
-        resolveExecCall(execAsyncStub.onCall(5));
+        resolveSpawnCall(spawnExtStub.onCall(0));
+        resolveSpawnCall(spawnExtStub.onCall(1));
+        rejectSpawnCall(spawnExtStub.onCall(2));
+        rejectSpawnCall(spawnExtStub.onCall(3));
+        resolveSpawnCall(spawnExtStub.onCall(4));
+        resolveSpawnCall(spawnExtStub.onCall(5));
         const depPaths = [
           path.join(serviceDir, 'node_modules', 'module-1'),
           path.join(serviceDir, 'node_modules', 'module-2'),
@@ -304,7 +340,7 @@ describe('zipService', () => {
         return expect(packagePlugin.excludeDevDependencies(params)).to.be.fulfilled.then(
           (updatedParams) => {
             expect(globSyncStub).to.have.been.calledOnce;
-            expect(execAsyncStub.callCount).to.equal(6);
+            expect(spawnExtStub.callCount).to.equal(6);
             expect(readFileAsyncStub).to.have.callCount(6);
             expect(readFileAsyncStub).to.have.been.calledWith(
               path.join(serviceDir, 'node_modules', 'module-1', 'package.json')
@@ -325,30 +361,9 @@ describe('zipService', () => {
               follow: true,
               nosort: true,
             });
-            expect(execAsyncStub.args[0][0]).to.match(
-              /npm ls --dev=true --parseable=true --long=false --silent --all >> .+/
-            );
-            expect(execAsyncStub.args[0][1].cwd).to.match(/.+/);
-            expect(execAsyncStub.args[1][0]).to.match(
-              /npm ls --prod=true --parseable=true --long=false --silent --all >> .+/
-            );
-            expect(execAsyncStub.args[1][1].cwd).to.match(/.+/);
-            expect(execAsyncStub.args[2][0]).to.match(
-              /npm ls --dev=true --parseable=true --long=false --silent --all >> .+/
-            );
-            expect(execAsyncStub.args[2][1].cwd).to.match(/.+/);
-            expect(execAsyncStub.args[3][0]).to.match(
-              /npm ls --prod=true --parseable=true --long=false --silent --all >> .+/
-            );
-            expect(execAsyncStub.args[3][1].cwd).to.match(/.+/);
-            expect(execAsyncStub.args[4][0]).to.match(
-              /npm ls --dev=true --parseable=true --long=false --silent --all >> .+/
-            );
-            expect(execAsyncStub.args[4][1].cwd).to.match(/.+/);
-            expect(execAsyncStub.args[5][0]).to.match(
-              /npm ls --prod=true --parseable=true --long=false --silent --all >> .+/
-            );
-            expect(execAsyncStub.args[5][1].cwd).to.match(/.+/);
+            ['dev', 'prod', 'dev', 'prod', 'dev', 'prod'].forEach((envName, index) => {
+              expectNpmListCall(spawnExtStub, index, envName);
+            });
             expect(updatedParams.exclude).to.deep.equal([
               'user-defined-exclude-me',
               path.join('node_modules', 'module-1', '**'),
@@ -366,7 +381,7 @@ describe('zipService', () => {
         const filePaths = ['package.json', 'node_modules'];
 
         globSyncStub.returns(filePaths);
-        resolveExecCall(execAsyncStub);
+        resolveSpawnCall(spawnExtStub);
         const depPaths = [
           path.join(serviceDir, 'node_modules', 'module-1'),
           path.join(serviceDir, 'node_modules', 'module-2'),
@@ -379,7 +394,7 @@ describe('zipService', () => {
         return expect(packagePlugin.excludeDevDependencies(params)).to.be.fulfilled.then(
           (updatedParams) => {
             expect(globSyncStub).to.have.been.calledOnce;
-            expect(execAsyncStub).to.have.been.calledTwice;
+            expect(spawnExtStub).to.have.been.calledTwice;
             expect(readFileAsyncStub).to.have.callCount(4);
             expect(readFileAsyncStub).to.have.been.calledWith(
               path.join(serviceDir, 'node_modules', 'module-1', 'package.json')
@@ -394,14 +409,8 @@ describe('zipService', () => {
               follow: true,
               nosort: true,
             });
-            expect(execAsyncStub.args[0][0]).to.match(
-              /npm ls --dev=true --parseable=true --long=false --silent --all >> .+/
-            );
-            expect(execAsyncStub.args[0][1].cwd).to.match(/.+/);
-            expect(execAsyncStub.args[1][0]).to.match(
-              /npm ls --prod=true --parseable=true --long=false --silent --all >> .+/
-            );
-            expect(execAsyncStub.args[1][1].cwd).to.match(/.+/);
+            expectNpmListCall(spawnExtStub, 0, 'dev');
+            expectNpmListCall(spawnExtStub, 1, 'prod');
             expect(updatedParams.exclude).to.deep.equal([
               'user-defined-exclude-me',
               path.join('node_modules', 'module-1', '**'),
@@ -427,7 +436,7 @@ describe('zipService', () => {
         ];
 
         globSyncStub.returns(filePaths);
-        resolveExecCall(execAsyncStub);
+        resolveSpawnCall(spawnExtStub);
         const depPaths = [
           path.join(serviceDir, 'node_modules', 'module-1'),
           path.join(serviceDir, 'node_modules', 'module-2'),
@@ -448,7 +457,7 @@ describe('zipService', () => {
         return expect(packagePlugin.excludeDevDependencies(params)).to.be.fulfilled.then(
           (updatedParams) => {
             expect(globSyncStub).to.have.been.calledOnce;
-            expect(execAsyncStub.callCount).to.equal(6);
+            expect(spawnExtStub.callCount).to.equal(6);
             expect(readFileAsyncStub).to.have.callCount(8);
             expect(globSyncStub).to.have.been.calledWithExactly(['**/package.json'], {
               cwd: packagePlugin.serverless.serviceDir,
@@ -457,30 +466,9 @@ describe('zipService', () => {
               follow: true,
               nosort: true,
             });
-            expect(execAsyncStub.args[0][0]).to.match(
-              /npm ls --dev=true --parseable=true --long=false --silent --all >> .+/
-            );
-            expect(execAsyncStub.args[0][1].cwd).to.match(/.+/);
-            expect(execAsyncStub.args[1][0]).to.match(
-              /npm ls --prod=true --parseable=true --long=false --silent --all >> .+/
-            );
-            expect(execAsyncStub.args[1][1].cwd).to.match(/.+/);
-            expect(execAsyncStub.args[2][0]).to.match(
-              /npm ls --dev=true --parseable=true --long=false --silent --all >> .+/
-            );
-            expect(execAsyncStub.args[2][1].cwd).to.match(/.+/);
-            expect(execAsyncStub.args[3][0]).to.match(
-              /npm ls --prod=true --parseable=true --long=false --silent --all >> .+/
-            );
-            expect(execAsyncStub.args[3][1].cwd).to.match(/.+/);
-            expect(execAsyncStub.args[4][0]).to.match(
-              /npm ls --dev=true --parseable=true --long=false --silent --all >> .+/
-            );
-            expect(execAsyncStub.args[4][1].cwd).to.match(/.+/);
-            expect(execAsyncStub.args[5][0]).to.match(
-              /npm ls --prod=true --parseable=true --long=false --silent --all >> .+/
-            );
-            expect(execAsyncStub.args[5][1].cwd).to.match(/.+/);
+            ['dev', 'prod', 'dev', 'prod', 'dev', 'prod'].forEach((envName, index) => {
+              expectNpmListCall(spawnExtStub, index, envName);
+            });
             expect(updatedParams.exclude).to.deep.equal([
               'user-defined-exclude-me',
               path.join('node_modules', 'module-1', '**'),
@@ -500,7 +488,7 @@ describe('zipService', () => {
         const filePaths = ['package.json', 'node_modules'];
 
         globSyncStub.returns(filePaths);
-        resolveExecCall(execAsyncStub);
+        resolveSpawnCall(spawnExtStub);
 
         const devDepPaths = [
           path.join(serviceDir, 'node_modules', 'module-1'),
@@ -515,7 +503,7 @@ describe('zipService', () => {
         return expect(packagePlugin.excludeDevDependencies(params)).to.be.fulfilled.then(
           (updatedParams) => {
             expect(globSyncStub).to.have.been.calledOnce;
-            expect(execAsyncStub).to.have.been.calledTwice;
+            expect(spawnExtStub).to.have.been.calledTwice;
             expect(readFileAsyncStub).to.have.been.calledThrice;
             expect(readFileAsyncStub).to.have.been.calledWith(
               path.join(serviceDir, 'node_modules', 'module-1', 'package.json')
@@ -527,14 +515,8 @@ describe('zipService', () => {
               follow: true,
               nosort: true,
             });
-            expect(execAsyncStub.args[0][0]).to.match(
-              /npm ls --dev=true --parseable=true --long=false --silent --all >> .+/
-            );
-            expect(execAsyncStub.args[0][1].cwd).to.match(/.+/);
-            expect(execAsyncStub.args[1][0]).to.match(
-              /npm ls --prod=true --parseable=true --long=false --silent --all >> .+/
-            );
-            expect(execAsyncStub.args[1][1].cwd).to.match(/.+/);
+            expectNpmListCall(spawnExtStub, 0, 'dev');
+            expectNpmListCall(spawnExtStub, 1, 'prod');
             expect(updatedParams.exclude).to.deep.equal([
               'user-defined-exclude-me',
               path.join('node_modules', 'module-1', '**'),
@@ -558,7 +540,7 @@ describe('zipService', () => {
         const filePaths = ['node_modules/', 'package.json'].concat(devPaths).concat(prodPaths);
 
         globSyncStub.returns(filePaths);
-        resolveExecCall(execAsyncStub);
+        resolveSpawnCall(spawnExtStub);
 
         const mapper = (depPath) => path.join(`${serviceDir}`, depPath);
 
@@ -580,7 +562,7 @@ describe('zipService', () => {
         return expect(packagePlugin.excludeDevDependencies(params)).to.be.fulfilled.then(
           (updatedParams) => {
             expect(globSyncStub).to.been.calledOnce;
-            expect(execAsyncStub).to.have.been.calledTwice;
+            expect(spawnExtStub).to.have.been.calledTwice;
 
             expect(readFileAsyncStub).to.have.callCount(5);
             expect(readFileAsyncStub).to.have.been.calledWith(
@@ -620,7 +602,7 @@ describe('zipService', () => {
         ];
 
         globSyncStub.returns(filePaths);
-        resolveExecCall(execAsyncStub);
+        resolveSpawnCall(spawnExtStub);
         const deps = [
           'node_modules/module-1',
           'node_modules/module-2',
@@ -654,7 +636,7 @@ describe('zipService', () => {
         return expect(packagePlugin.excludeDevDependencies(params)).to.be.fulfilled.then(
           (updatedParams) => {
             expect(globSyncStub).to.have.been.calledOnce;
-            expect(execAsyncStub.callCount).to.equal(6);
+            expect(spawnExtStub.callCount).to.equal(6);
             expect(readFileAsyncStub).to.have.callCount(8);
             for (const depPath of deps) {
               expect(readFileAsyncStub).to.have.been.calledWith(

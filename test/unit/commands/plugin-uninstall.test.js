@@ -84,6 +84,40 @@ describe('test/unit/commands/plugin-uninstall.test.js', async () => {
     expect(serverlessFileObj.plugins).to.be.undefined;
   });
 
+  describe('with invalid plugin name', () => {
+    it('rejects before uninstalling or updating the configuration file', async () => {
+      const fixture = await fixturesEngine.setup('function', {
+        configExt: {
+          plugins: [pluginName],
+        },
+      });
+
+      const configuration = fixture.serviceConfig;
+      const fixtureServiceDir = fixture.servicePath;
+      const fixtureConfigurationPath = await resolveConfigurationPath({
+        cwd: fixtureServiceDir,
+      });
+      const configurationFilename = fixtureConfigurationPath.slice(fixtureServiceDir.length + 1);
+      const originalConfigurationText = await fse.readFile(fixtureConfigurationPath, 'utf8');
+
+      await expect(
+        uninstallPlugin({
+          configuration,
+          serviceDir: fixtureServiceDir,
+          configurationFilename,
+          options: {
+            name: '--prefix=/tmp/x',
+          },
+        })
+      ).to.be.rejected.and.have.property('code', 'INVALID_PLUGIN_NAME');
+
+      expect(spawnFake).to.not.have.been.called;
+      expect(await fse.readFile(fixtureConfigurationPath, 'utf8')).to.equal(
+        originalConfigurationText
+      );
+    });
+  });
+
   describe('with intrinsic-tagged yaml', () => {
     it('preserves shorthand intrinsic tags when removing a plugin from array-form yaml', async () => {
       const fixture = await fixturesEngine.setup('function');

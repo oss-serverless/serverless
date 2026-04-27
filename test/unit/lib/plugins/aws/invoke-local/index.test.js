@@ -940,6 +940,9 @@ describe('AwsInvokeLocal', () => {
 
     describe('when attempting to build the Java bridge', () => {
       it("if it's not present yet", async () => {
+        fse.removeSync(bridgePath);
+        spawnExtStub.resetHistory();
+
         await awsInvokeLocal.invokeLocalJava(
           'java',
           'com.serverless.Handler',
@@ -965,6 +968,41 @@ describe('AwsInvokeLocal', () => {
             })
           )
         ).to.be.equal(true);
+        expect(spawnExtStub.calledOnce).to.be.equal(true);
+        expect(spawnExtStub.firstCall.args).to.deep.equal([
+          'mvn',
+          ['package', '-f', path.join(path.dirname(bridgePath), 'pom.xml')],
+          { shouldCloseStdin: true },
+        ]);
+      });
+
+      it('rejects if the Java bridge build fails', async () => {
+        fse.removeSync(bridgePath);
+        spawnExtStub.rejects(
+          Object.assign(new Error('mvn failed'), {
+            code: 1,
+            signal: null,
+            stdoutBuffer: Buffer.from('build failed'),
+          })
+        );
+
+        await expect(
+          awsInvokeLocal.invokeLocalJava(
+            'java',
+            'com.serverless.Handler',
+            'handleRequest',
+            tmpServicePath,
+            {}
+          )
+        ).to.be.rejected.and.have.property('code', 'JAVA_BRIDGE_BUILD_FAILED');
+
+        expect(callJavaBridgeStub).to.not.have.been.called;
+        expect(spawnExtStub.calledOnce).to.be.equal(true);
+        expect(spawnExtStub.firstCall.args).to.deep.equal([
+          'mvn',
+          ['package', '-f', path.join(path.dirname(bridgePath), 'pom.xml')],
+          { shouldCloseStdin: true },
+        ]);
       });
     });
   });
