@@ -39,7 +39,7 @@ services:
     # config: serverless.api.yml
 ```
 
-_Note: JS/TS configuration files are also supported (`serverless-compose.{yml,ts,js,json}`)._
+_Note: JS/TS configuration files are also supported (`serverless-compose.{yml,ts,js,json}`). JavaScript and TypeScript Compose configuration files are executed by Node.js when loaded, so use them only from trusted projects._
 
 ## Usage
 

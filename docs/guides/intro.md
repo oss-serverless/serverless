@@ -77,6 +77,8 @@ When deploying with the Framework via `serverless deploy`, everything in the con
 
 In case you need more flexibility, you can also define the service configuration in JSON (`serverless.json`), JavaScript (`serverless.js`) or TypeScript (`serverless.ts`).
 
+> **Security note:** JavaScript and TypeScript service configuration files are executed by Node.js when the Framework loads the service. Treat `serverless.js`, `serverless.cjs`, `serverless.mjs`, `serverless.ts`, and `serverless.mts` as trusted code. Do not run Serverless commands against untrusted projects, templates, or pull requests that include executable service configuration files.
+
 While Serverless Framework is language-agnostic, projects written in Node.js can benefit from using the same language all around. When using JavaScript or TypeScript, the file must export the configuration as a JS object, for example:
 
 ```js
