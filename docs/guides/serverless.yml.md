@@ -402,15 +402,8 @@ provider:
         file: Dockerfile.dev
         buildArgs:
           STAGE: ${sls:stage}
-        buildOptions:
-          [
-            '--tag',
-            'v1.0.0',
-            '--add-host',
-            'example.com:0.0.0.0',
-            '--ssh',
-            'default=/path/to/private/key/id_rsa',
-          ]
+        # buildOptions are passed directly to `docker build`; use only with trusted service configs.
+        buildOptions: ['--pull', '--label', 'com.example.stage=${sls:stage}']
         cacheFrom:
           - my-image:latest
 ```
