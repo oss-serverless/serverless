@@ -19,6 +19,17 @@ const createDeferred = () => {
 };
 
 describe('#request', () => {
+  let restoreSdkModeEnv;
+
+  beforeEach(() => {
+    ({ restoreEnv: restoreSdkModeEnv } = overrideEnv({ asCopy: true }));
+    process.env.SLS_AWS_SDK_V3 = '0';
+  });
+
+  afterEach(() => {
+    restoreSdkModeEnv();
+  });
+
   describe('Credentials support', () => {
     // awsRequest supports credentials from two sources:
     // - an AWS credentials object passed as part of params in the call
