@@ -611,7 +611,8 @@ package:
     - '!.travis.yml'
   # Package each function as an individual artifact (default: false)
   individually: true
-  # Explicitly set the package artifact to deploy (overrides native packaging behavior)
+  # Explicitly set the package artifact to deploy (overrides native packaging behavior).
+  # Local artifact paths are trusted input and may point outside the service directory.
   artifact: path/to/my-artifact.zip
   # Automatically exclude NPM dev dependencies from the deployed package (default: true)
   excludeDevDependencies: false
@@ -706,7 +707,8 @@ functions:
         - handler.js
         - '!.git/**'
         - '!.travis.yml'
-      # Explicitly set the package artifact to deploy (overrides native packaging behavior)
+      # Explicitly set the package artifact to deploy (overrides native packaging behavior).
+      # Local artifact paths are trusted input and may point outside the service directory.
       artifact: path/to/my-artifact.zip
       # Package this function as an individual artifact (default: false)
       individually: true

@@ -75,6 +75,8 @@ Serverless won't zip your service if this is configured and therefore `patterns`
 
 The artifact option is especially useful in case your development environment allows you to generate a deployable artifact like Maven does for Java.
 
+> **Security note:** Local artifact paths are trusted deployment inputs. Relative paths are resolved from the service root, and absolute paths or paths outside the service may be read and uploaded as deployment artifacts. Use artifact paths only from trusted configuration and trusted build scripts.
+
 #### Service package
 
 ```yml
