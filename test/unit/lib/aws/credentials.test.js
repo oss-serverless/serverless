@@ -166,6 +166,33 @@ describe('test/unit/lib/aws/credentials.test.js', () => {
     });
   });
 
+  it('does not fallback when AWS_DEFAULT_PROFILE exists as a quoted config profile', async () => {
+    await overrideEnv(async () => {
+      process.env.AWS_DEFAULT_PROFILE = 'custom-default';
+      const fallbackProvider = sinon.stub().resolves({
+        accessKeyId: 'fallbackAccessKeyId',
+        secretAccessKey: 'fallbackSecretAccessKey',
+      });
+      const fromIni = sinon
+        .stub()
+        .returns(sinon.stub().rejects(createUnresolvedProfileError('custom-default')));
+      const fromNodeProviderChain = sinon.stub().returns(fallbackProvider);
+      const { getAwsSdkV3CredentialsProvider } = loadCredentials({
+        files: {
+          [configFilePath]: ['[profile "custom-default"]', 'custom_field = value'].join('\n'),
+        },
+        fromIni,
+        fromNodeProviderChain,
+      });
+
+      await expect(getAwsSdkV3CredentialsProvider()()).to.be.rejectedWith(
+        'Could not resolve credentials using profile'
+      );
+      expect(fromNodeProviderChain).to.not.have.been.called;
+      expect(fallbackProvider).to.not.have.been.called;
+    });
+  });
+
   it('falls back when AWS_DEFAULT_PROFILE is absent', async () => {
     await overrideEnv(async () => {
       process.env.AWS_DEFAULT_PROFILE = 'missing-default';
@@ -217,15 +244,32 @@ describe('test/unit/lib/aws/credentials.test.js', () => {
     const fromNodeProviderChain = sinon.stub();
     const { doesProfileExist } = loadCredentials({
       files: {
-        [credentialsFilePath]: ['[default]', 'aws_access_key_id = accessKeyId'].join('\n'),
-        [configFilePath]: ['[profile custom]', 'region = us-east-1'].join('\n'),
+        [credentialsFilePath]: ['[credentials-profile]', 'aws_access_key_id = accessKeyId'].join(
+          '\n'
+        ),
+        [configFilePath]: [
+          '[default]',
+          'region = us-east-1',
+          '[profile custom]',
+          'region = us-east-1',
+          '[profile "quoted"]',
+          'region = us-east-1',
+          "[profile 'single-quoted']",
+          'region = us-east-1',
+          '[raw-config]',
+          'region = us-east-1',
+        ].join('\n'),
       },
       fromIni,
       fromNodeProviderChain,
     });
 
+    expect(doesProfileExist('credentials-profile')).to.equal(true);
     expect(doesProfileExist('default')).to.equal(true);
     expect(doesProfileExist('custom')).to.equal(true);
+    expect(doesProfileExist('quoted')).to.equal(true);
+    expect(doesProfileExist('single-quoted')).to.equal(true);
+    expect(doesProfileExist('raw-config')).to.equal(false);
     expect(doesProfileExist('missing')).to.equal(false);
   });
 });
