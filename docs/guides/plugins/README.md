@@ -49,6 +49,10 @@ custom:
 
 Note for plugin authors: read [Extending the configuration](custom-configuration.md) to learn how to enhance `serverless.yml` with configuration validation.
 
+AWS plugin authors should use AWS SDK v3 clients directly and obtain
+Serverless-resolved client configuration with `provider.getAwsSdkV3Config()`.
+See [AWS SDK v3 clients](creating-plugins.md#aws-sdk-v3-clients) for details.
+
 Only helpers documented in the plugin guides are considered supported for
 plugin authors. Avoid importing files from the framework's internal `lib/**`
 tree.

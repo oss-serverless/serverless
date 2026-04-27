@@ -193,6 +193,63 @@ class MyPlugin {
 
 The plugin will now only be executed when the service's provider matches the given provider.
 
+## AWS SDK v3 clients
+
+AWS plugins should use AWS SDK v3 clients directly instead of using `provider.request()`
+as a generic AWS API proxy.
+
+Plugins should declare the AWS SDK v3 clients they use in their own `package.json`:
+
+```json
+{
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.0.0"
+  }
+}
+```
+
+Use `provider.getAwsSdkV3Config()` to get Serverless-resolved AWS configuration for
+those clients:
+
+```javascript
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+
+class MyPlugin {
+  constructor(serverless) {
+    this.provider = serverless.getProvider('aws');
+  }
+
+  async upload() {
+    const config = await this.provider.getAwsSdkV3Config({ service: 'S3' });
+    const s3 = new S3Client(config);
+
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: 'bucket',
+        Key: 'key',
+        Body: 'body',
+      })
+    );
+  }
+}
+```
+
+`provider.getAwsSdkV3Config(options)` returns AWS SDK v3 client configuration,
+including Serverless-resolved region, credentials, retry settings, and proxy,
+custom CA, or timeout configuration.
+
+Supported Serverless-specific options are:
+
+- `region`: override the resolved provider region for this client
+- `profile`: resolve credentials from a specific AWS profile
+- `service`: identify the AWS service for Serverless-specific config, such as S3 acceleration
+
+Other AWS SDK v3 client options, such as `endpoint`, `logger`, `requestHandler`,
+or service-specific options, are passed through to the returned config.
+
+`provider.request()` and `provider.sdk` are legacy AWS SDK v2 surfaces. They are
+not the recommended AWS SDK v3 plugin API.
+
 ## ESM plugins
 
 ESM plugins are also supported.

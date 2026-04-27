@@ -414,11 +414,13 @@ describe('AwsProvider', () => {
     it('passes profile and custom options to the config helpers', async () => {
       const buildClientConfigStub = sinon.stub().returns({ config: true });
       const getAwsSdkV3CredentialsProviderStub = sinon.stub().returns('credentials');
+      const getAwsSdkV3CredentialsProviderCacheKeyStub = sinon.stub().returns('cache-key');
       const AwsProviderProxyquired = proxyquire
         .noCallThru()
         .load('../../../../../lib/plugins/aws/provider.js', {
           '../../aws/config': { buildClientConfig: buildClientConfigStub },
           '../../aws/credentials': {
+            getAwsSdkV3CredentialsProviderCacheKey: getAwsSdkV3CredentialsProviderCacheKeyStub,
             getAwsSdkV3CredentialsProvider: getAwsSdkV3CredentialsProviderStub,
           },
         });
@@ -436,12 +438,72 @@ describe('AwsProvider', () => {
         profile: 'custom-profile',
       });
       expect(buildClientConfigStub).to.have.been.calledOnceWithExactly({
-        profile: 'custom-profile',
         maxAttempts: 2,
         retryMode: 'adaptive',
         region: 'us-east-1',
         credentials: 'credentials',
       });
+    });
+
+    it('reuses SDK v3 credential providers for the same credential source', async () => {
+      const firstConfig = await awsProvider.getAwsSdkV3Config();
+      const secondConfig = await awsProvider.getAwsSdkV3Config();
+
+      expect(firstConfig.credentials).to.equal(secondConfig.credentials);
+    });
+
+    it('uses different SDK v3 credential providers for different explicit profiles', async () => {
+      const firstConfig = await awsProvider.getAwsSdkV3Config({ profile: 'first' });
+      const secondConfig = await awsProvider.getAwsSdkV3Config({ profile: 'second' });
+
+      expect(firstConfig.credentials).to.not.equal(secondConfig.credentials);
+    });
+
+    it('passes SDK v3 client options through without leaking Serverless metadata options', async () => {
+      const requestHandler = {};
+
+      const config = await awsProvider.getAwsSdkV3Config({
+        service: 'S3',
+        profile: 'custom-profile',
+        endpoint: 'http://localhost:4566',
+        forcePathStyle: true,
+        requestHandler,
+      });
+
+      expect(config).to.include({
+        endpoint: 'http://localhost:4566',
+        forcePathStyle: true,
+        requestHandler,
+      });
+      expect(config).to.not.have.property('service');
+      expect(config).to.not.have.property('profile');
+    });
+
+    it('enables S3 acceleration for SDK v3 S3 configs when requested', async () => {
+      awsProvider.options['aws-s3-accelerate'] = true;
+
+      const config = await awsProvider.getAwsSdkV3Config({ service: 'S3' });
+
+      expect(config.useAccelerateEndpoint).to.equal(true);
+    });
+
+    it('preserves explicit SDK v3 S3 acceleration options', async () => {
+      awsProvider.options['aws-s3-accelerate'] = true;
+
+      const config = await awsProvider.getAwsSdkV3Config({
+        service: 'S3',
+        useAccelerateEndpoint: false,
+      });
+
+      expect(config.useAccelerateEndpoint).to.equal(false);
+    });
+
+    it('does not apply S3 acceleration to non-S3 SDK v3 configs', async () => {
+      awsProvider.options['aws-s3-accelerate'] = true;
+
+      const config = await awsProvider.getAwsSdkV3Config({ service: 'Lambda' });
+
+      expect(config).to.not.have.property('useAccelerateEndpoint');
     });
   });
 

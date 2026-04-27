@@ -38,6 +38,20 @@ describe('test/unit/lib/aws/config.test.js', () => {
     });
   });
 
+  it('maps Serverless retry count to SDK v3 maxAttempts', async () => {
+    await overrideEnv(async () => {
+      const { buildClientConfig } = loadConfig();
+
+      expect(buildClientConfig().maxAttempts).to.equal(5);
+
+      process.env.SLS_AWS_REQUEST_MAX_RETRIES = '0';
+      expect(buildClientConfig().maxAttempts).to.equal(1);
+
+      process.env.SLS_AWS_REQUEST_MAX_RETRIES = '2';
+      expect(buildClientConfig().maxAttempts).to.equal(3);
+    });
+  });
+
   it('uses NodeHttpHandler for timeout config', async () => {
     await overrideEnv(async () => {
       process.env.AWS_CLIENT_TIMEOUT = '1234';
@@ -72,5 +86,22 @@ describe('test/unit/lib/aws/config.test.js', () => {
     expect(buildClientConfig({ customUserAgent: 'custom-agent' }).customUserAgent).to.equal(
       'custom-agent'
     );
+  });
+
+  it('passes SDK v3 client options through', () => {
+    const { buildClientConfig } = loadConfig();
+    const requestHandler = {};
+
+    expect(
+      buildClientConfig({
+        endpoint: 'http://localhost:4566',
+        forcePathStyle: true,
+        requestHandler,
+      })
+    ).to.include({
+      endpoint: 'http://localhost:4566',
+      forcePathStyle: true,
+      requestHandler,
+    });
   });
 });
