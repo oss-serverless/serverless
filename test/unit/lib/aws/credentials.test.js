@@ -62,6 +62,28 @@ describe('test/unit/lib/aws/credentials.test.js', () => {
     expect(fallbackProvider).to.have.been.calledOnce;
   });
 
+  it('forwards SDK v3 provider invocation options when using default fallback', async () => {
+    const providerOptions = { callerClientConfig: { region: 'eu-west-1' } };
+    const fallbackCredentials = {
+      accessKeyId: 'fallbackAccessKeyId',
+      secretAccessKey: 'fallbackSecretAccessKey',
+    };
+    const profileProvider = sinon.stub().rejects(createUnresolvedProfileError('default'));
+    const fallbackProvider = sinon.stub().resolves(fallbackCredentials);
+    const fromIni = sinon.stub().returns(profileProvider);
+    const fromNodeProviderChain = sinon.stub().returns(fallbackProvider);
+    const { getAwsSdkV3CredentialsProvider } = loadCredentials({
+      fromIni,
+      fromNodeProviderChain,
+    });
+
+    await expect(getAwsSdkV3CredentialsProvider()(providerOptions)).to.eventually.deep.equal(
+      fallbackCredentials
+    );
+    expect(profileProvider).to.have.been.calledOnceWithExactly(providerOptions);
+    expect(fallbackProvider).to.have.been.calledOnceWithExactly(providerOptions);
+  });
+
   it('does not fallback when the default profile has incomplete static credentials', async () => {
     const fallbackProvider = sinon.stub().resolves({
       accessKeyId: 'fallbackAccessKeyId',
@@ -187,6 +209,43 @@ describe('test/unit/lib/aws/credentials.test.js', () => {
 
       await expect(getAwsSdkV3CredentialsProvider()()).to.be.rejectedWith(
         'Could not resolve credentials using profile'
+      );
+      expect(fromNodeProviderChain).to.not.have.been.called;
+      expect(fallbackProvider).to.not.have.been.called;
+    });
+  });
+
+  it('does not fallback when AWS_DEFAULT_PROFILE exists as an SSO config profile', async () => {
+    await overrideEnv(async () => {
+      process.env.AWS_DEFAULT_PROFILE = 'custom-default';
+      const fallbackProvider = sinon.stub().resolves({
+        accessKeyId: 'fallbackAccessKeyId',
+        secretAccessKey: 'fallbackSecretAccessKey',
+      });
+      const originalError = Object.assign(new Error('SSO session has expired'), {
+        name: 'CredentialsProviderError',
+      });
+      const fromIni = sinon.stub().returns(sinon.stub().rejects(originalError));
+      const fromNodeProviderChain = sinon.stub().returns(fallbackProvider);
+      const { getAwsSdkV3CredentialsProvider } = loadCredentials({
+        files: {
+          [configFilePath]: [
+            '[profile custom-default]',
+            'sso_session = my-sso',
+            'sso_account_id = 123456789012',
+            'sso_role_name = Admin',
+            '[sso-session my-sso]',
+            'sso_region = us-east-1',
+            'sso_start_url = https://example.awsapps.com/start',
+            'sso_registration_scopes = sso:account:access',
+          ].join('\n'),
+        },
+        fromIni,
+        fromNodeProviderChain,
+      });
+
+      await expect(getAwsSdkV3CredentialsProvider()()).to.be.rejectedWith(
+        'SSO session has expired'
       );
       expect(fromNodeProviderChain).to.not.have.been.called;
       expect(fallbackProvider).to.not.have.been.called;

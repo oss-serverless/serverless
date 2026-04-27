@@ -238,6 +238,12 @@ class MyPlugin {
 including Serverless-resolved region, credentials, retry settings, and proxy,
 custom CA, or timeout configuration.
 
+The returned `credentials` value is an AWS SDK v3 credential provider function.
+It supports SDK v3-compatible credential sources, including shared profiles,
+assume-role profiles, MFA, and AWS SSO/IAM Identity Center profiles. SSO users
+must first authenticate with the AWS CLI, for example with
+`aws sso login --profile <profile>`.
+
 Supported Serverless-specific options are:
 
 - `region`: override the resolved provider region for this client
@@ -248,7 +254,9 @@ Other AWS SDK v3 client options, such as `endpoint`, `logger`, `requestHandler`,
 or service-specific options, are passed through to the returned config.
 
 `provider.request()` and `provider.sdk` are legacy AWS SDK v2 surfaces. They are
-not the recommended AWS SDK v3 plugin API.
+not the recommended AWS SDK v3 plugin API. Core framework internals still use
+that legacy path until they are migrated to SDK v3, so this section describes
+the plugin-created SDK v3 client path only.
 
 ## ESM plugins
 
