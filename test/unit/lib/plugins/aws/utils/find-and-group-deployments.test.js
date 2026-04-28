@@ -12,6 +12,10 @@ describe('#findAndGroupDeployments()', () => {
     expect(findAndGroupDeployments(s3Response, 'serverless', 'test', 'dev')).to.deep.equal([]);
   });
 
+  it('should return an empty result when Contents is missing', () => {
+    expect(findAndGroupDeployments({}, 'serverless', 'test', 'dev')).to.deep.equal([]);
+  });
+
   it('should group stacks', () => {
     const s3Objects = [
       {
@@ -73,5 +77,48 @@ describe('#findAndGroupDeployments()', () => {
     expect(findAndGroupDeployments(s3Response, 'serverless', 'test', 'dev')).to.deep.equal(
       expected
     );
+  });
+
+  it('should group deployment keys with regex-significant service, stage, and prefix values', () => {
+    const s3Response = {
+      Contents: [
+        {
+          Key: 'serverless.v1/service+name/dev.prod/1476779096930-2016-10-18T08:24:56.930Z/artifact.zip',
+        },
+        {
+          Key: 'serverlessXv1/service+name/dev.prod/1476779096930-2016-10-18T08:24:56.930Z/ignored.zip',
+        },
+      ],
+    };
+
+    expect(
+      findAndGroupDeployments(s3Response, 'serverless.v1', 'service+name', 'dev.prod')
+    ).to.deep.equal([
+      [
+        {
+          directory: '1476779096930-2016-10-18T08:24:56.930Z',
+          file: 'artifact.zip',
+        },
+      ],
+    ]);
+  });
+
+  it('should preserve nested object paths inside deployment directories', () => {
+    const s3Response = {
+      Contents: [
+        {
+          Key: 'serverless/test/dev/1476779096930-2016-10-18T08:24:56.930Z/nested/artifact.zip',
+        },
+      ],
+    };
+
+    expect(findAndGroupDeployments(s3Response, 'serverless', 'test', 'dev')).to.deep.equal([
+      [
+        {
+          directory: '1476779096930-2016-10-18T08:24:56.930Z',
+          file: 'nested/artifact.zip',
+        },
+      ],
+    ]);
   });
 });

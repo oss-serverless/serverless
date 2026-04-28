@@ -40,6 +40,7 @@ describe('AwsRollback', () => {
   );
 
   afterEach(() => {
+    if (provider.request.restore) provider.request.restore();
     serverless.pluginManager.spawn.restore();
   });
 
@@ -196,6 +197,97 @@ describe('AwsRollback', () => {
         ).to.be.equal(true);
         awsRollback.provider.request.restore();
       });
+    });
+
+    it('should resolve when the target deployment is found on a later S3 page', async () => {
+      const requestStub = sinon.stub(awsRollback.provider, 'request');
+      requestStub
+        .withArgs('S3', 'listObjectsV2')
+        .onFirstCall()
+        .resolves({
+          Contents: [],
+          NextContinuationToken: 'next-page',
+        })
+        .onSecondCall()
+        .resolves({
+          Contents: [
+            {
+              Key: 'serverless/rollback/dev/1476779096930-2016-10-18T08:24:56.930Z/compiled-cloudformation-template.json',
+            },
+          ],
+        });
+      requestStub.withArgs('S3', 'getObject').resolves({ Body: '{}' });
+
+      await awsRollback.setStackToUpdate();
+
+      expect(awsRollback.serverless.service.package.artifactDirectoryName).to.equal(
+        'serverless/rollback/dev/1476779096930-2016-10-18T08:24:56.930Z'
+      );
+      expect(requestStub.secondCall.args).to.deep.equal([
+        'S3',
+        'listObjectsV2',
+        {
+          Bucket: awsRollback.bucketName,
+          Prefix: `${s3Key}`,
+          ContinuationToken: 'next-page',
+        },
+      ]);
+    });
+
+    it('should read the state file for the selected deployment', async () => {
+      const requestStub = sinon.stub(awsRollback.provider, 'request');
+      requestStub.withArgs('S3', 'listObjectsV2').resolves({
+        Contents: [
+          {
+            Key: 'serverless/rollback/dev/1476779096930-2016-10-18T08:24:56.930Z/compiled-cloudformation-template.json',
+          },
+        ],
+      });
+      requestStub.withArgs('S3', 'getObject').resolves({
+        Body: JSON.stringify({ service: { service: 'rollback' } }),
+      });
+
+      await awsRollback.setStackToUpdate();
+
+      expect(requestStub).to.have.been.calledWithExactly('S3', 'getObject', {
+        Bucket: awsRollback.bucketName,
+        Key: 'serverless/rollback/dev/1476779096930-2016-10-18T08:24:56.930Z/serverless-state.json',
+      });
+    });
+
+    it('should continue when the selected deployment has no state file', async () => {
+      const requestStub = sinon.stub(awsRollback.provider, 'request');
+      requestStub.withArgs('S3', 'listObjectsV2').resolves({
+        Contents: [
+          {
+            Key: 'serverless/rollback/dev/1476779096930-2016-10-18T08:24:56.930Z/compiled-cloudformation-template.json',
+          },
+        ],
+      });
+      requestStub.withArgs('S3', 'getObject').throws({
+        code: 'AWS_S3_GET_OBJECT_NO_SUCH_KEY',
+      });
+
+      await expect(awsRollback.setStackToUpdate()).to.eventually.be.fulfilled;
+    });
+
+    it('should reject rollback for unsupported console deployment state', async () => {
+      const requestStub = sinon.stub(awsRollback.provider, 'request');
+      requestStub.withArgs('S3', 'listObjectsV2').resolves({
+        Contents: [
+          {
+            Key: 'serverless/rollback/dev/1476779096930-2016-10-18T08:24:56.930Z/compiled-cloudformation-template.json',
+          },
+        ],
+      });
+      requestStub.withArgs('S3', 'getObject').resolves({
+        Body: JSON.stringify({ console: true }),
+      });
+
+      await expect(awsRollback.setStackToUpdate()).to.be.eventually.rejected.and.have.property(
+        'code',
+        'CONSOLE_ACTIVATION_MISMATCH_ROLLBACK'
+      );
     });
   });
 });

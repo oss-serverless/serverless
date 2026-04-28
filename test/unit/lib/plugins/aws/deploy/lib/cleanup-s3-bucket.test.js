@@ -103,6 +103,53 @@ describe('cleanupS3Bucket', () => {
       });
     });
 
+    it('should list all paginated deployment objects before selecting objects to remove', async () => {
+      serverless.service.provider.deploymentBucketObject = {
+        maxPreviousDeploymentArtifacts: 1,
+      };
+      const oldKey = `${s3Key}/141264711231-2016-08-18T15:43:00/artifact.zip`;
+      const newKey = `${s3Key}/151224711231-2016-08-18T15:42:00/artifact.zip`;
+      const listObjectsStub = sinon.stub(awsDeploy.provider, 'request');
+      listObjectsStub
+        .withArgs('S3', 'listObjectsV2')
+        .onFirstCall()
+        .resolves({
+          Contents: [{ Key: oldKey }],
+          NextContinuationToken: 'next-page',
+        })
+        .onSecondCall()
+        .resolves({
+          Contents: [{ Key: newKey }],
+        });
+
+      try {
+        const objectsToRemove = await awsDeploy.getObjectsToRemove();
+
+        expect(objectsToRemove).to.deep.equal([{ Key: oldKey }]);
+        expect(listObjectsStub).to.have.been.calledTwice;
+        expect(listObjectsStub.firstCall.args).to.deep.equal([
+          'S3',
+          'listObjectsV2',
+          {
+            Bucket: awsDeploy.bucketName,
+            Prefix: `${s3Key}`,
+          },
+        ]);
+        expect(listObjectsStub.secondCall.args).to.deep.equal([
+          'S3',
+          'listObjectsV2',
+          {
+            Bucket: awsDeploy.bucketName,
+            Prefix: `${s3Key}`,
+            ContinuationToken: 'next-page',
+          },
+        ]);
+      } finally {
+        awsDeploy.provider.request.restore();
+        delete serverless.service.provider.deploymentBucketObject;
+      }
+    });
+
     it('should return an empty array if there are less than 4 directories available', async () => {
       const serviceObjects = {
         Contents: [
@@ -244,6 +291,10 @@ describe('cleanupS3Bucket', () => {
       deleteObjectsStub = sinon.stub(awsDeploy.provider, 'request').resolves();
     });
 
+    afterEach(() => {
+      if (awsDeploy.provider.request.restore) awsDeploy.provider.request.restore();
+    });
+
     it('should resolve if no service objects are found in the S3 bucket', async () =>
       awsDeploy.removeObjects().then(() => {
         expect(deleteObjectsStub.calledOnce).to.be.equal(false);
@@ -268,6 +319,95 @@ describe('cleanupS3Bucket', () => {
         });
         awsDeploy.provider.request.restore();
       });
+    });
+
+    it('should remove service files in batches of 1000 objects', async () => {
+      const objectsToRemove = Array.from({ length: 1001 }, (ignored, index) => ({
+        Key: `${s3Key}/artifact-${index}.zip`,
+      }));
+
+      await awsDeploy.removeObjects(objectsToRemove);
+
+      expect(deleteObjectsStub).to.have.been.calledTwice;
+      expect(deleteObjectsStub.firstCall.args).to.deep.equal([
+        'S3',
+        'deleteObjects',
+        {
+          Bucket: awsDeploy.bucketName,
+          Delete: {
+            Objects: objectsToRemove.slice(0, 1000),
+          },
+        },
+      ]);
+      expect(deleteObjectsStub.secondCall.args).to.deep.equal([
+        'S3',
+        'deleteObjects',
+        {
+          Bucket: awsDeploy.bucketName,
+          Delete: {
+            Objects: objectsToRemove.slice(1000),
+          },
+        },
+      ]);
+    });
+
+    it('should fail when a delete objects batch returns a generic partial failure', async () => {
+      deleteObjectsStub.resolves({
+        Errors: [{ Code: 'InternalError' }],
+      });
+
+      await expect(
+        awsDeploy.removeObjects([{ Key: `${s3Key}/artifact.zip` }])
+      ).to.be.eventually.rejected.and.have.property('code', 'CANNOT_DELETE_S3_OBJECTS_GENERIC');
+    });
+
+    it('should fail when a delete objects batch returns an access denied partial failure', async () => {
+      deleteObjectsStub.resolves({
+        Errors: [{ Code: 'AccessDenied' }],
+      });
+
+      await expect(
+        awsDeploy.removeObjects([{ Key: `${s3Key}/artifact.zip` }])
+      ).to.be.eventually.rejected.and.have.property(
+        'code',
+        'CANNOT_DELETE_S3_OBJECTS_ACCESS_DENIED'
+      );
+    });
+  });
+
+  describe('#cleanupArtifactsForEmptyChangeSet()', () => {
+    it('should remove artifacts from all listed pages', async () => {
+      const deploymentDirectory = '151224711231-2016-08-18T15:42:00';
+      const firstKey = `${s3Key}/${deploymentDirectory}/artifact.zip`;
+      const secondKey = `${s3Key}/${deploymentDirectory}/compiled-cloudformation-template.json`;
+      const requestStub = sinon.stub(awsDeploy.provider, 'request');
+      awsDeploy.serverless.service.package.artifactDirectoryName = `${s3Key}/${deploymentDirectory}`;
+      requestStub
+        .withArgs('S3', 'listObjectsV2')
+        .onFirstCall()
+        .resolves({
+          Contents: [{ Key: firstKey }],
+          NextContinuationToken: 'next-page',
+        })
+        .onSecondCall()
+        .resolves({ Contents: [{ Key: secondKey }] });
+      requestStub.withArgs('S3', 'deleteObjects').resolves();
+
+      try {
+        await awsDeploy.cleanupArtifactsForEmptyChangeSet();
+
+        const deleteCall = requestStub
+          .getCalls()
+          .find((call) => call.args[0] === 'S3' && call.args[1] === 'deleteObjects');
+        expect(deleteCall.args[2]).to.deep.equal({
+          Bucket: awsDeploy.bucketName,
+          Delete: {
+            Objects: [{ Key: firstKey }, { Key: secondKey }],
+          },
+        });
+      } finally {
+        awsDeploy.provider.request.restore();
+      }
     });
   });
 
