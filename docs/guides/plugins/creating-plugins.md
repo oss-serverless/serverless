@@ -198,12 +198,28 @@ The plugin will now only be executed when the service's provider matches the giv
 AWS plugins should use AWS SDK v3 clients directly instead of using `provider.request()`
 as a generic AWS API proxy.
 
-Plugins should declare the AWS SDK v3 clients they use in their own `package.json`:
+Plugins should own the AWS SDK v3 clients they use. Do not rely on AWS SDK
+packages that happen to be installed by Serverless.
+
+If your published plugin imports AWS SDK v3 clients at runtime, declare them in
+`dependencies`:
 
 ```json
 {
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.0.0"
+    "@aws-sdk/client-s3": "^3.975.0"
+  }
+}
+```
+
+If your plugin publishes a self-contained bundle that includes AWS SDK v3 client
+code, declare those clients in `devDependencies` instead and make sure your
+bundler does not externalize them:
+
+```json
+{
+  "devDependencies": {
+    "@aws-sdk/client-s3": "^3.975.0"
   }
 }
 ```
