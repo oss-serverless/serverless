@@ -28,7 +28,11 @@ describe('test/unit/lib/aws/credentials.test.js', () => {
 
   function loadCredentials({ files = {}, fromIni, fromNodeProviderChain }) {
     const readFileSync = sinon.stub().callsFake((filePath) => {
-      if (Object.prototype.hasOwnProperty.call(files, filePath)) return files[filePath];
+      if (Object.prototype.hasOwnProperty.call(files, filePath)) {
+        const result = files[filePath];
+        if (result instanceof Error) throw result;
+        return result;
+      }
       throw createMissingFileError();
     });
 
@@ -252,14 +256,13 @@ describe('test/unit/lib/aws/credentials.test.js', () => {
     });
   });
 
-  it('falls back when AWS_DEFAULT_PROFILE is absent', async () => {
+  it('does not fallback when AWS_DEFAULT_PROFILE is explicitly set but absent', async () => {
     await overrideEnv(async () => {
       process.env.AWS_DEFAULT_PROFILE = 'missing-default';
-      const fallbackCredentials = {
+      const fallbackProvider = sinon.stub().resolves({
         accessKeyId: 'fallbackAccessKeyId',
         secretAccessKey: 'fallbackSecretAccessKey',
-      };
-      const fallbackProvider = sinon.stub().resolves(fallbackCredentials);
+      });
       const fromIni = sinon
         .stub()
         .returns(sinon.stub().rejects(createUnresolvedProfileError('missing-default')));
@@ -269,11 +272,11 @@ describe('test/unit/lib/aws/credentials.test.js', () => {
         fromNodeProviderChain,
       });
 
-      await expect(getAwsSdkV3CredentialsProvider()()).to.eventually.deep.equal(
-        fallbackCredentials
+      await expect(getAwsSdkV3CredentialsProvider()()).to.be.rejectedWith(
+        'Could not resolve credentials using profile'
       );
-      expect(fromNodeProviderChain).to.have.been.calledOnce;
-      expect(fallbackProvider).to.have.been.calledOnce;
+      expect(fromNodeProviderChain).to.not.have.been.called;
+      expect(fallbackProvider).to.not.have.been.called;
     });
   });
 
@@ -298,22 +301,52 @@ describe('test/unit/lib/aws/credentials.test.js', () => {
     expect(fallbackProvider).to.not.have.been.called;
   });
 
-  it('detects profiles from credentials and config files', () => {
+  it('detects implicit default profiles from credentials and config files', () => {
     const fromIni = sinon.stub();
     const fromNodeProviderChain = sinon.stub();
-    const { doesProfileExist } = loadCredentials({
+    for (const [description, files] of [
+      [
+        'credentials default',
+        {
+          [credentialsFilePath]: ['[default]', 'aws_access_key_id = accessKeyId'].join('\n'),
+        },
+      ],
+      ['config default', { [configFilePath]: ['[default]', 'region = us-east-1'].join('\n') }],
+      [
+        'config profile default',
+        { [configFilePath]: ['[profile default]', 'region = us-east-1'].join('\n') },
+      ],
+      [
+        'config double-quoted profile default',
+        { [configFilePath]: ['[profile "default"]', 'region = us-east-1'].join('\n') },
+      ],
+      [
+        'config single-quoted profile default',
+        { [configFilePath]: ["[profile 'default']", 'region = us-east-1'].join('\n') },
+      ],
+    ]) {
+      const { doesImplicitDefaultProfileExist } = loadCredentials({
+        files,
+        fromIni,
+        fromNodeProviderChain,
+      });
+
+      expect(doesImplicitDefaultProfileExist(), description).to.equal(true);
+    }
+  });
+
+  it('does not detect non-default profiles as implicit default profiles', () => {
+    const fromIni = sinon.stub();
+    const fromNodeProviderChain = sinon.stub();
+    const { doesImplicitDefaultProfileExist } = loadCredentials({
       files: {
         [credentialsFilePath]: ['[credentials-profile]', 'aws_access_key_id = accessKeyId'].join(
           '\n'
         ),
         [configFilePath]: [
-          '[default]',
-          'region = us-east-1',
           '[profile custom]',
           'region = us-east-1',
           '[profile "quoted"]',
-          'region = us-east-1',
-          "[profile 'single-quoted']",
           'region = us-east-1',
           '[raw-config]',
           'region = us-east-1',
@@ -323,12 +356,27 @@ describe('test/unit/lib/aws/credentials.test.js', () => {
       fromNodeProviderChain,
     });
 
-    expect(doesProfileExist('credentials-profile')).to.equal(true);
-    expect(doesProfileExist('default')).to.equal(true);
-    expect(doesProfileExist('custom')).to.equal(true);
-    expect(doesProfileExist('quoted')).to.equal(true);
-    expect(doesProfileExist('single-quoted')).to.equal(true);
-    expect(doesProfileExist('raw-config')).to.equal(false);
-    expect(doesProfileExist('missing')).to.equal(false);
+    expect(doesImplicitDefaultProfileExist()).to.equal(false);
+  });
+
+  it('does not fallback when implicit default profile detection cannot read shared files', async () => {
+    const readError = Object.assign(new Error('permission denied'), { code: 'EACCES' });
+    const fallbackProvider = sinon.stub().resolves({
+      accessKeyId: 'fallbackAccessKeyId',
+      secretAccessKey: 'fallbackSecretAccessKey',
+    });
+    const fromIni = sinon
+      .stub()
+      .returns(sinon.stub().rejects(createUnresolvedProfileError('default')));
+    const fromNodeProviderChain = sinon.stub().returns(fallbackProvider);
+    const { getAwsSdkV3CredentialsProvider } = loadCredentials({
+      files: { [credentialsFilePath]: readError },
+      fromIni,
+      fromNodeProviderChain,
+    });
+
+    await expect(getAwsSdkV3CredentialsProvider()()).to.be.rejectedWith('permission denied');
+    expect(fromNodeProviderChain).to.not.have.been.called;
+    expect(fallbackProvider).to.not.have.been.called;
   });
 });

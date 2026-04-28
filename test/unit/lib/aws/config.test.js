@@ -52,6 +52,18 @@ describe('test/unit/lib/aws/config.test.js', () => {
     });
   });
 
+  it('falls back to environment region only when region is undefined', async () => {
+    await overrideEnv(async () => {
+      process.env.AWS_REGION = 'eu-west-1';
+      const { buildClientConfig } = loadConfig();
+
+      expect(buildClientConfig().region).to.equal('eu-west-1');
+      expect(buildClientConfig({ region: undefined }).region).to.equal('eu-west-1');
+      expect(buildClientConfig({ region: '' }).region).to.equal('');
+      expect(buildClientConfig({ region: null }).region).to.equal(null);
+    });
+  });
+
   it('uses NodeHttpHandler for timeout config', async () => {
     await overrideEnv(async () => {
       process.env.AWS_CLIENT_TIMEOUT = '1234';

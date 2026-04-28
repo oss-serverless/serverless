@@ -411,6 +411,14 @@ describe('AwsProvider', () => {
       expect(config.requestHandler).to.exist;
     });
 
+    it('falls back to provider region only when SDK v3 region is undefined', async () => {
+      expect((await awsProvider.getAwsSdkV3Config({ region: undefined })).region).to.equal(
+        'us-east-1'
+      );
+      expect((await awsProvider.getAwsSdkV3Config({ region: '' })).region).to.equal('');
+      expect((await awsProvider.getAwsSdkV3Config({ region: null })).region).to.equal(null);
+    });
+
     it('passes profile and custom options to the config helpers', async () => {
       const buildClientConfigStub = sinon.stub().returns({ config: true });
       const getAwsSdkV3CredentialsProviderStub = sinon.stub().returns('credentials');
@@ -479,31 +487,28 @@ describe('AwsProvider', () => {
       expect(config).to.not.have.property('profile');
     });
 
-    it('enables S3 acceleration for SDK v3 S3 configs when requested', async () => {
+    it('does not implicitly enable S3 acceleration for SDK v3 S3 configs', async () => {
       awsProvider.options['aws-s3-accelerate'] = true;
 
       const config = await awsProvider.getAwsSdkV3Config({ service: 'S3' });
 
-      expect(config.useAccelerateEndpoint).to.equal(true);
+      expect(config).to.not.have.property('useAccelerateEndpoint');
     });
 
     it('preserves explicit SDK v3 S3 acceleration options', async () => {
       awsProvider.options['aws-s3-accelerate'] = true;
 
-      const config = await awsProvider.getAwsSdkV3Config({
+      const enabledConfig = await awsProvider.getAwsSdkV3Config({
+        service: 'S3',
+        useAccelerateEndpoint: true,
+      });
+      const disabledConfig = await awsProvider.getAwsSdkV3Config({
         service: 'S3',
         useAccelerateEndpoint: false,
       });
 
-      expect(config.useAccelerateEndpoint).to.equal(false);
-    });
-
-    it('does not apply S3 acceleration to non-S3 SDK v3 configs', async () => {
-      awsProvider.options['aws-s3-accelerate'] = true;
-
-      const config = await awsProvider.getAwsSdkV3Config({ service: 'Lambda' });
-
-      expect(config).to.not.have.property('useAccelerateEndpoint');
+      expect(enabledConfig.useAccelerateEndpoint).to.equal(true);
+      expect(disabledConfig.useAccelerateEndpoint).to.equal(false);
     });
   });
 
