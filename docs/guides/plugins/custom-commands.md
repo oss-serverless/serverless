@@ -1,6 +1,6 @@
 # Custom commands
 
-Serverless Framework plugins can define custom CLI commands.
+Serverless plugins can define custom CLI commands.
 
 These commands can then be called by users, for example: `serverless my-command`.
 
@@ -108,4 +108,4 @@ If an option is not required, a `default` property can be set in the option defi
 
 Command names must be unique across all plugins. For example instead of defining a custom `deploy` command, name it `my-company-deploy` instead.
 
-If a plugin defines a command name that conflicts with Serverless Framework core or another plugin, the CLI will exit with an error.
+If a plugin defines a command name that conflicts with Serverless core or another plugin, the CLI will exit with an error.

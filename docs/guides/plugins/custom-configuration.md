@@ -42,7 +42,7 @@ module.exports = MyPlugin;
 
 Any additional configuration defined by plugins in `serverless.yml` must come with validation rules.
 
-Serverless Framework uses JSON schema validation backed by [the AJV library](https://github.com/ajv-validator/ajv). You can extend [the base schema](/lib/configSchema/index.js) in plugins via:
+Serverless uses JSON schema validation backed by [the AJV library](https://github.com/ajv-validator/ajv). You can extend [the base schema](/lib/configSchema/index.js) in plugins via:
 
 - `defineTopLevelProperty`
 - `defineCustomProperties`
@@ -108,7 +108,7 @@ class MyPlugin {
 }
 ```
 
-This way, if the user sets `someProperty` by mistake to `false`, the Framework would display an error:
+This way, if the user sets `someProperty` by mistake to `false`, Serverless would display an error:
 
 ```
 Configuration error: yourPlugin.someProperty should be string
@@ -142,7 +142,7 @@ class MyPlugin {
 }
 ```
 
-This way, if the user sets `myCustomProperty` by mistake to `false`, the Framework would display an error:
+This way, if the user sets `myCustomProperty` by mistake to `false`, Serverless would display an error:
 
 ```
 Configuration error: custom.myCustomProperty should be string
@@ -178,7 +178,7 @@ class MyPlugin {
 }
 ```
 
-This way, if the user sets `anotherProperty` by mistake to `hello`, the Framework would display an error:
+This way, if the user sets `anotherProperty` by mistake to `hello`, Serverless would display an error:
 
 ```
 Configuration error at 'functions.foo.anotherProperty': should be number
@@ -219,7 +219,7 @@ class MyPlugin {
 }
 ```
 
-This way, if the user sets `anotherProp` by mistake to `some-string`, the Framework would display an error:
+This way, if the user sets `anotherProp` by mistake to `some-string`, Serverless would display an error:
 
 ```
 Configuration error: functions.someFunc.events[0].myPluginEvent.anotherProp should be number
@@ -258,7 +258,7 @@ class MyPlugin {
 }
 ```
 
-This way, if the user sets `documentation` by mistake to `false`, the Framework would display an error:
+This way, if the user sets `documentation` by mistake to `false`, Serverless would display an error:
 
 ```
 Configuration error: functions.foo.events[0].http.documentation should be a string

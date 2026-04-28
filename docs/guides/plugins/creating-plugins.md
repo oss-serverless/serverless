@@ -11,7 +11,7 @@ Creating a custom plugin lets you:
 
 ## Creating a plugin
 
-The simplest way to create a Serverless Framework plugin is to write a JavaScript file:
+The simplest way to create a Serverless plugin is to write a JavaScript file:
 
 ```javascript
 'use strict';
@@ -50,13 +50,13 @@ To correctly configure the plugin's NPM package, set the `main` property to poin
 }
 ```
 
-It is also a good practice to add `serverless` to the `peerDependencies` section. That ensures that your plugin runs only with the Serverless Framework versions it supports.
+It is also a good practice to add `osls` to the `peerDependencies` section. That ensures that your plugin runs only with the Serverless versions it supports.
 
 ```json
 {
   ...
   "peerDependencies": {
-    "serverless": "^2.60 || 3"
+    "osls": "^3.67"
   }
 }
 ```
