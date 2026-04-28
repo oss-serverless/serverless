@@ -41,6 +41,10 @@ describe('#disassociateUsagePlan()', () => {
               apiId: 'resource-id',
               stage: 'dev',
             },
+            {
+              apiId: 'another-resource-id',
+              stage: 'prod',
+            },
           ],
           id: 'usage-plan-id',
         },
@@ -91,6 +95,80 @@ describe('#disassociateUsagePlan()', () => {
           ],
         })
       ).to.be.equal(true);
+    });
+  });
+
+  it('should remove all matching associations from a usage plan', async () => {
+    providerRequestStub.withArgs('APIGateway', 'getUsagePlans').resolves({
+      items: [
+        {
+          apiStages: [
+            { apiId: 'resource-id', stage: 'dev' },
+            { apiId: 'resource-id', stage: 'prod' },
+            { apiId: 'another-resource-id', stage: 'dev' },
+          ],
+          id: 'usage-plan-id',
+        },
+      ],
+    });
+    disassociateUsagePlan.serverless.service.provider.apiGateway = { apiKeys: ['apiKey1'] };
+
+    return disassociateUsagePlan.disassociateUsagePlan().then(() => {
+      expect(providerRequestStub.callCount).to.be.equal(4);
+
+      expect(
+        providerRequestStub.calledWithExactly('APIGateway', 'updateUsagePlan', {
+          usagePlanId: 'usage-plan-id',
+          patchOperations: [
+            {
+              op: 'remove',
+              path: '/apiStages',
+              value: 'resource-id:dev',
+            },
+          ],
+        })
+      ).to.be.equal(true);
+      expect(
+        providerRequestStub.calledWithExactly('APIGateway', 'updateUsagePlan', {
+          usagePlanId: 'usage-plan-id',
+          patchOperations: [
+            {
+              op: 'remove',
+              path: '/apiStages',
+              value: 'resource-id:prod',
+            },
+          ],
+        })
+      ).to.be.equal(true);
+      expect(
+        providerRequestStub.calledWithExactly('APIGateway', 'updateUsagePlan', {
+          usagePlanId: 'usage-plan-id',
+          patchOperations: [
+            {
+              op: 'remove',
+              path: '/apiStages',
+              value: 'another-resource-id:dev',
+            },
+          ],
+        })
+      ).to.be.equal(false);
+    });
+  });
+
+  it('should not update usage plans without matching API stages', async () => {
+    providerRequestStub.withArgs('APIGateway', 'getUsagePlans').resolves({
+      items: [
+        {
+          apiStages: [{ apiId: 'another-resource-id', stage: 'dev' }],
+          id: 'another-usage-plan-id',
+        },
+      ],
+    });
+    disassociateUsagePlan.serverless.service.provider.apiGateway = { apiKeys: ['apiKey1'] };
+
+    return disassociateUsagePlan.disassociateUsagePlan().then(() => {
+      expect(providerRequestStub.callCount).to.be.equal(2);
+      expect(providerRequestStub.calledWith('APIGateway', 'updateUsagePlan')).to.be.equal(false);
     });
   });
 
