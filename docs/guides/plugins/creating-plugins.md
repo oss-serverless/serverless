@@ -236,7 +236,7 @@ class MyPlugin {
   }
 
   async upload() {
-    const config = await this.provider.getAwsSdkV3Config({ service: 'S3' });
+    const config = await this.provider.getAwsSdkV3Config();
     const s3 = new S3Client(config);
 
     await s3.send(
@@ -260,10 +260,9 @@ Supported Serverless-specific options are:
 
 - `region`: override the resolved provider region for this client
 - `profile`: resolve credentials from a specific AWS profile
-- `service`: identify the AWS service for Serverless-specific config
 
 Other AWS SDK v3 client options, such as `endpoint`, `logger`, `requestHandler`,
-or service-specific options, are passed through to the returned config.
+`forcePathStyle`, or `useAccelerateEndpoint`, are passed through to the returned config.
 
 `provider.request()` and `provider.sdk` are legacy AWS SDK v2 surfaces. They are
 not the recommended AWS SDK v3 plugin API. Core framework internals that have

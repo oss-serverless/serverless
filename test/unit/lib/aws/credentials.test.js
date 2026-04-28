@@ -12,6 +12,24 @@ describe('test/unit/lib/aws/credentials.test.js', () => {
   const homeDir = path.resolve('/home/test');
   const credentialsFilePath = path.join(homeDir, '.aws', 'credentials');
   const configFilePath = path.join(homeDir, '.aws', 'config');
+  const envKeys = [
+    'AWS_PROFILE',
+    'AWS_DEFAULT_PROFILE',
+    'AWS_ACCESS_KEY_ID',
+    'AWS_SECRET_ACCESS_KEY',
+    'AWS_SESSION_TOKEN',
+    'AWS_DEV_PROFILE',
+    'AWS_DEV_ACCESS_KEY_ID',
+    'AWS_DEV_SECRET_ACCESS_KEY',
+    'AWS_DEV_SESSION_TOKEN',
+    'AWS_PROD_PROFILE',
+    'AWS_PROD_ACCESS_KEY_ID',
+    'AWS_PROD_SECRET_ACCESS_KEY',
+    'AWS_PROD_SESSION_TOKEN',
+    'AWS_SHARED_CREDENTIALS_FILE',
+    'AWS_CONFIG_FILE',
+  ];
+  let originalEnv;
 
   function createMissingFileError() {
     return Object.assign(new Error('missing'), { code: 'ENOENT' });
@@ -45,6 +63,22 @@ describe('test/unit/lib/aws/credentials.test.js', () => {
       'os': { homedir: () => homeDir },
     });
   }
+
+  beforeEach(() => {
+    originalEnv = new Map(envKeys.map((key) => [key, process.env[key]]));
+
+    for (const key of envKeys) delete process.env[key];
+  });
+
+  afterEach(() => {
+    for (const key of envKeys) {
+      const value = originalEnv.get(key);
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+
+    sinon.restore();
+  });
 
   it('falls back from the default profile only when the profile is absent', async () => {
     const fallbackCredentials = {
@@ -110,6 +144,68 @@ describe('test/unit/lib/aws/credentials.test.js', () => {
     );
     expect(fromNodeProviderChain).to.not.have.been.called;
     expect(fallbackProvider).to.not.have.been.called;
+  });
+
+  it('does not fallback when a malformed default profile is loaded from a tilde credentials path', async () => {
+    await overrideEnv(async () => {
+      process.env.AWS_SHARED_CREDENTIALS_FILE = '~/.aws/credentials';
+      const fallbackProvider = sinon.stub().resolves({
+        accessKeyId: 'fallbackAccessKeyId',
+        secretAccessKey: 'fallbackSecretAccessKey',
+      });
+      const fromIni = sinon
+        .stub()
+        .returns(sinon.stub().rejects(createUnresolvedProfileError('default')));
+      const fromNodeProviderChain = sinon.stub().returns(fallbackProvider);
+      const { getAwsSdkV3CredentialsProvider } = loadCredentials({
+        files: {
+          [credentialsFilePath]: ['[default]', 'aws_access_key_id = accessKeyId'].join('\n'),
+        },
+        fromIni,
+        fromNodeProviderChain,
+      });
+
+      await expect(getAwsSdkV3CredentialsProvider()()).to.be.rejectedWith(
+        'Could not resolve credentials using profile'
+      );
+      expect(fromIni.firstCall.args[0]).to.include({
+        filepath: credentialsFilePath,
+        configFilepath: configFilePath,
+      });
+      expect(fromNodeProviderChain).to.not.have.been.called;
+      expect(fallbackProvider).to.not.have.been.called;
+    });
+  });
+
+  it('does not fallback when a malformed default profile is loaded from a tilde config path', async () => {
+    await overrideEnv(async () => {
+      process.env.AWS_CONFIG_FILE = '~/.aws/config';
+      const fallbackProvider = sinon.stub().resolves({
+        accessKeyId: 'fallbackAccessKeyId',
+        secretAccessKey: 'fallbackSecretAccessKey',
+      });
+      const fromIni = sinon
+        .stub()
+        .returns(sinon.stub().rejects(createUnresolvedProfileError('default')));
+      const fromNodeProviderChain = sinon.stub().returns(fallbackProvider);
+      const { getAwsSdkV3CredentialsProvider } = loadCredentials({
+        files: {
+          [configFilePath]: ['[profile default]', 'custom_field = value'].join('\n'),
+        },
+        fromIni,
+        fromNodeProviderChain,
+      });
+
+      await expect(getAwsSdkV3CredentialsProvider()()).to.be.rejectedWith(
+        'Could not resolve credentials using profile'
+      );
+      expect(fromIni.firstCall.args[0]).to.include({
+        filepath: credentialsFilePath,
+        configFilepath: configFilePath,
+      });
+      expect(fromNodeProviderChain).to.not.have.been.called;
+      expect(fallbackProvider).to.not.have.been.called;
+    });
   });
 
   it('does not fallback when the default profile has unrecognized fields', async () => {

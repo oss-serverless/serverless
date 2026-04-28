@@ -145,6 +145,31 @@ describe('#request', () => {
     return expect(res).to.eql({ region: 'ap-northeast-1' });
   });
 
+  it('configures proxy agent with proxy URL and CA options', async () => {
+    await overrideEnv(async () => {
+      process.env.HTTPS_PROXY = 'https://proxy.example.com:1234';
+      process.env.HTTPS_CA = 'certificate';
+
+      function FakeHttpsProxyAgent(proxy, options) {
+        this.proxy = proxy;
+        this.options = options;
+      }
+
+      const sdk = { config: { httpOptions: {} } };
+
+      proxyquire('../../../../lib/aws/request', {
+        './sdk-v2': sdk,
+        'https-proxy-agent': { HttpsProxyAgent: FakeHttpsProxyAgent },
+      });
+
+      expect(sdk.config.httpOptions.agent.proxy).to.equal('https://proxy.example.com:1234');
+      expect(sdk.config.httpOptions.agent.options).to.include({
+        rejectUnauthorized: true,
+      });
+      expect(sdk.config.httpOptions.agent.options.ca).to.deep.equal(['certificate']);
+    });
+  });
+
   describe('Retries', () => {
     it('should retry on retryable errors (429)', async () => {
       const error = {
