@@ -153,12 +153,12 @@ describe('cleanupS3Bucket', () => {
     it('should return an empty array if there are less than 4 directories available', async () => {
       const serviceObjects = {
         Contents: [
-          { Key: `${s3Key}151224711231-2016-08-18T15:42:00/artifact.zip` },
-          { Key: `${s3Key}151224711231-2016-08-18T15:42:00/cloudformation.json` },
-          { Key: `${s3Key}141264711231-2016-08-18T15:42:00/artifact.zip` },
-          { Key: `${s3Key}141264711231-2016-08-18T15:42:00/cloudformation.json` },
-          { Key: `${s3Key}141321321541-2016-08-18T11:23:02/artifact.zip` },
-          { Key: `${s3Key}141321321541-2016-08-18T11:23:02/cloudformation.json` },
+          { Key: `${s3Key}/151224711231-2016-08-18T15:42:00/artifact.zip` },
+          { Key: `${s3Key}/151224711231-2016-08-18T15:42:00/cloudformation.json` },
+          { Key: `${s3Key}/141264711231-2016-08-18T15:42:00/artifact.zip` },
+          { Key: `${s3Key}/141264711231-2016-08-18T15:42:00/cloudformation.json` },
+          { Key: `${s3Key}/141321321541-2016-08-18T11:23:02/artifact.zip` },
+          { Key: `${s3Key}/141321321541-2016-08-18T11:23:02/cloudformation.json` },
         ],
       };
 
@@ -178,14 +178,14 @@ describe('cleanupS3Bucket', () => {
     it('should return an empty array if there are exactly 4 directories available', async () => {
       const serviceObjects = {
         Contents: [
-          { Key: `${s3Key}151224711231-2016-08-18T15:42:00/artifact.zip` },
-          { Key: `${s3Key}151224711231-2016-08-18T15:42:00/cloudformation.json` },
-          { Key: `${s3Key}141264711231-2016-08-18T15:42:00/artifact.zip` },
-          { Key: `${s3Key}141264711231-2016-08-18T15:42:00/cloudformation.json` },
-          { Key: `${s3Key}141321321541-2016-08-18T11:23:02/artifact.zip` },
-          { Key: `${s3Key}141321321541-2016-08-18T11:23:02/cloudformation.json` },
-          { Key: `${s3Key}142003031341-2016-08-18T12:46:04/artifact.zip` },
-          { Key: `${s3Key}142003031341-2016-08-18T12:46:04/cloudformation.json` },
+          { Key: `${s3Key}/151224711231-2016-08-18T15:42:00/artifact.zip` },
+          { Key: `${s3Key}/151224711231-2016-08-18T15:42:00/cloudformation.json` },
+          { Key: `${s3Key}/141264711231-2016-08-18T15:42:00/artifact.zip` },
+          { Key: `${s3Key}/141264711231-2016-08-18T15:42:00/cloudformation.json` },
+          { Key: `${s3Key}/141321321541-2016-08-18T11:23:02/artifact.zip` },
+          { Key: `${s3Key}/141321321541-2016-08-18T11:23:02/cloudformation.json` },
+          { Key: `${s3Key}/142003031341-2016-08-18T12:46:04/artifact.zip` },
+          { Key: `${s3Key}/142003031341-2016-08-18T12:46:04/cloudformation.json` },
         ],
       };
 
@@ -303,10 +303,10 @@ describe('cleanupS3Bucket', () => {
 
     it('should remove all old service files from the S3 bucket if available', async () => {
       const objectsToRemove = [
-        { Key: `${s3Key}113304333331-2016-08-18T13:40:06/artifact.zip` },
-        { Key: `${s3Key}113304333331-2016-08-18T13:40:06/cloudformation.json` },
-        { Key: `${s3Key}141264711231-2016-08-18T15:42:00/artifact.zip` },
-        { Key: `${s3Key}141264711231-2016-08-18T15:42:00/cloudformation.json` },
+        { Key: `${s3Key}/113304333331-2016-08-18T13:40:06/artifact.zip` },
+        { Key: `${s3Key}/113304333331-2016-08-18T13:40:06/cloudformation.json` },
+        { Key: `${s3Key}/141264711231-2016-08-18T15:42:00/artifact.zip` },
+        { Key: `${s3Key}/141264711231-2016-08-18T15:42:00/cloudformation.json` },
       ];
 
       return awsDeploy.removeObjects(objectsToRemove).then(() => {
@@ -405,6 +405,28 @@ describe('cleanupS3Bucket', () => {
             Objects: [{ Key: firstKey }, { Key: secondKey }],
           },
         });
+      } finally {
+        awsDeploy.provider.request.restore();
+      }
+    });
+
+    it('should not rewrite delete failures as list failures', async () => {
+      const deploymentDirectory = '151224711231-2016-08-18T15:42:00';
+      const artifactKey = `${s3Key}/${deploymentDirectory}/artifact.zip`;
+      const deleteError = new Error('delete denied');
+      deleteError.statusCode = 403;
+      const requestStub = sinon.stub(awsDeploy.provider, 'request');
+      awsDeploy.serverless.service.package.artifactDirectoryName = `${s3Key}/${deploymentDirectory}`;
+      requestStub.withArgs('S3', 'listObjectsV2').resolves({
+        Contents: [{ Key: artifactKey }],
+      });
+      requestStub.withArgs('S3', 'deleteObjects').rejects(deleteError);
+
+      try {
+        await awsDeploy.cleanupArtifactsForEmptyChangeSet();
+        throw new Error('Expected cleanupArtifactsForEmptyChangeSet to reject');
+      } catch (error) {
+        expect(error).to.equal(deleteError);
       } finally {
         awsDeploy.provider.request.restore();
       }

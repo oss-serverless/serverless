@@ -147,7 +147,7 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
       .returns({ Contents: [{ Key: 'second' }] });
     const innerDeleteObjectsStub = sinon.stub().resolves();
 
-    await runServerless({
+    const { serverless } = await runServerless({
       fixture: 'function',
       command: 'remove',
       awsRequestStubMap: {
@@ -161,8 +161,13 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
     });
 
     expect(listObjectsV2Stub).to.have.been.calledTwice;
+    expect(listObjectsV2Stub.firstCall.args[0]).to.include({
+      Bucket: 'resource-id',
+      Prefix: `serverless/${serverless.service.service}/dev/`,
+    });
     expect(listObjectsV2Stub.secondCall.args[0]).to.include({
       Bucket: 'resource-id',
+      Prefix: `serverless/${serverless.service.service}/dev/`,
       ContinuationToken: 'next-page',
     });
     expect(innerDeleteObjectsStub).to.be.calledWithExactly({
@@ -300,7 +305,7 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
 
     expect(listObjectVersionsStub).to.be.calledWithExactly({
       Bucket: 'bucket',
-      Prefix: `serverless/${serverless.service.service}/dev`,
+      Prefix: `serverless/${serverless.service.service}/dev/`,
     });
   });
 
@@ -345,7 +350,7 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
 
     expect(listObjectVersionsStub).to.be.calledWithExactly({
       Bucket: 'bucket',
-      Prefix: `serverless/${serverless.service.service}/dev`,
+      Prefix: `serverless/${serverless.service.service}/dev/`,
     });
 
     expect(innerDeleteObjectsStub).to.be.calledWithExactly({
@@ -400,11 +405,11 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
     expect(listObjectVersionsStub).to.have.been.calledTwice;
     expect(listObjectVersionsStub.firstCall.args[0]).to.deep.equal({
       Bucket: 'bucket',
-      Prefix: `serverless/${serverless.service.service}/dev`,
+      Prefix: `serverless/${serverless.service.service}/dev/`,
     });
     expect(listObjectVersionsStub.secondCall.args[0]).to.deep.equal({
       Bucket: 'bucket',
-      Prefix: `serverless/${serverless.service.service}/dev`,
+      Prefix: `serverless/${serverless.service.service}/dev/`,
       KeyMarker: 'next-key',
       VersionIdMarker: 'next-version',
     });
