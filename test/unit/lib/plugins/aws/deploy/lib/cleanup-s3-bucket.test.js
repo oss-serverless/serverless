@@ -432,6 +432,69 @@ describe('cleanupS3Bucket', () => {
       }
     });
 
+    for (const { description, resolveArtifactDirectoryName } of [
+      {
+        description: 'the artifact directory is the stage deployment root',
+        resolveArtifactDirectoryName: () => s3Key,
+      },
+      {
+        description: 'the artifact directory is the stage deployment root with a trailing slash',
+        resolveArtifactDirectoryName: () => `${s3Key}/`,
+      },
+      {
+        description: 'the artifact directory is not a deployment directory',
+        resolveArtifactDirectoryName: () => `${s3Key}/not-a-deployment-directory`,
+      },
+      {
+        description: 'the artifact directory is nested below a deployment directory',
+        resolveArtifactDirectoryName: () => `${s3Key}/151224711231-2016-08-18T15:42:00/nested`,
+      },
+    ]) {
+      it(`should reject when ${description}`, async () => {
+        const requestStub = sinon.stub(awsDeploy.provider, 'request');
+        awsDeploy.serverless.service.package.artifactDirectoryName = resolveArtifactDirectoryName();
+
+        try {
+          await expect(
+            awsDeploy.cleanupArtifactsForEmptyChangeSet()
+          ).to.be.eventually.rejected.and.have.property(
+            'code',
+            'INVALID_EMPTY_CHANGE_SET_ARTIFACT_DIRECTORY'
+          );
+          expect(requestStub).to.not.have.been.called;
+        } finally {
+          awsDeploy.provider.request.restore();
+        }
+      });
+    }
+
+    it('should normalize trailing slashes for a selected deployment directory', async () => {
+      const deploymentDirectory = '151224711231-2016-08-18T15:42:00';
+      const artifactDirectoryName = `${s3Key}/${deploymentDirectory}`;
+      const artifactKey = `${artifactDirectoryName}/artifact.zip`;
+      const requestStub = sinon.stub(awsDeploy.provider, 'request');
+      awsDeploy.serverless.service.package.artifactDirectoryName = `${artifactDirectoryName}/`;
+      requestStub.withArgs('S3', 'listObjectsV2').resolves({
+        Contents: [{ Key: artifactKey }],
+      });
+      requestStub.withArgs('S3', 'deleteObjects').resolves();
+
+      try {
+        await awsDeploy.cleanupArtifactsForEmptyChangeSet();
+
+        expect(requestStub.firstCall.args).to.deep.equal([
+          'S3',
+          'listObjectsV2',
+          {
+            Bucket: awsDeploy.bucketName,
+            Prefix: `${artifactDirectoryName}/`,
+          },
+        ]);
+      } finally {
+        awsDeploy.provider.request.restore();
+      }
+    });
+
     it('should not rewrite delete failures as list failures', async () => {
       const deploymentDirectory = '151224711231-2016-08-18T15:42:00';
       const artifactKey = `${s3Key}/${deploymentDirectory}/artifact.zip`;
