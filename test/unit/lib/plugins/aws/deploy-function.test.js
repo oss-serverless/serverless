@@ -179,7 +179,6 @@ describe('AwsDeployFunction', () => {
   describe('#deployFunction()', () => {
     let artifactFilePath;
     let updateFunctionCodeStub;
-    let statStub;
     let readFileStub;
 
     beforeEach(() => {
@@ -188,7 +187,6 @@ describe('AwsDeployFunction', () => {
       artifactFilePath = path.join(awsDeployFunction.packagePath, 'first.zip');
       serverless.utils.writeFileSync(artifactFilePath, 'first.zip file content');
       updateFunctionCodeStub = sinon.stub(awsDeployFunction.provider, 'request').resolves();
-      statStub = sinon.stub(fs.promises, 'stat').resolves({ size: 1024 });
       readFileStub = sinon.stub(fs.promises, 'readFile').resolves(Buffer.from('first.zip content'));
       getHashForFilePathStub.resolves('local-hash-zip-file');
       awsDeployFunction.serverless.service.provider.remoteFunctionData = {
@@ -200,7 +198,6 @@ describe('AwsDeployFunction', () => {
 
     afterEach(() => {
       awsDeployFunction.provider.request.restore();
-      fs.promises.stat.restore();
       fs.promises.readFile.restore();
     });
 
@@ -213,7 +210,6 @@ describe('AwsDeployFunction', () => {
       expect(updateFunctionCodeStub.calledOnce).to.be.equal(true);
       expect(getHashForFilePathStub).to.have.been.calledWithExactly(artifactFilePath);
       expect(readFileStub).to.have.been.calledWithExactly(artifactFilePath);
-      expect(statStub).to.have.been.calledWithExactly(artifactFilePath);
       expect(
         updateFunctionCodeStub.calledWithExactly('Lambda', 'updateFunctionCode', {
           FunctionName: 'first',
@@ -232,7 +228,6 @@ describe('AwsDeployFunction', () => {
       expect(updateFunctionCodeStub.calledOnce).to.be.equal(true);
       expect(getHashForFilePathStub).to.not.have.been.called;
       expect(readFileStub).to.have.been.calledWithExactly(artifactFilePath);
-      expect(statStub).to.have.been.calledWithExactly(artifactFilePath);
       expect(
         updateFunctionCodeStub.calledWithExactly('Lambda', 'updateFunctionCode', {
           FunctionName: 'first',
@@ -249,14 +244,12 @@ describe('AwsDeployFunction', () => {
       expect(updateFunctionCodeStub.calledOnce).to.be.equal(false);
       expect(getHashForFilePathStub).to.have.been.calledWithExactly(artifactFilePath);
       expect(readFileStub).to.not.have.been.called;
-      expect(statStub).to.not.have.been.called;
     });
 
     it('should log artifact size', async () => {
       await awsDeployFunction.deployFunction();
 
       expect(readFileStub.calledOnce).to.equal(true);
-      expect(statStub.calledOnce).to.equal(true);
       expect(readFileStub.calledWithExactly(artifactFilePath)).to.equal(true);
     });
 
@@ -285,7 +278,6 @@ describe('AwsDeployFunction', () => {
 
         expect(getHashForFilePathStub).to.have.been.calledWithExactly(artifactZipFile);
         expect(readFileStub).to.have.been.calledWithExactly(artifactZipFile);
-        expect(statStub).to.have.been.calledWithExactly(artifactZipFile);
         expect(getFunctionStub).to.have.been.calledWithExactly('first');
         expect(updateFunctionCodeStub.calledOnce).to.equal(true);
         expect(
