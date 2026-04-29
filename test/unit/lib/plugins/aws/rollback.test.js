@@ -16,6 +16,8 @@ describe('AwsRollback', () => {
   let spawnStub;
   let serverless;
   let provider;
+  const selectedDeploymentKey =
+    'serverless/rollback/dev/1476779096930-2016-10-18T08:24:56.930Z/compiled-cloudformation-template.json';
 
   const createInstance = (options) => {
     serverless = new Serverless({ commands: [], options: {} });
@@ -43,6 +45,46 @@ describe('AwsRollback', () => {
     if (provider.request.restore) provider.request.restore();
     serverless.pluginManager.spawn.restore();
   });
+
+  function stubSelectedDeploymentList(requestStub) {
+    requestStub.withArgs('S3', 'listObjectsV2').resolves({
+      Contents: [{ Key: selectedDeploymentKey }],
+    });
+  }
+
+  function expectGetStateFileCall(requestStub) {
+    expect(requestStub).to.have.been.calledWithExactly('S3', 'getObject', {
+      Bucket: awsRollback.bucketName,
+      Key: 'serverless/rollback/dev/1476779096930-2016-10-18T08:24:56.930Z/serverless-state.json',
+    });
+  }
+
+  const createSignatureMismatchListError = () => {
+    const error = new Error('signature mismatch');
+    error.providerError = {
+      code: 'SignatureDoesNotMatch',
+      statusCode: 403,
+    };
+    return error;
+  };
+
+  const createAccessDeniedListError = () => {
+    const error = new Error('access denied');
+    error.providerError = {
+      code: 'AccessDenied',
+      statusCode: 403,
+    };
+    return error;
+  };
+
+  const createWrappedStatusOnlyListError = () => {
+    const error = new Error('forbidden');
+    error.code = 'AWS_S3_LIST_OBJECTS_V2_ERROR';
+    error.providerError = {
+      statusCode: 403,
+    };
+    return error;
+  };
 
   describe('#constructor()', () => {
     it('should have hooks', () => expect(awsRollback.hooks).to.be.not.empty);
@@ -102,7 +144,9 @@ describe('AwsRollback', () => {
         Contents: s3Objects,
       };
 
-      sinon.stub(awsRollback.provider, 'request').resolves(s3Response);
+      const requestStub = sinon.stub(awsRollback.provider, 'request');
+      requestStub.withArgs('S3', 'listObjectsV2').resolves(s3Response);
+      requestStub.withArgs('S3', 'getObject').resolves({ Body: '{}' });
 
       return awsRollback.setStackToUpdate().then(() => {
         expect(awsRollback.serverless.service.package.artifactDirectoryName).to.be.equal(
@@ -117,7 +161,9 @@ describe('AwsRollback', () => {
       const s3Response = {
         Contents: [],
       };
-      const listObjectsStub = sinon.stub(awsRollback.provider, 'request').resolves(s3Response);
+      const listObjectsStub = sinon.stub(awsRollback.provider, 'request');
+      listObjectsStub.withArgs('S3', 'listObjectsV2').resolves(s3Response);
+      listObjectsStub.withArgs('S3', 'getObject').resolves({ Body: '{}' });
 
       return awsRollback
         .setStackToUpdate()
@@ -150,7 +196,9 @@ describe('AwsRollback', () => {
         Contents: s3Objects,
       };
 
-      const listObjectsStub = sinon.stub(awsRollback.provider, 'request').resolves(s3Response);
+      const listObjectsStub = sinon.stub(awsRollback.provider, 'request');
+      listObjectsStub.withArgs('S3', 'listObjectsV2').resolves(s3Response);
+      listObjectsStub.withArgs('S3', 'getObject').resolves({ Body: '{}' });
 
       return awsRollback
         .setStackToUpdate()
@@ -183,7 +231,9 @@ describe('AwsRollback', () => {
         Contents: s3Objects,
       };
 
-      const listObjectsStub = sinon.stub(awsRollback.provider, 'request').resolves(s3Response);
+      const listObjectsStub = sinon.stub(awsRollback.provider, 'request');
+      listObjectsStub.withArgs('S3', 'listObjectsV2').resolves(s3Response);
+      listObjectsStub.withArgs('S3', 'getObject').resolves({ Body: '{}' });
 
       return awsRollback.setStackToUpdate().then(() => {
         expect(awsRollback.serverless.service.package.artifactDirectoryName).to.be.equal(
@@ -234,6 +284,47 @@ describe('AwsRollback', () => {
       ]);
     });
 
+    it('should not rewrite specific S3 list authentication failures', async () => {
+      const listError = createSignatureMismatchListError();
+      sinon
+        .stub(awsRollback.provider, 'request')
+        .withArgs('S3', 'listObjectsV2')
+        .rejects(listError);
+
+      try {
+        await awsRollback.setStackToUpdate();
+        throw new Error('Expected setStackToUpdate to reject');
+      } catch (error) {
+        expect(error).to.equal(listError);
+      }
+    });
+
+    it('should rewrite explicit S3 list access denied failures', async () => {
+      const listError = createAccessDeniedListError();
+      sinon
+        .stub(awsRollback.provider, 'request')
+        .withArgs('S3', 'listObjectsV2')
+        .rejects(listError);
+
+      await expect(awsRollback.setStackToUpdate()).to.be.eventually.rejected.and.have.property(
+        'code',
+        'AWS_S3_LIST_OBJECTS_V2_ACCESS_DENIED'
+      );
+    });
+
+    it('should rewrite wrapped status-only S3 list access denied failures', async () => {
+      const listError = createWrappedStatusOnlyListError();
+      sinon
+        .stub(awsRollback.provider, 'request')
+        .withArgs('S3', 'listObjectsV2')
+        .rejects(listError);
+
+      await expect(awsRollback.setStackToUpdate()).to.be.eventually.rejected.and.have.property(
+        'code',
+        'AWS_S3_LIST_OBJECTS_V2_ACCESS_DENIED'
+      );
+    });
+
     it('should read the state file for the selected deployment', async () => {
       const requestStub = sinon.stub(awsRollback.provider, 'request');
       requestStub.withArgs('S3', 'listObjectsV2').resolves({
@@ -257,18 +348,35 @@ describe('AwsRollback', () => {
 
     it('should continue when the selected deployment has no state file', async () => {
       const requestStub = sinon.stub(awsRollback.provider, 'request');
-      requestStub.withArgs('S3', 'listObjectsV2').resolves({
-        Contents: [
-          {
-            Key: 'serverless/rollback/dev/1476779096930-2016-10-18T08:24:56.930Z/compiled-cloudformation-template.json',
-          },
-        ],
-      });
-      requestStub.withArgs('S3', 'getObject').throws({
+      stubSelectedDeploymentList(requestStub);
+      requestStub.withArgs('S3', 'getObject').rejects({
         code: 'AWS_S3_GET_OBJECT_NO_SUCH_KEY',
       });
 
       await expect(awsRollback.setStackToUpdate()).to.eventually.be.fulfilled;
+      expectGetStateFileCall(requestStub);
+    });
+
+    it('should reject malformed deployment state JSON', async () => {
+      const requestStub = sinon.stub(awsRollback.provider, 'request');
+      stubSelectedDeploymentList(requestStub);
+      requestStub.withArgs('S3', 'getObject').resolves({
+        Body: '{not-json',
+      });
+
+      await expect(awsRollback.setStackToUpdate()).to.be.rejectedWith(SyntaxError);
+      expectGetStateFileCall(requestStub);
+    });
+
+    it('should reject empty deployment state JSON', async () => {
+      const requestStub = sinon.stub(awsRollback.provider, 'request');
+      stubSelectedDeploymentList(requestStub);
+      requestStub.withArgs('S3', 'getObject').resolves({
+        Body: '',
+      });
+
+      await expect(awsRollback.setStackToUpdate()).to.be.rejectedWith(SyntaxError);
+      expectGetStateFileCall(requestStub);
     });
 
     it('should reject rollback for unsupported console deployment state', async () => {
