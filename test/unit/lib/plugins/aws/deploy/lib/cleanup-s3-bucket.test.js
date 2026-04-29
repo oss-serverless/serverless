@@ -43,7 +43,7 @@ describe('cleanupS3Bucket', () => {
         expect(listObjectsStub).to.have.been.calledOnce;
         expect(listObjectsStub).to.have.been.calledWithExactly('S3', 'listObjectsV2', {
           Bucket: awsDeploy.bucketName,
-          Prefix: `${s3Key}`,
+          Prefix: `${s3Key}/`,
         });
         awsDeploy.provider.request.restore();
       });
@@ -97,7 +97,7 @@ describe('cleanupS3Bucket', () => {
         expect(listObjectsStub.calledOnce).to.be.equal(true);
         expect(listObjectsStub).to.have.been.calledWithExactly('S3', 'listObjectsV2', {
           Bucket: awsDeploy.bucketName,
-          Prefix: `${s3Key}`,
+          Prefix: `${s3Key}/`,
         });
         awsDeploy.provider.request.restore();
       });
@@ -132,7 +132,7 @@ describe('cleanupS3Bucket', () => {
           'listObjectsV2',
           {
             Bucket: awsDeploy.bucketName,
-            Prefix: `${s3Key}`,
+            Prefix: `${s3Key}/`,
           },
         ]);
         expect(listObjectsStub.secondCall.args).to.deep.equal([
@@ -140,7 +140,7 @@ describe('cleanupS3Bucket', () => {
           'listObjectsV2',
           {
             Bucket: awsDeploy.bucketName,
-            Prefix: `${s3Key}`,
+            Prefix: `${s3Key}/`,
             ContinuationToken: 'next-page',
           },
         ]);
@@ -169,7 +169,7 @@ describe('cleanupS3Bucket', () => {
         expect(listObjectsStub.calledOnce).to.be.equal(true);
         expect(listObjectsStub).to.have.been.calledWithExactly('S3', 'listObjectsV2', {
           Bucket: awsDeploy.bucketName,
-          Prefix: `${s3Key}`,
+          Prefix: `${s3Key}/`,
         });
         awsDeploy.provider.request.restore();
       });
@@ -196,7 +196,7 @@ describe('cleanupS3Bucket', () => {
         expect(listObjectsStub).to.have.been.calledOnce;
         expect(listObjectsStub).to.have.been.calledWithExactly('S3', 'listObjectsV2', {
           Bucket: awsDeploy.bucketName,
-          Prefix: `${s3Key}`,
+          Prefix: `${s3Key}/`,
         });
         awsDeploy.provider.request.restore();
       });
@@ -246,7 +246,7 @@ describe('cleanupS3Bucket', () => {
           expect(listObjectsStub.calledOnce).to.be.equal(true);
           expect(listObjectsStub).to.have.been.calledWithExactly('S3', 'listObjectsV2', {
             Bucket: awsDeploy.bucketName,
-            Prefix: `${s3Key}`,
+            Prefix: `${s3Key}/`,
           });
           awsDeploy.provider.request.restore();
         });
@@ -276,7 +276,7 @@ describe('cleanupS3Bucket', () => {
           expect(listObjectsStub.calledOnce).to.be.equal(true);
           expect(listObjectsStub).to.have.been.calledWithExactly('S3', 'listObjectsV2', {
             Bucket: awsDeploy.bucketName,
-            Prefix: `${s3Key}`,
+            Prefix: `${s3Key}/`,
           });
           awsDeploy.provider.request.restore();
         });

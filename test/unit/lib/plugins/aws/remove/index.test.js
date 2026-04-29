@@ -135,7 +135,7 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
     });
   });
 
-  it('lists all paginated S3 objects before deleting bucket contents', async () => {
+  it('deletes each page of S3 objects as it is listed', async () => {
     const listObjectsV2Stub = sinon
       .stub()
       .onFirstCall()
@@ -170,12 +170,22 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
       Prefix: `serverless/${serverless.service.service}/dev/`,
       ContinuationToken: 'next-page',
     });
-    expect(innerDeleteObjectsStub).to.be.calledWithExactly({
+    expect(innerDeleteObjectsStub).to.have.been.calledTwice;
+    expect(innerDeleteObjectsStub.firstCall.args[0]).to.deep.equal({
       Bucket: 'resource-id',
       Delete: {
-        Objects: [{ Key: 'first' }, { Key: 'second' }],
+        Objects: [{ Key: 'first' }],
       },
     });
+    expect(innerDeleteObjectsStub.secondCall.args[0]).to.deep.equal({
+      Bucket: 'resource-id',
+      Delete: {
+        Objects: [{ Key: 'second' }],
+      },
+    });
+    expect(innerDeleteObjectsStub.firstCall.calledAfter(listObjectsV2Stub.firstCall)).to.be.true;
+    expect(listObjectsV2Stub.secondCall.calledAfter(innerDeleteObjectsStub.firstCall)).to.be.true;
+    expect(innerDeleteObjectsStub.secondCall.calledAfter(listObjectsV2Stub.secondCall)).to.be.true;
   });
 
   it('deletes S3 bucket objects in batches of 1000', async () => {
@@ -365,7 +375,7 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
     });
   });
 
-  it('should list and delete paginated object versions and delete markers', async () => {
+  it('deletes each page of object versions as it is listed', async () => {
     const listObjectVersionsStub = sinon
       .stub()
       .onFirstCall()
@@ -413,15 +423,25 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
       KeyMarker: 'next-key',
       VersionIdMarker: 'next-version',
     });
-    expect(innerDeleteObjectsStub).to.be.calledWithExactly({
+    expect(innerDeleteObjectsStub).to.have.been.calledTwice;
+    expect(innerDeleteObjectsStub.firstCall.args[0]).to.deep.equal({
       Bucket: 'bucket',
       Delete: {
-        Objects: [
-          { Key: 'object1', VersionId: 'v1' },
-          { Key: 'object2', VersionId: 'v2' },
-        ],
+        Objects: [{ Key: 'object1', VersionId: 'v1' }],
       },
     });
+    expect(innerDeleteObjectsStub.secondCall.args[0]).to.deep.equal({
+      Bucket: 'bucket',
+      Delete: {
+        Objects: [{ Key: 'object2', VersionId: 'v2' }],
+      },
+    });
+    expect(innerDeleteObjectsStub.firstCall.calledAfter(listObjectVersionsStub.firstCall)).to.be
+      .true;
+    expect(listObjectVersionsStub.secondCall.calledAfter(innerDeleteObjectsStub.firstCall)).to.be
+      .true;
+    expect(innerDeleteObjectsStub.secondCall.calledAfter(listObjectVersionsStub.secondCall)).to.be
+      .true;
   });
 
   it('should throw an error when cannot list object versions from the bucket', async () => {
@@ -476,6 +496,30 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
         },
       })
     ).to.be.eventually.rejected.and.have.property('code', 'CANNOT_DELETE_S3_OBJECTS_GENERIC');
+  });
+
+  it('does not rewrite deleteObjects access denied failures as list failures', async () => {
+    const deleteError = new Error('delete denied');
+    deleteError.code = 'AccessDenied';
+
+    try {
+      await runServerless({
+        command: 'remove',
+        fixture: 'function',
+        awsRequestStubMap: {
+          ...awsRequestStubMap,
+          S3: {
+            ...awsRequestStubMap.S3,
+            listObjectsV2: { Contents: [{ Key: 'first' }] },
+            deleteObjects: sinon.stub().rejects(deleteError),
+            headBucket: {},
+          },
+        },
+      });
+      throw new Error('Expected remove to reject');
+    } catch (error) {
+      expect(error).to.equal(deleteError);
+    }
   });
 
   it('should throw an error when deleteObjects operation was not successfull due to "AccessDenied"', async () => {

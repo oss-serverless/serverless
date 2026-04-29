@@ -130,7 +130,7 @@ describe('AwsRollback', () => {
           expect(
             listObjectsStub.calledWithExactly('S3', 'listObjectsV2', {
               Bucket: awsRollback.bucketName,
-              Prefix: `${s3Key}`,
+              Prefix: `${s3Key}/`,
             })
           ).to.be.equal(true);
           awsRollback.provider.request.restore();
@@ -163,7 +163,7 @@ describe('AwsRollback', () => {
           expect(
             listObjectsStub.calledWithExactly('S3', 'listObjectsV2', {
               Bucket: awsRollback.bucketName,
-              Prefix: `${s3Key}`,
+              Prefix: `${s3Key}/`,
             })
           ).to.be.equal(true);
           awsRollback.provider.request.restore();
@@ -192,7 +192,7 @@ describe('AwsRollback', () => {
         expect(
           listObjectsStub.calledWithExactly('S3', 'listObjectsV2', {
             Bucket: awsRollback.bucketName,
-            Prefix: `${s3Key}`,
+            Prefix: `${s3Key}/`,
           })
         ).to.be.equal(true);
         awsRollback.provider.request.restore();
@@ -228,7 +228,7 @@ describe('AwsRollback', () => {
         'listObjectsV2',
         {
           Bucket: awsRollback.bucketName,
-          Prefix: `${s3Key}`,
+          Prefix: `${s3Key}/`,
           ContinuationToken: 'next-page',
         },
       ]);
