@@ -5,6 +5,7 @@ const fs = require('fs');
 const fse = require('fs-extra');
 const path = require('path');
 const crypto = require('crypto');
+const { PassThrough } = require('stream');
 const chai = require('chai');
 const normalizeFiles = require('../../../../../../../lib/plugins/aws/lib/normalize-files');
 const AwsProvider = require('../../../../../../../lib/plugins/aws/provider');
@@ -42,6 +43,10 @@ describe('uploadArtifacts', () => {
     awsDeploy.serverless.cli = new serverless.classes.CLI();
 
     cryptoStub = {
+      setEncoding: sinon.stub(),
+      write: sinon.stub(),
+      end: sinon.stub(),
+      read: sinon.stub(),
       update() {
         return this;
       },
@@ -132,7 +137,7 @@ describe('uploadArtifacts', () => {
     });
 
     it('should upload the .zip file to the S3 bucket', async () => {
-      crypto.createHash().update().digest.onCall(0).returns('local-hash-zip-file');
+      cryptoStub.read.onCall(0).returns('local-hash-zip-file');
 
       const tmpDirPath = getTmpDirPath();
       const artifactFilePath = path.join(tmpDirPath, 'artifact.zip');
@@ -154,12 +159,12 @@ describe('uploadArtifacts', () => {
               filesha256: 'local-hash-zip-file',
             },
           });
-          expect(readFileSyncStub).to.have.been.calledWithExactly(artifactFilePath);
+          expect(readFileSyncStub).to.not.have.been.called;
         });
     });
 
     it('should upload the .zip file to a bucket with SSE bucket policy', async () => {
-      crypto.createHash().update().digest.onCall(0).returns('local-hash-zip-file');
+      cryptoStub.read.onCall(0).returns('local-hash-zip-file');
 
       const tmpDirPath = getTmpDirPath();
       const artifactFilePath = path.join(tmpDirPath, 'artifact.zip');
@@ -175,7 +180,7 @@ describe('uploadArtifacts', () => {
         })
         .then(() => {
           expect(uploadStub).to.have.been.calledOnce;
-          expect(readFileSyncStub).to.have.been.calledOnce;
+          expect(readFileSyncStub).to.not.have.been.called;
           expect(uploadStub).to.have.been.calledWithExactly('S3', 'upload', {
             Bucket: awsDeploy.bucketName,
             Key: `${awsDeploy.serverless.service.package.artifactDirectoryName}/artifact.zip`,
@@ -186,7 +191,6 @@ describe('uploadArtifacts', () => {
               filesha256: 'local-hash-zip-file',
             },
           });
-          expect(readFileSyncStub).to.have.been.calledWithExactly(artifactFilePath);
         });
     });
   });
@@ -301,9 +305,11 @@ describe('uploadArtifacts', () => {
       // File stream points file in temporary home folder which is cleaned after this test file is run.
       // There were observed race conditions where this temporary home folder was cleaned
       // before stream initialized fully, hence throwing uncaught ENOENT exception into the air.
-      sinon.stub(fs, 'createReadStream').returns({
-        path: customResourcesFilePath,
-        on: () => {},
+      sinon.stub(fs, 'createReadStream').callsFake(() => {
+        const stream = new PassThrough();
+        stream.path = customResourcesFilePath;
+        process.nextTick(() => stream.end());
+        return stream;
       });
       serverless.serviceDir = serviceDirPath;
     });
@@ -321,7 +327,7 @@ describe('uploadArtifacts', () => {
     it('should upload the custom resources .zip file to the S3 bucket', async () => {
       fse.ensureFileSync(customResourcesFilePath);
 
-      crypto.createHash().update().digest.onCall(0).returns('local-hash-zip-file');
+      cryptoStub.read.onCall(0).returns('local-hash-zip-file');
 
       return expect(awsDeploy.uploadCustomResources()).to.eventually.be.fulfilled.then(() => {
         expect(uploadStub).to.have.been.calledOnce;

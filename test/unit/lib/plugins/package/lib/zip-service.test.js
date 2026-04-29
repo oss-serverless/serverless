@@ -2,6 +2,8 @@
 
 const os = require('os');
 const path = require('path');
+const EventEmitter = require('events');
+const { PassThrough } = require('stream');
 const JsZip = require('jszip');
 const glob = require('../../../../../../lib/utils/glob');
 const fs = require('fs');
@@ -13,6 +15,13 @@ const { getTmpDirPath } = require('../../../../../utils/fs');
 
 // Configure chai
 const { expect } = require('chai');
+
+const describeLargeZipSmoke = process.env.SERVERLESS_LARGE_ZIP_SMOKE ? describe : describe.skip;
+
+const forceGc = () => {
+  expect(global.gc, 'run with --expose-gc').to.be.a('function');
+  for (let index = 0; index < 3; ++index) global.gc();
+};
 
 const resolveSpawnCall = (stub, output = '') =>
   stub.resolves({ stdoutBuffer: Buffer.from(output) });
@@ -198,6 +207,7 @@ describe('zipService', () => {
             expect(globSyncStub).to.have.been.calledWithExactly(['**/package.json'], {
               cwd: packagePlugin.serverless.serviceDir,
               dot: true,
+              ignore: ['**/node_modules/**'],
               silent: true,
               follow: true,
               nosort: true,
@@ -225,6 +235,7 @@ describe('zipService', () => {
             expect(globSyncStub).to.have.been.calledWithExactly(['**/package.json'], {
               cwd: packagePlugin.serverless.serviceDir,
               dot: true,
+              ignore: ['**/node_modules/**'],
               silent: true,
               follow: true,
               nosort: true,
@@ -238,6 +249,33 @@ describe('zipService', () => {
             expect(updatedParams.zipFileName).to.equal(params.zipFileName);
           }
         );
+      });
+
+      it('does not traverse node_modules package.json files during package discovery', async () => {
+        globSyncStub.returns(['package.json', path.join('packages', 'api', 'package.json')]);
+        resolveSpawnCall(spawnExtStub);
+        readFileAsyncStub.resolves('');
+
+        await packagePlugin.excludeDevDependencies(params);
+
+        expect(globSyncStub).to.have.been.calledWithExactly(['**/package.json'], {
+          cwd: packagePlugin.serverless.serviceDir,
+          dot: true,
+          ignore: ['**/node_modules/**'],
+          silent: true,
+          follow: true,
+          nosort: true,
+        });
+      });
+
+      it('keeps node_modules package.json filtering as a backstop', async () => {
+        globSyncStub.returns(['package.json', path.join('node_modules', 'dep', 'package.json')]);
+        resolveSpawnCall(spawnExtStub);
+        readFileAsyncStub.resolves('');
+
+        await packagePlugin.excludeDevDependencies(params);
+
+        expect(spawnExtStub).to.have.been.calledTwice;
       });
 
       it('should stream npm ls stdout to dependency files without shell redirection', async () => {
@@ -380,6 +418,7 @@ describe('zipService', () => {
             expect(globSyncStub).to.have.been.calledWithExactly(['**/package.json'], {
               cwd: packagePlugin.serverless.serviceDir,
               dot: true,
+              ignore: ['**/node_modules/**'],
               silent: true,
               follow: true,
               nosort: true,
@@ -428,6 +467,7 @@ describe('zipService', () => {
             expect(globSyncStub).to.have.been.calledWithExactly(['**/package.json'], {
               cwd: packagePlugin.serverless.serviceDir,
               dot: true,
+              ignore: ['**/node_modules/**'],
               silent: true,
               follow: true,
               nosort: true,
@@ -485,6 +525,7 @@ describe('zipService', () => {
             expect(globSyncStub).to.have.been.calledWithExactly(['**/package.json'], {
               cwd: packagePlugin.serverless.serviceDir,
               dot: true,
+              ignore: ['**/node_modules/**'],
               silent: true,
               follow: true,
               nosort: true,
@@ -534,6 +575,7 @@ describe('zipService', () => {
             expect(globSyncStub).to.have.been.calledWithExactly(['**/package.json'], {
               cwd: packagePlugin.serverless.serviceDir,
               dot: true,
+              ignore: ['**/node_modules/**'],
               silent: true,
               follow: true,
               nosort: true,
@@ -669,6 +711,7 @@ describe('zipService', () => {
             expect(globSyncStub).to.have.been.calledWithExactly(['**/package.json'], {
               cwd: packagePlugin.serverless.serviceDir,
               dot: true,
+              ignore: ['**/node_modules/**'],
               silent: true,
               follow: true,
               nosort: true,
@@ -837,8 +880,209 @@ describe('zipService', () => {
             expect(unzippedFileData['bin/binary-444'].unixPermissions).to.equal(
               Math.pow(2, 15) + 0o644
             );
+
+            expect(unzippedFileData['handler.js'].unixPermissions).to.equal(
+              Math.pow(2, 15) + 0o644
+            );
           }
         });
+    });
+
+    it('adds default files without reading all contents into memory', async () => {
+      serverless.utils.writeFileSync(path.join(tmpDirPath, 'large.bin'), Buffer.alloc(1024));
+      const readFileStub = sinon
+        .stub(fs.promises, 'readFile')
+        .rejects(new Error('default packaging should not read full file contents'));
+
+      try {
+        await packagePlugin.zipFiles(['large.bin'], getTestArtifactFileName('lazy-default'));
+        expect(readFileStub).to.not.have.been.called;
+      } finally {
+        readFileStub.restore();
+      }
+    });
+
+    it('preserves getFileContent overrides', async () => {
+      const getFileContentStub = sinon
+        .stub(packagePlugin, 'getFileContent')
+        .resolves(Buffer.from('transformed'));
+
+      try {
+        const artifact = await packagePlugin.zipFiles(
+          ['handler.js'],
+          getTestArtifactFileName('plugin-transform')
+        );
+
+        const unzippedData = await new JsZip().loadAsync(fs.readFileSync(artifact));
+        const content = await unzippedData.files['handler.js'].async('string');
+
+        expect(content).to.equal('transformed');
+        expect(getFileContentStub).to.have.been.calledOnce;
+      } finally {
+        getFileContentStub.restore();
+      }
+    });
+
+    it('treats pre-construction module-export getFileContent mutation as an override', async () => {
+      const zipService = require('../../../../../../lib/plugins/package/lib/zip-service');
+      const ActualPackage = require('../../../../../../lib/plugins/package/package');
+      const originalGetFileContent = zipService.getFileContent;
+      zipService.getFileContent = async () => Buffer.from('transformed');
+
+      try {
+        const mutatedPackagePlugin = new ActualPackage(serverless, {});
+        const artifact = await mutatedPackagePlugin.zipFiles(
+          ['handler.js'],
+          getTestArtifactFileName('module-export-override')
+        );
+
+        const unzippedData = await new JsZip().loadAsync(fs.readFileSync(artifact));
+        const content = await unzippedData.files['handler.js'].async('string');
+
+        expect(content).to.equal('transformed');
+      } finally {
+        zipService.getFileContent = originalGetFileContent;
+      }
+    });
+
+    it('wraps getFileContent override failures as CANNOT_READ_FILE', async () => {
+      const getFileContentStub = sinon
+        .stub(packagePlugin, 'getFileContent')
+        .rejects(new Error('transform failed'));
+
+      try {
+        await expect(
+          packagePlugin.zipFiles(['handler.js'], getTestArtifactFileName('plugin-error'))
+        ).to.be.rejectedWith('Cannot read file handler.js due to: transform failed');
+      } finally {
+        getFileContentStub.restore();
+      }
+    });
+
+    it('rejects unsupported getFileContent override return types', async () => {
+      const getFileContentStub = sinon.stub(packagePlugin, 'getFileContent').resolves({});
+
+      try {
+        await expect(
+          packagePlugin.zipFiles(['handler.js'], getTestArtifactFileName('plugin-invalid-type'))
+        ).to.be.rejectedWith('Invalid getFileContent() result for "handler.js"');
+      } finally {
+        getFileContentStub.restore();
+      }
+    });
+
+    it('supports getFileContent override Buffer, string, Uint8Array, and subarray results', async () => {
+      const source = new Uint8Array([0, 1, 2, 3]);
+      const cases = [
+        { name: 'buffer', value: Buffer.from('buffer'), expected: Buffer.from('buffer') },
+        { name: 'string', value: 'string', expected: Buffer.from('string') },
+        { name: 'uint8array', value: new Uint8Array([4, 5]), expected: Buffer.from([4, 5]) },
+        { name: 'subarray', value: source.subarray(1, 3), expected: Buffer.from([1, 2]) },
+      ];
+
+      for (const { name, value, expected } of cases) {
+        const getFileContentStub = sinon.stub(packagePlugin, 'getFileContent').resolves(value);
+        try {
+          const artifact = await packagePlugin.zipFiles(
+            ['handler.js'],
+            getTestArtifactFileName(`plugin-${name}`)
+          );
+          const unzippedData = await new JsZip().loadAsync(fs.readFileSync(artifact));
+          const content = await unzippedData.files['handler.js'].async('nodebuffer');
+
+          expect(Buffer.from(content)).to.deep.equal(expected);
+        } finally {
+          getFileContentStub.restore();
+        }
+      }
+    });
+
+    it('wraps stat failures as CANNOT_READ_FILE', async () => {
+      await expect(
+        packagePlugin.zipFiles(['missing.js'], getTestArtifactFileName('missing-file'))
+      ).to.be.rejectedWith('Cannot read file missing.js due to:');
+    });
+
+    it('rejects files that change between metadata collection and stream open', async () => {
+      const originalOpen = fs.promises.open.bind(fs.promises);
+      const openStub = sinon.stub(fs.promises, 'open').callsFake(async (...args) => {
+        const fileHandle = await originalOpen(...args);
+        const stat = await fileHandle.stat();
+
+        return {
+          stat: sinon.stub().resolves({
+            dev: stat.dev,
+            ino: stat.ino,
+            size: stat.size + 1,
+            mtimeMs: stat.mtimeMs,
+          }),
+          createReadStream: fileHandle.createReadStream.bind(fileHandle),
+          close: fileHandle.close.bind(fileHandle),
+        };
+      });
+
+      try {
+        await expect(
+          packagePlugin.zipFiles(['handler.js'], getTestArtifactFileName('changed-file'))
+        ).to.be.rejectedWith('file changed between metadata collection and stream open');
+      } finally {
+        openStub.restore();
+      }
+    });
+
+    it('removes partial artifacts after default streaming failure', async () => {
+      serverless.utils.writeFileSync(path.join(tmpDirPath, 'first.js'), 'first');
+      serverless.utils.writeFileSync(path.join(tmpDirPath, 'second.js'), 'second');
+      const zipFileName = getTestArtifactFileName('stream-failure');
+      const artifactFilePath = path.join(serverless.serviceDir, '.serverless', zipFileName);
+      const originalOpen = fs.promises.open.bind(fs.promises);
+      let openCallCount = 0;
+      const openStub = sinon.stub(fs.promises, 'open').callsFake(async (...args) => {
+        openCallCount += 1;
+        const fileHandle = await originalOpen(...args);
+        if (openCallCount !== 2) return fileHandle;
+
+        return {
+          stat: fileHandle.stat.bind(fileHandle),
+          createReadStream: () => {
+            const readStream = new PassThrough();
+            process.nextTick(() => readStream.emit('error', new Error('stream failed')));
+            return readStream;
+          },
+          close: fileHandle.close.bind(fileHandle),
+        };
+      });
+
+      try {
+        await expect(
+          packagePlugin.zipFiles(['first.js', 'second.js'], zipFileName)
+        ).to.be.rejectedWith('Cannot read file second.js due to: stream failed');
+        expect(fs.existsSync(artifactFilePath)).to.equal(false);
+      } finally {
+        openStub.restore();
+      }
+    });
+
+    it('removes partial artifacts after plugin streaming failure', async () => {
+      serverless.utils.writeFileSync(path.join(tmpDirPath, 'first.js'), 'first');
+      serverless.utils.writeFileSync(path.join(tmpDirPath, 'second.js'), 'second');
+      const zipFileName = getTestArtifactFileName('plugin-stream-failure');
+      const artifactFilePath = path.join(serverless.serviceDir, '.serverless', zipFileName);
+      const getFileContentStub = sinon
+        .stub(packagePlugin, 'getFileContent')
+        .onFirstCall()
+        .resolves(Buffer.from('first'))
+        .onSecondCall()
+        .rejects(new Error('transform failed'));
+
+      try {
+        await expect(
+          packagePlugin.zipFiles(['first.js', 'second.js'], zipFileName)
+        ).to.be.rejectedWith('Cannot read file second.js due to: transform failed');
+        expect(fs.existsSync(artifactFilePath)).to.equal(false);
+      } finally {
+        getFileContentStub.restore();
+      }
     });
 
     it('should produce stable zip bytes for identical inputs', async () => {
@@ -857,6 +1101,50 @@ describe('zipService', () => {
       const secondBytes = fs.readFileSync(secondArtifact);
 
       expect(Buffer.compare(firstBytes, secondBytes)).to.equal(0);
+    });
+
+    it('produces stable zip bytes regardless of input order', async () => {
+      const localeSensitiveFile = 'umlaut-\u00e4.js';
+      serverless.utils.writeFileSync(path.join(tmpDirPath, localeSensitiveFile), 'some content');
+      const filePaths = Object.entries(testDirectory)
+        .flatMap(([directoryName, files]) =>
+          Object.keys(files).map((fileName) => {
+            return directoryName === '.' ? fileName : path.join(directoryName, fileName);
+          })
+        )
+        .concat(localeSensitiveFile);
+
+      const firstArtifact = await packagePlugin.zipFiles(
+        filePaths,
+        getTestArtifactFileName('stable-order-1')
+      );
+      const secondArtifact = await packagePlugin.zipFiles(
+        [...filePaths].reverse(),
+        getTestArtifactFileName('stable-order-2')
+      );
+
+      expect(
+        Buffer.compare(fs.readFileSync(firstArtifact), fs.readFileSync(secondArtifact))
+      ).to.equal(0);
+    });
+
+    it('strips layer root prefix from archive names', async () => {
+      const layerRoot = path.join(tmpDirPath, 'layer-root');
+      const moduleFile = path.join(layerRoot, 'nodejs', 'node_modules', 'dep', 'index.js');
+
+      serverless.utils.writeFileSync(moduleFile, 'module.exports = 1;');
+
+      const artifact = await packagePlugin.zipFiles(
+        [moduleFile],
+        getTestArtifactFileName('layer-prefix'),
+        layerRoot
+      );
+      const unzippedData = await new JsZip().loadAsync(fs.readFileSync(artifact));
+
+      expect(unzippedData.files).to.have.property('nodejs/node_modules/dep/index.js');
+      expect(unzippedData.files).to.not.have.property(
+        'layer-root/nodejs/node_modules/dep/index.js'
+      );
     });
 
     it('should exclude with globs', async () => {
@@ -1041,6 +1329,36 @@ describe('zipService', () => {
         'file matches include / exclude'
       );
     });
+
+    describeLargeZipSmoke('large zip memory smoke', function () {
+      this.timeout(120000);
+
+      it('packages a large sparse file without materializing it in memory', async () => {
+        const largeFilePath = path.join(tmpDirPath, 'large.bin');
+
+        serverless.utils.writeFileDir(largeFilePath);
+        await fs.promises.writeFile(largeFilePath, '');
+        await fs.promises.truncate(largeFilePath, 512 * 1024 * 1024);
+
+        await packagePlugin.zipFiles(['event.json'], getTestArtifactFileName('warmup'));
+        forceGc();
+
+        const before = process.memoryUsage();
+        let peakArrayBuffers = before.arrayBuffers;
+
+        const sampler = setInterval(() => {
+          peakArrayBuffers = Math.max(peakArrayBuffers, process.memoryUsage().arrayBuffers);
+        }, 10);
+
+        try {
+          await packagePlugin.zipFiles(['large.bin'], getTestArtifactFileName('large-smoke'));
+        } finally {
+          clearInterval(sampler);
+        }
+
+        expect(peakArrayBuffers - before.arrayBuffers).to.be.lessThan(64 * 1024 * 1024);
+      });
+    });
   });
 
   describe('#zipFiles()', () => {
@@ -1049,5 +1367,102 @@ describe('zipService', () => {
         Error,
         'No files to package'
       ));
+
+    it('configures metadata stat concurrency with ext/promise/limit', () => {
+      let configuredLimit;
+      const fakeLimit = function (limitValue, callback) {
+        configuredLimit = limitValue;
+        return (...args) => callback(...args);
+      };
+
+      proxyquire('../../../../../../lib/plugins/package/lib/zip-service', {
+        'ext/promise/limit': fakeLimit,
+        '../../../utils/spawn': spawnExtStub,
+      });
+
+      expect(configuredLimit).to.equal(64);
+    });
+
+    it('uses the buffered fallback only for getFileContentAndStat overrides', async () => {
+      serverless.utils.writeFileSync(path.join(tmpDirPath, 'handler.js'), 'handler');
+      const addReadStreamLazyStub = sinon.stub();
+      const addBufferStub = sinon.stub();
+      let fakeOutput;
+
+      class FakeZipFile extends EventEmitter {
+        constructor() {
+          super();
+          this.outputStream = {
+            pipe: sinon.stub(),
+            unpipe: sinon.stub(),
+          };
+        }
+
+        addReadStreamLazy(...args) {
+          addReadStreamLazyStub(...args);
+        }
+
+        addBuffer(...args) {
+          addBufferStub(...args);
+        }
+
+        end() {
+          process.nextTick(() => fakeOutput.emit('close'));
+        }
+      }
+
+      const fakeFs = Object.create(fs);
+      Object.defineProperty(fakeFs, 'promises', { value: fs.promises });
+      fakeFs.createWriteStream = sinon.stub().callsFake(() => {
+        fakeOutput = new EventEmitter();
+        fakeOutput.closed = false;
+        fakeOutput.destroy = sinon.stub(() => {
+          fakeOutput.closed = true;
+          process.nextTick(() => fakeOutput.emit('close'));
+        });
+        process.nextTick(() => fakeOutput.emit('open'));
+        return fakeOutput;
+      });
+
+      const zipService = proxyquire('../../../../../../lib/plugins/package/lib/zip-service', {
+        'yazl': { ZipFile: FakeZipFile },
+        'fs': fakeFs,
+        '../../../utils/spawn': spawnExtStub,
+      });
+      const TestPackage = proxyquire('../../../../../../lib/plugins/package/package', {
+        './lib/zip-service': zipService,
+      });
+      const defaultPackagePlugin = new TestPackage(serverless, {});
+
+      await defaultPackagePlugin.zipFiles(['handler.js'], 'default.zip');
+      expect(addReadStreamLazyStub).to.have.been.calledOnce;
+      expect(addBufferStub).to.not.have.been.called;
+
+      addReadStreamLazyStub.resetHistory();
+      addBufferStub.resetHistory();
+
+      const getFileContentStub = sinon
+        .stub(defaultPackagePlugin, 'getFileContent')
+        .resolves(Buffer.from('transformed'));
+      await defaultPackagePlugin.zipFiles(['handler.js'], 'content-override.zip');
+      expect(addReadStreamLazyStub).to.have.been.calledOnce;
+      expect(addBufferStub).to.not.have.been.called;
+      getFileContentStub.restore();
+
+      addReadStreamLazyStub.resetHistory();
+      addBufferStub.resetHistory();
+
+      const getFileContentAndStatStub = sinon
+        .stub(defaultPackagePlugin, 'getFileContentAndStat')
+        .resolves({
+          data: Buffer.from('legacy'),
+          stat: { mode: 0o100644 },
+          filePath: 'handler.js',
+        });
+      await defaultPackagePlugin.zipFiles(['handler.js'], 'stat-override.zip');
+      expect(addReadStreamLazyStub).to.not.have.been.called;
+      expect(addBufferStub).to.have.been.calledOnce;
+      getFileContentAndStatStub.restore();
+    });
   });
 });

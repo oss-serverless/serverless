@@ -24,6 +24,7 @@ describe('checkForChanges', () => {
   let awsDeploy;
   let s3Key;
   let cryptoStub;
+  let getHashForFilePathStub;
 
   beforeEach(() => {
     const options = {
@@ -51,10 +52,14 @@ describe('checkForChanges', () => {
       },
       digest: sandbox.stub(),
     };
+    getHashForFilePathStub = sandbox
+      .stub()
+      .callsFake(async () => cryptoStub.createHash().update().digest('base64'));
     const checkForChanges = proxyquire(
       '../../../../../../../lib/plugins/aws/deploy/lib/check-for-changes.js',
       {
-        crypto: cryptoStub,
+        'crypto': cryptoStub,
+        '../../../../utils/get-hash-for-file-path': getHashForFilePathStub,
       }
     );
     Object.assign(awsDeploy, checkForChanges);
@@ -335,6 +340,31 @@ describe('checkForChanges', () => {
       });
     });
 
+    it('configures local zip hash concurrency with ext/promise/limit', async () => {
+      let configuredLimit;
+      const fakeLimit = function (limitValue, callback) {
+        configuredLimit = limitValue;
+        return (...args) => callback(...args);
+      };
+      const hashStub = sandbox.stub().resolves('local-hash-zip-file-1');
+      const checkForChanges = proxyquire(
+        '../../../../../../../lib/plugins/aws/deploy/lib/check-for-changes.js',
+        {
+          'crypto': cryptoStub,
+          'ext/promise/limit': fakeLimit,
+          '../../../../utils/get-hash-for-file-path': hashStub,
+        }
+      );
+      globSyncStub.returns(['my-service.zip']);
+      cryptoStub.createHash().update().digest.onCall(0).returns('local-hash-cf-template');
+
+      await checkForChanges.checkIfDeploymentIsNecessary.call(awsDeploy, [
+        { Metadata: { filesha256: 'remote-hash-cf-template' } },
+      ]);
+
+      expect(configuredLimit).to.equal(3);
+    });
+
     it('should resolve if objects are given, but no function last modified date', async () => {
       globSyncStub.returns(['my-service.zip']);
       cryptoStub.createHash().update().digest.onCall(0).returns('local-hash-cf-template');
@@ -352,7 +382,10 @@ describe('checkForChanges', () => {
         dot: true,
         silent: true,
       });
-      expect(readFileStub).to.have.been.calledWith(
+      expect(getHashForFilePathStub).to.have.been.calledWithExactly(
+        path.resolve(awsDeploy.serverless.serviceDir, '.serverless/my-service.zip')
+      );
+      expect(readFileStub).to.not.have.been.calledWith(
         path.resolve(awsDeploy.serverless.serviceDir, '.serverless/my-service.zip')
       );
       expect(awsDeploy.serverless.service.provider.shouldNotDeploy).to.equal(false);
@@ -384,7 +417,7 @@ describe('checkForChanges', () => {
           dot: true,
           silent: true,
         });
-        expect(readFileStub).to.have.been.calledWith(
+        expect(getHashForFilePathStub).to.have.been.calledWithExactly(
           path.resolve(awsDeploy.serverless.serviceDir, '.serverless/my-service.zip')
         );
         expect(awsDeploy.serverless.service.provider.shouldNotDeploy).to.equal(false);
@@ -412,7 +445,7 @@ describe('checkForChanges', () => {
           dot: true,
           silent: true,
         });
-        expect(readFileStub).to.have.been.calledWith(
+        expect(getHashForFilePathStub).to.have.been.calledWithExactly(
           path.resolve(awsDeploy.serverless.serviceDir, '.serverless/my-service.zip')
         );
         expect(awsDeploy.serverless.service.provider.shouldNotDeploy).to.equal(false);
@@ -442,10 +475,10 @@ describe('checkForChanges', () => {
           dot: true,
           silent: true,
         });
-        expect(readFileStub).to.have.been.calledWith(
+        expect(getHashForFilePathStub).to.have.been.calledWithExactly(
           path.resolve(awsDeploy.serverless.serviceDir, '.serverless/func1.zip')
         );
-        expect(readFileStub).to.have.been.calledWith(
+        expect(getHashForFilePathStub).to.have.been.calledWithExactly(
           path.resolve(awsDeploy.serverless.serviceDir, '.serverless/func2.zip')
         );
         expect(awsDeploy.serverless.service.provider.shouldNotDeploy).to.equal(false);
@@ -477,7 +510,7 @@ describe('checkForChanges', () => {
           dot: true,
           silent: true,
         });
-        expect(readFileStub).to.have.been.calledWith(
+        expect(getHashForFilePathStub).to.have.been.calledWithExactly(
           path.resolve(awsDeploy.serverless.serviceDir, '.serverless/my-service.zip')
         );
         expect(awsDeploy.serverless.service.provider.shouldNotDeploy).to.equal(false);
@@ -507,7 +540,7 @@ describe('checkForChanges', () => {
           dot: true,
           silent: true,
         });
-        expect(readFileStub).to.have.been.calledWith(
+        expect(getHashForFilePathStub).to.have.been.calledWithExactly(
           path.resolve(awsDeploy.serverless.serviceDir, '.serverless/my-service.zip')
         );
         expect(awsDeploy.serverless.service.provider.shouldNotDeploy).to.equal(true);
@@ -553,7 +586,7 @@ describe('checkForChanges', () => {
             dot: true,
             silent: true,
           });
-          expect(readFileStub).to.have.been.calledWith(
+          expect(getHashForFilePathStub).to.have.been.calledWithExactly(
             path.resolve(awsDeploy.serverless.serviceDir, '.serverless/my-service.zip')
           );
           expect(awsDeploy.serverless.service.provider.shouldNotDeploy).to.equal(true);
@@ -587,10 +620,10 @@ describe('checkForChanges', () => {
           dot: true,
           silent: true,
         });
-        expect(readFileStub).to.have.been.calledWith(
+        expect(getHashForFilePathStub).to.have.been.calledWithExactly(
           path.resolve(awsDeploy.serverless.serviceDir, '.serverless/func1.zip')
         );
-        expect(readFileStub).to.have.been.calledWith(
+        expect(getHashForFilePathStub).to.have.been.calledWithExactly(
           path.resolve(awsDeploy.serverless.serviceDir, '.serverless/func2.zip')
         );
         expect(awsDeploy.serverless.service.provider.shouldNotDeploy).to.equal(true);
@@ -624,7 +657,7 @@ describe('checkForChanges', () => {
           dot: true,
           silent: true,
         });
-        expect(readFileStub).to.have.been.calledWith(
+        expect(getHashForFilePathStub).to.have.been.calledWithExactly(
           path.resolve(awsDeploy.serverless.serviceDir, 'foo/bar/my-own.zip')
         );
         expect(awsDeploy.serverless.service.provider.shouldNotDeploy).to.equal(false);

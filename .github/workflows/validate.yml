@@ -56,6 +56,9 @@ jobs:
       - name: Packaging tests
         run: npm run integration-test-run-package
 
+      - name: Large zip memory smoke test
+        run: NODE_OPTIONS="--max-old-space-size=256 --expose-gc" SERVERLESS_LARGE_ZIP_SMOKE=1 npx mocha --config test/mocha/unit.cjs test/unit/lib/plugins/package/lib/zip-service.test.js --grep "large zip memory smoke"
+
   linuxNode22:
     name: '[Linux] Node 22: Unit tests'
     runs-on: ubuntu-latest

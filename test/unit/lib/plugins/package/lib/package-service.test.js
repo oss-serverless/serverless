@@ -162,6 +162,8 @@ describe('test/unit/lib/plugins/package/lib/packageService.test.js', () => {
     it('should package layer', () => {
       expect(fnLayerFiles).to.include('layer-module-1.js');
       expect(fnLayerFiles).to.include('layer-module-2.js');
+      expect(fnLayerFiles).to.not.include('layer/layer-module-1.js');
+      expect(fnLayerFiles).to.not.include('layer/layer-module-2.js');
     });
   });
 
