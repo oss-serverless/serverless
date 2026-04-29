@@ -64,7 +64,6 @@
     "micromatch": "^4.0.5",
     "mime-types": "^3.0.2",
     "module-alias": "^2.2.3",
-    "ncjsm": "^4.3.2",
     "object-hash": "^3.0.0",
     "open": "^8.4.2",
     "process-utils": "^4.0.0",

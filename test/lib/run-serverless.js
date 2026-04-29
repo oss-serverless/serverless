@@ -4,7 +4,7 @@ const ensureString = require('type/string/ensure');
 const ensureIterable = require('type/iterable/ensure');
 const ensurePlainObject = require('type/plain-object/ensure');
 const ensurePlainFunction = require('type/plain-function/ensure');
-const cjsResolveSync = require('ncjsm/resolve/sync');
+const { realpathSync } = require('fs');
 const { writeJson } = require('fs-extra');
 const path = require('path');
 const os = require('os');
@@ -18,6 +18,9 @@ const disableServerlessStatsRequests = require('./disable-serverless-stats-reque
 const provisionTmpDir = require('./provision-tmp-dir');
 const configureAwsRequestStub = require('./configure-aws-request-stub');
 
+const resolveModuleRealPath = (basePath, moduleId) =>
+  realpathSync(require.resolve(moduleId, { paths: [basePath] }));
+
 const resolveServerless = async (serverlessPath, modulesCacheStub, callback) => {
   if (!modulesCacheStub) {
     disableServerlessStatsRequests(serverlessPath);
@@ -28,7 +31,7 @@ const resolveServerless = async (serverlessPath, modulesCacheStub, callback) => 
   for (const key of Object.keys(require.cache)) delete require.cache[key];
   disableServerlessStatsRequests(serverlessPath);
   for (const [key, value] of Object.entries(modulesCacheStub)) {
-    require.cache[path.isAbsolute(key) ? key : cjsResolveSync(serverlessPath, key).realPath] = {
+    require.cache[path.isAbsolute(key) ? key : resolveModuleRealPath(serverlessPath, key)] = {
       exports: value,
     };
   }

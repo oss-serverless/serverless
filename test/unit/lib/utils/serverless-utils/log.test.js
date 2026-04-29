@@ -1,7 +1,7 @@
 'use strict';
 
 const { expect } = require('chai');
-const requireUncached = require('ncjsm/require-uncached');
+const requireUncached = require('../../../../utils/require-uncached');
 
 describe('serverless-utils/log', () => {
   let logModule;

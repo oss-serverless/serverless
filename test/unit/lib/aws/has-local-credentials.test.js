@@ -2,7 +2,7 @@
 
 const chai = require('chai');
 const overrideEnv = require('process-utils/override-env');
-const requireUncached = require('ncjsm/require-uncached');
+const requireUncached = require('../../../utils/require-uncached');
 const path = require('path');
 const fse = require('fs-extra');
 

@@ -2,7 +2,7 @@
 
 const path = require('path');
 const glob = require('../../../../../../lib/utils/glob');
-const requireUncached = require('ncjsm/require-uncached');
+const requireUncached = require('../../../../../utils/require-uncached');
 const { listZipFiles } = require('../../../../../utils/fs');
 const { expect } = require('chai');
 

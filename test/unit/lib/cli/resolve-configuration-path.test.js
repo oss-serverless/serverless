@@ -9,7 +9,7 @@ const fsp = require('fs').promises;
 const fse = require('fs-extra');
 const overrideArgv = require('process-utils/override-argv');
 const overrideEnv = require('process-utils/override-env');
-const requireUncached = require('ncjsm/require-uncached');
+const requireUncached = require('../../../utils/require-uncached');
 const resolveServerlessConfigPath = require('../../../../lib/cli/resolve-configuration-path');
 const resolveInput = require('../../../../lib/cli/resolve-input');
 
