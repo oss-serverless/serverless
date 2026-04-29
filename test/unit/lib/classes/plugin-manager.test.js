@@ -11,11 +11,11 @@ const resolveInput = require('../../../../lib/cli/resolve-input');
 const Create = require('../../../../lib/plugins/create/create');
 const ServerlessError = require('../../../../lib/serverless-error');
 const getRequire = require('../../../../lib/utils/get-require');
+const importModule = require('../../../../lib/utils/require-with-import-fallback');
 
 const path = require('path');
 const fsp = require('fs').promises;
 const fse = require('fs-extra');
-const mockRequire = require('mock-require');
 const sinon = require('sinon');
 const proxyquire = require('proxyquire');
 const { installPlugin } = require('../../../utils/plugins');
@@ -400,11 +400,16 @@ describe('PluginManager', () => {
 
   let restoreEnv;
   let serviceDir;
+  const servicePluginMocks = new Map();
   const PluginManager = proxyquire('../../../../lib/classes/plugin-manager', {
     '../utils/get-require': (directory) => {
       const resultRequire = require('module').createRequire(path.resolve(directory, 'req'));
       resultRequire.resolve = (pluginPath) => resolveStub(directory, pluginPath);
       return resultRequire;
+    },
+    '../utils/require-with-import-fallback': async (pluginPath) => {
+      if (servicePluginMocks.has(pluginPath)) return servicePluginMocks.get(pluginPath);
+      return importModule(pluginPath);
     },
   });
 
@@ -417,7 +422,10 @@ describe('PluginManager', () => {
     serviceDir = pluginManager.serverless.serviceDir = 'foo';
   });
 
-  afterEach(() => restoreEnv());
+  afterEach(() => {
+    servicePluginMocks.clear();
+    restoreEnv();
+  });
 
   describe('#constructor()', () => {
     it('should set the serverless instance', () => {
@@ -587,9 +595,9 @@ describe('PluginManager', () => {
 
   describe('#loadAllPlugins()', () => {
     beforeEach(() => {
-      mockRequire('ServicePluginMock1', ServicePluginMock1);
-      mockRequire('ServicePluginMock2', ServicePluginMock2);
-      mockRequire('BrokenPluginMock', BrokenPluginMock);
+      servicePluginMocks.set('ServicePluginMock1', ServicePluginMock1);
+      servicePluginMocks.set('ServicePluginMock2', ServicePluginMock2);
+      servicePluginMocks.set('BrokenPluginMock', BrokenPluginMock);
     });
 
     it('should load only core plugins when no service plugins are given', async () => {
@@ -673,19 +681,13 @@ describe('PluginManager', () => {
         ServerlessError
       );
     });
-
-    afterEach(() => {
-      mockRequire.stop('ServicePluginMock1');
-      mockRequire.stop('ServicePluginMock2');
-      mockRequire.stop('BrokenPluginMock');
-    });
   });
 
   describe('#resolveServicePlugins()', () => {
     beforeEach(() => {
-      mockRequire('ServicePluginMock1', ServicePluginMock1);
+      servicePluginMocks.set('ServicePluginMock1', ServicePluginMock1);
       // Plugins loaded via a relative path should be required relative to the service path
-      mockRequire(`${serviceDir}/RelativePath/ServicePluginMock2`, ServicePluginMock2);
+      servicePluginMocks.set(`${serviceDir}/RelativePath/ServicePluginMock2`, ServicePluginMock2);
     });
 
     it('should resolve the service plugins', async () => {
@@ -706,11 +708,6 @@ describe('PluginManager', () => {
       // Happens when `plugins` property does not exist
       const servicePlugins = undefined;
       return expect(pluginManager.resolveServicePlugins(servicePlugins)).to.not.be.rejected;
-    });
-
-    afterEach(() => {
-      mockRequire.stop('ServicePluginMock1');
-      mockRequire.stop('ServicePluginMock2');
     });
   });
 
@@ -996,8 +993,8 @@ describe('PluginManager', () => {
 
   describe('#getPlugins()', () => {
     beforeEach(() => {
-      mockRequire('ServicePluginMock1', ServicePluginMock1);
-      mockRequire('ServicePluginMock2', ServicePluginMock2);
+      servicePluginMocks.set('ServicePluginMock1', ServicePluginMock1);
+      servicePluginMocks.set('ServicePluginMock2', ServicePluginMock2);
     });
 
     it('should return all loaded plugins', async () => {
@@ -1008,11 +1005,6 @@ describe('PluginManager', () => {
       expect(plugins.length).to.be.above(3);
       expect(plugins.some((plugin) => plugin instanceof ServicePluginMock1)).to.be.true;
       expect(plugins.some((plugin) => plugin instanceof ServicePluginMock2)).to.be.true;
-    });
-
-    afterEach(() => {
-      mockRequire.stop('ServicePluginMock1');
-      mockRequire.stop('ServicePluginMock2');
     });
   });
 
