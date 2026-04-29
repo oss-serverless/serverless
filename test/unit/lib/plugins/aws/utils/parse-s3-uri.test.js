@@ -127,16 +127,14 @@ describe('test/unit/lib/plugins/aws/utils/parse-s3-uri.test.js', () => {
   });
 
   it('should reject embedded S3-looking substrings', () => {
-    expect(
-      parseS3URI('https://example.com/test-bucket.s3.amazonaws.com/path/to/artifact.zip')
-    ).to.be.null;
+    expect(parseS3URI('https://example.com/test-bucket.s3.amazonaws.com/path/to/artifact.zip')).to
+      .be.null;
     expect(parseS3URI('prefix https://s3.amazonaws.com/test-bucket/path/to/artifact.zip')).to.be
       .null;
     expect(parseS3URI('https://s3.amazonaws.com.evil.com/test-bucket/path/to/artifact.zip')).to.be
       .null;
-    expect(
-      parseS3URI('https://test-bucket.s3.amazonaws.com.evil.com/path/to/artifact.zip')
-    ).to.be.null;
+    expect(parseS3URI('https://test-bucket.s3.amazonaws.com.evil.com/path/to/artifact.zip')).to.be
+      .null;
   });
 
   it('should reject S3 locations without keys', () => {
