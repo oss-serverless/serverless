@@ -1,6 +1,7 @@
 'use strict';
 
 const chai = require('chai');
+const crypto = require('crypto');
 const getHashForFilePath = require('../../../../../../../lib/plugins/aws/package/lib/get-hash-for-file-path');
 const fsp = require('fs').promises;
 const path = require('path');
@@ -17,6 +18,17 @@ describe('getHashForFilePath', () => {
   it('correctly generates hash for existing file', async () => {
     const result = await getHashForFilePath(filePath);
     expect(result).to.equal('7XACtDnprIRfIjV9giusFERzD722AW0+yUMil7nsn3M=');
+  });
+
+  it('returns a fresh hash when the same file path is rewritten', async () => {
+    await fsp.writeFile(filePath, 'first');
+    const firstHash = await getHashForFilePath(filePath);
+
+    await fsp.writeFile(filePath, 'second');
+    const secondHash = await getHashForFilePath(filePath);
+
+    expect(secondHash).to.not.equal(firstHash);
+    expect(secondHash).to.equal(crypto.createHash('sha256').update('second').digest('base64'));
   });
 
   it('throws an error when fails to read the file', () => {

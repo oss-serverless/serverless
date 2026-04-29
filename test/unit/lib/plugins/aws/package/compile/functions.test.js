@@ -11,7 +11,6 @@ const AwsCompileFunctions = require('../../../../../../../lib/plugins/aws/packag
 const Serverless = require('../../../../../../../lib/serverless');
 const runServerless = require('../../../../../../utils/run-serverless');
 const fixtures = require('../../../../../../fixtures/programmatic');
-const getHashForFilePath = require('../../../../../../../lib/plugins/aws/package/lib/get-hash-for-file-path');
 
 const { getTmpDirPath, createTmpFile } = require('../../../../../../utils/fs');
 
@@ -3142,7 +3141,6 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
 
             await fsp.rename(originalLayer, backupLayer);
             await fsp.rename(sourceChangeLayer, originalLayer);
-            getHashForFilePath.clear();
           });
 
           afterEach(async () => {
