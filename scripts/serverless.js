@@ -4,10 +4,6 @@
 
 Error.stackTraceLimit = Infinity;
 
-// global graceful-fs patch
-// https://github.com/isaacs/node-graceful-fs#global-patching
-require('graceful-fs').gracefulify(require('fs'));
-
 // Setup log writing
 require('../lib/utils/serverless-utils/log-reporters/node');
 const { log, progress } = require('../lib/utils/serverless-utils/log');

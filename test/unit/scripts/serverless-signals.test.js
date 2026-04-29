@@ -82,7 +82,6 @@ describe('test/unit/scripts/serverless-signals.test.js', () => {
     delete require.cache[require.resolve(modulePath)];
 
     proxyquire.noCallThru().load(modulePath, {
-      'graceful-fs': { gracefulify: sinon.stub() },
       '../lib/utils/serverless-utils/log-reporters/node': {},
       '../lib/utils/serverless-utils/log': { log, progress },
       '../lib/cli/handle-error': stubs.handleError,
