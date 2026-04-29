@@ -65,12 +65,17 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
     return error;
   };
 
-  const createWrappedStatusOnlyListError = (code) => {
+  const createStatusOnlyListError = () => {
     const error = new Error('forbidden');
-    error.code = code;
     error.providerError = {
       statusCode: 403,
     };
+    return error;
+  };
+
+  const createWrappedStatusOnlyListError = (code) => {
+    const error = createStatusOnlyListError();
+    error.code = code;
     return error;
   };
 
@@ -682,6 +687,8 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
   });
 
   it('rewrites status-only S3 object-list access denied failures during remove', async () => {
+    const listError = createStatusOnlyListError();
+
     await expect(
       runServerless({
         command: 'remove',
@@ -691,9 +698,7 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
           S3: {
             ...awsRequestStubMap.S3,
             listObjectsV2: () => {
-              const error = new Error('forbidden');
-              error.providerError = { statusCode: 403 };
-              throw error;
+              throw listError;
             },
             headBucket: {},
           },
