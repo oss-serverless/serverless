@@ -340,7 +340,7 @@ describe('checkForChanges', () => {
       });
     });
 
-    it('configures local zip hash concurrency with ext/promise/limit', async () => {
+    it('configures local zip hash concurrency with promiseLimit', async () => {
       let configuredLimit;
       const fakeLimit = function (limitValue, callback) {
         configuredLimit = limitValue;
@@ -351,7 +351,7 @@ describe('checkForChanges', () => {
         '../../../../../../../lib/plugins/aws/deploy/lib/check-for-changes.js',
         {
           'crypto': cryptoStub,
-          'ext/promise/limit': fakeLimit,
+          '../../../../utils/promise-limit': fakeLimit,
           '../../../../utils/get-hash-for-file-path': hashStub,
         }
       );

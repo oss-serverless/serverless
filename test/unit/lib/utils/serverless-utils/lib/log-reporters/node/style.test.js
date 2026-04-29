@@ -22,7 +22,6 @@ describe('test/unit/lib/utils/serverless-utils/lib/log-reporters/node/style.test
     proxyquire
       .noCallThru()
       .load('../../../../../../../../lib/utils/serverless-utils/lib/log-reporters/node/style', {
-        'ext/function/identity': (value) => value,
         '../../../../colors': {
           stderrColors: {
             gray: (value) => `stderr-gray(${value})`,

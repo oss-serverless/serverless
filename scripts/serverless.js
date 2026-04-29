@@ -139,7 +139,6 @@ process.once('uncaughtException', (error) => {
 
     const path = require('path');
     const { randomUUID } = require('node:crypto');
-    const clear = require('ext/object/clear');
     const Serverless = require('../lib/serverless');
     const { safeShallowAssign } = require('../lib/utils/safe-object');
     const resolveVariables = require('../lib/configuration/variables/resolve');
@@ -151,6 +150,11 @@ process.once('uncaughtException', (error) => {
     let providerName;
     let variablesMeta;
     let resolverConfiguration;
+
+    const clearObject = (object) => {
+      for (const key of Object.keys(object)) delete object[key];
+      return object;
+    };
 
     const ensureResolvedProperty = (propertyPath) => {
       if (isPropertyResolved(variablesMeta, propertyPath)) return true;
@@ -546,7 +550,7 @@ process.once('uncaughtException', (error) => {
 
         Object.assign(serverless.processedInput, cliInput);
         serverless.pluginManager.cliCommands = commands;
-        safeShallowAssign(clear(serverless.pluginManager.cliOptions), options);
+        safeShallowAssign(clearObject(serverless.pluginManager.cliOptions), options);
 
         // Validate result command and options
         if (hasFinalCommandSchema)

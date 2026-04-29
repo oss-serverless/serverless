@@ -47,4 +47,14 @@ describe('serverless-utils/get-progress-reporter', () => {
       .to.throw(Error)
       .with.property('code', 'PROGRESS_NAME_TAKEN');
   });
+
+  it('generates unique unnamed progress names', () => {
+    const progress = getProgressReporter('test');
+    const firstProgress = progress.create();
+    const secondProgress = progress.create();
+
+    expect(firstProgress.name).to.match(/^unnamed-[0-9a-f]{16}$/);
+    expect(secondProgress.name).to.match(/^unnamed-[0-9a-f]{16}$/);
+    expect(secondProgress.name).to.not.equal(firstProgress.name);
+  });
 });

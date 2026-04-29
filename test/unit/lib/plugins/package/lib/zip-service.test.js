@@ -1368,7 +1368,7 @@ describe('zipService', () => {
         'No files to package'
       ));
 
-    it('configures metadata stat concurrency with ext/promise/limit', () => {
+    it('configures metadata stat concurrency with promiseLimit', () => {
       let configuredLimit;
       const fakeLimit = function (limitValue, callback) {
         configuredLimit = limitValue;
@@ -1376,7 +1376,7 @@ describe('zipService', () => {
       };
 
       proxyquire('../../../../../../lib/plugins/package/lib/zip-service', {
-        'ext/promise/limit': fakeLimit,
+        '../../../utils/promise-limit': fakeLimit,
         '../../../utils/spawn': spawnExtStub,
       });
 
