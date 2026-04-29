@@ -2,7 +2,7 @@
 
 'use strict';
 
-require('essentials');
+Error.stackTraceLimit = Infinity;
 require('log-node')();
 
 const log = require('log').get('serverless');

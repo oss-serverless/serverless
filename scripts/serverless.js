@@ -2,7 +2,7 @@
 
 'use strict';
 
-require('essentials');
+Error.stackTraceLimit = Infinity;
 
 // global graceful-fs patch
 // https://github.com/isaacs/node-graceful-fs#global-patching
