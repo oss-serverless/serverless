@@ -5,7 +5,8 @@ const chai = require('chai');
 const { expect } = chai;
 
 const Serverless = require('../../../lib/serverless');
-const semverRegex = require('semver-regex');
+const semver = require('semver');
+const { version } = require('../../../package.json');
 
 const YamlParser = require('../../../lib/classes/yaml-parser');
 const PluginManager = require('../../../lib/classes/plugin-manager');
@@ -179,7 +180,8 @@ describe('Serverless', () => {
 
   describe('#getVersion()', () => {
     it('should get the correct Serverless version', () => {
-      expect(semverRegex().test(serverless.getVersion())).to.equal(true);
+      expect(serverless.getVersion()).to.equal(version);
+      expect(semver.valid(serverless.getVersion())).to.equal(serverless.getVersion());
     });
   });
 
