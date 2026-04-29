@@ -70,7 +70,8 @@ export type AwsLambdaRuntime =
   | 'python3.13'
   | 'python3.14'
   | 'ruby3.3'
-  | 'ruby3.4';
+  | 'ruby3.4'
+  | 'ruby4.0';
 export type AwsLambdaRuntimeManagement =
   | ('auto' | 'onFunctionUpdate')
   | {

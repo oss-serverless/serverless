@@ -41,15 +41,15 @@ functions:
     handler: remaining_time.handler
     timeout: 3
   ruby:
-    runtime: ruby3.4
+    runtime: ruby4.0
     handler: handler.handler
   rubyRemainingTime:
-    runtime: ruby3.4
+    runtime: ruby4.0
     handler: remaining_time.handler
     timeout: 3
   rubyDeadline:
-    runtime: ruby3.4
+    runtime: ruby4.0
     handler: deadline_ms.handler
   rubyClass:
-    runtime: ruby3.4
+    runtime: ruby4.0
     handler: class.MyModule::MyClass.my_class_method

@@ -1442,6 +1442,52 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
       );
     });
 
+    it('should accept `provider.runtime: ruby4.0`', async () => {
+      const {
+        awsNaming: localNaming,
+        cfTemplate: { Resources: localResources },
+      } = await runServerless({
+        fixture: 'function',
+        command: 'package',
+        configExt: {
+          provider: {
+            runtime: 'ruby4.0',
+          },
+        },
+      });
+
+      expect(localResources[localNaming.getLambdaLogicalId('basic')].Properties.Runtime).to.equal(
+        'ruby4.0'
+      );
+      expect(localResources[localNaming.getLambdaLogicalId('other')].Properties.Runtime).to.equal(
+        'ruby4.0'
+      );
+    });
+
+    it('should accept `functions[].runtime: ruby4.0`', async () => {
+      const {
+        awsNaming: localNaming,
+        cfTemplate: { Resources: localResources },
+      } = await runServerless({
+        fixture: 'function',
+        command: 'package',
+        configExt: {
+          functions: {
+            basic: {
+              runtime: 'ruby4.0',
+            },
+          },
+        },
+      });
+
+      expect(localResources[localNaming.getLambdaLogicalId('basic')].Properties.Runtime).to.equal(
+        'ruby4.0'
+      );
+      expect(localResources[localNaming.getLambdaLogicalId('other')].Properties.Runtime).to.equal(
+        'nodejs20.x'
+      );
+    });
+
     it('should reject deprecated `provider.runtime` values', () => {
       return expect(
         runServerless({

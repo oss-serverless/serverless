@@ -40,7 +40,7 @@ If `provider.runtime` is omitted for AWS services, Serverless defaults to the la
 
 We still recommend explicitly setting the runtime you want to deploy, either at `provider.runtime` or per function, so your service does not change runtimes when that default advances.
 
-For new services, prefer `nodejs24.x`, `python3.14`, `java25`, `dotnet10`, `ruby3.4`, and `provided.al2023` for custom runtimes.
+For new services, prefer `nodejs24.x`, `python3.14`, `java25`, `dotnet10`, `ruby4.0`, and `provided.al2023` for custom runtimes.
 
 The `handler` property points to the file and module containing the code you want to run in your function.
 
