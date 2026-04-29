@@ -31,8 +31,14 @@ describe('getHashForFilePath', () => {
     expect(secondHash).to.equal(crypto.createHash('sha256').update('second').digest('base64'));
   });
 
-  it('throws an error when fails to read the file', () => {
-    expect(getHashForFilePath(path.join(process.cwd(), 'nonexistent.txt'))).to.eventually.be
-      .rejected;
+  it('throws a clear error when it fails to read the file', async () => {
+    const missingFilePath = path.join(process.cwd(), 'nonexistent.txt');
+
+    const error = await getHashForFilePath(missingFilePath).catch((error) => error);
+
+    expect(error).to.be.instanceOf(Error);
+    expect(error.message).to.include(`Could not calculate hash for "${missingFilePath}":`);
+    expect(error.cause).to.be.instanceOf(Error);
+    expect(error.cause.code).to.equal('ENOENT');
   });
 });
