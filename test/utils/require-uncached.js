@@ -2,12 +2,18 @@
 
 module.exports = (callback) => {
   const originalCache = { ...require.cache };
+
   const restore = () => {
-    for (const moduleId of Object.keys(require.cache)) delete require.cache[moduleId];
+    for (const moduleId of Object.keys(require.cache)) {
+      delete require.cache[moduleId];
+    }
+
     Object.assign(require.cache, originalCache);
   };
 
-  for (const moduleId of Object.keys(require.cache)) delete require.cache[moduleId];
+  for (const moduleId of Object.keys(require.cache)) {
+    delete require.cache[moduleId];
+  }
 
   try {
     const result = callback();
