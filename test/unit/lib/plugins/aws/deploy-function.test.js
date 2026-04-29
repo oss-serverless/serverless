@@ -17,7 +17,7 @@ describe('AwsDeployFunction', () => {
   let AwsDeployFunction;
   let serverless;
   let awsDeployFunction;
-  let cryptoStub;
+  let getHashForFilePathStub;
 
   beforeEach(async () => {
     serverless = new Serverless({ commands: ['print'], options: {}, serviceDir: null });
@@ -51,17 +51,9 @@ describe('AwsDeployFunction', () => {
     };
     await serverless.init();
     serverless.setProvider('aws', new AwsProvider(serverless, options));
-    cryptoStub = {
-      createHash() {
-        return this;
-      },
-      update() {
-        return this;
-      },
-      digest: sinon.stub(),
-    };
+    getHashForFilePathStub = sinon.stub();
     AwsDeployFunction = proxyquire('../../../../../lib/plugins/aws/deploy-function', {
-      crypto: cryptoStub,
+      '../../utils/get-hash-for-file-path': getHashForFilePathStub,
     });
     awsDeployFunction = new AwsDeployFunction(serverless, options);
   });
@@ -187,8 +179,8 @@ describe('AwsDeployFunction', () => {
   describe('#deployFunction()', () => {
     let artifactFilePath;
     let updateFunctionCodeStub;
-    let statSyncStub;
-    let readFileSyncStub;
+    let statStub;
+    let readFileStub;
 
     beforeEach(() => {
       // write a file to disc to simulate that the deployment artifact exists
@@ -196,8 +188,9 @@ describe('AwsDeployFunction', () => {
       artifactFilePath = path.join(awsDeployFunction.packagePath, 'first.zip');
       serverless.utils.writeFileSync(artifactFilePath, 'first.zip file content');
       updateFunctionCodeStub = sinon.stub(awsDeployFunction.provider, 'request').resolves();
-      statSyncStub = sinon.stub(fs, 'statSync').returns({ size: 1024 });
-      readFileSyncStub = sinon.stub(fs, 'readFileSync').returns();
+      statStub = sinon.stub(fs.promises, 'stat').resolves({ size: 1024 });
+      readFileStub = sinon.stub(fs.promises, 'readFile').resolves(Buffer.from('first.zip content'));
+      getHashForFilePathStub.resolves('local-hash-zip-file');
       awsDeployFunction.serverless.service.provider.remoteFunctionData = {
         Configuration: {
           CodeSha256: 'remote-hash-zip-file',
@@ -207,64 +200,65 @@ describe('AwsDeployFunction', () => {
 
     afterEach(() => {
       awsDeployFunction.provider.request.restore();
-      fs.statSync.restore();
-      fs.readFileSync.restore();
+      fs.promises.stat.restore();
+      fs.promises.readFile.restore();
     });
 
     it('should deploy the function if the hashes are different', async () => {
-      cryptoStub.createHash().update().digest.onCall(0).returns('local-hash-zip-file');
+      const data = Buffer.from('first.zip content');
+      readFileStub.resolves(data);
 
       await awsDeployFunction.deployFunction();
 
-      const data = fs.readFileSync(artifactFilePath);
       expect(updateFunctionCodeStub.calledOnce).to.be.equal(true);
-      expect(readFileSyncStub.called).to.equal(true);
+      expect(getHashForFilePathStub).to.have.been.calledWithExactly(artifactFilePath);
+      expect(readFileStub).to.have.been.calledWithExactly(artifactFilePath);
+      expect(statStub).to.have.been.calledWithExactly(artifactFilePath);
       expect(
         updateFunctionCodeStub.calledWithExactly('Lambda', 'updateFunctionCode', {
           FunctionName: 'first',
           ZipFile: data,
         })
       ).to.be.equal(true);
-      expect(readFileSyncStub.calledWithExactly(artifactFilePath)).to.equal(true);
     });
 
     it('should deploy the function if the hashes are same but the "force" option is used', async () => {
       awsDeployFunction.options.force = true;
-      cryptoStub.createHash().update().digest.onCall(0).returns('remote-hash-zip-file');
+      getHashForFilePathStub.resolves('remote-hash-zip-file');
+      const data = Buffer.from('first.zip content');
+      readFileStub.resolves(data);
 
       await awsDeployFunction.deployFunction();
-      const data = fs.readFileSync(artifactFilePath);
 
       expect(updateFunctionCodeStub.calledOnce).to.be.equal(true);
-      expect(readFileSyncStub.called).to.equal(true);
+      expect(getHashForFilePathStub).to.have.been.calledWithExactly(artifactFilePath);
+      expect(readFileStub).to.have.been.calledWithExactly(artifactFilePath);
+      expect(statStub).to.have.been.calledWithExactly(artifactFilePath);
       expect(
         updateFunctionCodeStub.calledWithExactly('Lambda', 'updateFunctionCode', {
           FunctionName: 'first',
           ZipFile: data,
         })
       ).to.be.equal(true);
-      expect(readFileSyncStub.calledWithExactly(artifactFilePath)).to.equal(true);
     });
 
     it('should resolve if the hashes are the same', async () => {
-      cryptoStub.createHash().update().digest.onCall(0).returns('remote-hash-zip-file');
+      getHashForFilePathStub.resolves('remote-hash-zip-file');
 
       await awsDeployFunction.deployFunction();
 
       expect(updateFunctionCodeStub.calledOnce).to.be.equal(false);
-      expect(readFileSyncStub.calledOnce).to.equal(true);
-      expect(readFileSyncStub.calledWithExactly(artifactFilePath)).to.equal(true);
+      expect(getHashForFilePathStub).to.have.been.calledWithExactly(artifactFilePath);
+      expect(readFileStub).to.not.have.been.called;
+      expect(statStub).to.not.have.been.called;
     });
 
     it('should log artifact size', async () => {
-      // awnY7Oi280gp5kTCloXzsqJCO4J766x6hATWqQsN/uM= <-- hash of the local zip file
-      readFileSyncStub.returns(Buffer.from('my-service.zip content'));
-
       await awsDeployFunction.deployFunction();
 
-      expect(readFileSyncStub.calledOnce).to.equal(true);
-      expect(statSyncStub.calledOnce).to.equal(true);
-      expect(readFileSyncStub.calledWithExactly(artifactFilePath)).to.equal(true);
+      expect(readFileStub.calledOnce).to.equal(true);
+      expect(statStub.calledOnce).to.equal(true);
+      expect(readFileStub.calledWithExactly(artifactFilePath)).to.equal(true);
     });
 
     describe('when artifact is provided', () => {
@@ -285,12 +279,14 @@ describe('AwsDeployFunction', () => {
       });
 
       it('should read the provided artifact', async () => {
+        const data = Buffer.from('artifact.zip content');
+        readFileStub.resolves(data);
+
         await awsDeployFunction.deployFunction();
 
-        const data = fs.readFileSync(artifactZipFile);
-
-        expect(readFileSyncStub).to.have.been.calledWithExactly(artifactZipFile);
-        expect(statSyncStub).to.have.been.calledWithExactly(artifactZipFile);
+        expect(getHashForFilePathStub).to.have.been.calledWithExactly(artifactZipFile);
+        expect(readFileStub).to.have.been.calledWithExactly(artifactZipFile);
+        expect(statStub).to.have.been.calledWithExactly(artifactZipFile);
         expect(getFunctionStub).to.have.been.calledWithExactly('first');
         expect(updateFunctionCodeStub.calledOnce).to.equal(true);
         expect(
