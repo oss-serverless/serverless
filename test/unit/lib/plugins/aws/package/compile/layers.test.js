@@ -1,7 +1,12 @@
 'use strict';
 
+const crypto = require('crypto');
+const fs = require('fs');
 const path = require('path');
 const chai = require('chai');
+const proxyquire = require('proxyquire');
+const sinon = require('sinon');
+const { getTmpDirPath } = require('../../../../../../utils/fs');
 const runServerless = require('../../../../../../utils/run-serverless');
 
 const expect = chai.expect;
@@ -91,6 +96,73 @@ describe('lib/plugins/aws/package/compile/layers/index.test.js', () => {
       'Current Lambda layer version'
     );
     expect(cfOutputs.LayerLambdaLayerQualifiedArn.Value.Ref).to.equals('LayerLambdaLayer');
+  });
+
+  it('hashes layer artifacts with streams instead of buffering the whole zip', async () => {
+    const packagePath = getTmpDirPath();
+    const layerArtifactPath = path.join(packagePath, 'layer.zip');
+    fs.mkdirSync(packagePath, { recursive: true });
+    fs.writeFileSync(layerArtifactPath, 'layer artifact content');
+
+    const readFileStub = sinon.stub().rejects(new Error('layer artifact should not be buffered'));
+    const createReadStreamStub = sinon
+      .stub()
+      .callsFake((filePath) => fs.createReadStream(filePath));
+    const fakeFs = Object.create(fs);
+    Object.defineProperty(fakeFs, 'promises', { value: { readFile: readFileStub } });
+    fakeFs.createReadStream = createReadStreamStub;
+
+    const AwsCompileLayers = proxyquire(
+      '../../../../../../../lib/plugins/aws/package/compile/layers',
+      {
+        fs: fakeFs,
+      }
+    );
+
+    const layerObject = { path: 'layer' };
+    const testNaming = {
+      getLayerArtifactName: sinon.stub().returns('layer.zip'),
+      getLambdaLayerLogicalId: sinon.stub().returns('LayerLambdaLayer'),
+      getLambdaLayerOutputLogicalId: sinon.stub().returns('LayerLambdaLayerQualifiedArn'),
+      getLambdaLayerHashOutputLogicalId: sinon.stub().returns('LayerLambdaLayerHash'),
+      getLambdaLayerS3KeyOutputLogicalId: sinon.stub().returns('LayerLambdaLayerS3Key'),
+      getLambdaLayerPermissionLogicalId: sinon.stub().returns('LayerLambdaLayerPermission'),
+    };
+    const testService = {
+      package: { artifactDirectoryName: 'artifact-dir', path: packagePath },
+      provider: { compiledCloudFormationTemplate: { Resources: {}, Outputs: {} } },
+      getLayer: sinon.stub().withArgs('layer').returns(layerObject),
+    };
+    const testProvider = {
+      serverless: { service: testService },
+      naming: testNaming,
+      resolveLayerArtifactName: sinon.stub().withArgs('layer').returns(layerArtifactPath),
+    };
+    const testServerless = {
+      serviceDir: packagePath,
+      service: testService,
+      getProvider: sinon.stub().withArgs('aws').returns(testProvider),
+    };
+
+    const awsCompileLayers = new AwsCompileLayers(testServerless, {});
+    await awsCompileLayers.compileLayer('layer');
+
+    expect(createReadStreamStub).to.have.been.calledOnceWithExactly(layerArtifactPath);
+    expect(readFileStub).to.not.have.been.called;
+
+    const layerForHash = structuredClone(
+      testService.provider.compiledCloudFormationTemplate.Resources.LayerLambdaLayer
+    );
+    delete layerForHash.Properties.Content.S3Key;
+    const expectedHash = crypto
+      .createHash('sha1')
+      .update(JSON.stringify(layerForHash))
+      .update(fs.readFileSync(layerArtifactPath))
+      .digest('hex');
+
+    expect(
+      testService.provider.compiledCloudFormationTemplate.Outputs.LayerLambdaLayerHash.Value
+    ).to.equal(expectedHash);
   });
 
   describe('`layers[].retain` property', () => {
