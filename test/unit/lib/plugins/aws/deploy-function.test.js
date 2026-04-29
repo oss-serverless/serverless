@@ -224,14 +224,13 @@ describe('AwsDeployFunction', () => {
 
     it('should deploy the function if the hashes are same but the "force" option is used', async () => {
       awsDeployFunction.options.force = true;
-      getHashForFilePathStub.resolves('remote-hash-zip-file');
       const data = Buffer.from('first.zip content');
       readFileStub.resolves(data);
 
       await awsDeployFunction.deployFunction();
 
       expect(updateFunctionCodeStub.calledOnce).to.be.equal(true);
-      expect(getHashForFilePathStub).to.have.been.calledWithExactly(artifactFilePath);
+      expect(getHashForFilePathStub).to.not.have.been.called;
       expect(readFileStub).to.have.been.calledWithExactly(artifactFilePath);
       expect(statStub).to.have.been.calledWithExactly(artifactFilePath);
       expect(
