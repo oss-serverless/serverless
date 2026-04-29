@@ -47,6 +47,33 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
     },
   };
 
+  const createSignatureMismatchListError = () => {
+    const error = new Error('signature mismatch');
+    error.providerError = {
+      code: 'SignatureDoesNotMatch',
+      statusCode: 403,
+    };
+    return error;
+  };
+
+  const createAccessDeniedListError = () => {
+    const error = new Error('access denied');
+    error.providerError = {
+      code: 'AccessDenied',
+      statusCode: 403,
+    };
+    return error;
+  };
+
+  const createWrappedStatusOnlyListError = (code) => {
+    const error = new Error('forbidden');
+    error.code = code;
+    error.providerError = {
+      statusCode: 403,
+    };
+    return error;
+  };
+
   beforeEach(() => {
     deleteObjectsStub.resetHistory();
     deleteStackStub.resetHistory();
@@ -444,6 +471,67 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
       .true;
   });
 
+  it('preserves specific S3 object-version list authentication failures during remove', async () => {
+    const listError = createSignatureMismatchListError();
+
+    try {
+      await runServerless({
+        command: 'remove',
+        fixture: 'function',
+        configExt: {
+          provider: {
+            deploymentBucket: {
+              name: 'bucket',
+              versioning: true,
+            },
+          },
+        },
+        awsRequestStubMap: {
+          ...awsRequestStubMap,
+          S3: {
+            ...awsRequestStubMap.S3,
+            listObjectVersions: () => {
+              throw listError;
+            },
+            headBucket: {},
+          },
+        },
+      });
+      throw new Error('Expected remove to reject');
+    } catch (error) {
+      expect(error).to.equal(listError);
+    }
+  });
+
+  it('rewrites wrapped status-only S3 object-version list access denied failures during remove', async () => {
+    const listError = createWrappedStatusOnlyListError('AWS_S3_LIST_OBJECT_VERSIONS_ERROR');
+
+    await expect(
+      runServerless({
+        command: 'remove',
+        fixture: 'function',
+        configExt: {
+          provider: {
+            deploymentBucket: {
+              name: 'bucket',
+              versioning: true,
+            },
+          },
+        },
+        awsRequestStubMap: {
+          ...awsRequestStubMap,
+          S3: {
+            ...awsRequestStubMap.S3,
+            listObjectVersions: () => {
+              throw listError;
+            },
+            headBucket: {},
+          },
+        },
+      })
+    ).to.be.eventually.rejected.and.have.property('code', 'AWS_S3_LIST_OBJECTS_V2_ACCESS_DENIED');
+  });
+
   it('should throw an error when cannot list object versions from the bucket', async () => {
     await expect(
       runServerless({
@@ -546,6 +634,93 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
         },
       })
     ).to.be.eventually.rejected.and.have.property('code', 'CANNOT_DELETE_S3_OBJECTS_ACCESS_DENIED');
+  });
+
+  it('preserves specific S3 list authentication failures during remove', async () => {
+    const listError = createSignatureMismatchListError();
+
+    try {
+      await runServerless({
+        command: 'remove',
+        fixture: 'function',
+        awsRequestStubMap: {
+          ...awsRequestStubMap,
+          S3: {
+            ...awsRequestStubMap.S3,
+            listObjectsV2: () => {
+              throw listError;
+            },
+            headBucket: {},
+          },
+        },
+      });
+      throw new Error('Expected remove to reject');
+    } catch (error) {
+      expect(error).to.equal(listError);
+    }
+  });
+
+  it('rewrites explicit S3 list access denied failures during remove', async () => {
+    const listError = createAccessDeniedListError();
+
+    await expect(
+      runServerless({
+        command: 'remove',
+        fixture: 'function',
+        awsRequestStubMap: {
+          ...awsRequestStubMap,
+          S3: {
+            ...awsRequestStubMap.S3,
+            listObjectsV2: () => {
+              throw listError;
+            },
+            headBucket: {},
+          },
+        },
+      })
+    ).to.be.eventually.rejected.and.have.property('code', 'AWS_S3_LIST_OBJECTS_V2_ACCESS_DENIED');
+  });
+
+  it('rewrites status-only S3 object-list access denied failures during remove', async () => {
+    await expect(
+      runServerless({
+        command: 'remove',
+        fixture: 'function',
+        awsRequestStubMap: {
+          ...awsRequestStubMap,
+          S3: {
+            ...awsRequestStubMap.S3,
+            listObjectsV2: () => {
+              const error = new Error('forbidden');
+              error.providerError = { statusCode: 403 };
+              throw error;
+            },
+            headBucket: {},
+          },
+        },
+      })
+    ).to.be.eventually.rejected.and.have.property('code', 'AWS_S3_LIST_OBJECTS_V2_ACCESS_DENIED');
+  });
+
+  it('rewrites wrapped status-only S3 object-list access denied failures during remove', async () => {
+    const listError = createWrappedStatusOnlyListError('AWS_S3_LIST_OBJECTS_V2_ERROR');
+
+    await expect(
+      runServerless({
+        command: 'remove',
+        fixture: 'function',
+        awsRequestStubMap: {
+          ...awsRequestStubMap,
+          S3: {
+            ...awsRequestStubMap.S3,
+            listObjectsV2: () => {
+              throw listError;
+            },
+            headBucket: {},
+          },
+        },
+      })
+    ).to.be.eventually.rejected.and.have.property('code', 'AWS_S3_LIST_OBJECTS_V2_ACCESS_DENIED');
   });
 
   it('should throw an error when cannot list objects from the bucket', async () => {

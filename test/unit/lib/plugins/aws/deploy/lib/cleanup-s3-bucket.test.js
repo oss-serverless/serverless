@@ -31,6 +31,38 @@ describe('cleanupS3Bucket', () => {
     awsDeploy.serverless.cli = new serverless.classes.CLI();
   });
 
+  const createSignatureMismatchListError = () => {
+    const error = new Error('signature mismatch');
+    error.providerError = {
+      code: 'SignatureDoesNotMatch',
+      statusCode: 403,
+    };
+    return error;
+  };
+
+  const createAccessDeniedListError = () => {
+    const error = new Error('access denied');
+    error.providerError = {
+      code: 'AccessDenied',
+      statusCode: 403,
+    };
+    return error;
+  };
+
+  const createStatusOnlyListError = () => {
+    const error = new Error('forbidden');
+    error.providerError = {
+      statusCode: 403,
+    };
+    return error;
+  };
+
+  const createWrappedStatusOnlyListError = () => {
+    const error = createStatusOnlyListError();
+    error.code = 'AWS_S3_LIST_OBJECTS_V2_ERROR';
+    return error;
+  };
+
   describe('#getObjectsToRemove()', () => {
     it('should resolve if no objects are found', async () => {
       const serviceObjects = {
@@ -79,6 +111,66 @@ describe('cleanupS3Bucket', () => {
         });
         awsDeploy.provider.request.restore();
       });
+    });
+
+    it('should not rewrite specific S3 list authentication failures', async () => {
+      const listError = createSignatureMismatchListError();
+      const listObjectsStub = sinon.stub(awsDeploy.provider, 'request').rejects(listError);
+
+      try {
+        await awsDeploy.getObjectsToRemove();
+        throw new Error('Expected getObjectsToRemove to reject');
+      } catch (error) {
+        expect(error).to.equal(listError);
+      } finally {
+        expect(listObjectsStub).to.have.been.calledOnce;
+        awsDeploy.provider.request.restore();
+      }
+    });
+
+    it('should rewrite status-only S3 list access denied failures', async () => {
+      const listError = createStatusOnlyListError();
+      const listObjectsStub = sinon.stub(awsDeploy.provider, 'request').rejects(listError);
+
+      try {
+        await expect(awsDeploy.getObjectsToRemove()).to.be.eventually.rejected.and.have.property(
+          'code',
+          'AWS_S3_LIST_OBJECTS_V2_ACCESS_DENIED'
+        );
+      } finally {
+        expect(listObjectsStub).to.have.been.calledOnce;
+        awsDeploy.provider.request.restore();
+      }
+    });
+
+    it('should rewrite wrapped status-only S3 list access denied failures', async () => {
+      const listError = createWrappedStatusOnlyListError();
+      const listObjectsStub = sinon.stub(awsDeploy.provider, 'request').rejects(listError);
+
+      try {
+        await expect(awsDeploy.getObjectsToRemove()).to.be.eventually.rejected.and.have.property(
+          'code',
+          'AWS_S3_LIST_OBJECTS_V2_ACCESS_DENIED'
+        );
+      } finally {
+        expect(listObjectsStub).to.have.been.calledOnce;
+        awsDeploy.provider.request.restore();
+      }
+    });
+
+    it('should rewrite explicit S3 list access denied failures', async () => {
+      const listError = createAccessDeniedListError();
+      const listObjectsStub = sinon.stub(awsDeploy.provider, 'request').rejects(listError);
+
+      try {
+        await expect(awsDeploy.getObjectsToRemove()).to.be.eventually.rejected.and.have.property(
+          'code',
+          'AWS_S3_LIST_OBJECTS_V2_ACCESS_DENIED'
+        );
+      } finally {
+        expect(listObjectsStub).to.have.been.calledOnce;
+        awsDeploy.provider.request.restore();
+      }
     });
 
     it('should list all paginated deployment objects before selecting objects to remove', async () => {
@@ -428,6 +520,64 @@ describe('cleanupS3Bucket', () => {
           },
         ]);
       } finally {
+        awsDeploy.provider.request.restore();
+      }
+    });
+
+    it('should not rewrite specific empty-changeset S3 list authentication failures', async () => {
+      const deploymentDirectory = '151224711231-2016-08-18T15:42:00';
+      const listError = createSignatureMismatchListError();
+      const requestStub = sinon.stub(awsDeploy.provider, 'request');
+      awsDeploy.serverless.service.package.artifactDirectoryName = `${s3Key}/${deploymentDirectory}`;
+      requestStub.withArgs('S3', 'listObjectsV2').rejects(listError);
+
+      try {
+        await awsDeploy.cleanupArtifactsForEmptyChangeSet();
+        throw new Error('Expected cleanupArtifactsForEmptyChangeSet to reject');
+      } catch (error) {
+        expect(error).to.equal(listError);
+      } finally {
+        expect(requestStub).to.have.been.calledOnce;
+        awsDeploy.provider.request.restore();
+      }
+    });
+
+    it('should rewrite status-only empty-changeset S3 list access denied failures', async () => {
+      const deploymentDirectory = '151224711231-2016-08-18T15:42:00';
+      const listError = createStatusOnlyListError();
+      const requestStub = sinon.stub(awsDeploy.provider, 'request');
+      awsDeploy.serverless.service.package.artifactDirectoryName = `${s3Key}/${deploymentDirectory}`;
+      requestStub.withArgs('S3', 'listObjectsV2').rejects(listError);
+
+      try {
+        await expect(
+          awsDeploy.cleanupArtifactsForEmptyChangeSet()
+        ).to.be.eventually.rejected.and.have.property(
+          'code',
+          'AWS_S3_LIST_OBJECTS_V2_ACCESS_DENIED'
+        );
+      } finally {
+        expect(requestStub).to.have.been.calledOnce;
+        awsDeploy.provider.request.restore();
+      }
+    });
+
+    it('should rewrite wrapped status-only empty-changeset S3 list access denied failures', async () => {
+      const deploymentDirectory = '151224711231-2016-08-18T15:42:00';
+      const listError = createWrappedStatusOnlyListError();
+      const requestStub = sinon.stub(awsDeploy.provider, 'request');
+      awsDeploy.serverless.service.package.artifactDirectoryName = `${s3Key}/${deploymentDirectory}`;
+      requestStub.withArgs('S3', 'listObjectsV2').rejects(listError);
+
+      try {
+        await expect(
+          awsDeploy.cleanupArtifactsForEmptyChangeSet()
+        ).to.be.eventually.rejected.and.have.property(
+          'code',
+          'AWS_S3_LIST_OBJECTS_V2_ACCESS_DENIED'
+        );
+      } finally {
+        expect(requestStub).to.have.been.calledOnce;
         awsDeploy.provider.request.restore();
       }
     });
