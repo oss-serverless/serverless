@@ -11,8 +11,13 @@ module.exports = (callback) => {
 
   try {
     const result = callback();
-    if (result && typeof result.then === 'function') return result.finally(restore);
+
+    if (result && typeof result.then === 'function') {
+      return Promise.resolve(result).finally(restore);
+    }
+
     restore();
+
     return result;
   } catch (error) {
     restore();
