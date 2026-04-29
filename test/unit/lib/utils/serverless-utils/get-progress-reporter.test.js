@@ -1,7 +1,6 @@
 'use strict';
 
 const { expect } = require('chai');
-const allOff = require('event-emitter/all-off');
 const requireUncached = require('ncjsm/require-uncached');
 
 describe('serverless-utils/get-progress-reporter', () => {
@@ -17,7 +16,7 @@ describe('serverless-utils/get-progress-reporter', () => {
   });
 
   afterEach(() => {
-    allOff(getProgressReporter.emitter);
+    getProgressReporter.emitter.removeAllListeners();
     getProgressReporter.clear();
   });
 
