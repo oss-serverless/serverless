@@ -39,7 +39,7 @@ describe('AwsDeployList', () => {
       expect(
         listObjectsStub.calledWithExactly('S3', 'listObjectsV2', {
           Bucket: awsDeployList.bucketName,
-          Prefix: `${s3Key}`,
+          Prefix: `${s3Key}/`,
         })
       ).to.be.equal(true);
       awsDeployList.provider.request.restore();
@@ -62,7 +62,7 @@ describe('AwsDeployList', () => {
       expect(
         listObjectsStub.calledWithExactly('S3', 'listObjectsV2', {
           Bucket: awsDeployList.bucketName,
-          Prefix: `${s3Key}`,
+          Prefix: `${s3Key}/`,
         })
       ).to.be.equal(true);
       awsDeployList.provider.request.restore();
