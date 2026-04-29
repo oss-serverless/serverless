@@ -1,5 +1,6 @@
 'use strict';
 
+const os = require('os');
 const path = require('path');
 const fsp = require('fs').promises;
 const proxyquire = require('proxyquire').noCallThru();
@@ -189,6 +190,45 @@ describe('test/unit/lib/plugins/package/lib/packageService.test.js', () => {
 
       expect(zippedFiles).to.not.include('.env');
       expect(zippedFiles).to.not.include('.env.stage');
+    });
+  });
+
+  describe('#packageLayer()', () => {
+    it('resolves layer package paths against serviceDir instead of cwd', async () => {
+      const originalCwd = process.cwd();
+      const cwd = await fsp.mkdtemp(path.join(os.tmpdir(), 'sls-cwd-'));
+      const serviceDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'sls-service-'));
+
+      try {
+        process.chdir(cwd);
+
+        const layerObject = { path: 'layer' };
+        const zipFilesStub = sinon.stub().resolves('layer.zip');
+
+        await packageService.packageLayer.call(
+          {
+            serverless: {
+              serviceDir,
+              service: {
+                getLayer: () => layerObject,
+              },
+            },
+            resolveFilePathsLayer: sinon.stub().resolves(['index.js']),
+            zipFiles: zipFilesStub,
+          },
+          'layer'
+        );
+
+        expect(zipFilesStub).to.have.been.calledWithExactly(
+          [path.join(serviceDir, 'layer', 'index.js')],
+          'layer.zip',
+          path.join(serviceDir, 'layer')
+        );
+      } finally {
+        process.chdir(originalCwd);
+        await fsp.rm(cwd, { recursive: true, force: true });
+        await fsp.rm(serviceDir, { recursive: true, force: true });
+      }
     });
   });
 
