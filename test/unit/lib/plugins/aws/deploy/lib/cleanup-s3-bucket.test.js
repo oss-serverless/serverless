@@ -49,7 +49,7 @@ describe('cleanupS3Bucket', () => {
       });
     });
 
-    it('should return all to be removed service objects (except the last 4)', async () => {
+    it('should return all service objects except the default preserved deployments', async () => {
       const serviceObjects = {
         Contents: [
           { Key: `${s3Key}/151224711231-2016-08-18T15:42:00/artifact.zip` },
@@ -70,30 +70,10 @@ describe('cleanupS3Bucket', () => {
       const listObjectsStub = sinon.stub(awsDeploy.provider, 'request').resolves(serviceObjects);
 
       return awsDeploy.getObjectsToRemove().then((objectsToRemove) => {
-        expect(objectsToRemove).to.not.include({
-          Key: `${s3Key}${s3Key}/141321321541-2016-08-18T11:23:02/artifact.zip`,
-        });
-        expect(objectsToRemove).to.not.include({
-          Key: `${s3Key}${s3Key}/141321321541-2016-08-18T11:23:02/cloudformation.json`,
-        });
-        expect(objectsToRemove).to.not.include({
-          Key: `${s3Key}${s3Key}/142003031341-2016-08-18T12:46:04/artifact.zip`,
-        });
-        expect(objectsToRemove).to.not.include({
-          Key: `${s3Key}${s3Key}/142003031341-2016-08-18T12:46:04/cloudformation.json`,
-        });
-        expect(objectsToRemove).to.not.include({
-          Key: `${s3Key}${s3Key}/151224711231-2016-08-18T15:42:00/artifact.zip`,
-        });
-        expect(objectsToRemove).to.not.include({
-          Key: `${s3Key}${s3Key}/151224711231-2016-08-18T15:42:00/cloudformation.json`,
-        });
-        expect(objectsToRemove).to.not.include({
-          Key: `${s3Key}${s3Key}/903940390431-2016-08-18T23:42:08/artifact.zip`,
-        });
-        expect(objectsToRemove).to.not.include({
-          Key: `${s3Key}${s3Key}/903940390431-2016-08-18T23:42:08/cloudformation.json`,
-        });
+        expect(objectsToRemove).to.deep.equal([
+          { Key: `${s3Key}/151224711231-2016-08-18T15:42:00/artifact.zip` },
+          { Key: `${s3Key}/151224711231-2016-08-18T15:42:00/cloudformation.json` },
+        ]);
         expect(listObjectsStub.calledOnce).to.be.equal(true);
         expect(listObjectsStub).to.have.been.calledWithExactly('S3', 'listObjectsV2', {
           Bucket: awsDeploy.bucketName,
@@ -396,6 +376,23 @@ describe('cleanupS3Bucket', () => {
       try {
         await awsDeploy.cleanupArtifactsForEmptyChangeSet();
 
+        expect(requestStub.firstCall.args).to.deep.equal([
+          'S3',
+          'listObjectsV2',
+          {
+            Bucket: awsDeploy.bucketName,
+            Prefix: `${s3Key}/${deploymentDirectory}/`,
+          },
+        ]);
+        expect(requestStub.secondCall.args).to.deep.equal([
+          'S3',
+          'listObjectsV2',
+          {
+            Bucket: awsDeploy.bucketName,
+            Prefix: `${s3Key}/${deploymentDirectory}/`,
+            ContinuationToken: 'next-page',
+          },
+        ]);
         const deleteCall = requestStub
           .getCalls()
           .find((call) => call.args[0] === 'S3' && call.args[1] === 'deleteObjects');
@@ -405,6 +402,33 @@ describe('cleanupS3Bucket', () => {
             Objects: [{ Key: firstKey }, { Key: secondKey }],
           },
         });
+      } finally {
+        awsDeploy.provider.request.restore();
+      }
+    });
+
+    it('should list only the selected deployment directory', async () => {
+      const deploymentDirectory = '151224711231-2016-08-18T15:42:00';
+      const artifactDirectoryName = `${s3Key}/${deploymentDirectory}`;
+      const artifactKey = `${artifactDirectoryName}/artifact.zip`;
+      const requestStub = sinon.stub(awsDeploy.provider, 'request');
+      awsDeploy.serverless.service.package.artifactDirectoryName = artifactDirectoryName;
+      requestStub.withArgs('S3', 'listObjectsV2').resolves({
+        Contents: [{ Key: artifactKey }],
+      });
+      requestStub.withArgs('S3', 'deleteObjects').resolves();
+
+      try {
+        await awsDeploy.cleanupArtifactsForEmptyChangeSet();
+
+        expect(requestStub.firstCall.args).to.deep.equal([
+          'S3',
+          'listObjectsV2',
+          {
+            Bucket: awsDeploy.bucketName,
+            Prefix: `${artifactDirectoryName}/`,
+          },
+        ]);
       } finally {
         awsDeploy.provider.request.restore();
       }
