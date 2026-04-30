@@ -17,7 +17,7 @@ const stringifyChunk = (chunk) => {
 };
 
 const loadProgressFooter = (platform = process.platform) => {
-  const originalPlatform = process.platform;
+  const originalPlatformDescriptor = Object.getOwnPropertyDescriptor(process, 'platform');
   delete require.cache[require.resolve(modulePath)];
   Object.defineProperty(process, 'platform', {
     configurable: true,
@@ -27,10 +27,7 @@ const loadProgressFooter = (platform = process.platform) => {
   try {
     return require(modulePath);
   } finally {
-    Object.defineProperty(process, 'platform', {
-      configurable: true,
-      value: originalPlatform,
-    });
+    Object.defineProperty(process, 'platform', originalPlatformDescriptor);
   }
 };
 
@@ -133,6 +130,16 @@ describe('test/unit/lib/utils/progress-footer.test.js', () => {
       expect(intervals.pop()).to.equal(expectedInterval);
       delete require.cache[require.resolve(modulePath)];
     }
+  });
+
+  it('restores process.platform descriptor after platform-specific loading', () => {
+    const originalPlatformDescriptor = Object.getOwnPropertyDescriptor(process, 'platform');
+
+    loadProgressFooter('win32');
+
+    expect(Object.getOwnPropertyDescriptor(process, 'platform')).to.deep.equal(
+      originalPlatformDescriptor
+    );
   });
 
   it('accepts null options like the upstream footer', () => {
