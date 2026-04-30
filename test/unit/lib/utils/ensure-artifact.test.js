@@ -6,8 +6,8 @@ const ensureArtifact = require('../../../../lib/utils/ensure-artifact');
 
 const path = require('path');
 const fsp = require('fs').promises;
-const fse = require('fs-extra');
 const crypto = require('crypto');
+const { pathExists } = require('../../../utils/fs');
 
 describe('#ensureArtifact', () => {
   const testArtifactName = `test-${crypto.randomBytes(2).toString('hex')}`;
@@ -23,7 +23,7 @@ describe('#ensureArtifact', () => {
 
   it('Should generate artifact if missing', async () => {
     await ensureArtifact(testArtifactName, generateFunc);
-    const exists = await fse.pathExists(testArtifactPath);
+    const exists = await pathExists(testArtifactPath);
     expect(exists).to.be.true;
   });
 

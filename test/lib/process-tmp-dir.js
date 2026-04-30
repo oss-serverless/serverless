@@ -1,7 +1,6 @@
 'use strict';
 
-const { mkdirSync, realpathSync } = require('fs');
-const { removeSync } = require('fs-extra');
+const { mkdirSync, realpathSync, rmSync } = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
@@ -28,7 +27,7 @@ module.exports = (function self() {
 
 process.on('exit', () => {
   try {
-    removeSync(module.exports);
+    rmSync(module.exports, { recursive: true, force: true });
   } catch (error) {
     if (rmTmpDirIgnorableErrorCodes.has(error.code)) return;
     throw error;

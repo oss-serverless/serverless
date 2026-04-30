@@ -4,7 +4,7 @@ const chai = require('chai');
 const { overrideEnv } = require('../../../utils/process');
 const requireUncached = require('../../../utils/require-uncached');
 const path = require('path');
-const fse = require('fs-extra');
+const { outputFile, remove } = require('../../../utils/fs');
 
 const { expect } = chai;
 
@@ -40,7 +40,7 @@ describe('test/unit/lib/aws/has-local-credentials.test.js', () => {
     before(async () => {
       credentialsDirPath = path.resolve('.aws');
       credentialsFilePath = path.join(credentialsDirPath, 'credentials');
-      await fse.outputFile(
+      await outputFile(
         credentialsFilePath,
         [
           '[default]',
@@ -53,7 +53,7 @@ describe('test/unit/lib/aws/has-local-credentials.test.js', () => {
       );
     });
 
-    after(async () => fse.remove(credentialsDirPath));
+    after(async () => remove(credentialsDirPath));
 
     it('Should properly detect credentials', () => {
       expect(uncachedHasLocalCredentials()).to.equal(true);

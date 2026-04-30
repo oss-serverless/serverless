@@ -1,9 +1,9 @@
 'use strict';
 
 const path = require('path');
+const fsp = require('fs').promises;
 const sinon = require('sinon');
 const yaml = require('js-yaml');
-const fse = require('fs-extra');
 const proxyquire = require('proxyquire');
 const fixturesEngine = require('../../fixtures/programmatic');
 const resolveConfigurationPath = require('../../../lib/cli/resolve-configuration-path');
@@ -16,7 +16,7 @@ const writeRawConfiguration = async (serviceDir, rawYaml) => {
   const configurationFilePath = await resolveConfigurationPath({
     cwd: serviceDir,
   });
-  await fse.writeFile(configurationFilePath, rawYaml);
+  await fsp.writeFile(configurationFilePath, rawYaml);
   return {
     configurationFilePath,
     configuration: yaml.load(rawYaml, {
@@ -27,10 +27,20 @@ const writeRawConfiguration = async (serviceDir, rawYaml) => {
 };
 
 const readParsedConfiguration = async (configurationFilePath) =>
-  yaml.load(await fse.readFile(configurationFilePath, 'utf8'), {
+  yaml.load(await fsp.readFile(configurationFilePath, 'utf8'), {
     filename: configurationFilePath,
     schema: cloudformationSchema,
   });
+
+const writeJsonConfiguration = async (serviceDir, configuration, rawJson) => {
+  const configurationFilePath = path.join(serviceDir, 'serverless.json');
+  await fsp.writeFile(configurationFilePath, rawJson || JSON.stringify(configuration));
+  return {
+    configurationFilePath,
+    configuration,
+    configurationFilename: path.basename(configurationFilePath),
+  };
+};
 
 describe('test/unit/commands/plugin-install.test.js', async () => {
   const spawnFake = sinon.fake();
@@ -74,7 +84,7 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
     });
 
     it('should add plugin to serverless file', async () => {
-      const serverlessFileObj = yaml.load(await fse.readFile(configurationFilePath, 'utf8'), {
+      const serverlessFileObj = yaml.load(await fsp.readFile(configurationFilePath, 'utf8'), {
         filename: configurationFilePath,
       });
       expect(serverlessFileObj.plugins).to.include(pluginName);
@@ -111,7 +121,7 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
         configurationFilename,
         options,
       });
-      const serverlessFileObj = yaml.load(await fse.readFile(configurationFilePath, 'utf8'), {
+      const serverlessFileObj = yaml.load(await fsp.readFile(configurationFilePath, 'utf8'), {
         filename: configurationFilePath,
       });
       expect(serverlessFileObj.plugins).not.to.include(pluginName);
@@ -127,7 +137,7 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
         cwd: serviceDir,
       });
       const configurationFilename = configurationFilePath.slice(serviceDir.length + 1);
-      const originalConfigurationText = await fse.readFile(configurationFilePath, 'utf8');
+      const originalConfigurationText = await fsp.readFile(configurationFilePath, 'utf8');
 
       await expect(
         installPlugin({
@@ -141,7 +151,105 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
       ).to.be.eventually.rejected.and.have.property('code', 'INVALID_PLUGIN_NAME');
 
       expect(spawnFake).to.not.have.been.called;
-      expect(await fse.readFile(configurationFilePath, 'utf8')).to.equal(originalConfigurationText);
+      expect(await fsp.readFile(configurationFilePath, 'utf8')).to.equal(originalConfigurationText);
+    });
+  });
+
+  describe('with JSON configuration', () => {
+    it('adds a plugin to array-form plugins', async () => {
+      const fixture = await fixturesEngine.setup('function');
+      const { configurationFilePath, configuration, configurationFilename } =
+        await writeJsonConfiguration(fixture.servicePath, {
+          service: 'json-service',
+          plugins: ['existing-plugin'],
+        });
+
+      await installPlugin({
+        configuration,
+        serviceDir: fixture.servicePath,
+        configurationFilename,
+        options: { name: pluginName },
+      });
+
+      expect(await fsp.readFile(configurationFilePath, 'utf8')).to.equal(
+        `{"service":"json-service","plugins":["existing-plugin","${pluginName}"]}\n`
+      );
+    });
+
+    it('adds a plugin to object-form plugins.modules', async () => {
+      const fixture = await fixturesEngine.setup('function');
+      const { configurationFilePath, configuration, configurationFilename } =
+        await writeJsonConfiguration(fixture.servicePath, {
+          service: 'json-service',
+          plugins: { localPath: './plugins', modules: ['existing-plugin'] },
+        });
+
+      await installPlugin({
+        configuration,
+        serviceDir: fixture.servicePath,
+        configurationFilename,
+        options: { name: pluginName },
+      });
+
+      expect(
+        JSON.parse(await fsp.readFile(configurationFilePath, 'utf8')).plugins.modules
+      ).to.deep.equal(['existing-plugin', pluginName]);
+    });
+
+    it('strips a UTF-8 BOM from JSON input', async () => {
+      const fixture = await fixturesEngine.setup('function');
+      const configuration = { service: 'json-service', plugins: [] };
+      const { configurationFilePath, configurationFilename } = await writeJsonConfiguration(
+        fixture.servicePath,
+        configuration,
+        `\uFEFF${JSON.stringify(configuration)}`
+      );
+
+      await installPlugin({
+        configuration,
+        serviceDir: fixture.servicePath,
+        configurationFilename,
+        options: { name: pluginName },
+      });
+
+      expect(JSON.parse(await fsp.readFile(configurationFilePath, 'utf8')).plugins).to.deep.equal([
+        pluginName,
+      ]);
+    });
+
+    it('includes the JSON filename in invalid JSON errors', async () => {
+      const fixture = await fixturesEngine.setup('function');
+      const { configurationFilePath, configuration, configurationFilename } =
+        await writeJsonConfiguration(fixture.servicePath, { service: 'json-service' }, '{invalid');
+
+      await expect(
+        installPlugin({
+          configuration,
+          serviceDir: fixture.servicePath,
+          configurationFilename,
+          options: { name: pluginName },
+        })
+      ).to.be.rejectedWith(configurationFilePath);
+    });
+
+    it('writes compact JSON with a final newline', async () => {
+      const fixture = await fixturesEngine.setup('function');
+      const { configurationFilePath, configuration, configurationFilename } =
+        await writeJsonConfiguration(fixture.servicePath, {
+          service: 'json-service',
+          plugins: [],
+        });
+
+      await installPlugin({
+        configuration,
+        serviceDir: fixture.servicePath,
+        configurationFilename,
+        options: { name: pluginName },
+      });
+
+      expect(await fsp.readFile(configurationFilePath, 'utf8')).to.equal(
+        `{"service":"json-service","plugins":["${pluginName}"]}\n`
+      );
     });
   });
 
@@ -181,7 +289,7 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
         },
       });
 
-      const fileText = await fse.readFile(configurationFilePath, 'utf8');
+      const fileText = await fsp.readFile(configurationFilePath, 'utf8');
       const parsed = await readParsedConfiguration(configurationFilePath);
 
       expect(fileText).to.include(
@@ -231,7 +339,7 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
         },
       });
 
-      const fileText = await fse.readFile(configurationFilePath, 'utf8');
+      const fileText = await fsp.readFile(configurationFilePath, 'utf8');
       const parsed = await readParsedConfiguration(configurationFilePath);
 
       expect(fileText).to.include('taggedValue: !Sub ${AWS::Region}');
@@ -276,7 +384,7 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
         },
       });
 
-      const fileText = await fse.readFile(configurationFilePath, 'utf8');
+      const fileText = await fsp.readFile(configurationFilePath, 'utf8');
       const parsed = await readParsedConfiguration(configurationFilePath);
 
       expect(fileText.match(/^(?:"plugins"|plugins):/gm)).to.have.length(1);

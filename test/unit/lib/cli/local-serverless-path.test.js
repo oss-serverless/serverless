@@ -4,7 +4,7 @@ const { expect } = require('chai');
 const path = require('path');
 const os = require('os');
 const fsp = require('fs').promises;
-const fse = require('fs-extra');
+const { ensureDir, ensureFile } = require('../../../utils/fs');
 
 describe('test/unit/lib/cli/local-serverless-path.test.js', () => {
   const resolveLocalServerlessPath = require('../../../../lib/cli/local-serverless-path');
@@ -18,9 +18,9 @@ describe('test/unit/lib/cli/local-serverless-path.test.js', () => {
       await fsp.realpath(os.homedir()),
       'node_modules/serverless'
     );
-    await fse.ensureDir(path.resolve(tmpServerlessPath, 'lib'));
+    await ensureDir(path.resolve(tmpServerlessPath, 'lib'));
     await Promise.all([
-      fse.ensureFile(path.resolve(tmpServerlessPath, 'lib/serverless.js')),
+      ensureFile(path.resolve(tmpServerlessPath, 'lib/serverless.js')),
       fsp.writeFile(
         path.resolve(tmpServerlessPath, 'package.json'),
         JSON.stringify({ main: 'lib/serverless.js' })

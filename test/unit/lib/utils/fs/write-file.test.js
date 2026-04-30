@@ -1,6 +1,7 @@
 'use strict';
 
 const fsp = require('fs').promises;
+const path = require('path');
 const Serverless = require('../../../../../lib/serverless');
 const writeFile = require('../../../../../lib/utils/fs/write-file');
 const readFile = require('../../../../../lib/utils/fs/read-file');
@@ -49,5 +50,13 @@ describe('#writeFile()', function () {
     return writeFile(tmpFilePath, bar, true).then(() =>
       expect(fsp.readFile(tmpFilePath, 'utf8')).to.eventually.equal(expected)
     );
+  });
+
+  it('should create nested parent directories', async () => {
+    const tmpFilePath = path.join(getTmpFilePath('nested.json'), 'nested', 'anything.json');
+
+    await writeFile(tmpFilePath, { foo: 'bar' });
+
+    expect(await readFile(tmpFilePath)).to.deep.equal({ foo: 'bar' });
   });
 });

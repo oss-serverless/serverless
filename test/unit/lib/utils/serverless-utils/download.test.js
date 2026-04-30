@@ -5,10 +5,10 @@ const os = require('os');
 const path = require('path');
 const fsp = require('fs').promises;
 const AdmZip = require('adm-zip');
-const fse = require('fs-extra');
 const { expect } = require('chai');
 
 const download = require('../../../../../lib/utils/serverless-utils/download');
+const { pathExists, remove } = require('../../../../utils/fs');
 
 describe('serverless-utils/download', () => {
   let server;
@@ -118,7 +118,7 @@ describe('serverless-utils/download', () => {
   });
 
   afterEach(async () => {
-    await fse.remove(tmpDir);
+    await remove(tmpDir);
   });
 
   it('infers a filename from the downloaded file type when the URL has no extension', async () => {
@@ -135,7 +135,7 @@ describe('serverless-utils/download', () => {
     const stats = await fsp.lstat(path.join(tmpDir, 'from-header.zip'));
 
     expect(stats.isFile()).to.equal(true);
-    expect(await fse.pathExists(path.join(tmpDir, 'content-disposition.zip'))).to.equal(false);
+    expect(await pathExists(path.join(tmpDir, 'content-disposition.zip'))).to.equal(false);
   });
 
   it('falls back to content-type when file-type cannot infer an extension', async () => {
@@ -160,7 +160,7 @@ describe('serverless-utils/download', () => {
     expect(await fsp.readFile(path.join(tmpDir, 'binary-fallback'), 'utf8')).to.equal(
       'binary payload'
     );
-    expect(await fse.pathExists(path.join(tmpDir, 'binary-fallback.bin'))).to.equal(false);
+    expect(await pathExists(path.join(tmpDir, 'binary-fallback.bin'))).to.equal(false);
   });
 
   it('preserves the bare basename when no extension can be inferred', async () => {
@@ -169,7 +169,7 @@ describe('serverless-utils/download', () => {
     const filePath = path.join(tmpDir, 'unknown-payload');
 
     expect(await fsp.readFile(filePath, 'utf8')).to.equal('plain text payload');
-    expect(await fse.pathExists(path.join(tmpDir, 'unknown-payload.txt'))).to.equal(false);
+    expect(await pathExists(path.join(tmpDir, 'unknown-payload.txt'))).to.equal(false);
   });
 
   it('extracts an opaque archive URL when extract is enabled', async () => {
@@ -181,7 +181,7 @@ describe('serverless-utils/download', () => {
   it('rejects non-ZIP payloads when extract is enabled', async () => {
     await expect(download(`${baseUrl}/unknown-payload`, tmpDir, { extract: true })).to.be.rejected;
 
-    expect(await fse.pathExists(path.join(tmpDir, 'unknown-payload'))).to.equal(false);
+    expect(await pathExists(path.join(tmpDir, 'unknown-payload'))).to.equal(false);
   });
 
   it('extracts a zip archive with the requested strip depth', async () => {
@@ -190,16 +190,14 @@ describe('serverless-utils/download', () => {
     expect(await fsp.readFile(path.join(tmpDir, 'serverless.yml'), 'utf8')).to.equal(
       'service: fixture\n'
     );
-    expect(await fse.pathExists(path.join(tmpDir, 'template-main'))).to.equal(false);
+    expect(await pathExists(path.join(tmpDir, 'template-main'))).to.equal(false);
   });
 
   it('does not write zip entries outside the destination', async () => {
     await expect(download(`${baseUrl}/traversal-zip`, tmpDir, { extract: true })).to.be.rejected;
 
-    expect(await fse.pathExists(path.join(tmpDir, 'xx', traversalFileName))).to.equal(false);
-    expect(await fse.pathExists(path.join(path.dirname(tmpDir), traversalFileName))).to.equal(
-      false
-    );
+    expect(await pathExists(path.join(tmpDir, 'xx', traversalFileName))).to.equal(false);
+    expect(await pathExists(path.join(path.dirname(tmpDir), traversalFileName))).to.equal(false);
   });
 
   it('preserves authorization across approved redirect hostnames', async () => {

@@ -2,7 +2,6 @@
 
 const sinon = require('sinon');
 const fs = require('fs');
-const fse = require('fs-extra');
 const path = require('path');
 const crypto = require('crypto');
 const { PassThrough } = require('stream');
@@ -11,7 +10,7 @@ const normalizeFiles = require('../../../../../../../lib/plugins/aws/lib/normali
 const AwsProvider = require('../../../../../../../lib/plugins/aws/provider');
 const AwsDeploy = require('../../../../../../../lib/plugins/aws/deploy/index');
 const Serverless = require('../../../../../../../lib/serverless');
-const { getTmpDirPath, createTmpDir } = require('../../../../../../utils/fs');
+const { createTmpDir, ensureFileSync, getTmpDirPath } = require('../../../../../../utils/fs');
 const runServerless = require('../../../../../../utils/run-serverless');
 
 const expect = chai.expect;
@@ -325,7 +324,7 @@ describe('uploadArtifacts', () => {
     });
 
     it('should upload the custom resources .zip file to the S3 bucket', async () => {
-      fse.ensureFileSync(customResourcesFilePath);
+      ensureFileSync(customResourcesFilePath);
 
       cryptoStub.read.onCall(0).returns('local-hash-zip-file');
 

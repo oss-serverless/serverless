@@ -1,7 +1,7 @@
 'use strict';
 
 const AWS = require('aws-sdk');
-const fse = require('fs-extra');
+const fs = require('fs');
 const fsp = require('fs').promises;
 const path = require('path');
 const chai = require('chai');
@@ -81,7 +81,7 @@ describe('AwsCompileFunctions', () => {
       requestStub = sinon.stub(AWS, 'S3').returns({
         getObject: () => ({
           createReadStream() {
-            return fse.createReadStream(testFilePath);
+            return fs.createReadStream(testFilePath);
           },
         }),
       });

@@ -5,8 +5,8 @@ const chai = require('chai');
 const { expect } = chai;
 
 const fsp = require('fs').promises;
-const fse = require('fs-extra');
 const readConfiguration = require('../../../../lib/configuration/read');
+const { ensureDir, ensureFile, outputFile, remove } = require('../../../utils/fs');
 
 describe('test/unit/lib/configuration/read.test.js', () => {
   let configurationPath;
@@ -97,7 +97,7 @@ describe('test/unit/lib/configuration/read.test.js', () => {
   });
 
   it('should read "serverless.ts" as CJS', async () => {
-    await fse.ensureDir('node_modules');
+    await ensureDir('node_modules');
     try {
       configurationPath = 'serverless.ts';
       const configuration = {
@@ -107,12 +107,12 @@ describe('test/unit/lib/configuration/read.test.js', () => {
       await fsp.writeFile(configurationPath, `module.exports = ${JSON.stringify(configuration)}`);
       expect(await readConfiguration(configurationPath)).to.deep.equal(configuration);
     } finally {
-      await fse.remove('node_modules');
+      await remove('node_modules');
     }
   });
 
   it('should read "serverless.ts" as ESM', async () => {
-    await fse.ensureDir('node_modules');
+    await ensureDir('node_modules');
     try {
       configurationPath = 'serverless.ts';
       const configuration = {
@@ -122,17 +122,17 @@ describe('test/unit/lib/configuration/read.test.js', () => {
       await fsp.writeFile(configurationPath, `export default ${JSON.stringify(configuration)}`);
       expect(await readConfiguration(configurationPath)).to.deep.equal(configuration);
     } finally {
-      await fse.remove('node_modules');
+      await remove('node_modules');
     }
   });
 
   it('should support tsconfig.paths', async () => {
-    await fse.ensureDir('node_modules');
+    await ensureDir('node_modules');
     const tsconfigPath = 'tsconfig.json';
     const servicePath = 'test.ts';
 
     try {
-      await fse.writeFile(
+      await outputFile(
         tsconfigPath,
         JSON.stringify({
           compilerOptions: {
@@ -144,7 +144,7 @@ describe('test/unit/lib/configuration/read.test.js', () => {
         })
       );
 
-      await fse.writeFile(servicePath, "export const service = 'test-ts';");
+      await outputFile(servicePath, "export const service = 'test-ts';");
 
       configurationPath = 'serverless.ts';
       const configuration = {
@@ -164,7 +164,7 @@ describe('test/unit/lib/configuration/read.test.js', () => {
       const result = await readConfiguration(configurationPath);
       expect(result).to.deep.equal(configuration);
     } finally {
-      await fse.remove('node_modules');
+      await remove('node_modules');
       await fsp.unlink(tsconfigPath);
       await fsp.unlink(servicePath);
     }
@@ -195,7 +195,7 @@ describe('test/unit/lib/configuration/read.test.js', () => {
   it('should reject unknown type', async () => {
     configurationPath = 'serverless.foo';
 
-    await fse.ensureFile(configurationPath);
+    await ensureFile(configurationPath);
     await expect(readConfiguration(configurationPath)).to.eventually.be.rejected.and.have.property(
       'code',
       'UNSUPPORTED_CONFIGURATION_TYPE'

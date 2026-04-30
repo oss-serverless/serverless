@@ -2,9 +2,8 @@
 
 const path = require('path');
 const fsp = require('fs').promises;
-const fse = require('fs-extra');
 const spawn = require('../../lib/utils/spawn');
-const { getTmpDirPath } = require('../utils/fs');
+const { ensureDir, getTmpDirPath } = require('../utils/fs');
 const { expect } = require('chai');
 
 const serverlessExec = require('../serverless-binary');
@@ -52,7 +51,7 @@ describe('test/integration/create.test.js', function () {
 
   it('should error out when trying to create project in already existing directory', async () => {
     const tmpDir = getTmpDirPath();
-    await fse.ensureDir(tmpDir);
+    await ensureDir(tmpDir);
     let err;
     try {
       await spawn(serverlessExec, [

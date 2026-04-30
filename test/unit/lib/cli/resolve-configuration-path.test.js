@@ -6,9 +6,9 @@ const { expect } = chai;
 
 const path = require('path');
 const fsp = require('fs').promises;
-const fse = require('fs-extra');
 const { overrideArgv, overrideEnv } = require('../../../utils/process');
 const requireUncached = require('../../../utils/require-uncached');
+const { ensureDir, ensureFile } = require('../../../utils/fs');
 const resolveServerlessConfigPath = require('../../../../lib/cli/resolve-configuration-path');
 const resolveInput = require('../../../../lib/cli/resolve-input');
 
@@ -29,53 +29,53 @@ describe('test/unit/lib/cli/resolve-configuration-path.test.js', () => {
 
   it('should recognize "serverless.yml"', async () => {
     configurationPath = path.resolve('serverless.yml');
-    await fse.ensureFile(configurationPath);
+    await ensureFile(configurationPath);
     expect(await resolveServerlessConfigPath()).to.equal(configurationPath);
   });
 
   it('should recognize "serverless.yaml"', async () => {
     configurationPath = path.resolve('serverless.yaml');
-    await fse.ensureFile(configurationPath);
+    await ensureFile(configurationPath);
     expect(await resolveServerlessConfigPath()).to.equal(configurationPath);
   });
 
   it('should recognize "serverless.json"', async () => {
     configurationPath = path.resolve('serverless.json');
-    await fse.ensureFile(configurationPath);
+    await ensureFile(configurationPath);
     expect(await resolveServerlessConfigPath()).to.equal(configurationPath);
   });
 
   it('should recognize "serverless.js"', async () => {
     configurationPath = path.resolve('serverless.js');
-    await fse.ensureFile(configurationPath);
+    await ensureFile(configurationPath);
     expect(await resolveServerlessConfigPath()).to.equal(configurationPath);
   });
 
   it('should recognize "serverless.ts"', async () => {
     configurationPath = path.resolve('serverless.ts');
-    await fse.ensureFile(configurationPath);
+    await ensureFile(configurationPath);
     expect(await resolveServerlessConfigPath()).to.equal(configurationPath);
   });
 
   it('should recognize "serverless.cjs"', async () => {
     configurationPath = path.resolve('serverless.cjs');
-    await fse.ensureFile(configurationPath);
+    await ensureFile(configurationPath);
     expect(await resolveServerlessConfigPath()).to.equal(configurationPath);
   });
 
   it('should recognize "serverless.mjs"', async () => {
     configurationPath = path.resolve('serverless.mjs');
-    await fse.ensureFile(configurationPath);
+    await ensureFile(configurationPath);
     expect(await resolveServerlessConfigPath()).to.equal(configurationPath);
   });
 
   describe('"--config" param support', () => {
     before(async () =>
       Promise.all([
-        fse.ensureFile(path.resolve('custom.yml')),
-        fse.ensureFile(path.resolve('nested/custom.yml')),
-        fse.ensureFile(path.resolve('custom.foo')),
-        fse.ensureDir(path.resolve('custom-dir.yml')),
+        ensureFile(path.resolve('custom.yml')),
+        ensureFile(path.resolve('nested/custom.yml')),
+        ensureFile(path.resolve('custom.foo')),
+        ensureDir(path.resolve('custom-dir.yml')),
       ])
     );
     beforeEach(() => {
@@ -169,8 +169,8 @@ describe('test/unit/lib/cli/resolve-configuration-path.test.js', () => {
   describe('options support', () => {
     before(async () =>
       Promise.all([
-        fse.ensureFile(path.resolve('custom/custom.yml')),
-        fse.ensureFile(path.resolve('normal/serverless.yml')),
+        ensureFile(path.resolve('custom/custom.yml')),
+        ensureFile(path.resolve('normal/serverless.yml')),
       ])
     );
     beforeEach(() => {

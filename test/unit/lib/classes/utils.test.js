@@ -2,11 +2,11 @@
 
 const path = require('path');
 const os = require('os');
-const fse = require('fs-extra');
+const fs = require('fs');
 const Serverless = require('../../../../lib/serverless');
 const Utils = require('../../../../lib/classes/utils');
 const { expect } = require('chai');
-const { getTmpFilePath, getTmpDirPath } = require('../../../utils/fs');
+const { getTmpFilePath, getTmpDirPath, removeSync } = require('../../../utils/fs');
 
 describe('Utils', () => {
   let utils;
@@ -20,7 +20,7 @@ describe('Utils', () => {
   describe('#getTmpDirPath()', () => {
     it('should create a scoped tmp directory', () => {
       const dirPath = serverless.utils.getTmpDirPath();
-      const stats = fse.statSync(dirPath);
+      const stats = fs.statSync(dirPath);
       expect(dirPath).to.include('tmpdirs-serverless');
       expect(stats.isDirectory()).to.equal(true);
     });
@@ -36,6 +36,10 @@ describe('Utils', () => {
       it("should detect if a directory doesn't exist", () => {
         const noDir = serverless.utils.dirExistsSync(path.join(__dirname, '..', 'XYZ'));
         expect(noDir).to.equal(false);
+      });
+
+      it('should return false for a file', () => {
+        expect(serverless.utils.dirExistsSync(__filename)).to.equal(false);
       });
     });
   });
@@ -233,8 +237,8 @@ describe('Utils', () => {
       expect(serverless.utils.fileExistsSync(destFile1)).to.equal(true);
       expect(serverless.utils.fileExistsSync(destFile2)).to.equal(true);
       expect(serverless.utils.fileExistsSync(destFile3)).to.equal(true);
-      fse.removeSync(tmpSrcDirPath);
-      fse.removeSync(tmpDestDirPath);
+      removeSync(tmpSrcDirPath);
+      removeSync(tmpDestDirPath);
     });
   });
 

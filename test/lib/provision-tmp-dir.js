@@ -2,7 +2,7 @@
 
 const path = require('path');
 const crypto = require('crypto');
-const { mkdir } = require('fs-extra');
+const { mkdir } = require('fs').promises;
 const processTmpDir = require('./process-tmp-dir');
 
 module.exports = () =>

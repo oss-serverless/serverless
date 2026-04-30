@@ -2,7 +2,6 @@
 
 const path = require('path');
 const fs = require('fs');
-const fse = require('fs-extra');
 const { stripVTControlCharacters: stripAnsi } = require('node:util');
 const { expect } = require('chai');
 const log = require('log').get('serverless:test');
@@ -11,7 +10,7 @@ const resolveAwsEnv = require('./lib/resolve-aws-env');
 const hasFailed = require('./lib/has-failed');
 const awsRequest = require('./lib/aws-request');
 const CloudFormationService = require('aws-sdk').CloudFormation;
-const { getTmpDirPath } = require('./utils/fs');
+const { ensureDirSync, getTmpDirPath } = require('./utils/fs');
 
 const serverlessExec = require('./serverless-binary');
 
@@ -36,7 +35,7 @@ describe('Service Lifecyle Integration Test', function () {
     serviceDir = path.join(tmpDir, serviceName);
     StackName = `${serviceName}-dev`;
     log.notice(`Temporary path: ${tmpDir}`);
-    fse.mkdirsSync(tmpDir);
+    ensureDirSync(tmpDir);
   });
 
   // Do not continue if any of the tests failed

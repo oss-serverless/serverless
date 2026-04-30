@@ -1,6 +1,5 @@
 'use strict';
 
-const fse = require('fs-extra');
 const sinon = require('sinon');
 const provisionTempDir = require('../../../../lib/provision-tmp-dir');
 const { join } = require('path');
@@ -8,6 +7,7 @@ const { expect } = require('chai');
 const fsp = require('fs').promises;
 const fs = require('fs');
 const safeMoveFile = require('../../../../../lib/utils/fs/safe-move-file');
+const { ensureFileSync, remove } = require('../../../../utils/fs');
 
 /**
  * Returns and Error object that resembles the EXDEV errors that are thrown
@@ -60,8 +60,8 @@ describe('test/unit/lib/utils/fs/safeMoveFile.test.js', () => {
 
   afterEach(async () => {
     // Clean up test directories after each test so they don't interfere with each other
-    await fse.remove(destinationDir);
-    await fse.remove(sourceDir);
+    await remove(destinationDir);
+    await remove(sourceDir);
     // Reset stubbed methods
     fsp.rename.restore();
   });
@@ -91,15 +91,15 @@ describe('test/unit/lib/utils/fs/safeMoveFile.test.js', () => {
     describe('when file at target path already exists', () => {
       beforeEach(async () => {
         // Create an existing file that is at the destination
-        fse.ensureFileSync(destinationFile);
-        fse.writeFileSync(destinationFile, 'existing destination data');
+        ensureFileSync(destinationFile);
+        fs.writeFileSync(destinationFile, 'existing destination data');
       });
 
       it('should overwrite the file at the target destination', async () => {
         await safeMoveFile(sourceFile, destinationFile);
 
         // Check that the file was actually overwritten
-        const cachedData = fse.readFileSync(destinationFile).toString();
+        const cachedData = fs.readFileSync(destinationFile).toString();
         expect(cachedData).not.to.eq('existing destination data');
 
         const sourceExists = await fs.existsSync(sourceFile);
@@ -127,6 +127,17 @@ describe('test/unit/lib/utils/fs/safeMoveFile.test.js', () => {
       // Rename is called twice because the first call will fail due to the cross device rename
       // The second call is across the same device
       expect(renameStub).to.have.been.calledTwice;
+    });
+
+    it('does not leave the temporary destination file after success', async () => {
+      const error = createFakeExDevError();
+      renameStub.onFirstCall().rejects(error);
+
+      await safeMoveFile(sourceFile, destinationFile);
+
+      const temporaryDestinationPath = renameStub.secondCall.args[0];
+      expect(fs.existsSync(temporaryDestinationPath)).to.equal(false);
+      expect(fs.existsSync(destinationFile)).to.equal(true);
     });
   });
 });

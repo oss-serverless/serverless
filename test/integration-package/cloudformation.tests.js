@@ -3,10 +3,9 @@
 const fs = require('fs');
 const path = require('path');
 const { expect } = require('chai');
-const fse = require('fs-extra');
 const { execSync } = require('../utils/child-process');
 const serverlessExec = require('../serverless-binary');
-const { getTmpDirPath } = require('../utils/fs');
+const { copyPathSync, getTmpDirPath } = require('../utils/fs');
 
 const fixturePaths = {
   regular: path.join(__dirname, 'fixtures/regular'),
@@ -21,7 +20,7 @@ describe('Integration test - Packaging - CloudFormation', () => {
   });
 
   it('package artifact directive works', () => {
-    fse.copySync(fixturePaths.artifact, cwd);
+    copyPathSync(fixturePaths.artifact, cwd);
     execSync(`${serverlessExec} package`, { cwd });
     const cfnTemplate = JSON.parse(
       fs.readFileSync(path.join(cwd, '.serverless/cloudformation-template-update-stack.json'))
@@ -52,7 +51,7 @@ describe('Integration test - Packaging - CloudFormation', () => {
   });
 
   it('creates the correct default function resource in cfn template', () => {
-    fse.copySync(fixturePaths.regular, cwd);
+    copyPathSync(fixturePaths.regular, cwd);
     execSync(`${serverlessExec} package`, { cwd });
     const cfnTemplate = JSON.parse(
       fs.readFileSync(path.join(cwd, '.serverless/cloudformation-template-update-stack.json'))
@@ -83,7 +82,7 @@ describe('Integration test - Packaging - CloudFormation', () => {
   });
 
   it('handles package individually with include/excludes correctly', () => {
-    fse.copySync(fixturePaths.individually, cwd);
+    copyPathSync(fixturePaths.individually, cwd);
     execSync(`${serverlessExec} package`, { cwd });
     const cfnTemplate = JSON.parse(
       fs.readFileSync(path.join(cwd, '.serverless/cloudformation-template-update-stack.json'))
@@ -117,7 +116,7 @@ describe('Integration test - Packaging - CloudFormation', () => {
   });
 
   it('resolves self.provider.region', () => {
-    fse.copySync(fixturePaths.regular, cwd);
+    copyPathSync(fixturePaths.regular, cwd);
     execSync(`${serverlessExec} package`, { cwd });
     const cfnTemplate = JSON.parse(
       fs.readFileSync(path.join(cwd, '.serverless/cloudformation-template-update-stack.json'))

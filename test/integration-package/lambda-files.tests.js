@@ -3,10 +3,9 @@
 const path = require('path');
 const { expect } = require('chai');
 const fs = require('fs').promises;
-const fse = require('fs-extra');
 const spawn = require('../../lib/utils/spawn');
 const serverlessExec = require('../serverless-binary');
-const { getTmpDirPath, listZipFiles } = require('../utils/fs');
+const { copyPath, getTmpDirPath, listZipFiles } = require('../utils/fs');
 
 const fixturePaths = {
   regular: path.join(__dirname, 'fixtures/regular'),
@@ -21,7 +20,7 @@ describe('Integration test - Packaging - Lambda Files', () => {
   });
 
   it('packages the default aws template correctly in the zip', async () => {
-    await fse.copy(fixturePaths.regular, cwd);
+    await copyPath(fixturePaths.regular, cwd);
     await spawn(serverlessExec, ['package'], { cwd });
     expect(await listZipFiles(path.join(cwd, '.serverless/aws-nodejs.zip'))).to.deep.equal([
       'handler.js',
@@ -29,7 +28,7 @@ describe('Integration test - Packaging - Lambda Files', () => {
   });
 
   it('packages the default aws template with an npm dep correctly in the zip', async () => {
-    await fse.copy(fixturePaths.regular, cwd);
+    await copyPath(fixturePaths.regular, cwd);
     await spawn('npm', ['init', '--yes'], { cwd });
     await spawn('npm', ['i', 'lodash'], { cwd });
     await spawn(serverlessExec, ['package'], { cwd });
@@ -44,7 +43,7 @@ describe('Integration test - Packaging - Lambda Files', () => {
   });
 
   it("doesn't package a dev dependency in the zip", async () => {
-    await fse.copy(fixturePaths.regular, cwd);
+    await copyPath(fixturePaths.regular, cwd);
     await spawn('npm', ['init', '--yes'], { cwd });
     await spawn('npm', ['i', '--save-dev', 'lodash'], { cwd });
     await spawn(serverlessExec, ['package'], { cwd });
@@ -59,7 +58,7 @@ describe('Integration test - Packaging - Lambda Files', () => {
   });
 
   it('ignores package json files per ignore directive in the zip', async () => {
-    await fse.copy(fixturePaths.regular, cwd);
+    await copyPath(fixturePaths.regular, cwd);
     await spawn('npm', ['init', '--yes'], { cwd });
     await fs.appendFile(
       path.resolve(cwd, 'serverless.yml'),
@@ -78,7 +77,7 @@ describe('Integration test - Packaging - Lambda Files', () => {
   });
 
   it('handles package individually with patterns correctly', async () => {
-    await fse.copy(fixturePaths.individually, cwd);
+    await copyPath(fixturePaths.individually, cwd);
     await spawn(serverlessExec, ['package'], { cwd });
     expect(await listZipFiles(path.join(cwd, '.serverless/hello.zip'))).to.deep.equal([
       'handler.js',
@@ -89,7 +88,7 @@ describe('Integration test - Packaging - Lambda Files', () => {
   });
 
   it('handles package individually on function level with patterns correctly', async () => {
-    await fse.copy(fixturePaths.individuallyFunction, cwd);
+    await copyPath(fixturePaths.individuallyFunction, cwd);
     await spawn(serverlessExec, ['package'], { cwd });
     expect(await listZipFiles(path.join(cwd, '.serverless/hello.zip'))).to.deep.equal([
       'handler.js',

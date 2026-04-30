@@ -1,14 +1,14 @@
 'use strict';
 
 const http = require('http');
-const fsp = require('fs').promises;
+const fs = require('fs');
+const fsp = fs.promises;
 const chai = require('chai');
 const sinon = require('sinon');
 const os = require('os');
 const path = require('path');
 const AdmZip = require('adm-zip');
 const EventEmitter = require('events');
-const fse = require('fs-extra');
 const log = require('log').get('serverless:test');
 const proxyquire = require('proxyquire');
 const { overrideEnv } = require('../../../../../utils/process');
@@ -902,7 +902,7 @@ describe('AwsInvokeLocal', () => {
       const wrapperPath = await awsInvokeLocal.resolveRuntimeWrapperPath('java/target');
 
       bridgePath = wrapperPath;
-      fse.mkdirsSync(bridgePath);
+      fs.mkdirSync(bridgePath, { recursive: true });
       callJavaBridgeStub = sinon.stub(awsInvokeLocal, 'callJavaBridge').resolves();
       awsInvokeLocal.provider.options.stage = 'dev';
       awsInvokeLocal.options = {
@@ -918,7 +918,7 @@ describe('AwsInvokeLocal', () => {
 
     afterEach(() => {
       awsInvokeLocal.callJavaBridge.restore();
-      fse.removeSync(bridgePath);
+      fs.rmSync(bridgePath, { recursive: true, force: true });
     });
 
     it('should invoke callJavaBridge when bridge is built', async () => {
@@ -951,7 +951,7 @@ describe('AwsInvokeLocal', () => {
 
     describe('when attempting to build the Java bridge', () => {
       it("if it's not present yet", async () => {
-        fse.removeSync(bridgePath);
+        fs.rmSync(bridgePath, { recursive: true, force: true });
         spawnExtStub.resetHistory();
 
         await awsInvokeLocal.invokeLocalJava(
@@ -988,7 +988,7 @@ describe('AwsInvokeLocal', () => {
       });
 
       it('rejects if the Java bridge build fails', async () => {
-        fse.removeSync(bridgePath);
+        fs.rmSync(bridgePath, { recursive: true, force: true });
         spawnExtStub.rejects(
           Object.assign(new Error('mvn failed'), {
             code: 1,
@@ -1048,7 +1048,7 @@ describe('AwsInvokeLocal', () => {
 
     afterEach(() => {
       serverless.pluginManager.spawn.restore();
-      fse.removeSync('.serverless');
+      fs.rmSync('.serverless', { recursive: true, force: true });
     });
 
     it('calls docker with packaged artifact', async () => {
@@ -1113,10 +1113,12 @@ describe('AwsInvokeLocal', () => {
         .load('../../../../../../lib/plugins/aws/invoke-local/index', {
           'get-stdin': sinon.stub().resolves(''),
           '../../../utils/spawn': spawnExtLocalStub,
-          'fs-extra': {
-            ensureDir: ensureDirStub,
-            copy: copyStub,
+          'fs': {
+            promises: {
+              mkdir: ensureDirStub,
+            },
           },
+          '../../../utils/fs/copy': copyStub,
           'cachedir': sinon.stub().returns(cacheDirPath),
           '../../../utils/fs/dir-exists': dirExistsStub,
           '../../../utils/serverless-utils/download': downloadStub,
@@ -1155,7 +1157,9 @@ describe('AwsInvokeLocal', () => {
 
       expect(dirExistsStub.firstCall.args[0]).to.equal(expectedLayerPath);
       expect(dirExistsStub.secondCall.args[0]).to.equal(expectedCachePath);
-      expect(ensureDirStub.calledOnceWithExactly(expectedCachePath)).to.equal(true);
+      expect(ensureDirStub.calledOnceWithExactly(expectedCachePath, { recursive: true })).to.equal(
+        true
+      );
       expect(
         requestStub.calledOnceWithExactly('Lambda', 'getLayerVersion', {
           LayerName: 'arn:aws:lambda:us-east-1:123456789012:layer:my-layer',
@@ -1278,7 +1282,7 @@ describe('AwsInvokeLocal', () => {
             resolve();
           });
         });
-        await fse.remove(tempRoot);
+        await fsp.rm(tempRoot, { recursive: true, force: true });
       }
     });
   });

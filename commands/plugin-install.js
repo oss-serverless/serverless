@@ -2,7 +2,6 @@
 
 const spawn = require('../lib/utils/spawn');
 const fsp = require('fs').promises;
-const fse = require('fs-extra');
 const path = require('path');
 const isPlainObject = require('type/plain-object/is');
 const yaml = require('js-yaml');
@@ -11,6 +10,7 @@ const { log, progress, style } = require('../lib/utils/serverless-utils/log');
 const ServerlessError = require('../lib/serverless-error');
 const yamlAstParser = require('../lib/utils/yaml-ast-parser');
 const npmCommandDeferred = require('../lib/utils/npm-command-deferred');
+const { readJson, writeJson } = require('../lib/utils/fs/json-file');
 const {
   getPluginInfo,
   getServerlessFilePath,
@@ -67,7 +67,7 @@ const addPluginToServerlessFile = async ({ configurationFilePath, pluginName }) 
     pluginsObject == null || Array.isArray(pluginsObject);
   // pluginsObject type determined based on the value loaded during the serverless init.
   if (fileExtension === '.json') {
-    const serverlessFileObj = await fse.readJson(configurationFilePath);
+    const serverlessFileObj = await readJson(configurationFilePath);
     const newServerlessFileObj = serverlessFileObj;
     const isArrayPluginsObject = checkIsArrayPluginsObject(newServerlessFileObj.plugins);
     // null modules property is not supported
@@ -92,7 +92,7 @@ const addPluginToServerlessFile = async ({ configurationFilePath, pluginName }) 
       newServerlessFileObj.plugins.modules = plugins;
     }
 
-    await fse.writeJson(configurationFilePath, newServerlessFileObj);
+    await writeJson(configurationFilePath, newServerlessFileObj);
     return;
   }
 

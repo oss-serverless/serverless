@@ -4,11 +4,10 @@ const http = require('http');
 const fsp = require('fs').promises;
 const path = require('path');
 const AdmZip = require('adm-zip');
-const fse = require('fs-extra');
 const proxyquire = require('proxyquire');
 const sinon = require('sinon');
 const ServerlessError = require('../../../../../lib/serverless-error');
-const { getTmpDirPath } = require('../../../../utils/fs');
+const { ensureDir, getTmpDirPath, remove } = require('../../../../utils/fs');
 const runServerless = require('../../../../utils/run-serverless');
 
 const { expect } = require('chai');
@@ -74,7 +73,7 @@ describe('test/unit/lib/plugins/create/create.test.js', () => {
 
   it('should error out when trying to create project in already existing directory (other than current working dir)', async () => {
     const tmpDir = getTmpDirPath();
-    await fse.ensureDir(tmpDir);
+    await ensureDir(tmpDir);
     await expect(
       runServerless({
         noService: true,
@@ -264,7 +263,7 @@ describe('test/unit/lib/plugins/create/create.test.js', () => {
             resolve();
           });
         });
-        await fse.remove(tempRoot);
+        await remove(tempRoot);
       }
     });
   });

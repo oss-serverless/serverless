@@ -1,7 +1,7 @@
 'use strict';
 
 const sinon = require('sinon');
-const fse = require('fs-extra');
+const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const proxyquire = require('proxyquire');
@@ -30,7 +30,7 @@ describe('downloadTemplateFromRepo', () => {
     const tmpDir = getTmpDirPath();
     cwd = process.cwd();
 
-    fse.mkdirsSync(tmpDir);
+    fs.mkdirSync(tmpDir, { recursive: true });
     process.chdir(tmpDir);
 
     serviceDir = tmpDir;
@@ -65,11 +65,11 @@ describe('downloadTemplateFromRepo', () => {
     parseRepoURL = downloadTemplateFromRepoModule.parseRepoURL;
   });
 
-  afterEach((done) => {
+  afterEach(() => {
     globalThis.fetch = originalFetch;
     // change back to the old cwd
     process.chdir(cwd);
-    fse.remove(newServicePath).then(done);
+    fs.rmSync(newServicePath, { recursive: true, force: true });
   });
 
   describe('downloadTemplateFromRepo', () => {
@@ -87,7 +87,7 @@ describe('downloadTemplateFromRepo', () => {
 
     it('should reject with a user-facing default target path if a directory already exists', async () => {
       const serviceDirName = path.join(serviceDir, 'existing-service');
-      fse.mkdirsSync(serviceDirName);
+      fs.mkdirSync(serviceDirName, { recursive: true });
 
       try {
         await downloadTemplateFromRepo('https://github.com/johndoe/existing-service');
@@ -106,7 +106,7 @@ describe('downloadTemplateFromRepo', () => {
     it('should reject with the provided path if a target directory already exists', async () => {
       const url = 'https://github.com/johndoe/service-to-be-downloaded';
       const downloadPath = path.join('nested', 'existing-service');
-      fse.mkdirsSync(path.join(serviceDir, downloadPath));
+      fs.mkdirSync(path.join(serviceDir, downloadPath), { recursive: true });
 
       try {
         await downloadTemplateFromRepo(url, undefined, downloadPath);
@@ -308,20 +308,21 @@ describe('downloadTemplateFromRepo', () => {
       const url = 'https://github.com/serverless/examples/tree/master/rest-api-with-dynamodb';
       const name = 'new-service-name';
 
-      downloadStub.resolves(
-        fse.remove(newServicePath).then(() => {
-          const slsYml = path.join(
-            os.tmpdir(),
-            'examples',
-            'rest-api-with-dynamodb',
-            'serverless.yml'
-          );
-          writeFileSync(slsYml, 'service: service-name');
-        })
-      );
+      let temporaryDownloadPath;
+      downloadStub.callsFake(async (downloadUrl, destinationPath) => {
+        temporaryDownloadPath = destinationPath;
+        fs.rmSync(newServicePath, { recursive: true, force: true });
+        writeFileSync(
+          path.join(destinationPath, 'rest-api-with-dynamodb', 'serverless.yml'),
+          'service: service-name'
+        );
+      });
 
       return expect(downloadTemplateFromRepo(url, name)).to.be.fulfilled.then((serviceName) => {
         expect(downloadStub.calledOnce).to.equal(true);
+        expect(temporaryDownloadPath).to.include(os.tmpdir());
+        expect(temporaryDownloadPath).to.not.equal(path.join(os.tmpdir(), 'examples'));
+        expect(fs.existsSync(temporaryDownloadPath)).to.equal(false);
         const yml = readFileSync(path.join(newServicePath, 'serverless.yml'));
         expect(yml.service).to.equal(name);
         expect(serviceName).to.equal('rest-api-with-dynamodb');
@@ -332,14 +333,11 @@ describe('downloadTemplateFromRepo', () => {
       const url = 'https://github.com/serverless/examples/tree/master/rest-api-with-dynamodb';
       const targetPath = path.join(serviceDir, 'rest-api-with-dynamodb');
 
-      downloadStub.callsFake(async () => {
-        const slsYml = path.join(
-          os.tmpdir(),
-          'examples',
-          'rest-api-with-dynamodb',
-          'serverless.yml'
+      downloadStub.callsFake(async (downloadUrl, destinationPath) => {
+        writeFileSync(
+          path.join(destinationPath, 'rest-api-with-dynamodb', 'serverless.yml'),
+          'service: service-name'
         );
-        writeFileSync(slsYml, 'service: service-name');
       });
 
       return expect(downloadTemplateFromRepo(url)).to.be.fulfilled.then((serviceName) => {
@@ -354,14 +352,11 @@ describe('downloadTemplateFromRepo', () => {
       const name = 'examples';
       const targetPath = path.join(serviceDir, name);
 
-      downloadStub.callsFake(async () => {
-        const slsYml = path.join(
-          os.tmpdir(),
-          'examples',
-          'rest-api-with-dynamodb',
-          'serverless.yml'
+      downloadStub.callsFake(async (downloadUrl, destinationPath) => {
+        writeFileSync(
+          path.join(destinationPath, 'rest-api-with-dynamodb', 'serverless.yml'),
+          'service: service-name'
         );
-        writeFileSync(slsYml, 'service: service-name');
       });
 
       return expect(downloadTemplateFromRepo(url, name)).to.be.fulfilled.then((serviceName) => {
@@ -374,11 +369,80 @@ describe('downloadTemplateFromRepo', () => {
     it('should throw an error if the same service name exists as directory in Github', () => {
       const url = 'https://github.com/serverless/examples/tree/master/rest-api-with-dynamodb';
       const serviceDirName = path.join(serviceDir, 'rest-api-with-dynamodb');
-      fse.mkdirsSync(serviceDirName);
+      fs.mkdirSync(serviceDirName, { recursive: true });
 
       return expect(
         downloadTemplateFromRepo(null, url)
       ).to.be.eventually.rejected.and.have.property('code', 'MISSING_TEMPLATE_URL');
+    });
+
+    it('uses a different temporary directory for repeated subdirectory downloads', async () => {
+      const url = 'https://github.com/serverless/examples/tree/master/rest-api-with-dynamodb';
+      const temporaryDownloadPaths = [];
+
+      downloadStub.callsFake(async (downloadUrl, destinationPath) => {
+        temporaryDownloadPaths.push(destinationPath);
+        writeFileSync(
+          path.join(destinationPath, 'rest-api-with-dynamodb', 'serverless.yml'),
+          'service: service-name'
+        );
+      });
+
+      await downloadTemplateFromRepo(url, 'first-service');
+      await downloadTemplateFromRepo(url, 'second-service');
+
+      expect(temporaryDownloadPaths).to.have.length(2);
+      expect(temporaryDownloadPaths[0]).to.not.equal(temporaryDownloadPaths[1]);
+      for (const temporaryDownloadPath of temporaryDownloadPaths) {
+        expect(fs.existsSync(temporaryDownloadPath)).to.equal(false);
+      }
+      fs.rmSync(path.join(serviceDir, 'first-service'), { recursive: true, force: true });
+      fs.rmSync(path.join(serviceDir, 'second-service'), { recursive: true, force: true });
+    });
+
+    it('removes the temporary directory when subdirectory download fails', async () => {
+      const url = 'https://github.com/serverless/examples/tree/master/rest-api-with-dynamodb';
+      let temporaryDownloadPath;
+      downloadStub.callsFake(async (downloadUrl, destinationPath) => {
+        temporaryDownloadPath = destinationPath;
+        writeFileSync(path.join(destinationPath, 'marker'), 'marker');
+        throw new Error('Download failed');
+      });
+
+      await expect(downloadTemplateFromRepo(url, 'failed-service')).to.be.rejectedWith(
+        'Download failed'
+      );
+
+      expect(fs.existsSync(temporaryDownloadPath)).to.equal(false);
+    });
+
+    it('removes the temporary directory when subdirectory copy fails', async () => {
+      const url = 'https://github.com/serverless/examples/tree/master/rest-api-with-dynamodb';
+      let temporaryDownloadPath;
+      downloadStub.callsFake(async (downloadUrl, destinationPath) => {
+        temporaryDownloadPath = destinationPath;
+        fs.mkdirSync(destinationPath, { recursive: true });
+      });
+
+      await expect(downloadTemplateFromRepo(url, 'failed-service')).to.be.rejected;
+
+      expect(fs.existsSync(temporaryDownloadPath)).to.equal(false);
+    });
+
+    it('removes the temporary directory when subdirectory rename fails', async () => {
+      const url = 'https://github.com/serverless/examples/tree/master/rest-api-with-dynamodb';
+      let temporaryDownloadPath;
+      downloadStub.callsFake(async (downloadUrl, destinationPath) => {
+        temporaryDownloadPath = destinationPath;
+        fs.mkdirSync(path.join(destinationPath, 'rest-api-with-dynamodb'), { recursive: true });
+      });
+
+      await expect(
+        downloadTemplateFromRepo(url, 'failed-service')
+      ).to.be.eventually.rejected.and.have.property('code', 'MISSING_SERVICE_FILE');
+
+      expect(fs.existsSync(temporaryDownloadPath)).to.equal(false);
+      fs.rmSync(path.join(serviceDir, 'failed-service'), { recursive: true, force: true });
     });
   });
 
@@ -437,6 +501,24 @@ describe('downloadTemplateFromRepo', () => {
       });
     });
 
+    it('rejects unsafe GitHub URL path segments and invalid route markers', async () => {
+      const invalidUrls = [
+        'https://github.com/%2e%2e/serverless',
+        'https://github.com/serverless/%2e%2e',
+        'https://github.com/serverless/serverless/blob/master/assets',
+        'https://github.com/serverless/serverless/tree/master/%2e%2e',
+        'https://github.com/serverless/serverless/tree/master/a%2Fb',
+        'https://github.com/serverless/serverless/tree/master/a%5Cb',
+      ];
+
+      for (const url of invalidUrls) {
+        await expect(parseRepoURL(url)).to.be.eventually.rejected.and.have.property(
+          'code',
+          'INVALID_TEMPLATE_URL'
+        );
+      }
+    });
+
     it('should parse a valid GitHub Entreprise URL', async () => {
       return expect(
         parseRepoURL('https://github.mydomain.com/serverless/serverless')
@@ -469,6 +551,12 @@ describe('downloadTemplateFromRepo', () => {
           password: '',
         });
       });
+    });
+
+    it('rejects invalid GitHub Enterprise route markers', async () => {
+      await expect(
+        parseRepoURL('https://github.mydomain.com/serverless/serverless/blob/master/assets')
+      ).to.be.eventually.rejected.and.have.property('code', 'INVALID_TEMPLATE_URL');
     });
 
     it('should parse a valid GitHub Entreprise URL with authentication', async () => {
@@ -520,6 +608,25 @@ describe('downloadTemplateFromRepo', () => {
       });
     });
 
+    it('rejects unsafe Bitbucket Cloud URL path segments, route markers, and raw queries', async () => {
+      const invalidUrls = [
+        'https://bitbucket.org/%2e%2e/localstack',
+        'https://bitbucket.org/atlassian/%2e%2e',
+        'https://bitbucket.org/atlassian/localstack/branch/main/localstack',
+        'https://bitbucket.org/atlassian/localstack/src/main/%2e%2e?at=mvn',
+        'https://bitbucket.org/atlassian/localstack/src/main/a%2Fb?at=mvn',
+        'https://bitbucket.org/atlassian/localstack/src/main/dashboard?at=%E0%A4%A',
+        'https://bitbucket.org/atlassian/localstack/src/main/dashboard?at=feature%00branch',
+      ];
+
+      for (const url of invalidUrls) {
+        await expect(parseRepoURL(url)).to.be.eventually.rejected.and.have.property(
+          'code',
+          'INVALID_TEMPLATE_URL'
+        );
+      }
+    });
+
     it('should parse a valid Bitbucket Server URL', async () => {
       return parseRepoURL(
         'https://user:pass@mybitbucket.server.ltd/rest/api/latest/projects/myproject/repos/myrepo/archive?at=refs%2Fheads%2Fdevelop'
@@ -536,6 +643,36 @@ describe('downloadTemplateFromRepo', () => {
           password: 'pass',
         });
       });
+    });
+
+    it('defaults Bitbucket Server URLs without a query to master and a valid archive URL', async () => {
+      return parseRepoURL(
+        'https://mybitbucket.server.ltd/rest/api/latest/projects/myproject/repos/myrepo/archive'
+      ).then((output) => {
+        expect(output).to.deep.include({
+          owner: 'myproject',
+          repo: 'myrepo',
+          branch: 'master',
+          downloadUrl:
+            'https://mybitbucket.server.ltd/rest/api/latest/projects/myproject/repos/myrepo/archive?format=zip',
+        });
+      });
+    });
+
+    it('rejects unsafe Bitbucket Server URL paths and malformed queries', async () => {
+      const invalidUrls = [
+        'https://mybitbucket.server.ltd/rest/api/latest/projects/%2e%2e/repos/myrepo/archive?at=main',
+        'https://mybitbucket.server.ltd/rest/api/latest/projects/myproject/repos/%2e%2e/archive?at=main',
+        'https://mybitbucket.server.ltd/rest/api/latest/projects/myproject/notrepos/myrepo/archive?at=main',
+        'https://mybitbucket.server.ltd/rest/api/latest/projects/myproject/repos/myrepo/archive?at=%E0%A4%A',
+      ];
+
+      for (const url of invalidUrls) {
+        await expect(parseRepoURL(url)).to.be.eventually.rejected.and.have.property(
+          'code',
+          'INVALID_TEMPLATE_URL'
+        );
+      }
     });
 
     it('should parse a valid GitLab URL ', async () => {
@@ -570,6 +707,37 @@ describe('downloadTemplateFromRepo', () => {
           });
         }
       );
+    });
+
+    it('rejects unsafe GitLab URL path segments and invalid route markers', async () => {
+      const invalidUrls = [
+        'https://gitlab.com/%2e%2e/serverless',
+        'https://gitlab.com/serverless/%2e%2e',
+        'https://gitlab.com/serverless/serverless/blob/dev/subdir',
+        'https://gitlab.com/serverless/serverless/tree/dev/%2e%2e',
+      ];
+
+      for (const url of invalidUrls) {
+        await expect(parseRepoURL(url)).to.be.eventually.rejected.and.have.property(
+          'code',
+          'INVALID_TEMPLATE_URL'
+        );
+      }
+    });
+
+    it('rejects unsafe plain git repository names', async () => {
+      const invalidUrls = [
+        'https://example.com/%2e%2e.git',
+        'https://example.com/a%2Fb.git',
+        'https://example.com/a%5Cb.git',
+      ];
+
+      for (const url of invalidUrls) {
+        await expect(parseRepoURL(url)).to.be.eventually.rejected.and.have.property(
+          'code',
+          'INVALID_TEMPLATE_URL'
+        );
+      }
     });
   });
 });

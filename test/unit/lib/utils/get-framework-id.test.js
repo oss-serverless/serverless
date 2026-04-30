@@ -3,11 +3,11 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const fse = require('fs-extra');
 const { expect } = require('chai');
 const requireUncached = require('../../../utils/require-uncached');
 const sinon = require('sinon');
 const { overrideEnv, overrideCwd } = require('../../../utils/process');
+const { ensureDir, remove } = require('../../../utils/fs');
 
 const withIsolatedHome = async (name, callback) => {
   const homeDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), `${name}-home-`));
@@ -19,7 +19,7 @@ const withIsolatedHome = async (name, callback) => {
       return await callback(homeDir);
     } finally {
       homedirStub.restore();
-      await fse.remove(homeDir);
+      await remove(homeDir);
     }
   });
 };
@@ -28,7 +28,7 @@ describe('lib/utils/get-framework-id', () => {
   it('returns a stable frameworkId from the vendored config helper', async () => {
     await withIsolatedHome('get-framework-id', async (homeDir) => {
       const serviceDir = path.join(homeDir, 'service');
-      await fse.ensureDir(serviceDir);
+      await ensureDir(serviceDir);
 
       const { restoreCwd } = overrideCwd(serviceDir);
 

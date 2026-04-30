@@ -2,7 +2,7 @@
 
 const chai = require('chai');
 const path = require('path');
-const fs = require('fs-extra');
+const fs = require('fs');
 const os = require('os');
 const proxyquire = require('proxyquire');
 const sinon = require('sinon');
@@ -11,6 +11,7 @@ const { overrideEnv } = require('../../../../utils/process');
 const AwsProvider = require('../../../../../lib/plugins/aws/provider');
 const Serverless = require('../../../../../lib/serverless');
 const runServerless = require('../../../../utils/run-serverless');
+const { ensureDir, outputFile, remove } = require('../../../../utils/fs');
 
 const expect = chai.expect;
 const spawnModulePath = path.resolve(__dirname, '../../../../../lib/utils/spawn.js');
@@ -678,8 +679,8 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
   describe('#getCredentials()', () => {
     before(async () => {
       // create default aws credentials file in before so that grouped run can use it
-      await fs.ensureDir(path.resolve(os.homedir(), './.aws'));
-      await fs.outputFile(
+      await ensureDir(path.resolve(os.homedir(), './.aws'));
+      await outputFile(
         path.resolve(os.homedir(), './.aws/credentials'),
         `
 [default]
@@ -696,6 +697,10 @@ role_arn = NOTDEFAULTWITHROLEROLE
 `,
         { flag: 'w+' }
       );
+    });
+
+    after(async () => {
+      await remove(path.resolve(os.homedir(), './.aws'));
     });
 
     it('should get credentials from default AWS profile', async () => {
@@ -763,7 +768,7 @@ role_arn = NOTDEFAULTWITHROLEROLE
     describe('profile with non default credentials file', () => {
       let awsCredentials;
       before(async () => {
-        await fs.outputFile(
+        await outputFile(
           path.resolve(os.homedir(), './custom_credentials'),
           `
 [default]
@@ -791,7 +796,7 @@ aws_secret_access_key = CUSTOMSECRET
       });
 
       after(async () => {
-        await fs.remove(path.resolve(os.homedir(), './custom_credentials'));
+        await remove(path.resolve(os.homedir(), './custom_credentials'));
       });
 
       it('should get credentials from AWS_PROFILE environment variable', () => {

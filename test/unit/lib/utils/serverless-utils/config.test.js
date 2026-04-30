@@ -3,11 +3,11 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const fse = require('fs-extra');
 const { expect } = require('chai');
 const requireUncached = require('../../../../utils/require-uncached');
 const sinon = require('sinon');
 const { overrideEnv, overrideCwd } = require('../../../../utils/process');
+const { ensureDir, pathExists, remove } = require('../../../../utils/fs');
 
 const loadConfigModule = () =>
   requireUncached(() => require('../../../../../lib/utils/serverless-utils/config'));
@@ -22,14 +22,14 @@ const withIsolatedHome = async (name, callback) => {
       return await callback(homeDir);
     } finally {
       homedirStub.restore();
-      await fse.remove(homeDir);
+      await remove(homeDir);
     }
   });
 };
 
 const withLocalDir = async (homeDir, name, callback) => {
   const localDir = path.join(homeDir, name);
-  await fse.ensureDir(localDir);
+  await ensureDir(localDir);
 
   const { restoreCwd } = overrideCwd(localDir);
 
@@ -60,7 +60,7 @@ describe('serverless-utils/config', () => {
       const defaultGlobalPath = path.join(homeDir, config.CONFIG_FILE_NAME);
 
       await withLocalDir(homeDir, 'service', async () => {
-        await fse.ensureDir(homeConfigDir);
+        await ensureDir(homeConfigDir);
         await Promise.all([
           fs.promises.writeFile(homeConfigPath, JSON.stringify({ featureFlag: 'home' }, null, 2)),
           fs.promises.writeFile(
@@ -182,7 +182,7 @@ describe('serverless-utils/config', () => {
         const homeConfigPath = path.join(homeConfigDir, config.CONFIG_FILE_NAME);
         const defaultGlobalPath = path.join(homeDir, config.CONFIG_FILE_NAME);
 
-        await fse.ensureDir(homeConfigDir);
+        await ensureDir(homeConfigDir);
         await fs.promises.writeFile(
           homeConfigPath,
           JSON.stringify({ featureFlag: true, releaseChannel: 'beta' }, null, 2)
@@ -192,7 +192,7 @@ describe('serverless-utils/config', () => {
           featureFlag: true,
           releaseChannel: 'beta',
         });
-        expect(await fse.pathExists(defaultGlobalPath)).to.equal(false);
+        expect(await pathExists(defaultGlobalPath)).to.equal(false);
       });
     });
   });
@@ -209,7 +209,7 @@ describe('serverless-utils/config', () => {
         const result = config.getConfig();
 
         expect(result.frameworkId).to.be.a('string');
-        expect(await fse.pathExists(`${localConfigPath}.bak`)).to.equal(true);
+        expect(await pathExists(`${localConfigPath}.bak`)).to.equal(true);
       });
     });
   });
@@ -223,14 +223,14 @@ describe('serverless-utils/config', () => {
         const homeConfigPath = path.join(homeConfigDir, config.CONFIG_FILE_NAME);
         const defaultGlobalPath = path.join(homeDir, config.CONFIG_FILE_NAME);
 
-        await fse.ensureDir(homeConfigDir);
+        await ensureDir(homeConfigDir);
         await fs.promises.writeFile(homeConfigPath, '{"broken"');
 
         const result = config.getConfig();
 
         expect(result.frameworkId).to.be.a('string');
-        expect(await fse.pathExists(`${homeConfigPath}.bak`)).to.equal(true);
-        expect(await fse.pathExists(defaultGlobalPath)).to.equal(true);
+        expect(await pathExists(`${homeConfigPath}.bak`)).to.equal(true);
+        expect(await pathExists(defaultGlobalPath)).to.equal(true);
       });
     });
   });

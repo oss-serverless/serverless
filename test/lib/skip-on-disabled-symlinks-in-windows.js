@@ -1,8 +1,12 @@
 'use strict';
 
-const skipWithNotice = require('./skip-with-notice');
-
 module.exports = (error, context, afterCallback) => {
   if (error.code !== 'EPERM' || process.platform !== 'win32') return;
-  skipWithNotice(context, 'Missing admin rights to create symlinks', afterCallback);
+
+  if (!context || typeof context.skip !== 'function') {
+    throw new TypeError('Passed context is not a valid mocha suite');
+  }
+
+  if (afterCallback) afterCallback();
+  context.skip();
 };

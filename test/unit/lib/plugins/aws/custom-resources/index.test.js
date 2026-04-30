@@ -1,10 +1,11 @@
 'use strict';
 
 const chai = require('chai');
+const path = require('path');
 const AwsProvider = require('../../../../../../lib/plugins/aws/provider');
 const Serverless = require('../../../../../../lib/serverless');
 const CLI = require('../../../../../../lib/classes/cli');
-const { createTmpDir } = require('../../../../../utils/fs');
+const { createTmpDir, pathExists } = require('../../../../../utils/fs');
 const {
   addCustomResourceToService,
 } = require('../../../../../../lib/plugins/aws/custom-resources/index.js');
@@ -432,6 +433,22 @@ describe('#addCustomResourceToService()', () => {
     expect(
       Resources.CustomDashresourceDashexistingDashs3LambdaFunction.Properties
     ).to.not.have.property('Architectures');
+  });
+
+  it('creates the package directory before copying the generated zip', async () => {
+    serverless.serviceDir = path.join(tmpDirPath, 'nested', 'service');
+
+    await addCustomResourceToService(provider, 's3', iamRoleStatements);
+
+    expect(
+      await pathExists(
+        path.join(
+          serverless.serviceDir,
+          '.serverless',
+          provider.naming.getCustomResourcesArtifactName()
+        )
+      )
+    ).to.equal(true);
   });
 });
 

@@ -1,9 +1,11 @@
 'use strict';
 
 const fsp = require('fs').promises;
+const path = require('path');
 const sandbox = require('sinon');
 const expect = require('chai').expect;
 const { overrideEnv } = require('../../../utils/process');
+const { pathExists, remove } = require('../../../utils/fs');
 const ServerlessError = require('../../../../lib/serverless-error');
 
 describe('test/unit/lib/utils/logDeprecation.test.js', () => {
@@ -56,6 +58,21 @@ describe('test/unit/lib/utils/logDeprecation.test.js', () => {
     expect(summary).to.include('Start using deprecation log');
     expect(summary).to.include(
       'More info: https://github.com/oss-serverless/serverless/blob/main/docs/guides/deprecations.md#CODE1'
+    );
+  });
+
+  it('should create the health status parent directory before writing summary output', async () => {
+    const logDeprecation = require('../../../../lib/utils/log-deprecation');
+    const healthStatusFilename = require('../../../../lib/utils/health-status-filename');
+
+    await remove(path.dirname(healthStatusFilename));
+    expect(await pathExists(path.dirname(healthStatusFilename))).to.equal(false);
+
+    logDeprecation('CODE1', 'Start using deprecation log');
+    await logDeprecation.printSummary();
+
+    expect(await fsp.readFile(healthStatusFilename, 'utf8')).to.include(
+      'Start using deprecation log'
     );
   });
 });

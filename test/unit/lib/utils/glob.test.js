@@ -3,10 +3,10 @@
 const fs = require('node:fs').promises;
 const os = require('node:os');
 const path = require('node:path');
-const fse = require('fs-extra');
 const { expect } = require('chai');
 
 const glob = require('../../../../lib/utils/glob');
+const { outputFile, remove } = require('../../../utils/fs');
 
 describe('test/unit/lib/utils/glob.test.js', () => {
   let tmpDir;
@@ -16,15 +16,15 @@ describe('test/unit/lib/utils/glob.test.js', () => {
   });
 
   afterEach(async () => {
-    await fse.remove(tmpDir);
+    await remove(tmpDir);
   });
 
   it('matches globby order-sensitive leading negation behavior for async and sync calls', async () => {
     await Promise.all([
-      fse.outputFile(path.join(tmpDir, 'keep.js'), 'keep\n'),
-      fse.outputFile(path.join(tmpDir, 'keep.ts'), 'keep\n'),
-      fse.outputFile(path.join(tmpDir, 'ignored', 'drop.js'), 'drop\n'),
-      fse.outputFile(path.join(tmpDir, 'ignored', 'drop.ts'), 'drop\n'),
+      outputFile(path.join(tmpDir, 'keep.js'), 'keep\n'),
+      outputFile(path.join(tmpDir, 'keep.ts'), 'keep\n'),
+      outputFile(path.join(tmpDir, 'ignored', 'drop.js'), 'drop\n'),
+      outputFile(path.join(tmpDir, 'ignored', 'drop.ts'), 'drop\n'),
     ]);
 
     expect(
@@ -37,9 +37,9 @@ describe('test/unit/lib/utils/glob.test.js', () => {
 
   it('applies later negations to earlier positives and still supports re-inclusion', async () => {
     await Promise.all([
-      fse.outputFile(path.join(tmpDir, 'keep.js'), 'keep\n'),
-      fse.outputFile(path.join(tmpDir, 'ignored', 'drop.js'), 'drop\n'),
-      fse.outputFile(path.join(tmpDir, 'ignored', 'reinclude.js'), 'reinclude\n'),
+      outputFile(path.join(tmpDir, 'keep.js'), 'keep\n'),
+      outputFile(path.join(tmpDir, 'ignored', 'drop.js'), 'drop\n'),
+      outputFile(path.join(tmpDir, 'ignored', 'reinclude.js'), 'reinclude\n'),
     ]);
 
     expect(

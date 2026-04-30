@@ -1,9 +1,9 @@
 'use strict';
 
 const path = require('path');
+const fsp = require('fs').promises;
 const sinon = require('sinon');
 const yaml = require('js-yaml');
-const fse = require('fs-extra');
 const proxyquire = require('proxyquire');
 const fixturesEngine = require('../../fixtures/programmatic');
 const resolveConfigurationPath = require('../../../lib/cli/resolve-configuration-path');
@@ -21,7 +21,7 @@ const writeRawConfiguration = async (serviceDir, rawYaml) => {
   const configurationFilePath = await resolveConfigurationPath({
     cwd: serviceDir,
   });
-  await fse.writeFile(configurationFilePath, rawYaml);
+  await fsp.writeFile(configurationFilePath, rawYaml);
   return {
     configurationFilePath,
     configuration: yaml.load(rawYaml, {
@@ -32,10 +32,20 @@ const writeRawConfiguration = async (serviceDir, rawYaml) => {
 };
 
 const readParsedConfiguration = async (configurationFilePath) =>
-  yaml.load(await fse.readFile(configurationFilePath, 'utf8'), {
+  yaml.load(await fsp.readFile(configurationFilePath, 'utf8'), {
     filename: configurationFilePath,
     schema: cloudformationSchema,
   });
+
+const writeJsonConfiguration = async (serviceDir, configuration, rawJson) => {
+  const configurationFilePath = path.join(serviceDir, 'serverless.json');
+  await fsp.writeFile(configurationFilePath, rawJson || JSON.stringify(configuration));
+  return {
+    configurationFilePath,
+    configuration,
+    configurationFilename: path.basename(configurationFilePath),
+  };
+};
 
 describe('test/unit/commands/plugin-uninstall.test.js', async () => {
   let serviceDir;
@@ -78,7 +88,7 @@ describe('test/unit/commands/plugin-uninstall.test.js', async () => {
   });
 
   it('should remove plugin from serverless file', async () => {
-    const serverlessFileObj = yaml.load(await fse.readFile(configurationFilePath, 'utf8'), {
+    const serverlessFileObj = yaml.load(await fsp.readFile(configurationFilePath, 'utf8'), {
       filename: configurationFilePath,
     });
     expect(serverlessFileObj.plugins).to.be.undefined;
@@ -98,7 +108,7 @@ describe('test/unit/commands/plugin-uninstall.test.js', async () => {
         cwd: fixtureServiceDir,
       });
       const configurationFilename = fixtureConfigurationPath.slice(fixtureServiceDir.length + 1);
-      const originalConfigurationText = await fse.readFile(fixtureConfigurationPath, 'utf8');
+      const originalConfigurationText = await fsp.readFile(fixtureConfigurationPath, 'utf8');
 
       await expect(
         uninstallPlugin({
@@ -112,8 +122,126 @@ describe('test/unit/commands/plugin-uninstall.test.js', async () => {
       ).to.be.eventually.rejected.and.have.property('code', 'INVALID_PLUGIN_NAME');
 
       expect(spawnFake).to.not.have.been.called;
-      expect(await fse.readFile(fixtureConfigurationPath, 'utf8')).to.equal(
+      expect(await fsp.readFile(fixtureConfigurationPath, 'utf8')).to.equal(
         originalConfigurationText
+      );
+    });
+  });
+
+  describe('with JSON configuration', () => {
+    it('removes a plugin from array-form plugins', async () => {
+      const fixture = await fixturesEngine.setup('function');
+      const { configurationFilePath, configuration, configurationFilename } =
+        await writeJsonConfiguration(fixture.servicePath, {
+          service: 'json-service',
+          plugins: ['existing-plugin', pluginName],
+        });
+
+      await uninstallPlugin({
+        configuration,
+        serviceDir: fixture.servicePath,
+        configurationFilename,
+        options: { name: pluginName },
+      });
+
+      expect(await fsp.readFile(configurationFilePath, 'utf8')).to.equal(
+        '{"service":"json-service","plugins":["existing-plugin"]}\n'
+      );
+    });
+
+    it('removes all duplicate plugin entries', async () => {
+      const fixture = await fixturesEngine.setup('function');
+      const { configurationFilePath, configuration, configurationFilename } =
+        await writeJsonConfiguration(fixture.servicePath, {
+          service: 'json-service',
+          plugins: [pluginName, 'existing-plugin', pluginName],
+        });
+
+      await uninstallPlugin({
+        configuration,
+        serviceDir: fixture.servicePath,
+        configurationFilename,
+        options: { name: pluginName },
+      });
+
+      expect(JSON.parse(await fsp.readFile(configurationFilePath, 'utf8')).plugins).to.deep.equal([
+        'existing-plugin',
+      ]);
+    });
+
+    it('deletes an empty top-level plugins array', async () => {
+      const fixture = await fixturesEngine.setup('function');
+      const { configurationFilePath, configuration, configurationFilename } =
+        await writeJsonConfiguration(fixture.servicePath, {
+          service: 'json-service',
+          plugins: [pluginName],
+        });
+
+      await uninstallPlugin({
+        configuration,
+        serviceDir: fixture.servicePath,
+        configurationFilename,
+        options: { name: pluginName },
+      });
+
+      expect(await fsp.readFile(configurationFilePath, 'utf8')).to.equal(
+        '{"service":"json-service"}\n'
+      );
+    });
+
+    it('deletes an empty object-form plugins.modules array', async () => {
+      const fixture = await fixturesEngine.setup('function');
+      const { configurationFilePath, configuration, configurationFilename } =
+        await writeJsonConfiguration(fixture.servicePath, {
+          service: 'json-service',
+          plugins: { localPath: './plugins', modules: [pluginName] },
+        });
+
+      await uninstallPlugin({
+        configuration,
+        serviceDir: fixture.servicePath,
+        configurationFilename,
+        options: { name: pluginName },
+      });
+
+      expect(JSON.parse(await fsp.readFile(configurationFilePath, 'utf8'))).to.deep.equal({
+        service: 'json-service',
+        plugins: { localPath: './plugins' },
+      });
+    });
+
+    it('includes the JSON filename in invalid JSON errors', async () => {
+      const fixture = await fixturesEngine.setup('function');
+      const { configurationFilePath, configuration, configurationFilename } =
+        await writeJsonConfiguration(fixture.servicePath, { service: 'json-service' }, '{invalid');
+
+      await expect(
+        uninstallPlugin({
+          configuration,
+          serviceDir: fixture.servicePath,
+          configurationFilename,
+          options: { name: pluginName },
+        })
+      ).to.be.rejectedWith(configurationFilePath);
+    });
+
+    it('writes compact JSON with a final newline', async () => {
+      const fixture = await fixturesEngine.setup('function');
+      const { configurationFilePath, configuration, configurationFilename } =
+        await writeJsonConfiguration(fixture.servicePath, {
+          service: 'json-service',
+          plugins: [pluginName, 'existing-plugin'],
+        });
+
+      await uninstallPlugin({
+        configuration,
+        serviceDir: fixture.servicePath,
+        configurationFilename,
+        options: { name: pluginName },
+      });
+
+      expect(await fsp.readFile(configurationFilePath, 'utf8')).to.equal(
+        '{"service":"json-service","plugins":["existing-plugin"]}\n'
       );
     });
   });
@@ -151,7 +279,7 @@ describe('test/unit/commands/plugin-uninstall.test.js', async () => {
         },
       });
 
-      const fileText = await fse.readFile(fixtureConfigurationPath, 'utf8');
+      const fileText = await fsp.readFile(fixtureConfigurationPath, 'utf8');
       const parsed = await readParsedConfiguration(fixtureConfigurationPath);
 
       expect(fileText).to.include('pluginLogGroupArn: !GetAtt PluginLogGroup.Arn');
@@ -196,7 +324,7 @@ describe('test/unit/commands/plugin-uninstall.test.js', async () => {
         },
       });
 
-      const fileText = await fse.readFile(fixtureConfigurationPath, 'utf8');
+      const fileText = await fsp.readFile(fixtureConfigurationPath, 'utf8');
       const parsed = await readParsedConfiguration(fixtureConfigurationPath);
 
       expect(fileText).to.include('taggedValue: !Sub ${AWS::Region}');
@@ -242,7 +370,7 @@ describe('test/unit/commands/plugin-uninstall.test.js', async () => {
         },
       });
 
-      const fileText = await fse.readFile(fixtureConfigurationPath, 'utf8');
+      const fileText = await fsp.readFile(fixtureConfigurationPath, 'utf8');
       const parsed = await readParsedConfiguration(fixtureConfigurationPath);
 
       expect(fileText).to.include('localPath: ./.serverless_plugins');
@@ -287,7 +415,7 @@ describe('test/unit/commands/plugin-uninstall.test.js', async () => {
         },
       });
 
-      const fileText = await fse.readFile(fixtureConfigurationPath, 'utf8');
+      const fileText = await fsp.readFile(fixtureConfigurationPath, 'utf8');
       const parsed = await readParsedConfiguration(fixtureConfigurationPath);
 
       expect(fileText.match(/^(?:"plugins"|plugins):/gm)).to.equal(null);

@@ -4,9 +4,8 @@ const Serverless = require('../../../../lib/serverless');
 const Install = require('../../../../lib/plugins/install.js');
 const sinon = require('sinon');
 const download = require('../../../../lib/utils/download-template-from-repo');
-const fse = require('fs-extra');
 const path = require('path');
-const { getTmpDirPath } = require('../../../utils/fs');
+const { ensureDirSync, getTmpDirPath } = require('../../../utils/fs');
 
 const { expect } = require('chai');
 
@@ -21,7 +20,7 @@ describe('Install', () => {
     const tmpDir = getTmpDirPath();
     cwd = process.cwd();
 
-    fse.mkdirsSync(tmpDir);
+    ensureDirSync(tmpDir);
     process.chdir(tmpDir);
 
     serviceDir = tmpDir;
@@ -94,7 +93,7 @@ describe('Install', () => {
       install.options = { url: 'https://github.com/johndoe/existing-service' };
 
       const serviceDirName = path.join(serviceDir, 'existing-service');
-      fse.mkdirsSync(serviceDirName);
+      ensureDirSync(serviceDirName);
 
       try {
         await install.install();

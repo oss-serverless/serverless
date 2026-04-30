@@ -2,17 +2,17 @@
 
 const expect = require('chai').expect;
 const fs = require('fs');
-const fse = require('fs-extra');
 const path = require('path');
 const copyDirContentsSync = require('../../../../../lib/utils/fs/copy-dir-contents-sync');
 const fileExistsSync = require('../../../../../lib/utils/fs/file-exists-sync');
 const writeFileSync = require('../../../../../lib/utils/fs/write-file-sync');
 const skipOnDisabledSymlinksInWindows = require('../../../../lib/skip-on-disabled-symlinks-in-windows');
+const { removeSync } = require('../../../../utils/fs');
 
 describe('#copyDirContentsSync()', () => {
   const afterCallback = () => {
-    fse.removeSync(path.join(process.cwd(), 'testSrc'));
-    fse.removeSync(path.join(process.cwd(), 'testDest'));
+    removeSync(path.join(process.cwd(), 'testSrc'));
+    removeSync(path.join(process.cwd(), 'testDest'));
   };
   afterEach(afterCallback);
 
@@ -42,6 +42,8 @@ describe('#copyDirContentsSync()', () => {
     expect(fileExistsSync(destFile1)).to.equal(true);
     expect(fileExistsSync(destFile2)).to.equal(true);
     expect(fileExistsSync(destFile3)).to.equal(true);
+    expect(fs.lstatSync(destFile3).isSymbolicLink()).to.equal(false);
+    expect(fs.readFileSync(destFile3, 'utf8')).to.equal('bar');
   });
 
   it('should recursively copy directory files excluding symbolic links', function () {

@@ -4,9 +4,10 @@ const path = require('path');
 const ensureString = require('type/string/ensure');
 const ensurePlainObject = require('type/plain-object/ensure');
 const ensurePlainFunction = require('type/plain-function/ensure');
+const fs = require('fs');
+const fsp = fs.promises;
 const wait = require('../../lib/utils/sleep');
 const spawn = require('../../lib/utils/spawn');
-const fse = require('fs-extra');
 const memoizee = require('memoizee');
 const log = require('log').get('serverless:test');
 const { load: loadYaml, dump: saveYaml } = require('js-yaml');
@@ -17,7 +18,7 @@ const provisionTmpDir = require('./provision-tmp-dir');
 const isFixtureConfigured = memoizee((fixturePath) => {
   let stats;
   try {
-    stats = fse.statSync(fixturePath);
+    stats = fs.statSync(fixturePath);
   } catch (error) {
     if (error.code === 'ENOENT') return false;
     throw error;
@@ -26,7 +27,7 @@ const isFixtureConfigured = memoizee((fixturePath) => {
 });
 
 const isFile = (filename) =>
-  fse.lstat(filename).then(
+  fsp.lstat(filename).then(
     (stats) => {
       if (!stats.isFile()) return false;
       return true;
@@ -40,7 +41,7 @@ const isFile = (filename) =>
 const npmInstall = async (cwd, attempt = 0) => {
   if (attempt) {
     try {
-      await fse.remove(path.resolve(cwd, 'node_modules'));
+      await fsp.rm(path.resolve(cwd, 'node_modules'), { recursive: true, force: true });
     } catch {
       // ignore
     }
@@ -71,7 +72,7 @@ const setupFixture = memoizee(
     ]);
     if (!hasSetupScript && !hasNpmDependencies) return fixturePath;
     const setupFixturePath = await provisionTmpDir();
-    await fse.copy(fixturePath, setupFixturePath);
+    await fsp.cp(fixturePath, setupFixturePath, { recursive: true });
     if (hasNpmDependencies) {
       log.notice(
         'install dependencies for %s (at %s)',
@@ -84,7 +85,7 @@ const setupFixture = memoizee(
     log.notice('run setup for %s (at %s)', path.basename(fixturePath), setupFixturePath);
     const setupScriptPath = path.resolve(setupFixturePath, '_setup.js');
     await ensurePlainFunction(require(setupScriptPath))(fixturePath);
-    await fse.unlink(setupScriptPath);
+    await fsp.unlink(setupScriptPath);
     return setupFixturePath;
   },
   { promise: true }
@@ -107,11 +108,11 @@ module.exports = memoizee((fixturesPath) => {
       ]);
       let configObject;
       const [configContent] = await Promise.all([
-        fse.readFile(path.join(setupFixturePath, 'serverless.yml')).catch((error) => {
+        fsp.readFile(path.join(setupFixturePath, 'serverless.yml')).catch((error) => {
           if (error.code === 'ENOENT') return null;
           throw error;
         }),
-        fse.copy(setupFixturePath, fixturePath),
+        fsp.cp(setupFixturePath, fixturePath, { recursive: true }),
       ]);
       configObject =
         configContent &&
@@ -132,7 +133,7 @@ module.exports = memoizee((fixturesPath) => {
         isConfigUpdated = true;
       }
       if (isConfigUpdated) {
-        await fse.writeFile(path.join(fixturePath, 'serverless.yml'), saveYaml(configObject));
+        await fsp.writeFile(path.join(fixturePath, 'serverless.yml'), saveYaml(configObject));
       }
       log.info('setup %s fixture at %s', fixtureName, fixturePath);
       return {
@@ -141,7 +142,7 @@ module.exports = memoizee((fixturesPath) => {
         updateConfig: (configExt) => {
           ensurePlainObject(configExt);
           mergePlainObjects(configObject, configExt);
-          return fse.writeFile(path.join(fixturePath, 'serverless.yml'), saveYaml(configObject));
+          return fsp.writeFile(path.join(fixturePath, 'serverless.yml'), saveYaml(configObject));
         },
       };
     },

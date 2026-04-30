@@ -4,12 +4,12 @@ const os = require('os');
 const path = require('path');
 const fs = require('fs');
 const fsp = fs.promises;
-const fse = require('fs-extra');
 const yazl = require('yazl');
 const { expect } = require('chai');
 const proxyquire = require('proxyquire');
 const sinon = require('sinon');
 const { extractZip, isZipBuffer } = require('../../../../lib/utils/extract-zip');
+const { pathExists, remove } = require('../../../utils/fs');
 
 const loadExtractZipWithFs = (fsStub) =>
   proxyquire.noCallThru().load('../../../../lib/utils/extract-zip', { fs: fsStub });
@@ -77,7 +77,7 @@ describe('extractZip', () => {
   });
 
   afterEach(async () => {
-    await fse.remove(tmpDir);
+    await remove(tmpDir);
   });
 
   it('detects ZIP buffers', async () => {
@@ -138,7 +138,7 @@ describe('extractZip', () => {
     await extractZip(zipBuffer, tmpDir, { strip: 1 });
 
     expect(await fsp.readFile(path.join(tmpDir, 'serverless.yml'), 'utf8')).to.equal('x');
-    expect(await fse.pathExists(path.join(tmpDir, 'template-main'))).to.equal(false);
+    expect(await pathExists(path.join(tmpDir, 'template-main'))).to.equal(false);
   });
 
   it('rejects traversal before strip can hide it', async () => {
@@ -149,7 +149,7 @@ describe('extractZip', () => {
     );
 
     await expectRejected(extractZip(zipBuffer, tmpDir, { strip: 1 }));
-    expect(await fse.pathExists(path.join(tmpDir, 'file.txt'))).to.equal(false);
+    expect(await pathExists(path.join(tmpDir, 'file.txt'))).to.equal(false);
   });
 
   it('allows safe in-root paths that start with two dots', async () => {
@@ -226,7 +226,7 @@ describe('extractZip', () => {
     });
 
     expect(files.map((file) => file.path)).to.deep.equal(['keep.txt']);
-    expect(await fse.pathExists(path.join(tmpDir, 'skip.txt'))).to.equal(false);
+    expect(await pathExists(path.join(tmpDir, 'skip.txt'))).to.equal(false);
   });
 
   it('creates directory entries', async () => {
@@ -383,7 +383,7 @@ describe('extractZip', () => {
       );
 
       await expectRejected(extractZip(zipBuffer, tmpDir));
-      expect(await fse.pathExists(path.join(tmpDir, 'file.txt'))).to.equal(false);
+      expect(await pathExists(path.join(tmpDir, 'file.txt'))).to.equal(false);
     });
   }
 
@@ -396,9 +396,9 @@ describe('extractZip', () => {
       const zipBuffer = await createZipBuffer([{ path: 'link/evil.txt', data: 'evil' }]);
 
       await expectRejected(extractZip(zipBuffer, tmpDir));
-      expect(await fse.pathExists(path.join(outsideDir, 'evil.txt'))).to.equal(false);
+      expect(await pathExists(path.join(outsideDir, 'evil.txt'))).to.equal(false);
     } finally {
-      await fse.remove(outsideDir);
+      await remove(outsideDir);
     }
   });
 
@@ -414,9 +414,9 @@ describe('extractZip', () => {
       const error = await expectRejected(extractZip(zipBuffer, outputSymlink));
 
       expect(error.message).to.include('Refusing to extract into symlink');
-      expect(await fse.pathExists(path.join(outsideDir, 'evil.txt'))).to.equal(false);
+      expect(await pathExists(path.join(outsideDir, 'evil.txt'))).to.equal(false);
     } finally {
-      await fse.remove(outsideDir);
+      await remove(outsideDir);
     }
   });
 
@@ -434,7 +434,7 @@ describe('extractZip', () => {
       expect((await fsp.lstat(path.join(tmpDir, 'evil.txt'))).isSymbolicLink()).to.equal(true);
       expect(await fsp.readFile(outsideFile, 'utf8')).to.equal('original');
     } finally {
-      await fse.remove(outsideDir);
+      await remove(outsideDir);
     }
   });
 });

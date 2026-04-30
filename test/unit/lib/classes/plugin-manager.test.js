@@ -14,11 +14,10 @@ const importModule = require('../../../../lib/utils/require-with-import-fallback
 
 const path = require('path');
 const fsp = require('fs').promises;
-const fse = require('fs-extra');
 const sinon = require('sinon');
 const proxyquire = require('proxyquire');
 const { installPlugin } = require('../../../utils/plugins');
-const { getTmpDirPath } = require('../../../utils/fs');
+const { ensureDirSync, getTmpDirPath, removeSync } = require('../../../utils/fs');
 
 const expect = chai.expect;
 
@@ -1555,7 +1554,7 @@ describe('PluginManager', () => {
     beforeEach(() => {
       tmpDir = getTmpDirPath();
       serviceDir = path.join(tmpDir, 'service');
-      fse.mkdirsSync(serviceDir);
+      ensureDirSync(serviceDir);
       process.chdir(serviceDir);
       pluginManager.serverless.serviceDir = serviceDir;
     });
@@ -1604,7 +1603,7 @@ describe('PluginManager', () => {
     afterEach(() => {
       process.chdir(cwd);
       try {
-        fse.removeSync(tmpDir);
+        removeSync(tmpDir);
       } catch {
         // Couldn't delete temporary file
       }

@@ -2,10 +2,9 @@
 
 const expect = require('chai').expect;
 const path = require('path');
-const fse = require('fs-extra');
 const AWSCommon = require('../../../../../../../lib/plugins/aws/common/index');
 const Serverless = require('../../../../../../../lib/serverless');
-const { getTmpDirPath } = require('../../../../../../utils/fs');
+const { getTmpDirPath, removeSync } = require('../../../../../../utils/fs');
 
 describe('#moveArtifactsToPackage()', () => {
   let serverless;
@@ -25,7 +24,7 @@ describe('#moveArtifactsToPackage()', () => {
 
   afterEach(() => {
     if (serverless.utils.dirExistsSync(moveBasePath)) {
-      fse.removeSync(moveBasePath);
+      removeSync(moveBasePath);
     }
   });
 
@@ -68,7 +67,7 @@ describe('#moveArtifactsToPackage()', () => {
     const targetPath = path.join(moveBasePath, 'target');
 
     if (serverless.utils.dirExistsSync(moveServerlessPath)) {
-      fse.removeSync(moveServerlessPath);
+      removeSync(moveServerlessPath);
     }
 
     awsCommon.options.package = targetPath;
@@ -115,7 +114,7 @@ describe('#moveArtifactsToTemp()', () => {
 
   afterEach(() => {
     if (serverless.utils.dirExistsSync(moveBasePath)) {
-      fse.removeSync(moveBasePath);
+      removeSync(moveBasePath);
     }
   });
 
@@ -154,7 +153,7 @@ describe('#moveArtifactsToTemp()', () => {
 
   it('should not fail with non existing source path', async () => {
     if (serverless.utils.dirExistsSync(moveTargetPath)) {
-      fse.removeSync(moveTargetPath);
+      removeSync(moveTargetPath);
     }
 
     awsCommon.options.package = moveTargetPath;

@@ -1,13 +1,14 @@
 'use strict';
 
 const path = require('path');
-const fse = require('fs-extra');
+const fsp = require('fs').promises;
 const proxyquire = require('proxyquire');
 const sinon = require('sinon');
 const { overrideEnv, overrideCwd, overrideStdoutWrite } = require('../../../utils/process');
 const { expect } = require('chai');
 
 const provisionTmpDir = require('../../../lib/provision-tmp-dir');
+const { outputFile, remove, writeJsonFile } = require('../../../utils/fs');
 
 const createProgressFooter = () => ({
   shouldAddProgressAnimationPrefix: false,
@@ -17,7 +18,7 @@ const createProgressFooter = () => ({
 
 const writeFakeComposeBin = async (rootDir) => {
   const composeBinPath = path.join(rootDir, '@osls', 'compose', 'bin', 'serverless-compose.js');
-  await fse.outputFile(
+  await outputFile(
     composeBinPath,
     'global.__runComposeCalls = global.__runComposeCalls || []; global.__runComposeCalls.push(__filename);'
   );
@@ -79,7 +80,7 @@ describe('test/unit/lib/cli/run-compose.test.js', () => {
     process.exitCode = originalExitCode;
     delete global.__runComposeCalls;
     sinon.restore();
-    await fse.remove(serviceDir);
+    await remove(serviceDir);
   });
 
   it('loads local compose immediately when it is already installed', async () => {
@@ -191,7 +192,7 @@ describe('test/unit/lib/cli/run-compose.test.js', () => {
     await runCompose();
 
     expect(
-      JSON.parse(await fse.readFile(path.join(serviceDir, 'package.json'), 'utf8'))
+      JSON.parse(await fsp.readFile(path.join(serviceDir, 'package.json'), 'utf8'))
     ).to.deep.equal({});
     expect(global.__runComposeCalls).to.have.length(1);
     expect(progressFooter.updateProgress.called).to.equal(true);
@@ -268,7 +269,7 @@ describe('test/unit/lib/cli/run-compose.test.js', () => {
     process.stdout.isTTY = false;
     process.env.CI = '1';
 
-    await fse.writeJson(path.join(serviceDir, 'package.json'), {
+    await writeJsonFile(path.join(serviceDir, 'package.json'), {
       devDependencies: {
         '@osls/compose': '^1.0.0',
       },
@@ -334,7 +335,7 @@ describe('test/unit/lib/cli/run-compose.test.js', () => {
     process.stdout.isTTY = false;
     process.env.CI = '1';
 
-    await fse.writeJson(path.join(serviceDir, 'package.json'), {
+    await writeJsonFile(path.join(serviceDir, 'package.json'), {
       devDependencies: {
         '@osls/compose': '^1.0.0',
       },

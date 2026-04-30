@@ -1,9 +1,10 @@
 'use strict';
 
 const expect = require('chai').expect;
+const fs = require('fs').promises;
 const os = require('os');
 const path = require('path');
-const { outputFile, lstat, remove: rmDir } = require('fs-extra');
+const { outputFile, remove } = require('../../../../../utils/fs');
 const { overrideEnv } = require('../../../../../utils/process');
 const credentials = require('../../../../../../lib/plugins/aws/utils/credentials');
 
@@ -14,7 +15,7 @@ describe('#credentials', () => {
   before(async () => {
     // Abort if credentials are found in home directory
     // (it should not be the case, as home directory is mocked to point temp dir)
-    return lstat(credentialsDirPath).then(
+    return fs.lstat(credentialsDirPath).then(
       () => {
         throw new Error('Unexpected ~/.aws directory, related tests aborted');
       },
@@ -25,7 +26,7 @@ describe('#credentials', () => {
     );
   });
 
-  afterEach(() => rmDir(credentialsDirPath));
+  afterEach(() => remove(credentialsDirPath));
 
   it('should resolve file profiles', async () => {
     const profiles = new Map([

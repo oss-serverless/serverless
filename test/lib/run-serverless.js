@@ -5,7 +5,6 @@ const ensureIterable = require('type/iterable/ensure');
 const ensurePlainObject = require('type/plain-object/ensure');
 const ensurePlainFunction = require('type/plain-function/ensure');
 const { realpathSync } = require('fs');
-const { writeJson } = require('fs-extra');
 const path = require('path');
 const os = require('os');
 const { overrideEnv, overrideCwd, overrideArgv } = require('../utils/process');
@@ -15,6 +14,7 @@ const observeOutput = require('./observe-output');
 const disableServerlessStatsRequests = require('./disable-serverless-stats-requests');
 const provisionTmpDir = require('./provision-tmp-dir');
 const configureAwsRequestStub = require('./configure-aws-request-stub');
+const { writeJsonFile } = require('../utils/fs');
 
 const resolveModuleRealPath = (basePath, moduleId) =>
   realpathSync(require.resolve(moduleId, { paths: [basePath] }));
@@ -48,7 +48,7 @@ const resolveServerless = async (serverlessPath, modulesCacheStub, callback) => 
 const resolveCwd = async ({ cwd, config }) => {
   if (cwd) return cwd;
   const tmpDirPath = await provisionTmpDir();
-  await writeJson(path.join(tmpDirPath, 'serverless.json'), config);
+  await writeJsonFile(path.join(tmpDirPath, 'serverless.json'), config);
   return tmpDirPath;
 };
 
