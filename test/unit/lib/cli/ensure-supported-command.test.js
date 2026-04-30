@@ -1,7 +1,7 @@
 'use strict';
 
 const { expect } = require('chai');
-const overrideArgv = require('process-utils/override-argv');
+const { overrideArgv } = require('../../../utils/process');
 const ServerlessError = require('../../../../lib/serverless-error');
 const { triggeredDeprecations } = require('../../../../lib/utils/log-deprecation');
 const ensureSupportedCommand = require('../../../../lib/cli/ensure-supported-command');

@@ -2,7 +2,7 @@
 
 const { expect } = require('chai');
 
-const overrideArgv = require('process-utils/override-argv');
+const { overrideArgv } = require('../../../../utils/process');
 const ServerlessError = require('../../../../../lib/serverless-error');
 const resolveCliInput = require('../../../../../lib/cli/resolve-input');
 const resolveMeta = require('../../../../../lib/configuration/variables/resolve-meta');

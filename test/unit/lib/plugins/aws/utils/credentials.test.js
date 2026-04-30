@@ -4,7 +4,7 @@ const expect = require('chai').expect;
 const os = require('os');
 const path = require('path');
 const { outputFile, lstat, remove: rmDir } = require('fs-extra');
-const overrideEnv = require('process-utils/override-env');
+const { overrideEnv } = require('../../../../../utils/process');
 const credentials = require('../../../../../../lib/plugins/aws/utils/credentials');
 
 describe('#credentials', () => {

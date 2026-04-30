@@ -2,7 +2,7 @@
 
 const chai = require('chai');
 const proxyquire = require('proxyquire');
-const overrideEnv = require('process-utils/override-env');
+const { overrideEnv } = require('../../../utils/process');
 
 const { expect } = chai;
 

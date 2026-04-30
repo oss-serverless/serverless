@@ -6,7 +6,7 @@ const fs = require('fs-extra');
 const os = require('os');
 const proxyquire = require('proxyquire');
 const sinon = require('sinon');
-const overrideEnv = require('process-utils/override-env');
+const { overrideEnv } = require('../../../../utils/process');
 
 const AwsProvider = require('../../../../../lib/plugins/aws/provider');
 const Serverless = require('../../../../../lib/serverless');

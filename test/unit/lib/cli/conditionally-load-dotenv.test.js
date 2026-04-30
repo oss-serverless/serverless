@@ -1,7 +1,7 @@
 'use strict';
 
 const path = require('path');
-const overrideEnv = require('process-utils/override-env');
+const { overrideEnv } = require('../../../utils/process');
 const fsp = require('fs').promises;
 const conditionallyLoadDotenv = require('../../../../lib/cli/conditionally-load-dotenv');
 

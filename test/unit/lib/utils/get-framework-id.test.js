@@ -7,8 +7,7 @@ const fse = require('fs-extra');
 const { expect } = require('chai');
 const requireUncached = require('../../../utils/require-uncached');
 const sinon = require('sinon');
-const overrideEnv = require('process-utils/override-env');
-const overrideCwd = require('process-utils/override-cwd');
+const { overrideEnv, overrideCwd } = require('../../../utils/process');
 
 const withIsolatedHome = async (name, callback) => {
   const homeDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), `${name}-home-`));

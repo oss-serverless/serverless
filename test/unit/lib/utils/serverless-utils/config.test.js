@@ -7,8 +7,7 @@ const fse = require('fs-extra');
 const { expect } = require('chai');
 const requireUncached = require('../../../../utils/require-uncached');
 const sinon = require('sinon');
-const overrideEnv = require('process-utils/override-env');
-const overrideCwd = require('process-utils/override-cwd');
+const { overrideEnv, overrideCwd } = require('../../../../utils/process');
 
 const loadConfigModule = () =>
   requireUncached(() => require('../../../../../lib/utils/serverless-utils/config'));

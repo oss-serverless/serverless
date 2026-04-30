@@ -3,7 +3,7 @@
 const fsp = require('fs').promises;
 const sandbox = require('sinon');
 const expect = require('chai').expect;
-const overrideEnv = require('process-utils/override-env');
+const { overrideEnv } = require('../../../utils/process');
 const ServerlessError = require('../../../../lib/serverless-error');
 
 describe('test/unit/lib/utils/logDeprecation.test.js', () => {

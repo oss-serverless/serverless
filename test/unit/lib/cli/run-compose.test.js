@@ -4,9 +4,7 @@ const path = require('path');
 const fse = require('fs-extra');
 const proxyquire = require('proxyquire');
 const sinon = require('sinon');
-const overrideEnv = require('process-utils/override-env');
-const overrideCwd = require('process-utils/override-cwd');
-const overrideStdoutWrite = require('process-utils/override-stdout-write');
+const { overrideEnv, overrideCwd, overrideStdoutWrite } = require('../../../utils/process');
 const { expect } = require('chai');
 
 const provisionTmpDir = require('../../../lib/provision-tmp-dir');
@@ -33,7 +31,7 @@ const loadRunCompose = ({ spawnStub, inquirerStub, progressFooterFactoryStub, fs
   return proxyquire.noCallThru().load(modulePath, {
     '../utils/spawn': spawnStub,
     '../utils/serverless-utils/inquirer': inquirerStub,
-    'cli-progress-footer': progressFooterFactoryStub,
+    '../utils/progress-footer': progressFooterFactoryStub,
     ...(fsStub ? { fs: fsStub } : {}),
   });
 };

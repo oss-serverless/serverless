@@ -1,7 +1,7 @@
 'use strict';
 
 const chai = require('chai');
-const overrideEnv = require('process-utils/override-env');
+const { overrideEnv } = require('../../../utils/process');
 const requireUncached = require('../../../utils/require-uncached');
 const path = require('path');
 const fse = require('fs-extra');

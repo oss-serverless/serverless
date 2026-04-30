@@ -1,8 +1,7 @@
 'use strict';
 
 const chai = require('chai');
-const overrideEnv = require('process-utils/override-env');
-const overrideArgv = require('process-utils/override-argv');
+const { overrideEnv, overrideArgv } = require('../../../utils/process');
 const runServerless = require('../../../utils/run-serverless');
 const fixtures = require('../../../fixtures/programmatic');
 const Serverless = require('../../../../lib/serverless');

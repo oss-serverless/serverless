@@ -2,7 +2,7 @@
 
 const path = require('path');
 const sinon = require('sinon');
-const overrideEnv = require('process-utils/override-env');
+const { overrideEnv } = require('../../../utils/process');
 const fsp = require('fs').promises;
 const loadEnv = require('../../../../lib/cli/load-dotenv');
 const dotenv = require('dotenv');

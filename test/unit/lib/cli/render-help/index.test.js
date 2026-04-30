@@ -1,7 +1,7 @@
 'use strict';
 
 const { expect } = require('chai');
-const overrideArgv = require('process-utils/override-argv');
+const { overrideArgv } = require('../../../../utils/process');
 const resolveInput = require('../../../../../lib/cli/resolve-input');
 const resolveFinalCommandsSchema = require('../../../../../lib/cli/commands-schema/resolve-final');
 const renderHelp = require('../../../../../lib/cli/render-help');

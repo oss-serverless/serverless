@@ -2,9 +2,7 @@
 
 const { expect } = require('chai');
 const fs = require('fs');
-const overrideCwd = require('process-utils/override-cwd');
-const overrideEnv = require('process-utils/override-env');
-const overrideArgv = require('process-utils/override-argv');
+const { overrideCwd, overrideEnv, overrideArgv } = require('../../../../utils/process');
 const path = require('path');
 const triage = require('../../../../../lib/cli/triage');
 

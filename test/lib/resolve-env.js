@@ -1,6 +1,6 @@
 'use strict';
 
-const createEnv = require('process-utils/create-env');
+const { createEnv } = require('../utils/process');
 
 module.exports = (options = {}) => {
   if (!options) options = {};
