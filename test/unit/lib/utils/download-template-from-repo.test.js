@@ -17,6 +17,7 @@ describe('downloadTemplateFromRepo', () => {
   let downloadTemplateFromRepo;
   let spawnStub;
   let downloadStub;
+  let removeSyncStub;
   let cwd;
 
   let parseRepoURL;
@@ -53,12 +54,16 @@ describe('downloadTemplateFromRepo', () => {
 
     spawnStub = sinon.stub().resolves();
     downloadStub = sinon.stub().resolves();
+    removeSyncStub = sinon
+      .stub()
+      .callsFake((targetPath) => fs.rmSync(targetPath, { recursive: true, force: true }));
 
     const downloadTemplateFromRepoModule = proxyquire(
       '../../../../lib/utils/download-template-from-repo',
       {
         './serverless-utils/download': downloadStub,
         './spawn': spawnStub,
+        './fs/remove': { removeSync: removeSyncStub },
       }
     );
     downloadTemplateFromRepo = downloadTemplateFromRepoModule.downloadTemplateFromRepo;
@@ -414,6 +419,28 @@ describe('downloadTemplateFromRepo', () => {
       );
 
       expect(fs.existsSync(temporaryDownloadPath)).to.equal(false);
+    });
+
+    it('preserves the primary error when temporary directory cleanup fails', async () => {
+      const url = 'https://github.com/serverless/examples/tree/master/rest-api-with-dynamodb';
+      let temporaryDownloadPath;
+      downloadStub.callsFake(async (downloadUrl, destinationPath) => {
+        temporaryDownloadPath = destinationPath;
+        writeFileSync(path.join(destinationPath, 'marker'), 'marker');
+        throw new Error('Download failed');
+      });
+      removeSyncStub.callsFake(() => {
+        throw new Error('Cleanup failed');
+      });
+
+      try {
+        await expect(downloadTemplateFromRepo(url, 'failed-service')).to.be.rejectedWith(
+          'Download failed'
+        );
+        expect(removeSyncStub).to.have.been.calledOnceWith(temporaryDownloadPath);
+      } finally {
+        fs.rmSync(temporaryDownloadPath, { recursive: true, force: true });
+      }
     });
 
     it('removes the temporary directory when subdirectory copy fails', async () => {

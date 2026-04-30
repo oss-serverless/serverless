@@ -7,21 +7,23 @@ const skipOnDisabledSymlinksInWindows = require('../../lib/skip-on-disabled-syml
 
 describe('test/unit/lib/skip-on-disabled-symlinks-in-windows.test.js', () => {
   const originalPlatformDescriptor = Object.getOwnPropertyDescriptor(process, 'platform');
-  let originalCI;
+
+  const setPlatform = (platform) => {
+    Object.defineProperty(process, 'platform', {
+      configurable: true,
+      value: platform,
+    });
+  };
 
   beforeEach(() => {
-    originalCI = process.env.CI;
-    process.env.CI = '1';
-    Object.defineProperty(process, 'platform', { value: 'win32' });
+    setPlatform('win32');
   });
 
   afterEach(() => {
-    if (originalCI == null) delete process.env.CI;
-    else process.env.CI = originalCI;
     Object.defineProperty(process, 'platform', originalPlatformDescriptor);
   });
 
-  it('skips Windows EPERM symlink failures in CI', () => {
+  it('skips Windows EPERM symlink failures and runs the cleanup callback', () => {
     const context = { skip: sinon.stub() };
     const afterCallback = sinon.stub();
 
@@ -29,5 +31,41 @@ describe('test/unit/lib/skip-on-disabled-symlinks-in-windows.test.js', () => {
 
     expect(afterCallback).to.have.been.calledOnce;
     expect(context.skip).to.have.been.calledOnce;
+  });
+
+  it('skips Windows EPERM symlink failures without a cleanup callback', () => {
+    const context = { skip: sinon.stub() };
+
+    skipOnDisabledSymlinksInWindows({ code: 'EPERM' }, context);
+
+    expect(context.skip).to.have.been.calledOnce;
+  });
+
+  it('does nothing for non-Windows EPERM errors', () => {
+    const context = { skip: sinon.stub() };
+    const afterCallback = sinon.stub();
+    setPlatform('linux');
+
+    skipOnDisabledSymlinksInWindows({ code: 'EPERM' }, context, afterCallback);
+
+    expect(afterCallback).to.not.have.been.called;
+    expect(context.skip).to.not.have.been.called;
+  });
+
+  it('does nothing for Windows non-EPERM errors', () => {
+    const context = { skip: sinon.stub() };
+    const afterCallback = sinon.stub();
+
+    skipOnDisabledSymlinksInWindows({ code: 'ENOENT' }, context, afterCallback);
+
+    expect(afterCallback).to.not.have.been.called;
+    expect(context.skip).to.not.have.been.called;
+  });
+
+  it('rejects invalid Mocha contexts for Windows EPERM errors', () => {
+    expect(() => skipOnDisabledSymlinksInWindows({ code: 'EPERM' }, {})).to.throw(
+      TypeError,
+      'Passed context is not a valid Mocha context'
+    );
   });
 });
