@@ -124,6 +124,32 @@ describe('test/unit/lib/configuration/variables/sources/instance-dependent/get-s
     expect(configuration.custom.stage).to.equal('staging');
   });
 
+  it('should ignore inherited stage from options', async () => {
+    const options = Object.create({ stage: 'foo/bar' });
+    const result = await getSlsSource().resolve({
+      address: 'stage',
+      options,
+      resolveConfigurationProperty: async () => 'prod',
+    });
+
+    expect(result.value).to.equal('prod');
+  });
+
+  it('should treat null stage in options as absent', async () => {
+    await initializeServerless({
+      configExt: {
+        provider: {
+          stage: 'prod',
+        },
+      },
+      options: {
+        stage: null,
+      },
+    });
+
+    expect(configuration.custom.stage).to.equal('prod');
+  });
+
   it('should report with an error invalid stage from options', async () => {
     await initializeServerless({
       options: {

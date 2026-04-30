@@ -8,7 +8,7 @@ describe('test/unit/lib/utils/validate-stage.test.js', () => {
     expect(validateStage.STAGE_NAME_PATTERN).to.equal('^[A-Za-z0-9-]+$');
   });
 
-  for (const stage of ['dev', 'prod', 'prod-1', 'myStage', 'A1-b2', '-']) {
+  for (const stage of ['dev', 'prod', 'prod-1', 'myStage', 'A1-b2', '123', '001', '-']) {
     it(`accepts ${JSON.stringify(stage)}`, () => {
       expect(validateStage(stage)).to.equal(stage);
     });

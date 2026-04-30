@@ -138,7 +138,7 @@ describe('Serverless', () => {
         () =>
           new Serverless({
             commands: ['print'],
-            options: { stage: null },
+            options: { stage: '' },
             serviceDir: null,
           })
       )
