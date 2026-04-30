@@ -113,6 +113,18 @@ describe('test/unit/scripts/serverless.test.js', () => {
     ).to.include('looks: good');
   });
 
+  it('should reject invalid CLI stage', async () => {
+    try {
+      await spawn('node', [serverlessPath, 'print', '--stage', 'foo/../../tmp/x'], {
+        cwd: path.resolve(programmaticFixturesPath, 'aws'),
+      });
+      throw new Error('Unexpected');
+    } catch (error) {
+      expect(error.code).to.equal(1);
+      expect(String(error.stdoutBuffer)).to.include('Invalid stage name');
+    }
+  });
+
   it('should support "-c" flag for "aws-service" commands', async () => {
     try {
       await spawn('node', [serverlessPath, 'info', '-c', 'serverless.custom.yml'], {

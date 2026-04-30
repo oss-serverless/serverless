@@ -38,4 +38,22 @@ describe('test/unit/lib/cli/conditionally-load-dotenv.test.js', () => {
     expect(process.env.DEFAULT_ENV_VARIABLE).to.be.undefined;
     expect(process.env.STAGE_ENV_VARIABLE).to.equal('valuefromstage');
   });
+
+  it('should reject invalid CLI stage when loading dotenv files', async () => {
+    await expect(
+      conditionallyLoadDotenv({ stage: 'foo/bar' }, { useDotenv: true })
+    ).to.be.eventually.rejected.and.have.property('code', 'INVALID_STAGE');
+  });
+
+  it('should reject invalid configured stage when loading dotenv files', async () => {
+    await expect(
+      conditionallyLoadDotenv({}, { useDotenv: true, provider: { stage: 'feature.prod' } })
+    ).to.be.eventually.rejected.and.have.property('code', 'INVALID_STAGE');
+  });
+
+  it('should not validate stage when dotenv loading is disabled', async () => {
+    expect(await conditionallyLoadDotenv({ stage: 'foo/bar' }, { useDotenv: false })).to.equal(
+      false
+    );
+  });
 });

@@ -51,4 +51,22 @@ describe('test/unit/lib/cli/load-dotenv.test.js', () => {
       .with.property('code', 'DOTENV_LOAD_ERROR');
     dotenvResult.restore();
   });
+
+  it('should reject invalid stage before reading dotenv files', () => {
+    const dotenvResult = sinon.stub(dotenv, 'config');
+
+    expect(() => loadEnv('foo/../../tmp/x'))
+      .to.throw(ServerlessError)
+      .with.property('code', 'INVALID_STAGE');
+    expect(dotenvResult).to.not.have.been.called;
+    dotenvResult.restore();
+  });
+
+  for (const stage of ['café', 'foo\nbar']) {
+    it(`should reject invalid dotenv stage ${JSON.stringify(stage)}`, () => {
+      expect(() => loadEnv(stage))
+        .to.throw(ServerlessError)
+        .with.property('code', 'INVALID_STAGE');
+    });
+  }
 });

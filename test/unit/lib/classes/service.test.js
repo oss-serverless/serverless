@@ -191,6 +191,32 @@ describe('Service', () => {
         'NON_OBJECT_FUNCTION_CONFIGURATION_ERROR'
       );
     });
+
+    it('should reject invalid short stage alias', async () => {
+      const service = new Service({}, null);
+
+      await expect(service.load({ s: 'foo/bar' })).to.be.eventually.rejected.and.have.property(
+        'code',
+        'INVALID_STAGE'
+      );
+    });
+
+    it('should reject invalid provider stage before assigning function names', () => {
+      const service = new Service(
+        {},
+        {
+          service: 'test-service',
+          provider: { stage: 'foo/bar' },
+          functions: {
+            hello: { handler: 'handler.hello' },
+          },
+        }
+      );
+
+      expect(() => service.setFunctionNames({}))
+        .to.throw()
+        .and.have.property('code', 'INVALID_STAGE');
+    });
   });
 
   describe('#getFunction() / #getLayer()', () => {

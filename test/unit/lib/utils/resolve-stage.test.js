@@ -26,4 +26,48 @@ describe('test/unit/lib/utils/resolve-stage.test.js', () => {
     const result = resolveStage({ configuration: {}, options: {} });
     expect(result).to.equal('dev');
   });
+
+  it('should reject invalid `stage` from options', () => {
+    expect(() =>
+      resolveStage({
+        configuration: { provider: { stage: 'prod' } },
+        options: { stage: 'foo/bar' },
+      })
+    )
+      .to.throw()
+      .and.have.property('code', 'INVALID_STAGE');
+  });
+
+  it('should reject invalid `stage` from configuration', () => {
+    expect(() =>
+      resolveStage({
+        configuration: { provider: { stage: 'feature.prod' } },
+        options: {},
+      })
+    )
+      .to.throw()
+      .and.have.property('code', 'INVALID_STAGE');
+  });
+
+  it('should reject empty `stage` from options instead of falling back', () => {
+    expect(() =>
+      resolveStage({
+        configuration: { provider: { stage: 'prod' } },
+        options: { stage: '' },
+      })
+    )
+      .to.throw()
+      .and.have.property('code', 'INVALID_STAGE');
+  });
+
+  it('should ignore inherited stage values', () => {
+    const options = Object.create({ stage: 'foo/bar' });
+
+    const result = resolveStage({
+      configuration: { provider: { stage: 'prod' } },
+      options,
+    });
+
+    expect(result).to.equal('prod');
+  });
 });

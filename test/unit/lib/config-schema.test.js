@@ -2,6 +2,8 @@
 
 const runServerless = require('../../utils/run-serverless');
 const expect = require('chai').expect;
+const schema = require('../../../lib/config-schema');
+const STAGE_NAME_PATTERN = require('../../../lib/utils/stage-pattern');
 
 describe('test/unit/lib/configSchema.test.js', () => {
   const cases = [
@@ -107,4 +109,30 @@ describe('test/unit/lib/configSchema.test.js', () => {
         }
       ));
   }
+
+  it('should use the shared stage pattern in schema definitions', () => {
+    expect(schema.definitions.stage).to.deep.equal({
+      type: 'string',
+      pattern: STAGE_NAME_PATTERN,
+    });
+  });
+
+  it('should use the shared stage pattern for params stage keys', () => {
+    expect(schema.properties.params.patternProperties).to.have.property(STAGE_NAME_PATTERN);
+  });
+
+  it('should reject invalid params stage keys', async () =>
+    expect(
+      runServerless({
+        fixture: 'config-schema-extensions',
+        command: 'info',
+        configExt: {
+          params: {
+            my_stage: {
+              key: 'value',
+            },
+          },
+        },
+      })
+    ).to.be.eventually.rejectedWith('unrecognized property'));
 });

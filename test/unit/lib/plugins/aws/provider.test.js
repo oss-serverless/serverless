@@ -10,6 +10,7 @@ const { overrideEnv } = require('../../../../utils/process');
 
 const AwsProvider = require('../../../../../lib/plugins/aws/provider');
 const Serverless = require('../../../../../lib/serverless');
+const ServerlessError = require('../../../../../lib/serverless-error');
 const runServerless = require('../../../../utils/run-serverless');
 const { ensureDir, outputFile, remove } = require('../../../../utils/fs');
 
@@ -1089,6 +1090,45 @@ aws_secret_access_key = CUSTOMSECRET
         },
       });
       expect(serverless.getProvider('aws').getStage()).to.equal('production');
+    });
+
+    it('should reject invalid stage from provider options', () => {
+      const serverless = new Serverless({ commands: ['print'], options: {}, serviceDir: null });
+      const provider = new AwsProvider(serverless, { stage: 'foo/bar' });
+
+      expect(() => provider.getStage())
+        .to.throw(ServerlessError)
+        .and.have.property('code', 'INVALID_STAGE');
+    });
+
+    it('should reject invalid stage from serverless config', () => {
+      const serverless = new Serverless({ commands: ['print'], options: {}, serviceDir: null });
+      serverless.config.stage = 'feature.prod';
+      const provider = new AwsProvider(serverless, {});
+
+      expect(() => provider.getStage())
+        .to.throw(ServerlessError)
+        .and.have.property('code', 'INVALID_STAGE');
+    });
+
+    it('should reject invalid stage from service provider config', () => {
+      const serverless = new Serverless({ commands: ['print'], options: {}, serviceDir: null });
+      const provider = new AwsProvider(serverless, {});
+      serverless.service.provider.stage = 'my_stage';
+
+      expect(() => provider.getStage())
+        .to.throw(ServerlessError)
+        .and.have.property('code', 'INVALID_STAGE');
+    });
+
+    it('should reject empty CLI stage instead of falling back to provider stage', () => {
+      const serverless = new Serverless({ commands: ['print'], options: {}, serviceDir: null });
+      serverless.service.provider.stage = 'prod';
+      const provider = new AwsProvider(serverless, { stage: '' });
+
+      expect(() => provider.getStage())
+        .to.throw(ServerlessError)
+        .and.have.property('code', 'INVALID_STAGE');
     });
   });
 

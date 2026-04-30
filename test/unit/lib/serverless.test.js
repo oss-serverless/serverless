@@ -119,6 +119,32 @@ describe('Serverless', () => {
     it('should store the Error class inside the classes object', () => {
       expect(serverless.classes.Error).to.deep.equal(ServerlessError);
     });
+
+    it('should reject invalid CLI stage', () => {
+      expect(
+        () =>
+          new Serverless({
+            commands: ['print'],
+            options: { stage: 'foo/bar' },
+            serviceDir: null,
+          })
+      )
+        .to.throw(ServerlessError)
+        .and.have.property('code', 'INVALID_STAGE');
+    });
+
+    it('should reject empty CLI stage', () => {
+      expect(
+        () =>
+          new Serverless({
+            commands: ['print'],
+            options: { stage: null },
+            serviceDir: null,
+          })
+      )
+        .to.throw(ServerlessError)
+        .and.have.property('code', 'INVALID_STAGE');
+    });
   });
 
   describe('#init()', () => {

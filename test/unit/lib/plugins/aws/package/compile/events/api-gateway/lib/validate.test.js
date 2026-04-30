@@ -1532,11 +1532,7 @@ describe('#validate()', () => {
     };
     expect(() => awsCompileApigEvents.validate()).to.throw(
       ServerlessError,
-      [
-        'Invalid stage name my@stage: it should contains only [-_a-zA-Z0-9]',
-        'for AWS provider if http event are present',
-        'according to API Gateway limitation.',
-      ].join(' ')
+      'Invalid stage name. Stage names may contain only ASCII letters, numbers, and hyphens.'
     );
   });
 

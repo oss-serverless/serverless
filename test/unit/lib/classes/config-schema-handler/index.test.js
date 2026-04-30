@@ -9,6 +9,7 @@ const {
 
 const expect = chai.expect;
 const FUNCTION_NAME_PATTERN = '^[a-zA-Z0-9-_]+$';
+const STAGE_NAME_PATTERN = require('../../../../../lib/utils/stage-pattern');
 
 describe('test/unit/lib/classes/ConfigSchemaHandler/index.test.js', () => {
   describe('#constructor', () => {
@@ -359,7 +360,7 @@ describe('test/unit/lib/classes/ConfigSchemaHandler/index.test.js', () => {
           type: 'object',
           properties: {
             name: { const: 'someProvider' },
-            stage: { type: 'string' },
+            stage: { type: 'string', pattern: STAGE_NAME_PATTERN },
           },
           required: ['name'],
           additionalProperties: false,

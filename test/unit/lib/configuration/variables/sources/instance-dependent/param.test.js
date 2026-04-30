@@ -157,6 +157,21 @@ describe('test/unit/lib/configuration/variables/sources/instance-dependent/param
     );
   });
 
+  it('should report with an error when stage is invalid', async () => {
+    const { variablesMeta } = await runServerless({
+      stage: 'foo/bar',
+      stageParameters: {
+        default: {
+          bucket: 'fallback-bucket',
+        },
+      },
+    });
+
+    expect(variablesMeta.get('provider\0deploymentBucket').error.code).to.equal(
+      'VARIABLE_RESOLUTION_ERROR'
+    );
+  });
+
   it('should still resolve variables when no Serverless instance is available', async () => {
     const { variablesMeta } = await runServerless({
       cliParameters: ['timeout=10'],
