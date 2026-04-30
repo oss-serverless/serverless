@@ -31,13 +31,17 @@ describe('test/unit/lib/utils/validate-stage.test.js', () => {
     '../prod',
   ]) {
     it(`rejects invalid string stage ${JSON.stringify(stage)}`, () => {
-      expect(() => validateStage(stage)).to.throw().and.have.property('code', 'INVALID_STAGE');
+      expect(() => validateStage(stage))
+        .to.throw()
+        .and.have.property('code', 'INVALID_STAGE');
     });
   }
 
   for (const stage of [true, false, 123, 0, null, undefined, ['dev', 'prod'], { value: 'dev' }]) {
     it(`rejects non-string stage ${JSON.stringify(stage)}`, () => {
-      expect(() => validateStage(stage)).to.throw().and.have.property('code', 'INVALID_STAGE');
+      expect(() => validateStage(stage))
+        .to.throw()
+        .and.have.property('code', 'INVALID_STAGE');
     });
   }
 
