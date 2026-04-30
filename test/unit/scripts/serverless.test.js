@@ -181,9 +181,11 @@ describe('test/unit/scripts/serverless.test.js', () => {
       },
     });
     await fsp.writeFile(path.resolve(serviceDir, '.env'), 'DEFAULT_ENV_VARIABLE=valuefromdefault');
-    expect(
-      String((await spawn('node', [serverlessPath, 'print'], { cwd: serviceDir })).stdoutBuffer)
-    ).to.include('fromDefaultEnv: valuefromdefault');
+    const printOut = String(
+      (await spawn('node', [serverlessPath, 'print'], { cwd: serviceDir })).stdoutBuffer
+    );
+    expect(printOut).to.include('fromDefaultEnv: valuefromdefault');
+    expect(printOut).to.not.match(/(?:injecting|injected) env \(\d+\) from \.env/);
   });
 
   it('should allow not defined environment variables in provider.stage`', async () => {

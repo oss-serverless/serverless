@@ -16,7 +16,9 @@ With that option enabled, `.env` files will also be excluded from the package in
 
 ## Support for `.env` files
 
-The framework looks for `.env` and `.env.{stage}` files in service directory and then tries to load them using `dotenv`. If `.env.{stage}` is found, `.env` will not be loaded. If stage is not explicitly defined, it defaults to `dev`.
+The framework loads `.env.{stage}` from the service directory when present; otherwise it falls back to `.env`. If stage is not explicitly defined, it defaults to `dev`. Invalid stage names are rejected before `.env.{stage}` is read.
+
+Serverless loads `.env` files quietly by default. Avoid `DOTENV_CONFIG_DEBUG=true` or `DOTENV_CONFIG_QUIET=false` when using machine-readable commands such as `serverless print`, or when Serverless is invoked through Compose, because those dotenv options can write runtime loading messages to stdout.
 
 ### Variable expansion
 
