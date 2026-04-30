@@ -1046,7 +1046,8 @@ describe('zipService', () => {
           stat: fileHandle.stat.bind(fileHandle),
           createReadStream: () => {
             const readStream = new PassThrough();
-            process.nextTick(() => readStream.emit('error', new Error('stream failed')));
+            readStream.once('error', () => fileHandle.close().catch(() => {}));
+            process.nextTick(() => readStream.destroy(new Error('stream failed')));
             return readStream;
           },
           close: fileHandle.close.bind(fileHandle),
