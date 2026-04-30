@@ -10,6 +10,7 @@ const normalizeFiles = require('../../../../../../../lib/plugins/aws/lib/normali
 const AwsProvider = require('../../../../../../../lib/plugins/aws/provider');
 const AwsDeploy = require('../../../../../../../lib/plugins/aws/deploy/index');
 const Serverless = require('../../../../../../../lib/serverless');
+const { progress } = require('../../../../../../../lib/utils/serverless-utils/log');
 const { createTmpDir, ensureFileSync, getTmpDirPath } = require('../../../../../../utils/fs');
 const runServerless = require('../../../../../../utils/run-serverless');
 
@@ -57,6 +58,22 @@ describe('uploadArtifacts', () => {
   });
 
   afterEach(() => sinon.restore());
+
+  it('should format single artifact upload progress with the shared filesize helper', async () => {
+    const noticeStub = sinon.stub(progress.get('main'), 'notice');
+
+    sinon.stub(awsDeploy, 'getFunctionArtifactFilePaths').resolves(['artifact.zip']);
+    sinon.stub(awsDeploy, 'getLayerArtifactFilePaths').returns([]);
+    sinon.stub(awsDeploy, 'getFileStats').resolves({ size: 1123 });
+    sinon.stub(awsDeploy, 'uploadCloudFormationFile').resolves();
+    sinon.stub(awsDeploy, 'uploadStateFile').resolves();
+    sinon.stub(awsDeploy, 'uploadFunctionsAndLayers').resolves();
+    sinon.stub(awsDeploy, 'uploadCustomResources').resolves();
+
+    await awsDeploy.uploadArtifacts();
+
+    expect(noticeStub).to.have.been.calledWithExactly('Uploading (1.1 kB)');
+  });
 
   describe('#uploadCloudFormationFile()', () => {
     let normalizeCloudFormationTemplateStub;

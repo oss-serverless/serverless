@@ -4,6 +4,10 @@ const { expect } = require('chai');
 const filesize = require('../../../../lib/utils/filesize');
 
 describe('test/unit/lib/utils/filesize.test.js', () => {
+  it('should display zero bytes', () => {
+    expect(filesize(0)).to.equal('0 B');
+  });
+
   it('should display sizes below 1kb literally', () => {
     expect(filesize(1)).to.equal('1 B');
     expect(filesize(10)).to.equal('10 B');
@@ -38,5 +42,26 @@ describe('test/unit/lib/utils/filesize.test.js', () => {
     expect(filesize(9234949)).to.equal('9 MB');
     expect(filesize(12348484848)).to.equal('12 GB');
     expect(filesize(9349493432)).to.equal('9 GB');
+  });
+
+  it('should roll rounded values into the next unit', () => {
+    expect(filesize(999.5)).to.equal('1 kB');
+    expect(filesize(999499)).to.equal('999 kB');
+    expect(filesize(999500)).to.equal('1 MB');
+    expect(filesize(999999)).to.equal('1 MB');
+    expect(filesize(999499999)).to.equal('999 MB');
+    expect(filesize(999500000)).to.equal('1 GB');
+  });
+
+  it('should support larger decimal units', () => {
+    expect(filesize(1000 * 1000 * 1000 * 1000)).to.equal('1 TB');
+    expect(filesize(1e24)).to.equal('1 YB');
+    expect(filesize(1e27)).to.equal('1000 YB');
+  });
+
+  it('should reject invalid sizes', () => {
+    for (const size of [-1, NaN, Infinity, 'invalid', null, undefined]) {
+      expect(() => filesize(size)).to.throw(TypeError);
+    }
   });
 });
