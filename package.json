@@ -41,7 +41,6 @@
     "cachedir": "^2.3.0",
     "content-disposition": "^0.5.4",
     "cross-spawn": "^7.0.6",
-    "d": "^1.0.1",
     "dayjs": "^1.11.8",
     "dotenv": "^17.4.2",
     "dotenv-expand": "^13.0.0",

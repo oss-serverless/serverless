@@ -553,6 +553,31 @@ describe('AwsProvider', () => {
   });
 
   describe('#getAccountInfo()', () => {
+    it('defines memoized provider methods as lazy non-enumerable descriptors', () => {
+      const protoDescriptor = Object.getOwnPropertyDescriptor(
+        AwsProvider.prototype,
+        'getAccountInfo'
+      );
+
+      expect(protoDescriptor).to.include({ enumerable: false, configurable: true });
+      expect(protoDescriptor.get).to.be.a('function');
+      expect(Object.prototype.hasOwnProperty.call(awsProvider, 'getAccountInfo')).to.equal(false);
+
+      const method = awsProvider.getAccountInfo;
+
+      expect(awsProvider.getAccountInfo).to.equal(method);
+      expect(Object.prototype.hasOwnProperty.call(awsProvider, 'getAccountInfo')).to.equal(true);
+
+      const ownDescriptor = Object.getOwnPropertyDescriptor(awsProvider, 'getAccountInfo');
+
+      expect(ownDescriptor).to.include({
+        enumerable: false,
+        configurable: true,
+        writable: true,
+      });
+      expect(ownDescriptor.value).to.equal(method);
+    });
+
     it('should return the AWS account id and partition', async () => {
       const accountId = '12345678';
       const partition = 'aws';
@@ -570,6 +595,28 @@ describe('AwsProvider', () => {
         expect(result.partition).to.equal(partition);
         awsProvider.request.restore();
       });
+    });
+
+    it('memoizes successful promise results', async () => {
+      const requestStub = sinon.stub(awsProvider, 'request');
+
+      requestStub.resolves({
+        ResponseMetadata: { RequestId: '12345678-1234-1234-1234-123456789012' },
+        UserId: 'ABCDEFGHIJKLMNOPQRSTU:VWXYZ',
+        Account: '12345678',
+        Arn: 'arn:aws:sts::123456789012:assumed-role/ROLE-NAME/VWXYZ',
+      });
+
+      try {
+        const firstResult = await awsProvider.getAccountInfo();
+        const secondResult = await awsProvider.getAccountInfo();
+
+        expect(firstResult.accountId).to.equal('12345678');
+        expect(secondResult).to.equal(firstResult);
+        expect(requestStub).to.have.been.calledOnce;
+      } finally {
+        awsProvider.request.restore();
+      }
     });
   });
 

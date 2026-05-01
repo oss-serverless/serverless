@@ -27,4 +27,20 @@ describe('serverless-utils/log', () => {
     expect(typeof writers.writeText).to.equal('function');
     expect(typeof writers.progress.get('upload').notice).to.equal('function');
   });
+
+  it('exposes runtime flags as non-enumerable accessors', () => {
+    for (const name of ['logLevelIndex', 'isVerboseMode', 'isInteractive']) {
+      const descriptor = Object.getOwnPropertyDescriptor(logModule, name);
+
+      expect(descriptor).to.include({ enumerable: false, configurable: true });
+      expect(descriptor.get).to.be.a('function');
+      expect(descriptor).to.not.have.property('value');
+    }
+
+    expect(Object.keys(logModule)).to.not.include.members([
+      'logLevelIndex',
+      'isVerboseMode',
+      'isInteractive',
+    ]);
+  });
 });

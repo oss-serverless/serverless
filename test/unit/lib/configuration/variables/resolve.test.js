@@ -568,6 +568,37 @@ describe('test/unit/lib/configuration/variables/resolve.test.js', () => {
     });
   });
 
+  it('should memoize identical source resolutions within one batch', async () => {
+    const configuration = {
+      first: '${counted(foo)}',
+      second: '${counted(foo)}',
+    };
+    const variablesMeta = resolveMeta(configuration);
+    let callCount = 0;
+
+    await resolve({
+      serviceDir: process.cwd(),
+      configuration,
+      variablesMeta,
+      sources: {
+        counted: {
+          resolve: ({ params }) => {
+            ++callCount;
+            return { value: `value:${params[0]}` };
+          },
+        },
+      },
+      options: {},
+      fulfilledSources: new Set(),
+    });
+
+    expect(configuration).to.deep.equal({
+      first: 'value:foo',
+      second: 'value:foo',
+    });
+    expect(callCount).to.equal(1);
+  });
+
   describe('Partial resolution', () => {
     const configuration = {
       static: true,
