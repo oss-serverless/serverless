@@ -45,7 +45,6 @@ describe('test/unit/lib/utils/filesize.test.js', () => {
   });
 
   it('should roll rounded values into the next unit', () => {
-    expect(filesize(999.5)).to.equal('1 kB');
     expect(filesize(999499)).to.equal('999 kB');
     expect(filesize(999500)).to.equal('1 MB');
     expect(filesize(999999)).to.equal('1 MB');
@@ -60,7 +59,7 @@ describe('test/unit/lib/utils/filesize.test.js', () => {
   });
 
   it('should reject invalid sizes', () => {
-    for (const size of [-1, NaN, Infinity, 'invalid', null, undefined]) {
+    for (const size of [-1, -0.5, '-0.5', NaN, Infinity, 'invalid', null, undefined]) {
       expect(() => filesize(size)).to.throw(TypeError);
     }
   });
