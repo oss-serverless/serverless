@@ -17,6 +17,7 @@ describe('serverless-utils/download', () => {
   let nestedZipBuffer;
   let traversalZipBuffer;
   let traversalFileName;
+  let unsafeDispositionFileName;
   let tmpDir;
 
   before(async () => {
@@ -29,6 +30,7 @@ describe('serverless-utils/download', () => {
     nestedZipBuffer = nestedZip.toBuffer();
 
     traversalFileName = `serverless-download-${Date.now()}-evil.txt`;
+    unsafeDispositionFileName = `serverless-download-${Date.now()}-unsafe.txt`;
     const traversalZip = new AdmZip();
     traversalZip.addFile(`xx/${traversalFileName}`, Buffer.from('evil'));
     traversalZipBuffer = traversalZip.toBuffer();
@@ -50,6 +52,16 @@ describe('serverless-utils/download', () => {
         res.statusCode = 200;
         res.setHeader('Content-Disposition', 'attachment; filename="from-header.zip"');
         res.end(zipBuffer);
+        return;
+      }
+
+      if (req.url === '/unsafe-content-disposition') {
+        res.statusCode = 200;
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename="../${unsafeDispositionFileName}"`
+        );
+        res.end(Buffer.from('unsafe payload'));
         return;
       }
 
@@ -170,6 +182,34 @@ describe('serverless-utils/download', () => {
 
     expect(await fsp.readFile(filePath, 'utf8')).to.equal('plain text payload');
     expect(await pathExists(path.join(tmpDir, 'unknown-payload.txt'))).to.equal(false);
+  });
+
+  it('sanitizes content-disposition filenames before saving downloads', async () => {
+    await download(`${baseUrl}/unsafe-content-disposition`, tmpDir);
+
+    expect(await pathExists(path.join(path.dirname(tmpDir), unsafeDispositionFileName))).to.equal(
+      false
+    );
+
+    const entries = await fsp.readdir(tmpDir, { withFileTypes: true });
+    expect(entries).to.have.lengthOf(1);
+    expect(entries[0].isFile()).to.equal(true);
+    expect(await fsp.readFile(path.join(tmpDir, entries[0].name), 'utf8')).to.equal(
+      'unsafe payload'
+    );
+  });
+
+  it('sanitizes explicit filenames before saving downloads', async () => {
+    await download(`${baseUrl}/unknown-payload`, tmpDir, {
+      filename: '<foo/bar>.txt',
+    });
+
+    const entries = await fsp.readdir(tmpDir, { withFileTypes: true });
+    expect(entries).to.have.lengthOf(1);
+    expect(entries[0].isFile()).to.equal(true);
+    expect(await fsp.readFile(path.join(tmpDir, entries[0].name), 'utf8')).to.equal(
+      'plain text payload'
+    );
   });
 
   it('extracts an opaque archive URL when extract is enabled', async () => {
