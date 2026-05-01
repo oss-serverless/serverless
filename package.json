@@ -59,7 +59,7 @@
     "mime-types": "^3.0.2",
     "module-alias": "^2.2.3",
     "object-hash": "^3.0.0",
-    "open": "^8.4.2",
+    "open": "^11.0.0",
     "punycode": "^2.3.1",
     "require-from-string": "^2.0.2",
     "semver": "^7.5.3",
