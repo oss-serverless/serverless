@@ -624,7 +624,7 @@ describe('#validate()', () => {
     });
   });
 
-  it('should handle expicit methods', () => {
+  it('should handle explicit methods', () => {
     awsCompileApigEvents.serverless.service.functions = {
       first: {
         events: [

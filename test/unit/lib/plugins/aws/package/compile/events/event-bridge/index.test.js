@@ -243,12 +243,12 @@ describe('EventBridgeEvents', () => {
       expect(eventBridgeConfig.State).to.be.eq('ENABLED');
     });
 
-    it('should ensure state is enabled when explicity set', () => {
+    it('should ensure state is enabled when explicitly set', () => {
       const eventBridgeConfig = getEventBridgeConfigById('enabled');
       expect(eventBridgeConfig.State).to.be.eq('ENABLED');
     });
 
-    it('should ensure state is disabled when explicity set', () => {
+    it('should ensure state is disabled when explicitly set', () => {
       const eventBridgeConfig = getEventBridgeConfigById('disabled');
       expect(eventBridgeConfig.State).to.be.eq('DISABLED');
     });

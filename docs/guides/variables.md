@@ -97,7 +97,7 @@ In the above example you're setting a global schedule for all functions by refer
 
 ## Referencing Serverless Core Variables
 
-Serverless initializes core variables which are used internally by the Framework itself. Those values are exposed via the Serverless Variables system and can be re-used with the `{sls:}` variable prefix.
+Serverless initializes core variables which are used internally by the Framework itself. Those values are exposed via the Serverless Variables system and can be reused with the `{sls:}` variable prefix.
 
 The following variables are available:
 

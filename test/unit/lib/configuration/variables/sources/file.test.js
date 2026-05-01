@@ -130,7 +130,7 @@ describe('test/unit/lib/configuration/variables/sources/file.test.js', () => {
     expect(configuration.inheritedConstructorAddress).to.equal(null);
   });
 
-  it('should uncoditionally split "address" property keys by "."', () =>
+  it('should unconditionally split "address" property keys by "."', () =>
     expect(configuration.ambiguousAddress).to.equal('object'));
 
   it('should report with null non existing files', () =>
@@ -149,15 +149,15 @@ describe('test/unit/lib/configuration/variables/sources/file.test.js', () => {
 
   it('should resolve plain text content on unrecognized extension', () =>
     // .trim() as depending on local .git settings and OS (Windows or other)
-    // checked out fixture may end with differen type of EOL (\n on linux, and \r\n on Windows)
+    // checked out fixture may end with different type of EOL (\n on linux, and \r\n on Windows)
     expect(configuration.nonStandardExt.trim()).to.equal('result: non-standard'.trim()));
 
-  it('should mark as unresolved if function crashes with misisng property dependency', () => {
+  it('should mark as unresolved if function crashes with missing property dependency', () => {
     const propertyMeta = variablesMeta.get('jsFileFunctionAccessUnresolvableProperty');
     if (propertyMeta.error) throw propertyMeta.error;
     expect(propertyMeta).to.have.property('variables');
   });
-  it('should mark as unresolved if property function crashes with misisng property dependency', () => {
+  it('should mark as unresolved if property function crashes with missing property dependency', () => {
     const propertyMeta = variablesMeta.get('jsFilePropertyFunctionAccessUnresolvableProperty');
     if (propertyMeta.error) throw propertyMeta.error;
     expect(propertyMeta).to.have.property('variables');

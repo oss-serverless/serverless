@@ -184,7 +184,7 @@ describe('test/unit/lib/configuration/variables/parse.test.js', () => {
       ]));
 
     // ${type(param), true}
-    it('should support bolean "true" as a fallback source', () =>
+    it('should support boolean "true" as a fallback source', () =>
       expect(parse('${type(param), true}')).to.deep.equal([
         {
           sources: [{ type: 'type', params: [{ value: 'param' }] }, { value: true }],
@@ -192,7 +192,7 @@ describe('test/unit/lib/configuration/variables/parse.test.js', () => {
       ]));
 
     // ${type(param), false }
-    it('should support bolean "false" as a fallback source', () =>
+    it('should support boolean "false" as a fallback source', () =>
       expect(parse('${type(param), false }')).to.deep.equal([
         {
           sources: [{ type: 'type', params: [{ value: 'param' }] }, { value: false }],

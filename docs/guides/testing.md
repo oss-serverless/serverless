@@ -73,7 +73,7 @@ module.exports.saveUser = async (event) => {
 };
 ```
 
-Now, the above class keeps business logic separate. Further, the code responsible for setting up dependencies, injecting them, calling business logic functions and interacting with AWS Lambda is in its own file, which will be changed less often. This way, the business logic is not provider dependent, easier to re-use, and easier to test.
+Now, the above class keeps business logic separate. Further, the code responsible for setting up dependencies, injecting them, calling business logic functions and interacting with AWS Lambda is in its own file, which will be changed less often. This way, the business logic is not provider dependent, easier to reuse, and easier to test.
 
 Further, this code doesn't require running any external services. Instead of real `db` and `mailer` services, we can pass mocks and assert that `db.saveUser` and `mailer.sendWelcomeEmail` have been called with the proper arguments.
 

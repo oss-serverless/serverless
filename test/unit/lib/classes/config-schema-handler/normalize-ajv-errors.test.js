@@ -367,7 +367,7 @@ describe('#normalizeAjvErrors', () => {
           })
         ).to.be.true
     );
-    it('should report the duplicated erorr message if more than one dependency is missing only once', () => {
+    it('should report the duplicated error message if more than one dependency is missing only once', () => {
       const depsErrors = errors.filter((item) => item.keyword === 'dependencies');
       expect(depsErrors).to.have.lengthOf(1);
       depsErrors[0].isExpected = true;

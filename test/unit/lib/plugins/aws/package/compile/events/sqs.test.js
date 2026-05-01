@@ -89,7 +89,7 @@ describe('test/unit/lib/plugins/aws/package/compile/events/sqs.test.js', () => {
       iamRoleLambdaExecution = cfTemplate.Resources.IamRoleLambdaExecution;
     });
 
-    it('should suport direct ARN string', () => {
+    it('should support direct ARN string', () => {
       const directSqsArn = 'arn:aws:sqs:region:account:MyQueue';
       expect(directArnEventSourceMappingResource.Properties.EventSourceArn).to.equal(directSqsArn);
     });
@@ -99,21 +99,21 @@ describe('test/unit/lib/plugins/aws/package/compile/events/sqs.test.js', () => {
       expect(basicEventSourceMappingResource.Properties.EventSourceArn).to.equal(basicSqsArn);
     });
 
-    it('should suport `arn` (CF Fn::GetAtt)', () => {
+    it('should support `arn` (CF Fn::GetAtt)', () => {
       const getAttSqsArn = { 'Fn::GetAtt': ['SomeQueue', 'Arn'] };
       expect(
         arnCfGetAttEventSourceMappingResource.Properties.EventSourceArn['Fn::GetAtt']
       ).to.deep.equal(getAttSqsArn['Fn::GetAtt']);
     });
 
-    it('should suport `arn` (CF Fn::ImportValue)', () => {
+    it('should support `arn` (CF Fn::ImportValue)', () => {
       const cfImportArn = { 'Fn::ImportValue': 'ForeignQueue' };
       expect(
         arnCfImportEventSourceMappingResource.Properties.EventSourceArn['Fn::ImportValue']
       ).to.deep.equal(cfImportArn['Fn::ImportValue']);
     });
 
-    it('should suport `arn` (CF Fn::Join)', () => {
+    it('should support `arn` (CF Fn::Join)', () => {
       const cfJoinArn = {
         'Fn::Join': [
           ':',
@@ -136,12 +136,12 @@ describe('test/unit/lib/plugins/aws/package/compile/events/sqs.test.js', () => {
       ).to.deep.equal(cfJoinArn['Fn::Join']);
     });
 
-    it('should suport `batchSize`', () => {
+    it('should support `batchSize`', () => {
       const requestedBatchSize = 10;
       expect(basicEventSourceMappingResource.Properties.BatchSize).to.equal(requestedBatchSize);
     });
 
-    it('should suport `functionResponseType`', () => {
+    it('should support `functionResponseType`', () => {
       const requestedFunctionResponseType = 'ReportBatchItemFailures';
       expect(basicEventSourceMappingResource.Properties.FunctionResponseTypes).to.include.members([
         requestedFunctionResponseType,

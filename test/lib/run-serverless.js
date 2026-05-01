@@ -197,7 +197,7 @@ module.exports = async (
           );
 
           if (hooks.before) await hooks.before(Serverless, { cwd: confirmedCwd });
-          // Intialize serverless instances in preconfigured environment
+          // Initialize serverless instances in preconfigured environment
           const configurationPath = await resolveConfigurationPath();
           const configuration = configurationPath
             ? await readConfiguration(configurationPath)

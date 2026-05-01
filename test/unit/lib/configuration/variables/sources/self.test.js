@@ -49,7 +49,7 @@ describe('test/unit/lib/configuration/variables/sources/self.test.js', () => {
     });
   });
 
-  it('should reject cicular reference', async () => {
+  it('should reject circular reference', async () => {
     const configuration = { foo: '${self:}' };
     const variablesMeta = resolveMeta(configuration);
     await resolve({

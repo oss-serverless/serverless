@@ -319,7 +319,7 @@ describe('#yamlAstParser', () => {
 
     it('should do nothing when you can not find the object which you specify', () => {
       const yamlContent = {
-        serveice: 'test-service',
+        service: 'test-service',
         toplevel: ['foo', 'bar'],
       };
 

@@ -330,7 +330,7 @@ functions:
               - X-Amz-User-Agent
               - X-Amzn-Trace-Id
             allowCredentials: false
-            # Caches on browser and proxy for 10 minutes and doesnt allow proxy to serve out of date content
+            # Caches on browser and proxy for 10 minutes and doesn't allow proxy to serve out of date content
             cacheControl: 'max-age=600, s-maxage=600, proxy-revalidate'
 ```
 

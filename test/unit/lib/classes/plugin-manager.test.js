@@ -252,7 +252,7 @@ describe('PluginManager', () => {
           type: 'entrypoint',
           lifecycleEvents: ['initialize', 'finalize'],
           commands: {
-            // EP, not public command because its parent is decalred as EP
+            // EP, not public command because its parent is declared as EP
             mysubep: {
               lifecycleEvents: ['initialize', 'finalize'],
             },
@@ -560,7 +560,7 @@ describe('PluginManager', () => {
       expect(pluginManager.plugins[0]).to.be.an.instanceOf(Plugin);
     });
 
-    it('should add service related plugins when provider propery is provider plugin', () => {
+    it('should add service related plugins when provider property is provider plugin', () => {
       pluginManager.serverless.service.provider.name = 'someProvider';
       class ProviderPlugin {
         static getProviderName() {
@@ -842,7 +842,7 @@ describe('PluginManager', () => {
         const synchronousPluginMockInstance = new SynchronousPluginMock();
         pluginManager.loadCommands(synchronousPluginMockInstance);
         expect(() => pluginManager.createCommandAlias('deploy', 'mycmd')).to.throw(
-          /Command "deploy" cannot be overriden/
+          /Command "deploy" cannot be overridden/
         );
       });
 
@@ -850,7 +850,7 @@ describe('PluginManager', () => {
         const synchronousPluginMockInstance = new SynchronousPluginMock();
         synchronousPluginMockInstance.commands.deploy.commands.onpremises.aliases = ['deploy'];
         expect(() => pluginManager.loadCommands(synchronousPluginMockInstance)).to.throw(
-          /Command "deploy" cannot be overriden/
+          /Command "deploy" cannot be overridden/
         );
       });
     });

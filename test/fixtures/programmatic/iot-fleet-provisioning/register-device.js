@@ -13,8 +13,8 @@ const createDeferred = () => {
   return { promise, resolve, reject };
 };
 
-const subscribe = (fn, deffered, options) => {
-  const { resolve, reject } = deffered;
+const subscribe = (fn, deferred, options) => {
+  const { resolve, reject } = deferred;
   const { channelName, isRejectionChannel } = Object.assign(
     {
       channelName: 'DefaultChannel',
@@ -42,14 +42,14 @@ const executeKeys = async (identity) => {
 
   const keysSubRequest = {};
 
-  const createKeysAndCertificateDefferedMessage = createDeferred();
+  const createKeysAndCertificateDeferredMessage = createDeferred();
   const createKeysAndCertificateAcceptedChannelSubscription = subscribe(
     identity.subscribeToCreateKeysAndCertificateAccepted.bind(
       identity,
       keysSubRequest,
       mqtt.QoS.AtLeastOnce
     ),
-    createKeysAndCertificateDefferedMessage,
+    createKeysAndCertificateDeferredMessage,
     { channelName: 'CreateKeysAndCertificateAcceptedChannel', isRejectionChannel: false }
   );
   const createKeysAndCertificateRejectedChannelSubscription = subscribe(
@@ -58,7 +58,7 @@ const executeKeys = async (identity) => {
       keysSubRequest,
       mqtt.QoS.AtLeastOnce
     ),
-    createKeysAndCertificateDefferedMessage,
+    createKeysAndCertificateDeferredMessage,
     { channelName: 'CreateKeysAndCertificateRejectedChannel', isRejectionChannel: true }
   );
 
@@ -76,21 +76,21 @@ const executeKeys = async (identity) => {
 
   await identity.publishCreateKeysAndCertificate(keysRequest, mqtt.QoS.AtLeastOnce);
 
-  return createKeysAndCertificateDefferedMessage.promise;
+  return createKeysAndCertificateDeferredMessage.promise;
 };
 
 const executeRegisterThing = async (identity, token) => {
   console.log('Subscribing to RegisterThing Accepted and Rejected topics..');
 
   const registerThingSubRequest = { templateName: process.env.TEMPLATE_NAME };
-  const registerThingDefferedMessage = createDeferred();
+  const registerThingDeferredMessage = createDeferred();
   const registerThingAcceptedChannelSubscription = subscribe(
     identity.subscribeToRegisterThingAccepted.bind(
       identity,
       registerThingSubRequest,
       mqtt.QoS.AtLeastOnce
     ),
-    registerThingDefferedMessage,
+    registerThingDeferredMessage,
     { channelName: 'RegisterThingAcceptedChannel', isRejectionChannel: false }
   );
   const registerThingRejectedChannelSubscription = subscribe(
@@ -99,7 +99,7 @@ const executeRegisterThing = async (identity, token) => {
       registerThingSubRequest,
       mqtt.QoS.AtLeastOnce
     ),
-    registerThingDefferedMessage,
+    registerThingDeferredMessage,
     { channelName: 'RegisterThingRejectedChannel', isRejectionChannel: true }
   );
 
@@ -117,7 +117,7 @@ const executeRegisterThing = async (identity, token) => {
   };
   await identity.publishRegisterThing(registerThing, mqtt.QoS.AtLeastOnce);
 
-  return registerThingDefferedMessage.promise;
+  return registerThingDeferredMessage.promise;
 };
 
 module.exports.main = async ({ iotEndpoint, certificatePem, privateKey }) => {

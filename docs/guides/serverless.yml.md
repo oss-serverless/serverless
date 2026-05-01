@@ -1051,7 +1051,7 @@ functions:
 
 ### Kafka
 
-[Kakfa events](../events/kafka.md):
+[Kafka events](../events/kafka.md):
 
 ```yaml
 functions:
@@ -1264,7 +1264,7 @@ functions:
           pattern:
             source:
               - saas.external
-      # Re-use an existing event bus
+      # Reuse an existing event bus
       - eventBridge:
           eventBus: arn:aws:events:us-east-1:12345:event-bus/custom-private-events
           pattern:

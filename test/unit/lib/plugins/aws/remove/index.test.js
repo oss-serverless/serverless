@@ -565,7 +565,7 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
     ).to.be.eventually.rejected.and.have.property('code', 'AWS_S3_LIST_OBJECTS_V2_ACCESS_DENIED');
   });
 
-  it('should throw an error when deleteObjects operation was not successfull', async () => {
+  it('should throw an error when deleteObjects operation was not successful', async () => {
     const innerDeleteObjectsStub = sinon.stub().resolves({
       Deleted: [],
       Errors: [
@@ -615,7 +615,7 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
     }
   });
 
-  it('should throw an error when deleteObjects operation was not successfull due to "AccessDenied"', async () => {
+  it('should throw an error when deleteObjects operation was not successful due to "AccessDenied"', async () => {
     const innerDeleteObjectsStub = sinon.stub().resolves({
       Deleted: [],
       Errors: [

@@ -1,7 +1,7 @@
 # How to run, organize and write tests?
 
 As framework deals with significant technical debt baggage many of currently configured tests do not
-resemble practise we want to follow in newly introduced tests.
+resemble practice we want to follow in newly introduced tests.
 
 Please follow this document as the only guideline, it also provides links to tests that serve as a good example to replicate
 
@@ -13,7 +13,7 @@ Tests are configured with [Mocha](https://mochajs.org/) test framework, and can 
 npm test
 ```
 
-All new tests should be configured with help of [runServerless](./utils/run-serverless.js) util - it's the only way to test functionality against completely intialized `serverless` instance, and it's the only scenario that reflects real world usage.
+All new tests should be configured with help of [runServerless](./utils/run-serverless.js) util - it's the only way to test functionality against completely initialized `serverless` instance, and it's the only scenario that reflects real world usage.
 
 The `runServerless` util (inlined from @serverless/test) is configured at `./utils/run-serverless.js` and supports two additional options (`fixture` and `configExt`), which provides out of a box setup to run _Serverless_ instance against prepared fixture with eventually extended service configuration
 
@@ -24,7 +24,7 @@ When creating a new test, it is an established practice to name the top-level de
 ### Existing test examples:
 
 - [Run against config passed inline](https://github.com/serverless/serverless/blob/73107822945a878abbdebe2309e8e9d87cc2858a/lib/plugins/aws/package/lib/generateCoreTemplate.test.js#L11-L14)
-- [Run against preprepared fixture](https://github.com/serverless/serverless/blob/74634c3317a116077a008375e20d6a5b99b1256e/lib/plugins/aws/package/compile/functions/index.test.js#L2605-L2608)
+- [Run against pre-prepared fixture](https://github.com/serverless/serverless/blob/74634c3317a116077a008375e20d6a5b99b1256e/lib/plugins/aws/package/compile/functions/index.test.js#L2605-L2608)
   - Fixtures can be [extended](https://github.com/serverless/serverless/blob/74634c3317a116077a008375e20d6a5b99b1256e/lib/plugins/aws/package/compile/events/httpApi/index.test.js#L95-L99) on spot. Whenever possible it's better to extend existing fixture (e.g. basic `function`) instead of creating new one (check [ALB health check tests](https://github.com/serverless/serverless/blob/80e70e7affd54418361c4d54bdef1561af6b8826/lib/plugins/aws/package/compile/events/alb/lib/healthCheck.test.js) for good example on such approach)
   - If needed introduce new test fixtures at [test/fixtures](./fixtures)
 
@@ -64,7 +64,7 @@ AWS_ACCESS_KEY_ID=XXX AWS_SECRET_ACCESS_KEY=xxx npx mocha test/integration/{chos
 
 Due to the fact that some of the tests require a bit more complex infrastructure setup which might be lengthy, two additional commands has been made available:
 
-- `integration-test-setup` - used for setting up all needed intrastructure dependencies
+- `integration-test-setup` - used for setting up all needed infrastructure dependencies
 - `integration-test-teardown` - used for tearing down the infrastructure setup by the above command
 
 Such tests take advantage of `isDependencyStackAvailable` util to check if all needed dependencies are ready. If not, it skips the given test suite.

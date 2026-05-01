@@ -106,7 +106,7 @@ describe('test/unit/lib/cli/parse-args.test.js', () => {
     delete parsedArgs['other-boolean'];
   });
 
-  it('should recognize mutliple aliases shortcut', async () => {
+  it('should recognize multiple aliases shortcut', async () => {
     expect(parsedArgs.b).to.equal(true);
     expect(parsedArgs.c).to.equal(true);
     delete parsedArgs.b;
@@ -144,7 +144,7 @@ describe('test/unit/lib/cli/parse-args.test.js', () => {
     parseArgs(['--boolean=value', '-h'], { boolean: new Set(['boolean']) });
   });
 
-  it('should reject value for mutliple boolean properties alias', () =>
+  it('should reject value for multiple boolean properties alias', () =>
     expect(() => parseArgs(['-ab=foo'], {}))
       .to.throw(ServerlessError)
       .with.property('code', 'UNEXPECTED_CLI_PARAM_VALUE'));

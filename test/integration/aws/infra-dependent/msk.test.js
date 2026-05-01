@@ -31,7 +31,7 @@ describe('AWS - MSK Integration Test', function () {
 
     const outputMap = await getDependencyStackOutputMap();
 
-    log.notice('Getting MSK Boostrap Brokers URLs...');
+    log.notice('Getting MSK Bootstrap Brokers URLs...');
     const getBootstrapBrokersResponse = await awsRequest(KafkaService, 'getBootstrapBrokers', {
       ClusterArn: outputMap.get('MSKCluster'),
     });

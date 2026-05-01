@@ -1902,7 +1902,7 @@ describe('#compileMethods()', () => {
 
 describe('#compileMethods v2()', () => {
   describe('request configuration', () => {
-    it('should delete the default "application/x-www-form-urlencoded" template if it\'s overriden with null', async () => {
+    it('should delete the default "application/x-www-form-urlencoded" template if it\'s overridden with null', async () => {
       const {
         awsNaming,
         cfTemplate: { Resources: cfResources },

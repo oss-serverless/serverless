@@ -546,7 +546,7 @@ describe('downloadTemplateFromRepo', () => {
       }
     });
 
-    it('should parse a valid GitHub Entreprise URL', async () => {
+    it('should parse a valid GitHub Enterprise URL', async () => {
       return expect(
         parseRepoURL('https://github.mydomain.com/serverless/serverless')
       ).to.be.fulfilled.then((output) => {
@@ -563,7 +563,7 @@ describe('downloadTemplateFromRepo', () => {
       });
     });
 
-    it('should parse a valid GitHub Entreprise with subdirectory', async () => {
+    it('should parse a valid GitHub Enterprise with subdirectory', async () => {
       return expect(
         parseRepoURL('https://github.mydomain.com/serverless/serverless/tree/master/assets')
       ).to.be.fulfilled.then((output) => {
@@ -586,7 +586,7 @@ describe('downloadTemplateFromRepo', () => {
       ).to.be.eventually.rejected.and.have.property('code', 'INVALID_TEMPLATE_URL');
     });
 
-    it('should parse a valid GitHub Entreprise URL with authentication', async () => {
+    it('should parse a valid GitHub Enterprise URL with authentication', async () => {
       return expect(
         parseRepoURL('https://username:password@github.com/serverless/serverless/')
       ).to.be.fulfilled.then((output) => {

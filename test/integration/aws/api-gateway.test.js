@@ -208,7 +208,7 @@ describe('AWS - API Gateway Integration Test', function () {
     });
 
     it('should update the stage without service interruptions', async () => {
-      // re-using the endpoint from the "minimal" test case
+      // reusing the endpoint from the "minimal" test case
       const testEndpoint = `${endpoint}`;
 
       return confirmCloudWatchLogs(

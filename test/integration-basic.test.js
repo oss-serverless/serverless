@@ -14,7 +14,7 @@ const { ensureDirSync, getTmpDirPath } = require('./utils/fs');
 
 const serverlessExec = require('./serverless-binary');
 
-describe('Service Lifecyle Integration Test', function () {
+describe('Service Lifecycle Integration Test', function () {
   this.timeout(1000 * 60 * 10); // Involves time-taking deploys
   const tmpDir = getTmpDirPath();
   const templatePath = path.resolve(__dirname, 'fixtures/programmatic/basic-lifecycle-nodejs24');

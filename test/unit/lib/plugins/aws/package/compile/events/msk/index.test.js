@@ -119,7 +119,7 @@ describe('AwsCompileMSKEvents', () => {
       expect(allParamsEventSourceMappingResource.DependsOn).to.include('IamRoleLambdaExecution');
     });
 
-    it('should correctly complie EventSourceMapping resource with all parameters', () => {
+    it('should correctly compile EventSourceMapping resource with all parameters', () => {
       expect(allParamsEventSourceMappingResource.Properties).to.deep.equal({
         BatchSize: batchSize,
         MaximumBatchingWindowInSeconds: maximumBatchingWindow,

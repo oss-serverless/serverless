@@ -220,7 +220,7 @@ describe('test/unit/lib/configuration/read.test.js', () => {
     );
   });
 
-  it('should reject JS intialization error', async () => {
+  it('should reject JS initialization error', async () => {
     configurationPath = 'serverless-errored.js';
     await fsp.writeFile(configurationPath, 'throw new Error("Stop!")');
     await expect(readConfiguration(configurationPath)).to.eventually.be.rejected.and.have.property(
