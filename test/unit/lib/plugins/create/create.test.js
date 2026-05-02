@@ -2,6 +2,7 @@
 
 const http = require('http');
 const fsp = require('fs').promises;
+const os = require('os');
 const path = require('path');
 const AdmZip = require('adm-zip');
 const proxyquire = require('proxyquire');
@@ -14,13 +15,13 @@ const { expect } = require('chai');
 
 const fixturesPath = path.resolve(__dirname, '../../../../fixtures/programmatic');
 
-const loadCreate = ({ downloadTemplateFromRepoStub, dirExistsSyncStub } = {}) => {
+const loadCreate = ({ downloadTemplateFromRepoStub, dirExistsSyncStub, untildifyStub } = {}) => {
   const noticeStub = sinon.stub();
   noticeStub.success = sinon.stub();
   const copyDirContentsSyncStub = sinon.stub();
   const renameServiceStub = sinon.stub();
 
-  const Create = proxyquire.noCallThru().load('../../../../../lib/plugins/create/create', {
+  const stubs = {
     '../../utils/download-template-from-repo': {
       downloadTemplateFromRepo: downloadTemplateFromRepoStub || sinon.stub(),
     },
@@ -40,7 +41,10 @@ const loadCreate = ({ downloadTemplateFromRepoStub, dirExistsSyncStub } = {}) =>
         aside: () => '',
       },
     },
-  });
+  };
+  if (untildifyStub) stubs['../../utils/untildify'] = untildifyStub;
+
+  const Create = proxyquire.noCallThru().load('../../../../../lib/plugins/create/create', stubs);
 
   return {
     Create,
@@ -294,6 +298,62 @@ describe('test/unit/lib/plugins/create/create.test.js', () => {
       );
     });
 
+    it('should expand a home-relative local template path before copying', async () => {
+      const { Create, copyDirContentsSyncStub, noticeSuccessStub, renameServiceStub } =
+        loadCreate();
+
+      await new Create(
+        {
+          pluginManager: {
+            commandRunStartTime: Date.now(),
+          },
+        },
+        {
+          'template-path': '~/aws',
+        }
+      ).create();
+
+      expect(copyDirContentsSyncStub.calledOnce).to.equal(true);
+      expect(path.normalize(copyDirContentsSyncStub.firstCall.args[0])).to.equal(
+        path.join(os.homedir(), 'aws')
+      );
+      expect(copyDirContentsSyncStub.firstCall.args[1]).to.equal(path.join(process.cwd(), 'aws'));
+      expect(renameServiceStub.called).to.equal(false);
+      expect(noticeSuccessStub.firstCall.args[0]).to.contain(
+        'Project successfully created in "./aws"'
+      );
+    });
+
+    it('should stop before copying when local template path expansion fails', async () => {
+      const expansionError = new ServerlessError(
+        'Cannot expand path "~/aws": home directory could not be resolved.',
+        'HOME_DIRECTORY_UNAVAILABLE'
+      );
+      const { Create, copyDirContentsSyncStub, renameServiceStub } = loadCreate({
+        untildifyStub: sinon.stub().throws(expansionError),
+      });
+
+      try {
+        await new Create(
+          {
+            pluginManager: {
+              commandRunStartTime: Date.now(),
+            },
+          },
+          {
+            'template-path': '~/aws',
+          }
+        ).create();
+      } catch (error) {
+        expect(error).to.equal(expansionError);
+        expect(copyDirContentsSyncStub).to.not.have.been.called;
+        expect(renameServiceStub).to.not.have.been.called;
+        return;
+      }
+
+      throw new Error('Expected create() to reject');
+    });
+
     it('should default the service name to the target directory basename when only --path is provided', async () => {
       const { Create, copyDirContentsSyncStub, noticeSuccessStub, renameServiceStub } =
         loadCreate();
@@ -321,6 +381,34 @@ describe('test/unit/lib/plugins/create/create.test.js', () => {
       expect(noticeSuccessStub.calledOnce).to.equal(true);
       expect(noticeSuccessStub.firstCall.args[0]).to.contain(
         'Project successfully created in "nested/service-directory"'
+      );
+    });
+
+    it('should expand a home-relative local target path while reporting the original path', async () => {
+      const { Create, copyDirContentsSyncStub, noticeSuccessStub, renameServiceStub } =
+        loadCreate();
+      const targetPath = '~/nested/service-directory';
+      const expectedServiceDir = path.join(os.homedir(), 'nested', 'service-directory');
+
+      await new Create(
+        {
+          pluginManager: {
+            commandRunStartTime: Date.now(),
+          },
+        },
+        {
+          'template-path': path.join(fixturesPath, 'aws'),
+          'path': targetPath,
+        }
+      ).create();
+
+      expect(copyDirContentsSyncStub.calledOnce).to.equal(true);
+      expect(copyDirContentsSyncStub.firstCall.args[1]).to.equal(expectedServiceDir);
+      expect(
+        renameServiceStub.calledOnceWithExactly('service-directory', expectedServiceDir)
+      ).to.equal(true);
+      expect(noticeSuccessStub.firstCall.args[0]).to.contain(
+        'Project successfully created in "~/nested/service-directory"'
       );
     });
 

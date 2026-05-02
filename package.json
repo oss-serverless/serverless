@@ -67,7 +67,6 @@
     "tsx": "^4.20.3",
     "type": "^2.7.2",
     "undici": "^7.25.0",
-    "untildify": "^4.0.0",
     "write-file-atomic": "^7.0.1",
     "yauzl": "^3.3.0",
     "yazl": "^3.3.1"

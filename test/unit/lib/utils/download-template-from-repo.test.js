@@ -6,12 +6,21 @@ const path = require('path');
 const os = require('os');
 const proxyquire = require('proxyquire');
 const chai = require('chai');
+const ServerlessError = require('../../../../lib/serverless-error');
 
 const { expect } = chai;
 const { getTmpDirPath } = require('../../../utils/fs');
 
 const writeFileSync = require('../../../../lib/utils/fs/write-file-sync');
 const readFileSync = require('../../../../lib/utils/fs/read-file-sync');
+
+const loadUntildifyWithHome = (homeDirectory) =>
+  proxyquire('../../../../lib/utils/untildify', {
+    os: {
+      homedir: () => homeDirectory,
+      userInfo: () => ({ username: 'test-user' }),
+    },
+  });
 
 describe('downloadTemplateFromRepo', () => {
   let downloadTemplateFromRepo;
@@ -289,6 +298,100 @@ describe('downloadTemplateFromRepo', () => {
           expect(serviceName).to.equal('service-to-be-downloaded');
         }
       );
+    });
+
+    it('should expand a home-relative download path', async () => {
+      const url = 'https://github.com/johndoe/service-to-be-downloaded';
+      const fakeHome = getTmpDirPath();
+      const downloadPath = '~/nested/custom-target-directory';
+      const targetPath = path.join(fakeHome, 'nested', 'custom-target-directory');
+      const downloadTemplateFromRepoWithFakeHome = proxyquire(
+        '../../../../lib/utils/download-template-from-repo',
+        {
+          './serverless-utils/download': downloadStub,
+          './spawn': spawnStub,
+          './fs/remove': { removeSync: removeSyncStub },
+          './untildify': loadUntildifyWithHome(fakeHome),
+        }
+      ).downloadTemplateFromRepo;
+
+      try {
+        downloadStub.callsFake(async (downloadUrl, destinationPath) => {
+          expect(downloadUrl).to.equal(`${url}/archive/master.zip`);
+          expect(destinationPath).to.equal(targetPath);
+          writeFileSync(path.join(destinationPath, 'serverless.yml'), 'service: service-name');
+        });
+
+        return expect(
+          downloadTemplateFromRepoWithFakeHome(url, undefined, downloadPath)
+        ).to.be.fulfilled.then((serviceName) => {
+          const yml = readFileSync(path.join(targetPath, 'serverless.yml'));
+          expect(yml.service).to.equal('custom-target-directory');
+          expect(serviceName).to.equal('service-to-be-downloaded');
+        });
+      } finally {
+        fs.rmSync(fakeHome, { recursive: true, force: true });
+      }
+    });
+
+    it('should stop before downloading when download path expansion fails', async () => {
+      const url = 'https://github.com/johndoe/service-to-be-downloaded';
+      const expansionError = new ServerlessError(
+        'Cannot expand path "~/target": home directory could not be resolved.',
+        'HOME_DIRECTORY_UNAVAILABLE'
+      );
+      const downloadTemplateFromRepoWithFailingUntildify = proxyquire(
+        '../../../../lib/utils/download-template-from-repo',
+        {
+          './serverless-utils/download': downloadStub,
+          './spawn': spawnStub,
+          './fs/remove': { removeSync: removeSyncStub },
+          './untildify': sinon.stub().throws(expansionError),
+        }
+      ).downloadTemplateFromRepo;
+
+      try {
+        await downloadTemplateFromRepoWithFailingUntildify(url, undefined, '~/target');
+      } catch (error) {
+        expect(error).to.equal(expansionError);
+        expect(downloadStub).to.not.have.been.called;
+        expect(spawnStub).to.not.have.been.called;
+        return;
+      }
+
+      throw new Error('Expected downloadTemplateFromRepo to reject');
+    });
+
+    it('should report the original home-relative path when the expanded target exists', async () => {
+      const url = 'https://github.com/johndoe/service-to-be-downloaded';
+      const fakeHome = getTmpDirPath();
+      const downloadPath = '~/existing-service';
+      const expandedPath = path.join(fakeHome, 'existing-service');
+      const downloadTemplateFromRepoWithFakeHome = proxyquire(
+        '../../../../lib/utils/download-template-from-repo',
+        {
+          './serverless-utils/download': downloadStub,
+          './spawn': spawnStub,
+          './fs/remove': { removeSync: removeSyncStub },
+          './untildify': loadUntildifyWithHome(fakeHome),
+        }
+      ).downloadTemplateFromRepo;
+      fs.mkdirSync(expandedPath, { recursive: true });
+
+      try {
+        await downloadTemplateFromRepoWithFakeHome(url, undefined, downloadPath);
+      } catch (error) {
+        expect(error).to.have.property('code', 'TARGET_FOLDER_ALREADY_EXISTS');
+        expect(error).to.have.property(
+          'message',
+          'A folder named "~/existing-service" already exists.'
+        );
+        return;
+      } finally {
+        fs.rmSync(fakeHome, { recursive: true, force: true });
+      }
+
+      throw new Error('Expected downloadTemplateFromRepo to reject');
     });
 
     it('should treat --name as a literal target directory name when --path is omitted', async () => {
