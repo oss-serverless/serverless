@@ -55,6 +55,24 @@ describe('serverless-utils/download', () => {
         return;
       }
 
+      if (req.url === '/extended-content-disposition') {
+        res.statusCode = 200;
+        res.setHeader(
+          'Content-Disposition',
+          'attachment; filename="fallback.zip"; filename*=UTF-8\'\'%E2%82%AC-rates.zip'
+        );
+        res.end(zipBuffer);
+        return;
+      }
+
+      if (req.url === '/content-disposition-without-filename') {
+        res.statusCode = 200;
+        res.setHeader('Content-Disposition', 'attachment');
+        res.setHeader('Content-Type', 'text/csv');
+        res.end(Buffer.from('a,b\n1,2\n'));
+        return;
+      }
+
       if (req.url === '/unsafe-content-disposition') {
         res.statusCode = 200;
         res.setHeader(
@@ -148,6 +166,23 @@ describe('serverless-utils/download', () => {
 
     expect(stats.isFile()).to.equal(true);
     expect(await pathExists(path.join(tmpDir, 'content-disposition.zip'))).to.equal(false);
+  });
+
+  it('prefers extended content-disposition filenames over fallback filenames', async () => {
+    await download(`${baseUrl}/extended-content-disposition`, tmpDir);
+
+    const stats = await fsp.lstat(path.join(tmpDir, '\u20ac-rates.zip'));
+
+    expect(stats.isFile()).to.equal(true);
+    expect(await pathExists(path.join(tmpDir, 'fallback.zip'))).to.equal(false);
+  });
+
+  it('falls back to inferred filenames when content-disposition has no filename', async () => {
+    await download(`${baseUrl}/content-disposition-without-filename`, tmpDir);
+
+    expect(
+      await fsp.readFile(path.join(tmpDir, 'content-disposition-without-filename.csv'), 'utf8')
+    ).to.equal('a,b\n1,2\n');
   });
 
   it('falls back to content-type when file-type cannot infer an extension', async () => {

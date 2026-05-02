@@ -39,7 +39,7 @@
     "ajv-formats": "^2.1.1",
     "aws-sdk": "^2.1693.0",
     "cachedir": "^2.3.0",
-    "content-disposition": "^0.5.4",
+    "content-disposition": "^1.1.0",
     "cross-spawn": "^7.0.6",
     "dayjs": "^1.11.8",
     "dotenv": "^17.4.2",
