@@ -236,6 +236,30 @@ describe('checkForChanges', () => {
       ]);
     });
 
+    it('should select the newest deployment directory with a slash in deployment prefix', async () => {
+      serverless.service.provider.deploymentPrefix = 'foo/bar';
+      const customS3Key = `foo/bar/${serverless.service.service}/${provider.getStage()}`;
+      listObjectsV2Stub.resolves({
+        Contents: [
+          { Key: `${customS3Key}/999-1970-01-01T00:00:00/artifact.zip` },
+          { Key: `${customS3Key}/1000-1970-01-01T00:00:01/artifact.zip` },
+          { Key: `${customS3Key}/999-1970-01-01T00:00:00/cloudformation.json` },
+          { Key: `${customS3Key}/1000-1970-01-01T00:00:01/cloudformation.json` },
+        ],
+      });
+
+      const result = await awsDeploy.getMostRecentObjects();
+
+      expect(listObjectsV2Stub).to.have.been.calledWithExactly('S3', 'listObjectsV2', {
+        Bucket: awsDeploy.bucketName,
+        Prefix: 'foo/bar/my-service/dev/',
+      });
+      expect(result).to.deep.equal([
+        { Key: `${customS3Key}/1000-1970-01-01T00:00:01/cloudformation.json` },
+        { Key: `${customS3Key}/1000-1970-01-01T00:00:01/artifact.zip` },
+      ]);
+    });
+
     it('should ignore keys outside deployment timestamp directories', async () => {
       listObjectsV2Stub.resolves({
         Contents: [
@@ -772,6 +796,8 @@ const commonAwsSdkMock = {
 };
 
 const generateMatchingListObjectsResponse = async (serverless) => {
+  const provider = serverless.getProvider('aws');
+  const s3Key = `${provider.getDeploymentPrefix()}/${serverless.service.service}/${provider.getStage()}`;
   const packagePath = path.resolve(serverless.serviceDir, '.serverless');
   const artifactNames = (await glob('*.zip', { cwd: packagePath })).map((filename) =>
     path.basename(filename)
@@ -780,11 +806,11 @@ const generateMatchingListObjectsResponse = async (serverless) => {
   return {
     Contents: [
       {
-        Key: 'serverless/test-package-artifact/dev/code-artifacts/sls-otel.0.2.2.zip',
+        Key: `${s3Key}/code-artifacts/sls-otel.0.2.2.zip`,
         LastModified: new Date('2020-05-20T15:30:16.494+0000'),
       },
       ...artifactNames.map((artifactName) => ({
-        Key: `serverless/test-package-artifact/dev/1589988704359-2020-05-20T15:31:44.359Z/${artifactName}`,
+        Key: `${s3Key}/1589988704359-2020-05-20T15:31:44.359Z/${artifactName}`,
         LastModified: new Date('2020-05-20T15:30:16.494+0000'),
       })),
     ],
@@ -1248,12 +1274,16 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
   });
 
   it('Should gently handle error of accessing objects from S3 bucket', async () => {
+    let serverless;
     await expect(
       runServerless({
         fixture: 'check-for-changes',
         command: 'deploy',
         lastLifecycleHookName: 'aws:deploy:deploy:checkForChanges',
         env: { AWS_CONTAINER_CREDENTIALS_FULL_URI: 'ignore' },
+        hooks: {
+          beforeInstanceInit: (serverlessInstance) => (serverless = serverlessInstance),
+        },
         awsRequestStubMap: {
           ...commonAwsSdkMock,
           S3: {
@@ -1264,10 +1294,14 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
             },
             headBucket: () => {},
             listObjectsV2: () => {
+              const provider = serverless.getProvider('aws');
+              const s3Key = `${provider.getDeploymentPrefix()}/${
+                serverless.service.service
+              }/${provider.getStage()}`;
               return {
                 Contents: [
                   {
-                    Key: 'serverless/test-package-artifact/dev/1589988704359-2020-05-20T15:31:44.359Z/artifact.zip',
+                    Key: `${s3Key}/1589988704359-2020-05-20T15:31:44.359Z/artifact.zip`,
                     LastModified: new Date(),
                     ETag: '"5102a4cf710cae6497dba9e61b85d0a4"',
                     Size: 356,
