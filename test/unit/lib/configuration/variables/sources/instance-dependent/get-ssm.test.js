@@ -125,7 +125,7 @@ describe('test/unit/lib/configuration/variables/sources/instance-dependent/get-s
       throw variablesMeta.get('custom\0encryptedWithSkipDecrypt').error;
     }
     if (variablesMeta.get('custom\0encryptedWithSkipDecryptAndRegion')) {
-      throw variablesMeta.get('custom\0encryptedWithSkipDecrypt').error;
+      throw variablesMeta.get('custom\0encryptedWithSkipDecryptAndRegion').error;
     }
     expect(configuration.custom.existingEncrypted).to.deep.equal({ someSecret: 'someValue' });
     expect(configuration.custom.existingEncryptedDirect).to.equal('12345678901234567890');
