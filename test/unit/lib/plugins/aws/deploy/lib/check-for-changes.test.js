@@ -18,6 +18,23 @@ const fsp = fs.promises;
 // Configure chai
 const expect = require('chai').expect;
 
+function createAwsDeployTestInstance() {
+  const options = {
+    stage: 'dev',
+    region: 'us-east-1',
+  };
+  const serverless = new Serverless({ commands: [], options: {} });
+  const provider = new AwsProvider(serverless, options);
+  serverless.setProvider('aws', provider);
+  serverless.service.service = 'my-service';
+  const awsDeploy = new AwsDeploy(serverless, options);
+  Object.assign(
+    awsDeploy,
+    require('../../../../../../../lib/plugins/aws/deploy/lib/check-for-changes.js')
+  );
+  return awsDeploy;
+}
+
 describe('checkForChanges', () => {
   let serverless;
   let provider;
@@ -1248,6 +1265,83 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
   });
 
   describe('checkLogGroupSubscriptionFilterResourceLimitExceeded', () => {
+    it('treats omitted subscriptionFilters as no filters', async () => {
+      const awsDeploy = createAwsDeployTestInstance();
+      const requestStub = sandbox.stub(awsDeploy.provider, 'request').resolves({});
+
+      try {
+        const result = await awsDeploy.fixLogGroupSubscriptionFilters({
+          accountId: '123456789012',
+          region: 'us-east-1',
+          partition: 'aws',
+          logGroupName: 'someLogGroupName',
+          cloudwatchLogEvents: [],
+        });
+
+        expect(result).to.equal(false);
+        expect(requestStub).to.have.been.calledOnceWithExactly(
+          'CloudWatchLogs',
+          'describeSubscriptionFilters',
+          { logGroupName: 'someLogGroupName' }
+        );
+        expect(requestStub.calledWith('CloudFormation', 'describeStackResource')).to.equal(false);
+        expect(requestStub.calledWith('CloudWatchLogs', 'deleteSubscriptionFilter')).to.equal(
+          false
+        );
+      } finally {
+        awsDeploy.provider.request.restore();
+      }
+    });
+
+    it('treats malformed external subscription filter names as external without CloudFormation lookup', async () => {
+      const awsDeploy = createAwsDeployTestInstance();
+      const requestStub = sandbox.stub(awsDeploy.provider, 'request').callsFake(async (service) => {
+        if (service === 'CloudWatchLogs') {
+          return {
+            subscriptionFilters: [
+              {
+                filterName: 'externalFilter',
+                destinationArn: 'arn:aws:lambda:us-east-1:123456789012:function:external-1',
+              },
+              {
+                filterName: 'external--suffix',
+                destinationArn: 'arn:aws:lambda:us-east-1:123456789012:function:external-2',
+              },
+            ],
+          };
+        }
+        throw new Error(`Unexpected ${service} request`);
+      });
+
+      try {
+        await expect(
+          awsDeploy.fixLogGroupSubscriptionFilters({
+            accountId: '123456789012',
+            region: 'us-east-1',
+            partition: 'aws',
+            logGroupName: 'someLogGroupName',
+            cloudwatchLogEvents: [
+              {
+                FunctionName: 'service-dev-fn1',
+                functionName: 'Fn1',
+                logGroupName: 'someLogGroupName',
+                logSubscriptionSerialNumber: 1,
+              },
+            ],
+          })
+        ).to.eventually.be.rejected.and.have.property(
+          'code',
+          'CLOUDWATCHLOG_LOG_GROUP_EVENT_PER_FUNCTION_LIMIT_EXCEEDED'
+        );
+        expect(requestStub.calledWith('CloudFormation', 'describeStackResource')).to.equal(false);
+        expect(requestStub.calledWith('CloudWatchLogs', 'deleteSubscriptionFilter')).to.equal(
+          false
+        );
+      } finally {
+        awsDeploy.provider.request.restore();
+      }
+    });
+
     it('does not crash when cloudwatchLog event uses __proto__ as the log group name', async () => {
       const deleteStub = sandbox.stub();
       let serverless;
