@@ -1236,6 +1236,45 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
     ).to.eventually.have.been.rejected.and.have.property('code', 'DEPLOYMENT_BUCKET_NOT_FOUND');
   });
 
+  it('with existing stack - with custom deployment bucket and unknown region', async () => {
+    const headBucketStub = sinon.stub().returns({});
+    const awsRequestStubMap = {
+      ...baseAwsRequestStubMap,
+      ECR: {
+        describeRepositories: sinon.stub().throws({
+          providerError: { code: 'RepositoryNotFoundException' },
+        }),
+      },
+      Lambda: {
+        getFunction: {
+          Configuration: { LastModified: '2020-05-20T15:31:44.359Z' },
+        },
+      },
+      S3: {
+        headBucket: headBucketStub,
+        listObjectsV2: { Contents: [] },
+      },
+      CloudFormation: {
+        describeStacks: { Stacks: [{}] },
+        validateTemplate: {},
+      },
+    };
+
+    await runServerless({
+      fixture: 'function',
+      command: 'deploy',
+      awsRequestStubMap,
+      lastLifecycleHookName: 'aws:deploy:deploy:checkForChanges',
+      configExt: {
+        provider: {
+          deploymentBucket: 'bucket-name',
+        },
+      },
+    });
+
+    expect(headBucketStub).to.be.calledOnce;
+  });
+
   it('with existing stack - with custom deployment bucket in different region', async () => {
     const awsRequestStubMap = {
       ...baseAwsRequestStubMap,
