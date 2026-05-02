@@ -562,7 +562,6 @@ describe('#updateStage()', () => {
         position: undefined,
       })
       .resolves({
-        items: [],
         position: 'foobarfoo1',
       });
     providerRequestStub
@@ -577,6 +576,22 @@ describe('#updateStage()', () => {
     return updateStage.call(context).then(() => {
       expect(context.apiGatewayRestApiId).to.equal('devRestApiId');
     });
+  });
+
+  it('should handle getDeployments responses without items', async () => {
+    context.state.service.provider.tracing = { apiGateway: false };
+    providerRequestStub
+      .withArgs('APIGateway', 'getDeployments', {
+        restApiId: 'devRestApiId',
+        limit: 500,
+      })
+      .resolves({});
+
+    await updateStage.call(context);
+
+    expect(context.apiGatewayDeploymentId).to.equal(null);
+    expect(providerRequestStub.calledWith('APIGateway', 'getStage')).to.equal(false);
+    expect(providerRequestStub.calledWith('APIGateway', 'createStage')).to.equal(false);
   });
 
   it(
@@ -890,6 +905,7 @@ describe('test/unit/lib/plugins/aws/package/compile/events/apiGateway/lib/hack/u
     const getStageStub = sinon.stub().resolves({});
     const createStageStub = sinon.stub();
     const updateStageStub = sinon.stub();
+    const tagResourceStub = sinon.stub();
     const stage = 'dev';
 
     await updateConfig({
@@ -915,7 +931,7 @@ describe('test/unit/lib/plugins/aws/package/compile/events/apiGateway/lib/hack/u
           updateStage: updateStageStub,
           getDeployments: getDeploymentsStub,
           getRestApis: { items: [{ id: 'api-id', name: `${serviceConfig.service}-${stage}` }] },
-          tagResource: {},
+          tagResource: tagResourceStub,
         },
         CloudFormation: {
           describeStacks: { Stacks: [{}] },
@@ -961,6 +977,9 @@ describe('test/unit/lib/plugins/aws/package/compile/events/apiGateway/lib/hack/u
     expect(getStageStub.args[0][0].stageName).to.be.equal('customStage');
     expect(createStageStub.args[0][0].stageName).to.be.equal('customStage');
     expect(updateStageStub.args[0][0].stageName).to.be.equal('customStage');
+    expect(tagResourceStub.args[0][0].resourceArn)
+      .to.be.a('string')
+      .and.satisfy((arn) => arn.endsWith('/stages/customStage'));
     const accessLogSettingsDestinationArn = updateStageStub.args[0][0].patchOperations.filter(
       (op) => op.path === '/accessLogSettings/destinationArn'
     )[0].value;
