@@ -218,6 +218,24 @@ describe('checkForChanges', () => {
       ]);
     });
 
+    it('should select the newest deployment directory by timestamp', async () => {
+      listObjectsV2Stub.resolves({
+        Contents: [
+          { Key: `${s3Key}/999-1970-01-01T00:00:00/artifact.zip` },
+          { Key: `${s3Key}/1000-1970-01-01T00:00:01/artifact.zip` },
+          { Key: `${s3Key}/999-1970-01-01T00:00:00/cloudformation.json` },
+          { Key: `${s3Key}/1000-1970-01-01T00:00:01/cloudformation.json` },
+        ],
+      });
+
+      const result = await awsDeploy.getMostRecentObjects();
+
+      expect(result).to.deep.equal([
+        { Key: `${s3Key}/1000-1970-01-01T00:00:01/cloudformation.json` },
+        { Key: `${s3Key}/1000-1970-01-01T00:00:01/artifact.zip` },
+      ]);
+    });
+
     it('should ignore keys outside deployment timestamp directories', async () => {
       listObjectsV2Stub.resolves({
         Contents: [
