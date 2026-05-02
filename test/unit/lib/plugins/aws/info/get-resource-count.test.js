@@ -129,11 +129,45 @@ describe('#getResourceCount()', () => {
       expect(
         listStackResourcesStub.calledWithExactly('CloudFormation', 'listStackResources', {
           StackName: awsInfo.provider.naming.getStackName(),
-          NextToken: undefined,
         })
       ).to.equal(true);
 
       expect(awsInfo.gatheredData.info.resourceCount).to.equal(10);
     });
+  });
+
+  it('accumulates resourceCount across paginated listStackResources calls', async () => {
+    listStackResourcesStub
+      .onFirstCall()
+      .resolves({ StackResourceSummaries: [{}, {}], NextToken: 'next' })
+      .onSecondCall()
+      .resolves({ StackResourceSummaries: [{}] });
+
+    awsInfo.gatheredData = { info: {}, outputs: [] };
+
+    await awsInfo.getResourceCount();
+
+    expect(listStackResourcesStub).to.have.been.calledTwice;
+    expect(listStackResourcesStub.firstCall.args).to.deep.equal([
+      'CloudFormation',
+      'listStackResources',
+      { StackName: awsInfo.provider.naming.getStackName() },
+    ]);
+    expect(listStackResourcesStub.secondCall.args).to.deep.equal([
+      'CloudFormation',
+      'listStackResources',
+      { StackName: awsInfo.provider.naming.getStackName(), NextToken: 'next' },
+    ]);
+    expect(awsInfo.gatheredData.info.resourceCount).to.equal(3);
+  });
+
+  it('treats missing StackResourceSummaries as an empty page', async () => {
+    listStackResourcesStub.resolves({});
+
+    awsInfo.gatheredData = { info: {}, outputs: [] };
+
+    await awsInfo.getResourceCount();
+
+    expect(awsInfo.gatheredData.info.resourceCount).to.equal(0);
   });
 });
