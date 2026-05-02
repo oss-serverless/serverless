@@ -77,7 +77,7 @@ describe('AwsInvokeLocal', () => {
 
     stdinStub = sinon.stub().resolves('');
     AwsInvokeLocal = proxyquire('../../../../../../lib/plugins/aws/invoke-local/index', {
-      'get-stdin': stdinStub,
+      '../../../utils/get-stdin': stdinStub,
       '../../../utils/spawn': spawnExtStub,
     });
     serverless = new Serverless({ commands: [], options: {} });
@@ -863,7 +863,7 @@ describe('AwsInvokeLocal', () => {
     let invokeLocalSpawnStubbed;
     beforeEach(() => {
       AwsInvokeLocal = proxyquire('../../../../../../lib/plugins/aws/invoke-local/index', {
-        'get-stdin': stdinStub,
+        '../../../utils/get-stdin': stdinStub,
         '../../../utils/spawn': spawnExtStub,
         'child_process': {
           spawn: spawnStub,
@@ -1111,7 +1111,7 @@ describe('AwsInvokeLocal', () => {
       const ProxyquiredAwsInvokeLocal = proxyquire
         .noCallThru()
         .load('../../../../../../lib/plugins/aws/invoke-local/index', {
-          'get-stdin': sinon.stub().resolves(''),
+          '../../../utils/get-stdin': sinon.stub().resolves(''),
           '../../../utils/spawn': spawnExtLocalStub,
           'fs': {
             promises: {
@@ -1202,7 +1202,7 @@ describe('AwsInvokeLocal', () => {
       const ProxyquiredAwsInvokeLocal = proxyquire
         .noCallThru()
         .load('../../../../../../lib/plugins/aws/invoke-local/index', {
-          'get-stdin': sinon.stub().resolves(''),
+          '../../../utils/get-stdin': sinon.stub().resolves(''),
           '../../../utils/spawn': sinon.stub().resolves({
             stdoutBuffer: Buffer.from('Mocked output'),
           }),
