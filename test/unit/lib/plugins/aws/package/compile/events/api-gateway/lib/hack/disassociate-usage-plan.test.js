@@ -33,7 +33,7 @@ describe('#disassociateUsagePlan()', () => {
     providerRequestStub
       .withArgs('CloudFormation', 'describeStackResource')
       .resolves({ StackResourceDetail: { PhysicalResourceId: 'resource-id' } });
-    providerRequestStub.withArgs('APIGateway', 'getUsagePlans').resolves({
+    providerRequestStub.withArgs('APIGateway', 'getUsagePlans', { limit: 500 }).resolves({
       items: [
         {
           apiStages: [
@@ -79,9 +79,9 @@ describe('#disassociateUsagePlan()', () => {
         })
       ).to.be.equal(true);
 
-      expect(providerRequestStub.calledWithExactly('APIGateway', 'getUsagePlans', {})).to.be.equal(
-        true
-      );
+      expect(
+        providerRequestStub.calledWithExactly('APIGateway', 'getUsagePlans', { limit: 500 })
+      ).to.be.equal(true);
 
       expect(
         providerRequestStub.calledWithExactly('APIGateway', 'updateUsagePlan', {
@@ -99,7 +99,7 @@ describe('#disassociateUsagePlan()', () => {
   });
 
   it('should remove all matching associations from a usage plan', async () => {
-    providerRequestStub.withArgs('APIGateway', 'getUsagePlans').resolves({
+    providerRequestStub.withArgs('APIGateway', 'getUsagePlans', { limit: 500 }).resolves({
       items: [
         {
           apiStages: [
@@ -156,7 +156,7 @@ describe('#disassociateUsagePlan()', () => {
   });
 
   it('should not update usage plans without matching API stages', async () => {
-    providerRequestStub.withArgs('APIGateway', 'getUsagePlans').resolves({
+    providerRequestStub.withArgs('APIGateway', 'getUsagePlans', { limit: 500 }).resolves({
       items: [
         {
           apiStages: [{ apiId: 'another-resource-id', stage: 'dev' }],
@@ -170,6 +170,73 @@ describe('#disassociateUsagePlan()', () => {
       expect(providerRequestStub.callCount).to.be.equal(2);
       expect(providerRequestStub.calledWith('APIGateway', 'updateUsagePlan')).to.be.equal(false);
     });
+  });
+
+  it('should remove matching usage plan associations across paginated usage plans', async () => {
+    providerRequestStub.withArgs('APIGateway', 'getUsagePlans', { limit: 500 }).resolves({
+      items: [
+        {
+          apiStages: [{ apiId: 'another-resource-id', stage: 'dev' }],
+          id: 'first-page-plan-id',
+        },
+      ],
+      position: 'next-page',
+    });
+    providerRequestStub
+      .withArgs('APIGateway', 'getUsagePlans', { position: 'next-page', limit: 500 })
+      .resolves({
+        items: [
+          {
+            apiStages: [{ apiId: 'resource-id', stage: 'prod' }],
+            id: 'second-page-plan-id',
+          },
+        ],
+      });
+    disassociateUsagePlan.serverless.service.provider.apiGateway = { apiKeys: ['apiKey1'] };
+
+    await disassociateUsagePlan.disassociateUsagePlan();
+
+    expect(
+      providerRequestStub.calledWithExactly('APIGateway', 'getUsagePlans', { limit: 500 })
+    ).to.equal(true);
+    expect(
+      providerRequestStub.calledWithExactly('APIGateway', 'getUsagePlans', {
+        position: 'next-page',
+        limit: 500,
+      })
+    ).to.equal(true);
+    expect(
+      providerRequestStub.calledWithExactly('APIGateway', 'updateUsagePlan', {
+        usagePlanId: 'second-page-plan-id',
+        patchOperations: [
+          {
+            op: 'remove',
+            path: '/apiStages',
+            value: 'resource-id:prod',
+          },
+        ],
+      })
+    ).to.equal(true);
+  });
+
+  it('should not update usage plans without apiStages', async () => {
+    providerRequestStub.withArgs('APIGateway', 'getUsagePlans', { limit: 500 }).resolves({
+      items: [{ id: 'usage-plan-without-stages' }],
+    });
+    disassociateUsagePlan.serverless.service.provider.apiGateway = { apiKeys: ['apiKey1'] };
+
+    await disassociateUsagePlan.disassociateUsagePlan();
+
+    expect(providerRequestStub.calledWith('APIGateway', 'updateUsagePlan')).to.equal(false);
+  });
+
+  it('should resolve when getUsagePlans returns no items', async () => {
+    providerRequestStub.withArgs('APIGateway', 'getUsagePlans', { limit: 500 }).resolves({});
+    disassociateUsagePlan.serverless.service.provider.apiGateway = { apiKeys: ['apiKey1'] };
+
+    await disassociateUsagePlan.disassociateUsagePlan();
+
+    expect(providerRequestStub.calledWith('APIGateway', 'updateUsagePlan')).to.equal(false);
   });
 
   it('should resolve if no api keys are given', async () => {
