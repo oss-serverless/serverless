@@ -71,6 +71,51 @@ describe('test/unit/lib/aws/aws-sdk-v3-error.test.js', () => {
     ).to.equal('AccessDenied');
   });
 
+  it('creates S3 upload errors from SDK v3 and legacy AWS error shapes', () => {
+    for (const [providerError, expectedCode, expectedExtension] of [
+      [
+        Object.assign(new Error('denied'), { name: 'AccessDenied' }),
+        'AWS_S3_UPLOAD_ACCESS_DENIED',
+        'ACCESS_DENIED',
+      ],
+      [
+        Object.assign(new Error('forbidden'), { $metadata: { httpStatusCode: 403 } }),
+        'AWS_S3_UPLOAD_HTTP_403_ERROR',
+        'HTTP_403_ERROR',
+      ],
+      [{ code: 'SlowDown', message: 'slow down' }, 'AWS_S3_UPLOAD_SLOW_DOWN', 'SLOW_DOWN'],
+      [{ code: 'ECONNRESET', message: 'socket reset' }, 'AWS_S3_UPLOAD_ECONNRESET', 'ECONNRESET'],
+      [
+        { Code: 'NoSuchBucket', message: 'missing bucket' },
+        'AWS_S3_UPLOAD_NO_SUCH_BUCKET',
+        'NO_SUCH_BUCKET',
+      ],
+    ]) {
+      const uploadError = awsSdkV3Error.createS3UploadError(providerError);
+
+      expect(uploadError).to.be.instanceOf(ServerlessError);
+      expect(uploadError.code).to.equal(expectedCode);
+      expect(uploadError.providerError).to.equal(providerError);
+      expect(uploadError.providerErrorCodeExtension).to.equal(expectedExtension);
+    }
+  });
+
+  it('creates generic S3 upload errors and preserves existing Serverless errors', () => {
+    const providerError = new Error('upload failed');
+    const uploadError = awsSdkV3Error.createS3UploadError(providerError);
+    const serverlessError = new ServerlessError(
+      'AWS provider credentials not found.',
+      'AWS_CREDENTIALS_NOT_FOUND'
+    );
+
+    expect(uploadError).to.be.instanceOf(ServerlessError);
+    expect(uploadError.message).to.equal('upload failed');
+    expect(uploadError.code).to.equal('AWS_S3_UPLOAD_ERROR');
+    expect(uploadError.providerError).to.equal(providerError);
+    expect(uploadError.providerErrorCodeExtension).to.equal('ERROR');
+    expect(awsSdkV3Error.createS3UploadError(serverlessError)).to.equal(serverlessError);
+  });
+
   it('extracts status codes from legacy and SDK v3 error shapes', () => {
     expect(awsSdkV3Error.getAwsErrorStatusCode({ providerError: { statusCode: 403 } })).to.equal(
       403
@@ -187,12 +232,47 @@ describe('test/unit/lib/aws/aws-sdk-v3-error.test.js', () => {
   });
 
   it('matches S3 GetObject, HeadObject, and HeadBucket shapes', () => {
-    expect(awsSdkV3Error.isS3GetObjectNoSuchKeyError({ name: 'NoSuchKey' })).to.equal(true);
     expect(
-      awsSdkV3Error.isS3GetObjectNoSuchKeyError({ code: 'AWS_S3_GET_OBJECT_NO_SUCH_KEY' })
+      awsSdkV3Error.isS3GetObjectNoSuchKeyError({
+        code: 'AWS_S3_GET_OBJECT_NO_SUCH_KEY',
+      })
+    ).to.equal(true);
+    expect(awsSdkV3Error.isS3GetObjectNoSuchKeyError({ name: 'NoSuchKey' })).to.equal(true);
+    expect(awsSdkV3Error.isS3GetObjectNoSuchKeyError({ Code: 'NoSuchKey' })).to.equal(true);
+    expect(
+      awsSdkV3Error.isS3GetObjectNoSuchKeyError({
+        providerError: { code: 'NoSuchKey', statusCode: 404 },
+      })
     ).to.equal(true);
     expect(
       awsSdkV3Error.isS3GetObjectNoSuchKeyError(Object.create({ name: 'NoSuchKey' }))
+    ).to.equal(false);
+    expect(
+      awsSdkV3Error.isS3GetObjectNoSuchKeyError(Object.create({ code: 'NoSuchKey' }))
+    ).to.equal(false);
+    expect(
+      awsSdkV3Error.isS3GetObjectNoSuchKeyError(Object.create({ Code: 'NoSuchKey' }))
+    ).to.equal(false);
+    expect(
+      awsSdkV3Error.isS3GetObjectNoSuchKeyError({ $metadata: { httpStatusCode: 404 } })
+    ).to.equal(false);
+    expect(
+      awsSdkV3Error.isS3GetObjectNoSuchKeyError({
+        name: 'NoSuchBucket',
+        $metadata: { httpStatusCode: 404 },
+      })
+    ).to.equal(false);
+    expect(
+      awsSdkV3Error.isS3GetObjectNoSuchKeyError({
+        name: 'NotFound',
+        $metadata: { httpStatusCode: 404 },
+      })
+    ).to.equal(false);
+    expect(
+      awsSdkV3Error.isS3GetObjectNoSuchKeyError({
+        name: 'AccessDenied',
+        $metadata: { httpStatusCode: 403 },
+      })
     ).to.equal(false);
     expect(awsSdkV3Error.isS3HeadObjectForbiddenError({ name: 'Forbidden' })).to.equal(true);
     expect(

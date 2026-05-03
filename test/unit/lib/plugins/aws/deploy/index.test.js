@@ -254,7 +254,8 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
         call[0].Key.endsWith('compiled-cloudformation-template.json')
       );
       expect(wasCloudFormationTemplateUploadInitiated).to.be.true;
-      expect(deleteObjectsStub).to.be.calledWithExactly({
+      expect(deleteObjectsStub).to.be.calledOnce;
+      expect(deleteObjectsStub.firstCall.args[0]).to.deep.equal({
         Bucket: 's3-bucket-resource',
         Delete: {
           Objects: [
@@ -806,7 +807,8 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
         call[0].Key.endsWith('compiled-cloudformation-template.json')
       );
       expect(wasCloudFormationTemplateUploadInitiated).to.be.true;
-      expect(deleteObjectsStub).to.be.calledWithExactly({
+      expect(deleteObjectsStub).to.be.calledOnce;
+      expect(deleteObjectsStub.firstCall.args[0]).to.deep.equal({
         Bucket: 's3-bucket-resource',
         Delete: {
           Objects: [
@@ -886,7 +888,8 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       expect(createChangeSetStub.getCall(0).args[0].ChangeSetType).to.equal('UPDATE');
       expect(executeChangeSetStub).not.to.be.called;
       expect(deleteChangeSetStub).to.be.calledTwice;
-      expect(deleteObjectsStub).to.be.calledWithExactly({
+      expect(deleteObjectsStub).to.be.calledOnce;
+      expect(deleteObjectsStub.firstCall.args[0]).to.deep.equal({
         Bucket: 's3-bucket-resource',
         Delete: { Objects: objectsToRemove },
       });

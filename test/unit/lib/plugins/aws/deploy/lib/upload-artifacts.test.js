@@ -6,6 +6,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { PassThrough } = require('stream');
 const chai = require('chai');
+const { Upload } = require('@aws-sdk/lib-storage');
 const normalizeFiles = require('../../../../../../../lib/plugins/aws/lib/normalize-files');
 const AwsProvider = require('../../../../../../../lib/plugins/aws/provider');
 const AwsDeploy = require('../../../../../../../lib/plugins/aws/deploy/index');
@@ -75,6 +76,51 @@ describe('uploadArtifacts', () => {
     expect(noticeStub).to.have.been.calledWithExactly('Uploading (1.1 kB)');
   });
 
+  function getUploadParams(uploadStub) {
+    return uploadStub.firstCall.thisValue.params;
+  }
+
+  function createAwsError(name) {
+    return Object.assign(new Error('access denied'), {
+      name,
+      $metadata: { httpStatusCode: 403 },
+    });
+  }
+
+  async function expectNormalizedUploadError(promise, providerError) {
+    try {
+      await promise;
+    } catch (error) {
+      expect(error.code).to.equal('AWS_S3_UPLOAD_ACCESS_DENIED');
+      expect(error.providerError).to.equal(providerError);
+      return;
+    }
+
+    throw new Error('Expected upload to reject');
+  }
+
+  function writeStateFile(state) {
+    const serviceDirPath = createTmpDir();
+    const stateFileName = awsDeploy.provider.naming.getServiceStateFileName();
+    const stateObject = {
+      ...state,
+      service: {
+        provider: {},
+        ...(state.service || {}),
+      },
+      package: state.package || {},
+    };
+    const stateFileContent = JSON.stringify(stateObject);
+
+    serverless.serviceDir = serviceDirPath;
+    serverless.utils.writeFileSync(
+      path.join(serviceDirPath, '.serverless', stateFileName),
+      stateFileContent
+    );
+
+    return stateFileContent;
+  }
+
   describe('#uploadCloudFormationFile()', () => {
     let normalizeCloudFormationTemplateStub;
     let uploadStub;
@@ -83,7 +129,7 @@ describe('uploadArtifacts', () => {
       normalizeCloudFormationTemplateStub = sinon
         .stub(normalizeFiles, 'normalizeCloudFormationTemplate')
         .returns();
-      uploadStub = sinon.stub(awsDeploy.provider, 'request').resolves();
+      uploadStub = sinon.stub(Upload.prototype, 'done').resolves();
     });
 
     afterEach(() => {
@@ -97,16 +143,31 @@ describe('uploadArtifacts', () => {
       return awsDeploy.uploadCloudFormationFile().then(() => {
         expect(normalizeCloudFormationTemplateStub).to.have.been.calledOnce;
         expect(uploadStub).to.have.been.calledOnce;
-        expect(uploadStub).to.have.been.calledWithExactly('S3', 'upload', {
+        expect(getUploadParams(uploadStub)).to.deep.include({
           Bucket: awsDeploy.bucketName,
           Key: `${awsDeploy.serverless.service.package.artifactDirectoryName}/compiled-cloudformation-template.json`,
           Body: JSON.stringify({ foo: 'bar' }),
           ContentType: 'application/json',
-          Metadata: {
-            filesha256: 'local-hash-cf-template',
-          },
+        });
+        expect(getUploadParams(uploadStub).Metadata).to.deep.equal({
+          filesha256: 'local-hash-cf-template',
+        });
+        expect(uploadStub.firstCall.thisValue).to.include({
+          queueSize: 6,
+          partSize: 5 * 1024 * 1024,
+          leavePartsOnError: false,
         });
         expect(normalizeCloudFormationTemplateStub).to.have.been.calledWithExactly({ foo: 'bar' });
+      });
+    });
+
+    it('should configure S3 transfer acceleration for CloudFormation file uploads', async () => {
+      crypto.createHash().update().digest.onCall(0).returns('local-hash-cf-template');
+      awsDeploy.provider.options['aws-s3-accelerate'] = true;
+
+      return awsDeploy.uploadCloudFormationFile().then(() => {
+        expect(uploadStub).to.have.been.calledOnce;
+        expect(uploadStub.firstCall.thisValue.client.config.useAccelerateEndpoint).to.equal(true);
       });
     });
 
@@ -119,18 +180,146 @@ describe('uploadArtifacts', () => {
       return awsDeploy.uploadCloudFormationFile().then(() => {
         expect(normalizeCloudFormationTemplateStub).to.have.been.calledOnce;
         expect(uploadStub).to.have.been.calledOnce;
-        expect(uploadStub).to.have.been.calledWithExactly('S3', 'upload', {
+        expect(getUploadParams(uploadStub)).to.deep.include({
           Bucket: awsDeploy.bucketName,
           Key: `${awsDeploy.serverless.service.package.artifactDirectoryName}/compiled-cloudformation-template.json`,
           Body: JSON.stringify({ foo: 'bar' }),
           ContentType: 'application/json',
-          ServerSideEncryption: 'AES256',
           Metadata: {
             filesha256: 'local-hash-cf-template',
           },
+          ServerSideEncryption: 'AES256',
         });
         expect(normalizeCloudFormationTemplateStub).to.have.been.calledWithExactly({ foo: 'bar' });
       });
+    });
+
+    it('should upload the CloudFormation file with KMS encryption options', async () => {
+      crypto.createHash().update().digest.onCall(0).returns('local-hash-cf-template');
+      awsDeploy.serverless.service.provider.deploymentBucketObject = {
+        serverSideEncryption: 'aws:kms',
+        sseKMSKeyId: 'kms-key-id',
+      };
+
+      await awsDeploy.uploadCloudFormationFile();
+
+      expect(uploadStub).to.have.been.calledOnce;
+      expect(getUploadParams(uploadStub)).to.deep.equal({
+        Bucket: awsDeploy.bucketName,
+        Key: `${awsDeploy.serverless.service.package.artifactDirectoryName}/compiled-cloudformation-template.json`,
+        Body: JSON.stringify({ foo: 'bar' }),
+        ContentType: 'application/json',
+        Metadata: {
+          filesha256: 'local-hash-cf-template',
+        },
+        ServerSideEncryption: 'aws:kms',
+        SSEKMSKeyId: 'kms-key-id',
+      });
+    });
+
+    it('should normalize CloudFormation upload errors', async () => {
+      const error = createAwsError('AccessDenied');
+      crypto.createHash().update().digest.onCall(0).returns('local-hash-cf-template');
+      uploadStub.rejects(error);
+
+      await expectNormalizedUploadError(awsDeploy.uploadCloudFormationFile(), error);
+    });
+
+    it('should normalize status-only CloudFormation upload errors', async () => {
+      const error = Object.assign(new Error('forbidden'), {
+        $metadata: { httpStatusCode: 403 },
+      });
+      crypto.createHash().update().digest.onCall(0).returns('local-hash-cf-template');
+      uploadStub.rejects(error);
+
+      try {
+        await awsDeploy.uploadCloudFormationFile();
+      } catch (caughtError) {
+        expect(caughtError.code).to.equal('AWS_S3_UPLOAD_HTTP_403_ERROR');
+        expect(caughtError.providerError).to.equal(error);
+        return;
+      }
+
+      throw new Error('Expected upload to reject');
+    });
+  });
+
+  describe('#uploadStateFile()', () => {
+    let uploadStub;
+
+    beforeEach(() => {
+      uploadStub = sinon.stub(Upload.prototype, 'done').resolves();
+    });
+
+    afterEach(() => {
+      uploadStub.restore();
+    });
+
+    it('should upload the state file to the S3 bucket', async () => {
+      const stateFileContent = writeStateFile({ service: { service: 'new-service' } });
+      crypto.createHash().update().digest.onCall(0).returns('local-hash-state-file');
+
+      await awsDeploy.uploadStateFile();
+
+      expect(uploadStub).to.have.been.calledOnce;
+      expect(getUploadParams(uploadStub)).to.deep.include({
+        Bucket: awsDeploy.bucketName,
+        Key: `${awsDeploy.serverless.service.package.artifactDirectoryName}/serverless-state.json`,
+        Body: stateFileContent,
+        ContentType: 'application/json',
+      });
+      expect(getUploadParams(uploadStub).Metadata).to.deep.equal({
+        filesha256: 'local-hash-state-file',
+      });
+      expect(uploadStub.firstCall.thisValue).to.include({
+        queueSize: 6,
+        partSize: 5 * 1024 * 1024,
+        leavePartsOnError: false,
+      });
+    });
+
+    it('should configure S3 transfer acceleration for state file uploads', async () => {
+      writeStateFile({ service: { service: 'new-service' } });
+      crypto.createHash().update().digest.onCall(0).returns('local-hash-state-file');
+      awsDeploy.provider.options['aws-s3-accelerate'] = true;
+
+      await awsDeploy.uploadStateFile();
+
+      expect(uploadStub).to.have.been.calledOnce;
+      expect(uploadStub.firstCall.thisValue.client.config.useAccelerateEndpoint).to.equal(true);
+    });
+
+    it('should upload the state file with KMS encryption options', async () => {
+      const stateFileContent = writeStateFile({ service: { service: 'new-service' } });
+      crypto.createHash().update().digest.onCall(0).returns('local-hash-state-file');
+      awsDeploy.serverless.service.provider.deploymentBucketObject = {
+        serverSideEncryption: 'aws:kms',
+        sseKMSKeyId: 'kms-key-id',
+      };
+
+      await awsDeploy.uploadStateFile();
+
+      expect(uploadStub).to.have.been.calledOnce;
+      expect(getUploadParams(uploadStub)).to.deep.equal({
+        Bucket: awsDeploy.bucketName,
+        Key: `${awsDeploy.serverless.service.package.artifactDirectoryName}/serverless-state.json`,
+        Body: stateFileContent,
+        ContentType: 'application/json',
+        Metadata: {
+          filesha256: 'local-hash-state-file',
+        },
+        ServerSideEncryption: 'aws:kms',
+        SSEKMSKeyId: 'kms-key-id',
+      });
+    });
+
+    it('should normalize state file upload errors', async () => {
+      const error = createAwsError('AccessDenied');
+      writeStateFile({ service: { service: 'new-service' } });
+      crypto.createHash().update().digest.onCall(0).returns('local-hash-state-file');
+      uploadStub.rejects(error);
+
+      await expectNormalizedUploadError(awsDeploy.uploadStateFile(), error);
     });
   });
 
@@ -140,7 +329,7 @@ describe('uploadArtifacts', () => {
 
     beforeEach(() => {
       readFileSyncStub = sinon.stub(fs, 'readFileSync').returns();
-      uploadStub = sinon.stub(awsDeploy.provider, 'request').resolves();
+      uploadStub = sinon.stub(Upload.prototype, 'done').resolves();
     });
 
     afterEach(() => {
@@ -166,17 +355,70 @@ describe('uploadArtifacts', () => {
         })
         .then(() => {
           expect(uploadStub).to.have.been.calledOnce;
-          expect(uploadStub).to.have.been.calledWithExactly('S3', 'upload', {
+          expect(getUploadParams(uploadStub)).to.deep.include({
             Bucket: awsDeploy.bucketName,
             Key: `${awsDeploy.serverless.service.package.artifactDirectoryName}/artifact.zip`,
-            Body: sinon.match.object.and(sinon.match.has('path', artifactFilePath)),
             ContentType: 'application/zip',
-            Metadata: {
-              filesha256: 'local-hash-zip-file',
-            },
+          });
+          expect(getUploadParams(uploadStub).Body.path).to.equal(artifactFilePath);
+          expect(getUploadParams(uploadStub).Metadata).to.deep.equal({
+            filesha256: 'local-hash-zip-file',
+          });
+          expect(uploadStub.firstCall.thisValue).to.include({
+            queueSize: 6,
+            partSize: 5 * 1024 * 1024,
+            leavePartsOnError: false,
           });
           expect(readFileSyncStub).to.not.have.been.called;
         });
+    });
+
+    it('should configure S3 transfer acceleration for .zip file uploads', async () => {
+      crypto.createHash().update().digest.onCall(0).returns('local-hash-zip-file');
+      awsDeploy.provider.options['aws-s3-accelerate'] = true;
+
+      const tmpDirPath = getTmpDirPath();
+      const artifactFilePath = path.join(tmpDirPath, 'artifact.zip');
+      serverless.utils.writeFileSync(artifactFilePath, 'artifact.zip file content');
+
+      await awsDeploy.uploadZipFile({
+        filename: artifactFilePath,
+        s3KeyDirname: awsDeploy.serverless.service.package.artifactDirectoryName,
+      });
+
+      expect(uploadStub).to.have.been.calledOnce;
+      expect(uploadStub.firstCall.thisValue.client.config.useAccelerateEndpoint).to.equal(true);
+    });
+
+    it('should throw observed stream errors after upload completes', async () => {
+      const streamError = new Error('stream failed');
+      cryptoStub.read.onCall(0).returns('local-hash-zip-file');
+      const artifactFilePath = path.join(getTmpDirPath(), 'artifact.zip');
+      sinon
+        .stub(fs, 'createReadStream')
+        .onFirstCall()
+        .returns({
+          on(eventName, listener) {
+            if (eventName === 'data') listener(Buffer.from('artifact'));
+            if (eventName === 'close') listener();
+            return this;
+          },
+        })
+        .onSecondCall()
+        .returns({
+          path: artifactFilePath,
+          on(eventName, listener) {
+            if (eventName === 'error') listener(streamError);
+            return this;
+          },
+        });
+
+      await expect(
+        awsDeploy.uploadZipFile({
+          filename: artifactFilePath,
+          s3KeyDirname: awsDeploy.serverless.service.package.artifactDirectoryName,
+        })
+      ).to.be.rejectedWith(streamError);
     });
 
     it('should upload the .zip file to a bucket with SSE bucket policy', async () => {
@@ -197,17 +439,70 @@ describe('uploadArtifacts', () => {
         .then(() => {
           expect(uploadStub).to.have.been.calledOnce;
           expect(readFileSyncStub).to.not.have.been.called;
-          expect(uploadStub).to.have.been.calledWithExactly('S3', 'upload', {
+          expect(getUploadParams(uploadStub)).to.deep.include({
             Bucket: awsDeploy.bucketName,
             Key: `${awsDeploy.serverless.service.package.artifactDirectoryName}/artifact.zip`,
-            Body: sinon.match.object.and(sinon.match.has('path', artifactFilePath)),
             ContentType: 'application/zip',
             ServerSideEncryption: 'AES256',
             Metadata: {
               filesha256: 'local-hash-zip-file',
             },
           });
+          expect(getUploadParams(uploadStub).Body.path).to.equal(artifactFilePath);
         });
+    });
+
+    it('should upload the .zip file with SSE-C encryption options', async () => {
+      cryptoStub.read.onCall(0).returns('local-hash-zip-file');
+
+      const tmpDirPath = getTmpDirPath();
+      const artifactFilePath = path.join(tmpDirPath, 'artifact.zip');
+      serverless.utils.writeFileSync(artifactFilePath, 'artifact.zip file content');
+      awsDeploy.serverless.service.provider.deploymentBucketObject = {
+        sseCustomerAlgorithim: 'AES256',
+        sseCustomerKey: 'customer-key',
+        sseCustomerKeyMD5: 'customer-key-md5',
+      };
+
+      await awsDeploy.uploadZipFile({
+        filename: artifactFilePath,
+        s3KeyDirname: awsDeploy.serverless.service.package.artifactDirectoryName,
+      });
+
+      const uploadParams = getUploadParams(uploadStub);
+      expect({
+        ...uploadParams,
+        Body: uploadParams.Body.path,
+      }).to.deep.equal({
+        Bucket: awsDeploy.bucketName,
+        Key: `${awsDeploy.serverless.service.package.artifactDirectoryName}/artifact.zip`,
+        Body: artifactFilePath,
+        ContentType: 'application/zip',
+        Metadata: {
+          filesha256: 'local-hash-zip-file',
+        },
+        SSECustomerAlgorithm: 'AES256',
+        SSECustomerKey: 'customer-key',
+        SSECustomerKeyMD5: 'customer-key-md5',
+      });
+    });
+
+    it('should normalize zip upload errors', async () => {
+      const error = createAwsError('AccessDenied');
+      crypto.createHash().update().digest.onCall(0).returns('local-hash-zip-file');
+
+      const tmpDirPath = getTmpDirPath();
+      const artifactFilePath = path.join(tmpDirPath, 'artifact.zip');
+      serverless.utils.writeFileSync(artifactFilePath, 'artifact.zip file content');
+      uploadStub.rejects(error);
+
+      await expectNormalizedUploadError(
+        awsDeploy.uploadZipFile({
+          filename: artifactFilePath,
+          s3KeyDirname: awsDeploy.serverless.service.package.artifactDirectoryName,
+        }),
+        error
+      );
     });
   });
 
@@ -314,7 +609,7 @@ describe('uploadArtifacts', () => {
     let customResourcesFilePath;
 
     beforeEach(() => {
-      uploadStub = sinon.stub(awsDeploy.provider, 'request').resolves();
+      uploadStub = sinon.stub(Upload.prototype, 'done').resolves();
       serviceDirPath = createTmpDir();
       customResourcesFilePath = path.join(serviceDirPath, '.serverless', 'custom-resources.zip');
       // Ensure no file stream is created, as by having provider.request mocked it'll be not consumed.
@@ -347,16 +642,49 @@ describe('uploadArtifacts', () => {
 
       return expect(awsDeploy.uploadCustomResources()).to.eventually.be.fulfilled.then(() => {
         expect(uploadStub).to.have.been.calledOnce;
-        expect(uploadStub).to.have.been.calledWithExactly('S3', 'upload', {
+        expect(getUploadParams(uploadStub)).to.deep.include({
           Bucket: awsDeploy.bucketName,
           Key: `${awsDeploy.serverless.service.package.artifactDirectoryName}/custom-resources.zip`,
-          Body: sinon.match.object.and(sinon.match.has('path', customResourcesFilePath)),
           ContentType: 'application/zip',
           Metadata: {
             filesha256: 'local-hash-zip-file',
           },
         });
+        expect(getUploadParams(uploadStub).Body.path).to.equal(customResourcesFilePath);
       });
+    });
+
+    it('should configure S3 transfer acceleration for custom resources uploads', async () => {
+      ensureFileSync(customResourcesFilePath);
+      cryptoStub.read.onCall(0).returns('local-hash-zip-file');
+      awsDeploy.provider.options['aws-s3-accelerate'] = true;
+
+      await awsDeploy.uploadCustomResources();
+
+      expect(uploadStub).to.have.been.calledOnce;
+      expect(uploadStub.firstCall.thisValue.client.config.useAccelerateEndpoint).to.equal(true);
+    });
+
+    it('should upload custom resources with SSE bucket policy', async () => {
+      ensureFileSync(customResourcesFilePath);
+      cryptoStub.read.onCall(0).returns('local-hash-zip-file');
+      awsDeploy.serverless.service.provider.deploymentBucketObject = {
+        serverSideEncryption: 'AES256',
+      };
+
+      await awsDeploy.uploadCustomResources();
+
+      expect(uploadStub).to.have.been.calledOnce;
+      expect(getUploadParams(uploadStub)).to.deep.include({
+        Bucket: awsDeploy.bucketName,
+        Key: `${awsDeploy.serverless.service.package.artifactDirectoryName}/custom-resources.zip`,
+        ContentType: 'application/zip',
+        ServerSideEncryption: 'AES256',
+        Metadata: {
+          filesha256: 'local-hash-zip-file',
+        },
+      });
+      expect(getUploadParams(uploadStub).Body.path).to.equal(customResourcesFilePath);
     });
   });
 });

@@ -1,11 +1,13 @@
 'use strict';
 
-const AWS = require('aws-sdk');
 const fs = require('fs');
 const fsp = require('fs').promises;
 const path = require('path');
+const { Readable, Writable } = require('node:stream');
+const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
 const chai = require('chai');
 const sinon = require('sinon');
+const proxyquire = require('proxyquire');
 const AwsProvider = require('../../../../../../../lib/plugins/aws/provider');
 const AwsCompileFunctions = require('../../../../../../../lib/plugins/aws/package/compile/functions');
 const Serverless = require('../../../../../../../lib/serverless');
@@ -71,25 +73,55 @@ describe('AwsCompileFunctions', () => {
   });
 
   describe('#downloadPackageArtifacts()', () => {
-    let requestStub;
+    let sendStub;
     let testFilePath;
     const s3BucketName = 'test-bucket';
     const s3ArtifactName = 's3-hosted-artifact.zip';
+    const downloadedArtifactContent = 'downloaded artifact content';
 
     beforeEach(() => {
       testFilePath = createTmpFile('dummy-artifact');
-      requestStub = sinon.stub(AWS, 'S3').returns({
-        getObject: () => ({
-          createReadStream() {
-            return fs.createReadStream(testFilePath);
-          },
-        }),
+      fs.writeFileSync(testFilePath, downloadedArtifactContent);
+      sendStub = sinon.stub(S3Client.prototype, 'send').resolves({
+        Body: fs.createReadStream(testFilePath),
       });
     });
 
     afterEach(() => {
-      AWS.S3.restore();
+      S3Client.prototype.send.restore();
+      if (fs.createWriteStream.restore) fs.createWriteStream.restore();
     });
+
+    function createAwsCompileFunctionsWithS3ClientStub({ onSend } = {}) {
+      const s3Clients = [];
+      class FakeGetObjectCommand {
+        constructor(input) {
+          this.input = input;
+        }
+      }
+      class FakeS3Client {
+        constructor(config) {
+          this.config = config;
+          s3Clients.push(this);
+        }
+
+        async send(command) {
+          if (onSend) return onSend({ command, client: this, FakeGetObjectCommand });
+          return undefined;
+        }
+      }
+      const AwsCompileFunctionsWithClientStub = proxyquire(
+        '../../../../../../../lib/plugins/aws/package/compile/functions',
+        {
+          '@aws-sdk/client-s3': {
+            S3Client: FakeS3Client,
+            GetObjectCommand: FakeGetObjectCommand,
+          },
+        }
+      );
+
+      return { AwsCompileFunctionsWithClientStub, FakeGetObjectCommand, s3Clients };
+    }
 
     it('should download the file and replace the artifact path for function packages', async () => {
       awsCompileFunctions.serverless.service.package.individually = true;
@@ -97,14 +129,20 @@ describe('AwsCompileFunctions', () => {
         `https://s3.amazonaws.com/${s3BucketName}/${s3ArtifactName}`;
 
       return expect(awsCompileFunctions.downloadPackageArtifacts()).to.be.fulfilled.then(() => {
-        const artifactFileName = awsCompileFunctions.serverless.service.functions[
-          functionName
-        ].package.artifact
-          .split(path.sep)
-          .pop();
+        const artifactFilePath =
+          awsCompileFunctions.serverless.service.functions[functionName].package.artifact;
+        const artifactFileName = artifactFilePath.split(path.sep).pop();
 
-        expect(requestStub.callCount).to.equal(1);
+        expect(sendStub.callCount).to.equal(1);
+        expect(sendStub.firstCall.args[0]).to.be.instanceOf(GetObjectCommand);
+        expect(sendStub.firstCall.args[0].input).to.deep.equal({
+          Bucket: s3BucketName,
+          Key: s3ArtifactName,
+        });
         expect(artifactFileName).to.equal(s3ArtifactName);
+        return expect(fsp.readFile(artifactFilePath, 'utf8')).to.eventually.equal(
+          downloadedArtifactContent
+        );
       });
     });
 
@@ -114,27 +152,164 @@ describe('AwsCompileFunctions', () => {
       awsCompileFunctions.serverless.service.package.artifact = `https://s3.amazonaws.com/${s3BucketName}/${s3ArtifactName}`;
 
       return expect(awsCompileFunctions.downloadPackageArtifacts()).to.be.fulfilled.then(() => {
-        const artifactFileName = awsCompileFunctions.serverless.service.package.artifact
-          .split(path.sep)
-          .pop();
+        const artifactFilePath = awsCompileFunctions.serverless.service.package.artifact;
+        const artifactFileName = artifactFilePath.split(path.sep).pop();
 
-        expect(requestStub.callCount).to.equal(1);
+        expect(sendStub.callCount).to.equal(1);
+        expect(sendStub.firstCall.args[0]).to.be.instanceOf(GetObjectCommand);
+        expect(sendStub.firstCall.args[0].input).to.deep.equal({
+          Bucket: s3BucketName,
+          Key: s3ArtifactName,
+        });
         expect(artifactFileName).to.equal(s3ArtifactName);
+        return expect(fsp.readFile(artifactFilePath, 'utf8')).to.eventually.equal(
+          downloadedArtifactContent
+        );
       });
     });
 
-    it('should not access AWS.S3 if URL is not an S3 URl', async () => {
-      AWS.S3.restore();
-      const myRequestStub = sinon.stub(AWS, 'S3').returns({
-        getObject: () => {
-          throw new Error('should not be invoked');
-        },
+    it('should strip query parameters when downloading presigned S3 artifact URLs', async () => {
+      awsCompileFunctions.serverless.service.package.individually = true;
+      awsCompileFunctions.serverless.service.functions[functionName].package.artifact =
+        `https://s3.amazonaws.com/${s3BucketName}/path/to/${s3ArtifactName}?X-Amz-Signature=secret`;
+
+      await expect(awsCompileFunctions.downloadPackageArtifacts()).to.be.fulfilled;
+
+      const artifactFilePath =
+        awsCompileFunctions.serverless.service.functions[functionName].package.artifact;
+
+      expect(sendStub.callCount).to.equal(1);
+      expect(sendStub.firstCall.args[0]).to.be.instanceOf(GetObjectCommand);
+      expect(sendStub.firstCall.args[0].input).to.deep.equal({
+        Bucket: s3BucketName,
+        Key: `path/to/${s3ArtifactName}`,
       });
+      expect(path.basename(artifactFilePath)).to.equal(s3ArtifactName);
+      expect(artifactFilePath).to.not.include('?');
+      expect(artifactFilePath).to.not.include('X-Amz');
+    });
+
+    it('should not access S3 if URL is not an S3 URL', async () => {
       awsCompileFunctions.serverless.service.functions[functionName].package.artifact =
         'https://s33amazonaws.com/this/that';
       return expect(awsCompileFunctions.downloadPackageArtifacts()).to.be.fulfilled.then(() => {
-        expect(myRequestStub.callCount).to.equal(1);
+        expect(sendStub).to.not.have.been.called;
       });
+    });
+
+    it('reuses S3 clients across repeated remote package artifact downloads in the same region', async () => {
+      const { AwsCompileFunctionsWithClientStub, s3Clients } =
+        createAwsCompileFunctionsWithS3ClientStub({
+          onSend: async ({ command, FakeGetObjectCommand }) => {
+            expect(command).to.be.instanceOf(FakeGetObjectCommand);
+            return { Body: fs.createReadStream(testFilePath) };
+          },
+        });
+      const compileFunctions = new AwsCompileFunctionsWithClientStub(serverless, {
+        stage: 'dev',
+        region: 'us-east-1',
+      });
+      compileFunctions.serverless.service.functions = {
+        first: {
+          handler: 'handler.first',
+          package: {
+            artifact: `https://s3.amazonaws.com/${s3BucketName}/first.zip`,
+          },
+        },
+        second: {
+          handler: 'handler.second',
+          package: {
+            artifact: `https://s3.amazonaws.com/${s3BucketName}/second.zip`,
+          },
+        },
+      };
+
+      await compileFunctions.downloadPackageArtifacts();
+
+      expect(s3Clients).to.have.length(1);
+    });
+
+    it('uses distinct S3 clients for distinct explicit remote artifact regions', async () => {
+      const { AwsCompileFunctionsWithClientStub, s3Clients } =
+        createAwsCompileFunctionsWithS3ClientStub();
+      const compileFunctions = new AwsCompileFunctionsWithClientStub(serverless, {
+        stage: 'dev',
+        region: 'eu-west-1',
+      });
+
+      await compileFunctions.getS3Client('eu-west-1');
+      await compileFunctions.getS3Client('us-east-1');
+
+      expect(s3Clients).to.have.length(2);
+      expect(s3Clients[0].config.region).to.equal('eu-west-1');
+      expect(s3Clients[1].config.region).to.equal('us-east-1');
+    });
+
+    it('should reject if the downloaded artifact stream errors', async () => {
+      const streamError = new Error('stream failed');
+      const errorStream = new Readable({
+        read() {
+          this.destroy(streamError);
+        },
+      });
+      sendStub.resolves({
+        Body: errorStream,
+      });
+      awsCompileFunctions.serverless.service.package.individually = true;
+      awsCompileFunctions.serverless.service.functions[functionName].package.artifact =
+        `https://s3.amazonaws.com/${s3BucketName}/${s3ArtifactName}`;
+      const originalArtifact =
+        awsCompileFunctions.serverless.service.functions[functionName].package.artifact;
+
+      await expect(awsCompileFunctions.downloadPackageArtifacts()).to.be.rejectedWith(streamError);
+      expect(
+        awsCompileFunctions.serverless.service.functions[functionName].package.artifact
+      ).to.equal(originalArtifact);
+    });
+
+    function setRemoteFunctionArtifact() {
+      awsCompileFunctions.serverless.service.package.individually = true;
+      awsCompileFunctions.serverless.service.functions[functionName].package.artifact =
+        `https://s3.amazonaws.com/${s3BucketName}/${s3ArtifactName}`;
+      return awsCompileFunctions.serverless.service.functions[functionName].package.artifact;
+    }
+
+    it('should reject and preserve artifact path when S3 getObject fails', async () => {
+      const error = new Error('getObject failed');
+      sendStub.rejects(error);
+      const originalArtifact = setRemoteFunctionArtifact();
+
+      await expect(awsCompileFunctions.downloadPackageArtifacts()).to.be.rejectedWith(error);
+      expect(
+        awsCompileFunctions.serverless.service.functions[functionName].package.artifact
+      ).to.equal(originalArtifact);
+    });
+
+    it('should reject and preserve artifact path when S3 getObject returns no body', async () => {
+      sendStub.resolves({});
+      const originalArtifact = setRemoteFunctionArtifact();
+
+      await expect(awsCompileFunctions.downloadPackageArtifacts()).to.be.rejected;
+      expect(
+        awsCompileFunctions.serverless.service.functions[functionName].package.artifact
+      ).to.equal(originalArtifact);
+    });
+
+    it('should reject and preserve artifact path when writing downloaded artifact fails', async () => {
+      const writeError = new Error('write failed');
+      sinon.stub(fs, 'createWriteStream').returns(
+        new Writable({
+          write(chunk, encoding, callback) {
+            callback(writeError);
+          },
+        })
+      );
+      const originalArtifact = setRemoteFunctionArtifact();
+
+      await expect(awsCompileFunctions.downloadPackageArtifacts()).to.be.rejectedWith(writeError);
+      expect(
+        awsCompileFunctions.serverless.service.functions[functionName].package.artifact
+      ).to.equal(originalArtifact);
     });
   });
 

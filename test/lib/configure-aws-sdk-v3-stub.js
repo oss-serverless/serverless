@@ -1,5 +1,6 @@
 'use strict';
 
+const { finished } = require('node:stream/promises');
 const ensurePlainObject = require('type/plain-object/ensure');
 const { hasOwn } = require('../../lib/utils/safe-object');
 
@@ -67,6 +68,8 @@ const serviceDefinitions = {
     commands: {
       getObject: 'GetObjectCommand',
       listObjectsV2: 'ListObjectsV2Command',
+      listObjectVersions: 'ListObjectVersionsCommand',
+      deleteObjects: 'DeleteObjectsCommand',
       headObject: 'HeadObjectCommand',
       headBucket: 'HeadBucketCommand',
     },
@@ -77,6 +80,7 @@ const serviceDefinitions = {
         outputToken: 'NextContinuationToken',
       },
     },
+    extraMethods: ['upload'],
   },
   SSM: {
     packageName: '@aws-sdk/client-ssm',
@@ -118,12 +122,83 @@ async function resolveStubValue({ state, service, method, value, input, context 
   return typeof value === 'function' ? value(input, context) : value;
 }
 
+function isReadableUploadBody(body) {
+  return body && typeof body.on === 'function' && typeof body.resume === 'function';
+}
+
+async function drainUploadBody(body) {
+  if (!isReadableUploadBody(body)) return;
+  if (body.destroyed && body.errored) throw body.errored;
+
+  const bodyFinishedPromise = finished(body, {
+    readable: true,
+    writable: false,
+    cleanup: true,
+  });
+  body.resume();
+  await bodyFinishedPromise;
+}
+
 function getMethodStub(stubMap, service, method) {
   const serviceConfig = stubMap[service];
   if (!serviceConfig || !hasOwn(serviceConfig, method)) {
     throw new Error(`Missing AWS SDK v3 stub configuration for ${service}.${method}`);
   }
   return serviceConfig[method];
+}
+
+function supportsMethod(definition, method) {
+  return (
+    definition.commands[method] ||
+    (definition.paginators || {})[method] ||
+    (definition.extraMethods || []).includes(method)
+  );
+}
+
+function createLibStorageModuleStub({ stubMap, state }) {
+  return {
+    Upload: createNamedClass(
+      'Upload',
+      class {
+        constructor(options) {
+          this.options = options;
+          this.client = options.client;
+          this.params = options.params;
+        }
+
+        on() {
+          return this;
+        }
+
+        async done() {
+          const context = {
+            service: 'S3',
+            method: 'upload',
+            commandName: 'Upload',
+            input: this.params,
+            clientConfig: this.client && this.client.config,
+            client: this.client,
+            upload: this,
+            options: this.options,
+          };
+          state.sends.push(context);
+
+          const value = getMethodStub(stubMap, 'S3', 'upload');
+          const uploadResultPromise = resolveStubValue({
+            state,
+            service: 'S3',
+            method: 'upload',
+            value,
+            input: this.params,
+            context,
+          });
+          const bodyDrainPromise = drainUploadBody(this.params && this.params.Body);
+          const [uploadResult] = await Promise.all([uploadResultPromise, bodyDrainPromise]);
+          return uploadResult;
+        }
+      }
+    ),
+  };
 }
 
 function createModuleStub({ service, definition, stubMap, state }) {
@@ -212,9 +287,7 @@ module.exports = (stubMap, { ignoreUnsupportedServices = false } = {}) => {
     }
     if (
       ignoreUnsupportedServices &&
-      !Object.keys(stubMap[service]).some(
-        (method) => definition.commands[method] || (definition.paginators || {})[method]
-      )
+      !Object.keys(stubMap[service]).some((method) => supportsMethod(definition, method))
     ) {
       continue;
     }
@@ -224,6 +297,9 @@ module.exports = (stubMap, { ignoreUnsupportedServices = false } = {}) => {
       stubMap,
       state,
     });
+    if (service === 'S3') {
+      modulesCacheStub['@aws-sdk/lib-storage'] = createLibStorageModuleStub({ stubMap, state });
+    }
   }
 
   return {
