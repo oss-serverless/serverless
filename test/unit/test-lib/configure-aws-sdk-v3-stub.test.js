@@ -349,6 +349,177 @@ describe('test/unit/test-lib/configure-aws-sdk-v3-stub.test.js', () => {
     );
   });
 
+  it('stubs API Gateway and CloudWatch Logs commands', async () => {
+    const credentials = async () => ({ accessKeyId: 'key', secretAccessKey: 'secret' });
+    const awsSdkV3Stub = configureAwsSdkV3Stub({
+      APIGateway: {
+        getRestApis: { items: [] },
+        getDeployments: { items: [] },
+        getStage: {},
+        createStage: {},
+        updateStage: {},
+        tagResource: {},
+        untagResource: {},
+        getUsagePlans: { items: [] },
+        updateUsagePlan: {},
+      },
+      CloudWatchLogs: {
+        describeSubscriptionFilters: { subscriptionFilters: [] },
+        deleteSubscriptionFilter: {},
+        deleteLogGroup: {},
+      },
+      CloudFormation: {
+        describeStackResource: { StackResourceDetail: { PhysicalResourceId: 'api-id' } },
+      },
+    });
+    const {
+      APIGatewayClient,
+      GetRestApisCommand,
+      GetDeploymentsCommand,
+      GetStageCommand,
+      CreateStageCommand,
+      UpdateStageCommand,
+      TagResourceCommand,
+      UntagResourceCommand,
+      GetUsagePlansCommand,
+      UpdateUsagePlanCommand,
+    } = awsSdkV3Stub.modulesCacheStub['@aws-sdk/client-api-gateway'];
+    const {
+      CloudWatchLogsClient,
+      DescribeSubscriptionFiltersCommand,
+      DeleteSubscriptionFilterCommand,
+      DeleteLogGroupCommand,
+    } = awsSdkV3Stub.modulesCacheStub['@aws-sdk/client-cloudwatch-logs'];
+    const { CloudFormationClient, DescribeStackResourceCommand } =
+      awsSdkV3Stub.modulesCacheStub['@aws-sdk/client-cloudformation'];
+    const apiGateway = new APIGatewayClient({ region: 'us-east-1', credentials });
+    const cloudWatchLogs = new CloudWatchLogsClient({ region: 'us-east-1', credentials });
+    const cloudFormation = new CloudFormationClient({ region: 'us-east-1', credentials });
+
+    await apiGateway.send(new GetRestApisCommand({ limit: 500 }));
+    await apiGateway.send(new GetDeploymentsCommand({ restApiId: 'api-id', limit: 500 }));
+    await apiGateway.send(new GetStageCommand({ restApiId: 'api-id', stageName: 'dev' }));
+    await apiGateway.send(
+      new CreateStageCommand({
+        restApiId: 'api-id',
+        deploymentId: 'deployment-id',
+        stageName: 'dev',
+      })
+    );
+    await apiGateway.send(
+      new UpdateStageCommand({
+        restApiId: 'api-id',
+        stageName: 'dev',
+        patchOperations: [],
+      })
+    );
+    await apiGateway.send(new TagResourceCommand({ resourceArn: 'arn', tags: { key: 'value' } }));
+    await apiGateway.send(new UntagResourceCommand({ resourceArn: 'arn', tagKeys: ['old'] }));
+    await apiGateway.send(new GetUsagePlansCommand({ limit: 500 }));
+    await apiGateway.send(
+      new UpdateUsagePlanCommand({
+        usagePlanId: 'plan-id',
+        patchOperations: [{ op: 'remove', path: '/apiStages', value: 'api-id:dev' }],
+      })
+    );
+    await cloudWatchLogs.send(
+      new DescribeSubscriptionFiltersCommand({ logGroupName: 'log-group' })
+    );
+    await cloudWatchLogs.send(
+      new DeleteSubscriptionFilterCommand({ logGroupName: 'log-group', filterName: 'filter' })
+    );
+    await cloudWatchLogs.send(new DeleteLogGroupCommand({ logGroupName: 'log-group' }));
+    await cloudFormation.send(
+      new DescribeStackResourceCommand({ StackName: 'stack', LogicalResourceId: 'RestApi' })
+    );
+
+    expect(awsSdkV3Stub.sends.map(({ service, method }) => `${service}.${method}`)).to.deep.equal([
+      'APIGateway.getRestApis',
+      'APIGateway.getDeployments',
+      'APIGateway.getStage',
+      'APIGateway.createStage',
+      'APIGateway.updateStage',
+      'APIGateway.tagResource',
+      'APIGateway.untagResource',
+      'APIGateway.getUsagePlans',
+      'APIGateway.updateUsagePlan',
+      'CloudWatchLogs.describeSubscriptionFilters',
+      'CloudWatchLogs.deleteSubscriptionFilter',
+      'CloudWatchLogs.deleteLogGroup',
+      'CloudFormation.describeStackResource',
+    ]);
+    expect(awsSdkV3Stub.sends[0].command).to.be.instanceOf(GetRestApisCommand);
+    expect(awsSdkV3Stub.sends[0].input).to.deep.equal({ limit: 500 });
+    expect(awsSdkV3Stub.sends[1].input).to.deep.equal({ restApiId: 'api-id', limit: 500 });
+    expect(awsSdkV3Stub.sends[2].input).to.deep.equal({ restApiId: 'api-id', stageName: 'dev' });
+    expect(awsSdkV3Stub.sends[3].input).to.deep.equal({
+      restApiId: 'api-id',
+      deploymentId: 'deployment-id',
+      stageName: 'dev',
+    });
+    expect(awsSdkV3Stub.sends[4].commandName).to.equal('UpdateStageCommand');
+    expect(awsSdkV3Stub.sends[4].input).to.deep.equal({
+      restApiId: 'api-id',
+      stageName: 'dev',
+      patchOperations: [],
+    });
+    expect(awsSdkV3Stub.sends[5].input).to.deep.equal({
+      resourceArn: 'arn',
+      tags: { key: 'value' },
+    });
+    expect(awsSdkV3Stub.sends[6].input).to.deep.equal({
+      resourceArn: 'arn',
+      tagKeys: ['old'],
+    });
+    expect(awsSdkV3Stub.sends[7].input).to.deep.equal({ limit: 500 });
+    expect(awsSdkV3Stub.sends[8].commandName).to.equal('UpdateUsagePlanCommand');
+    expect(awsSdkV3Stub.sends[8].input).to.deep.equal({
+      usagePlanId: 'plan-id',
+      patchOperations: [{ op: 'remove', path: '/apiStages', value: 'api-id:dev' }],
+    });
+    expect(awsSdkV3Stub.sends[9].input).to.deep.equal({ logGroupName: 'log-group' });
+    expect(awsSdkV3Stub.sends[10].command).to.be.instanceOf(DeleteSubscriptionFilterCommand);
+    expect(awsSdkV3Stub.sends[10].input).to.deep.equal({
+      logGroupName: 'log-group',
+      filterName: 'filter',
+    });
+    expect(awsSdkV3Stub.sends[11].input).to.deep.equal({ logGroupName: 'log-group' });
+    expect(awsSdkV3Stub.sends[12].command).to.be.instanceOf(DescribeStackResourceCommand);
+    expect(awsSdkV3Stub.sends[12].input).to.deep.equal({
+      StackName: 'stack',
+      LogicalResourceId: 'RestApi',
+    });
+    expect(awsSdkV3Stub.clients.every(({ config }) => config.credentials === credentials)).to.equal(
+      true
+    );
+  });
+
+  it('returns sequential direct command responses for manual API Gateway pagination', async () => {
+    const awsSdkV3Stub = configureAwsSdkV3Stub({
+      APIGateway: {
+        getUsagePlans: [
+          { items: [{ id: 'first' }], position: 'next-page' },
+          { items: [{ id: 'second' }] },
+        ],
+      },
+    });
+    const { APIGatewayClient, GetUsagePlansCommand } =
+      awsSdkV3Stub.modulesCacheStub['@aws-sdk/client-api-gateway'];
+    const apiGateway = new APIGatewayClient({ region: 'us-east-1' });
+
+    const first = await apiGateway.send(new GetUsagePlansCommand({ limit: 500 }));
+    const second = await apiGateway.send(
+      new GetUsagePlansCommand({ position: 'next-page', limit: 500 })
+    );
+
+    expect(first).to.deep.equal({ items: [{ id: 'first' }], position: 'next-page' });
+    expect(second).to.deep.equal({ items: [{ id: 'second' }] });
+    expect(awsSdkV3Stub.sends.map(({ input }) => input)).to.deep.equal([
+      { limit: 500 },
+      { position: 'next-page', limit: 500 },
+    ]);
+  });
+
   it('passes send context to repeated SDK v3 stub callbacks', async () => {
     const observedContexts = [];
     const awsSdkV3Stub = configureAwsSdkV3Stub({
