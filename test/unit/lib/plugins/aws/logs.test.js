@@ -26,9 +26,6 @@ describe('AwsLogs', () => {
     };
     serverless = new Serverless({ commands: [], options: {} });
     const provider = new AwsProvider(serverless, options);
-    provider.cachedCredentials = {
-      credentials: { accessKeyId: 'foo', secretAccessKey: 'bar' },
-    };
     serverless.setProvider('aws', provider);
     serverless.processedInput = { commands: ['logs'] };
     awsLogs = new AwsLogs(serverless, options);
@@ -341,9 +338,6 @@ describe('AwsLogs', () => {
       };
       serverless = new Serverless({ commands: [], options: {} });
       const provider = new AwsProvider(serverless, options);
-      provider.cachedCredentials = {
-        credentials: { accessKeyId: 'foo', secretAccessKey: 'bar' },
-      };
       serverless.setProvider('aws', provider);
       serverless.processedInput = { commands: ['logs'] };
       const mockedAwsLogs = new MockedAwsLogs(serverless, options);

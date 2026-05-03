@@ -264,10 +264,10 @@ Supported osls-specific options are:
 Other AWS SDK v3 client options, such as `endpoint`, `logger`, `requestHandler`,
 `forcePathStyle`, or `useAccelerateEndpoint`, are passed through to the returned config.
 
-`provider.request()` and `provider.sdk` are legacy AWS SDK v2 surfaces. They are
-not the recommended AWS SDK v3 plugin API. Core osls internals that have
-not migrated still use that legacy path, so this section describes the
-plugin-created SDK v3 client path only.
+`provider.request()` and `provider.sdk` are legacy AWS SDK v2 surfaces retained
+for compatibility until the next major release. Core osls internals that have not
+migrated still use that legacy path. They are not the recommended AWS SDK v3
+plugin API, so this section describes the plugin-created SDK v3 client path only.
 
 ## ESM plugins
 

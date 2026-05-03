@@ -19,6 +19,7 @@ const {
   ListStackResourcesCommand,
 } = require('@aws-sdk/client-cloudformation');
 const Serverless = require('../../../../../../lib/serverless');
+const ServerlessError = require('../../../../../../lib/serverless-error');
 const CLI = require('../../../../../../lib/classes/cli');
 const { getTmpDirPath } = require('../../../../../utils/fs');
 const skipWithNotice = require('../../../../../lib/skip-with-notice');
@@ -92,9 +93,6 @@ describe('AwsInvokeLocal', () => {
     serverless.cli = new CLI(serverless);
     serverless.processedInput = { commands: ['invoke'] };
     provider = new AwsProvider(serverless, options);
-    provider.cachedCredentials = {
-      credentials: { accessKeyId: 'foo', secretAccessKey: 'bar' },
-    };
     serverless.setProvider('aws', provider);
     awsInvokeLocal = new AwsInvokeLocal(serverless, options);
     awsInvokeLocal.provider = provider;
@@ -259,34 +257,36 @@ describe('AwsInvokeLocal', () => {
   });
 
   describe('#getCredentialEnvVars()', () => {
-    let getCredentialsStub;
+    let credentialsProviderStub;
+    let getAwsSdkV3CredentialsProviderStub;
 
     beforeEach(() => {
-      getCredentialsStub = sinon.stub(provider, 'getCredentials').callsFake(() => {
-        return provider.cachedCredentials || {};
+      credentialsProviderStub = sinon.stub().resolves({});
+      getAwsSdkV3CredentialsProviderStub = sinon
+        .stub(provider, 'getAwsSdkV3CredentialsProvider')
+        .returns(credentialsProviderStub);
+    });
+
+    afterEach(() => getAwsSdkV3CredentialsProviderStub.restore());
+
+    it('returns empty object when SDK v3 credentials have no env fields', async () => {
+      const credentialEnvVars = await awsInvokeLocal.getCredentialEnvVars();
+
+      expect(credentialEnvVars).to.be.eql({});
+      expect(getAwsSdkV3CredentialsProviderStub).to.have.been.calledOnce;
+      expect(credentialsProviderStub).to.have.been.calledOnceWithExactly({
+        callerClientConfig: { region: 'us-east-1' },
       });
     });
 
-    afterEach(() => getCredentialsStub.restore());
+    it('returns credential env vars from SDK v3 credentials', async () => {
+      credentialsProviderStub.resolves({
+        accessKeyId: 'ID',
+        secretAccessKey: 'SECRET',
+        sessionToken: 'TOKEN',
+      });
 
-    it('returns empty object when credentials is not set', () => {
-      provider.cachedCredentials = null;
-
-      const credentialEnvVars = awsInvokeLocal.getCredentialEnvVars();
-
-      expect(credentialEnvVars).to.be.eql({});
-    });
-
-    it('returns credential env vars from cached credentials', () => {
-      provider.cachedCredentials = {
-        credentials: {
-          accessKeyId: 'ID',
-          secretAccessKey: 'SECRET',
-          sessionToken: 'TOKEN',
-        },
-      };
-
-      const credentialEnvVars = awsInvokeLocal.getCredentialEnvVars();
+      const credentialEnvVars = await awsInvokeLocal.getCredentialEnvVars();
 
       expect(credentialEnvVars).to.be.eql({
         AWS_ACCESS_KEY_ID: 'ID',
@@ -295,21 +295,39 @@ describe('AwsInvokeLocal', () => {
       });
     });
 
-    it('returns credential env vars from lazily loaded credentials', () => {
-      provider.cachedCredentials = null;
-      getCredentialsStub.returns({
-        credentials: {
-          accessKeyId: 'ID',
-          secretAccessKey: 'SECRET',
-        },
+    it('omits undefined SDK v3 credential fields', async () => {
+      credentialsProviderStub.resolves({
+        accessKeyId: 'ID',
+        secretAccessKey: 'SECRET',
       });
 
-      const credentialEnvVars = awsInvokeLocal.getCredentialEnvVars();
+      const credentialEnvVars = await awsInvokeLocal.getCredentialEnvVars();
 
       expect(credentialEnvVars).to.be.eql({
         AWS_ACCESS_KEY_ID: 'ID',
         AWS_SECRET_ACCESS_KEY: 'SECRET',
       });
+    });
+
+    it('returns empty object for missing default-chain credentials', async () => {
+      credentialsProviderStub.rejects(
+        new ServerlessError('AWS provider credentials not found.', 'AWS_CREDENTIALS_NOT_FOUND')
+      );
+
+      const credentialEnvVars = await awsInvokeLocal.getCredentialEnvVars();
+
+      expect(credentialEnvVars).to.be.eql({});
+    });
+
+    it('surfaces configured credential provider failures', async () => {
+      const credentialsError = Object.assign(new Error('The SSO session has expired'), {
+        name: 'CredentialsProviderError',
+      });
+      credentialsProviderStub.rejects(credentialsError);
+
+      await expect(awsInvokeLocal.getCredentialEnvVars()).to.be.rejectedWith(
+        'The SSO session has expired'
+      );
     });
   });
 
@@ -653,14 +671,16 @@ describe('AwsInvokeLocal', () => {
   });
 
   describe('#loadEnvVars()', () => {
-    let getCredentialsStub;
+    let credentialsProviderStub;
+    let getAwsSdkV3CredentialsProviderStub;
     let restoreEnv;
 
     beforeEach(() => {
       ({ restoreEnv } = overrideEnv());
-      getCredentialsStub = sinon.stub(provider, 'getCredentials').callsFake(() => {
-        return provider.cachedCredentials || {};
-      });
+      credentialsProviderStub = sinon.stub().resolves({});
+      getAwsSdkV3CredentialsProviderStub = sinon
+        .stub(provider, 'getAwsSdkV3CredentialsProvider')
+        .returns(credentialsProviderStub);
       serverless.serviceDir = true;
       serverless.service.provider = {
         environment: {
@@ -681,7 +701,7 @@ describe('AwsInvokeLocal', () => {
 
     afterEach(() => {
       restoreEnv();
-      getCredentialsStub.restore();
+      getAwsSdkV3CredentialsProviderStub.restore();
     });
 
     it('it should load provider env vars', async () => {
@@ -721,12 +741,10 @@ describe('AwsInvokeLocal', () => {
     });
 
     it('it should set credential env vars #1', async () => {
-      provider.cachedCredentials = {
-        credentials: {
-          accessKeyId: 'ID',
-          secretAccessKey: 'SECRET',
-        },
-      };
+      credentialsProviderStub.resolves({
+        accessKeyId: 'ID',
+        secretAccessKey: 'SECRET',
+      });
 
       await awsInvokeLocal.loadEnvVars();
       expect(process.env.AWS_ACCESS_KEY_ID).to.equal('ID');
@@ -735,11 +753,9 @@ describe('AwsInvokeLocal', () => {
     });
 
     it('it should set credential env vars #2', async () => {
-      provider.cachedCredentials = {
-        credentials: {
-          sessionToken: 'TOKEN',
-        },
-      };
+      credentialsProviderStub.resolves({
+        sessionToken: 'TOKEN',
+      });
       await awsInvokeLocal.loadEnvVars();
 
       expect(process.env.AWS_SESSION_TOKEN).to.equal('TOKEN');
@@ -747,8 +763,11 @@ describe('AwsInvokeLocal', () => {
       expect('AWS_SECRET_ACCESS_KEY' in process.env).to.equal(false);
     });
 
-    it('it should work without cached credentials set', async () => {
-      provider.cachedCredentials = null;
+    it('it should work without credentials set', async () => {
+      credentialsProviderStub.rejects(
+        new ServerlessError('AWS provider credentials not found.', 'AWS_CREDENTIALS_NOT_FOUND')
+      );
+
       await awsInvokeLocal.loadEnvVars();
 
       expect('AWS_SESSION_TOKEN' in process.env).to.equal(false);
@@ -756,20 +775,33 @@ describe('AwsInvokeLocal', () => {
       expect('AWS_SECRET_ACCESS_KEY' in process.env).to.equal(false);
     });
 
-    it('loads credential env vars from lazily loaded credentials', async () => {
-      provider.cachedCredentials = null;
-      getCredentialsStub.returns({
-        credentials: {
-          accessKeyId: 'ID',
-          secretAccessKey: 'SECRET',
-          sessionToken: 'TOKEN',
-        },
+    it('loads credential env vars from SDK v3 credentials', async () => {
+      credentialsProviderStub.resolves({
+        accessKeyId: 'ID',
+        secretAccessKey: 'SECRET',
+        sessionToken: 'TOKEN',
       });
 
       await awsInvokeLocal.loadEnvVars();
 
       expect(process.env.AWS_ACCESS_KEY_ID).to.equal('ID');
       expect(process.env.AWS_SECRET_ACCESS_KEY).to.equal('SECRET');
+      expect(process.env.AWS_SESSION_TOKEN).to.equal('TOKEN');
+    });
+
+    it('preserves configured env var precedence over SDK v3 credentials', async () => {
+      credentialsProviderStub.resolves({
+        accessKeyId: 'ID',
+        secretAccessKey: 'SECRET',
+        sessionToken: 'TOKEN',
+      });
+      serverless.service.provider.environment.AWS_ACCESS_KEY_ID = 'CONFIGURED_ID';
+      awsInvokeLocal.options.functionObj.environment.AWS_SECRET_ACCESS_KEY = 'CONFIGURED_SECRET';
+
+      await awsInvokeLocal.loadEnvVars();
+
+      expect(process.env.AWS_ACCESS_KEY_ID).to.equal('CONFIGURED_ID');
+      expect(process.env.AWS_SECRET_ACCESS_KEY).to.equal('CONFIGURED_SECRET');
       expect(process.env.AWS_SESSION_TOKEN).to.equal('TOKEN');
     });
 
@@ -1255,6 +1287,7 @@ describe('AwsInvokeLocal', () => {
   describe('#invokeLocalDocker()', () => {
     let pluginMangerSpawnStub;
     let pluginMangerSpawnPackageStub;
+    let getAwsSdkV3CredentialsProviderStub;
     beforeEach(() => {
       awsInvokeLocal.provider.options.stage = 'dev';
       awsInvokeLocal.options = {
@@ -1278,9 +1311,18 @@ describe('AwsInvokeLocal', () => {
       };
       pluginMangerSpawnStub = sinon.stub(serverless.pluginManager, 'spawn');
       pluginMangerSpawnPackageStub = pluginMangerSpawnStub.withArgs('package').resolves();
+      getAwsSdkV3CredentialsProviderStub = sinon
+        .stub(provider, 'getAwsSdkV3CredentialsProvider')
+        .returns(
+          sinon.stub().resolves({
+            accessKeyId: 'foo',
+            secretAccessKey: 'bar',
+          })
+        );
     });
 
     afterEach(() => {
+      getAwsSdkV3CredentialsProviderStub.restore();
       serverless.pluginManager.spawn.restore();
       fs.rmSync('.serverless', { recursive: true, force: true });
     });

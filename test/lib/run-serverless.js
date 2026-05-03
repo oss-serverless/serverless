@@ -13,7 +13,6 @@ const resolveEnv = require('./resolve-env');
 const observeOutput = require('./observe-output');
 const disableServerlessStatsRequests = require('./disable-serverless-stats-requests');
 const provisionTmpDir = require('./provision-tmp-dir');
-const configureAwsRequestStub = require('./configure-aws-request-stub');
 const configureAwsSdkV3Stub = require('./configure-aws-sdk-v3-stub');
 const { writeJsonFile } = require('../utils/fs');
 
@@ -388,10 +387,6 @@ module.exports = async (
                     return eventHooks;
                   };
                 }
-              }
-
-              if (awsRequestStubMap) {
-                configureAwsRequestStub(serverless.getProvider('aws'), awsRequestStubMap);
               }
 
               if (hooks.beforeInstanceRun) await hooks.beforeInstanceRun(serverless);
