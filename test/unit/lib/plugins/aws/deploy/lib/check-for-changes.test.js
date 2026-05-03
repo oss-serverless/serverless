@@ -1535,14 +1535,16 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
 
     it('treats missing CloudFormation subscription filter resources as external', async () => {
       const awsDeploy = createAwsDeployTestInstance();
-      const requestStub = sandbox.stub(awsDeploy.provider, 'request').rejects(
-        new Error(
-          `Resource ${awsDeploy.provider.naming.getCloudWatchLogLogicalId(
-            'Fn1',
-            1
-          )} does not exist for stack ${awsDeploy.provider.naming.getStackName()}`
-        )
-      );
+      const requestStub = sandbox
+        .stub(awsDeploy.provider, 'request')
+        .rejects(
+          new Error(
+            `Resource ${awsDeploy.provider.naming.getCloudWatchLogLogicalId(
+              'Fn1',
+              1
+            )} does not exist for stack ${awsDeploy.provider.naming.getStackName()}`
+          )
+        );
 
       try {
         await expect(
