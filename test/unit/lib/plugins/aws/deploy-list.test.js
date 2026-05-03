@@ -1,11 +1,39 @@
 'use strict';
 
 const sinon = require('sinon');
-const expect = require('chai').expect;
 const proxyquire = require('proxyquire');
+const expect = require('chai').expect;
 const AwsDeployList = require('../../../../../lib/plugins/aws/deploy-list');
 const AwsProvider = require('../../../../../lib/plugins/aws/provider');
 const Serverless = require('../../../../../lib/serverless');
+const { S3Client, ListObjectsV2Command } = require('@aws-sdk/client-s3');
+const {
+  LambdaClient,
+  GetFunctionCommand,
+  ListVersionsByFunctionCommand,
+} = require('@aws-sdk/client-lambda');
+const releasePendingRequestsUntilSettled = require('../../../../utils/release-pending-requests-until-settled');
+
+function formatDeploymentDate(dateString) {
+  const date = new Date(Date.parse(dateString));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, 0)}-${String(
+    date.getUTCDate()
+  ).padStart(2, 0)} ${String(date.getUTCHours()).padStart(2, 0)}:${String(
+    date.getUTCMinutes()
+  ).padStart(2, 0)}:${String(date.getUTCSeconds()).padStart(2, 0)} UTC`;
+}
+
+async function waitForPendingRequests(pendingResolvers, count) {
+  for (let index = 0; index < 20 && pendingResolvers.length < count; index += 1) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+
+  if (pendingResolvers.length < count) {
+    throw new Error(
+      `Timed out waiting for ${count} pending requests; observed ${pendingResolvers.length}`
+    );
+  }
+}
 
 describe('AwsDeployList', () => {
   let serverless;
@@ -29,21 +57,58 @@ describe('AwsDeployList', () => {
   });
 
   describe('#listDeployments()', () => {
+    let writeTextStub;
+    let noticeStub;
+
+    function getAwsDeployListWithLogStubs() {
+      writeTextStub = sinon.stub();
+      noticeStub = sinon.stub();
+      noticeStub.skip = sinon.stub();
+      const AwsDeployListWithLogStubs = proxyquire('../../../../../lib/plugins/aws/deploy-list', {
+        '../../utils/serverless-utils/log': {
+          log: { notice: noticeStub },
+          writeText: writeTextStub,
+        },
+      });
+      const deployList = new AwsDeployListWithLogStubs(serverless, { stage: 'dev' });
+      deployList.bucketName = 'deployment-bucket';
+      return deployList;
+    }
+
+    afterEach(() => {
+      if (S3Client.prototype.send.restore) S3Client.prototype.send.restore();
+    });
+
     it('should print no deployments in case there are none', async () => {
       const s3Response = {
         Contents: [],
       };
-      const listObjectsStub = sinon.stub(awsDeployList.provider, 'request').resolves(s3Response);
+      const listObjectsStub = sinon.stub(S3Client.prototype, 'send').resolves(s3Response);
 
       await awsDeployList.listDeployments();
       expect(listObjectsStub.calledOnce).to.be.equal(true);
+      expect(listObjectsStub.firstCall.args[0]).to.be.instanceOf(ListObjectsV2Command);
+      expect(listObjectsStub.firstCall.args[0].input).to.include({
+        Bucket: awsDeployList.bucketName,
+        Prefix: `${s3Key}/`,
+      });
+    });
+
+    it('should print no deployments in case paginated listings contain no deployments', async () => {
+      const deployList = getAwsDeployListWithLogStubs();
+      sinon.stub(S3Client.prototype, 'send').resolves({
+        Contents: [{ Key: `${s3Key}/not-a-deploy-dir/artifact.zip` }],
+      });
+
+      await deployList.listDeployments();
+
+      expect(writeTextStub.called).to.equal(false);
+      expect(noticeStub.calledOnce).to.equal(true);
       expect(
-        listObjectsStub.calledWithExactly('S3', 'listObjectsV2', {
-          Bucket: awsDeployList.bucketName,
-          Prefix: `${s3Key}/`,
-        })
-      ).to.be.equal(true);
-      awsDeployList.provider.request.restore();
+        noticeStub.skip.calledOnceWithExactly(
+          "No deployments found, if that's unexpected ensure that stage and region are correct"
+        )
+      ).to.equal(true);
     });
 
     it('should display all available deployments', async () => {
@@ -56,99 +121,102 @@ describe('AwsDeployList', () => {
         ],
       };
 
-      const listObjectsStub = sinon.stub(awsDeployList.provider, 'request').resolves(s3Response);
+      const listObjectsStub = sinon.stub(S3Client.prototype, 'send').resolves(s3Response);
 
       await awsDeployList.listDeployments();
       expect(listObjectsStub.calledOnce).to.be.equal(true);
-      expect(
-        listObjectsStub.calledWithExactly('S3', 'listObjectsV2', {
-          Bucket: awsDeployList.bucketName,
-          Prefix: `${s3Key}/`,
-        })
-      ).to.be.equal(true);
-      awsDeployList.provider.request.restore();
+      expect(listObjectsStub.firstCall.args[0]).to.be.instanceOf(ListObjectsV2Command);
+      expect(listObjectsStub.firstCall.args[0].input).to.include({
+        Bucket: awsDeployList.bucketName,
+        Prefix: `${s3Key}/`,
+      });
     });
 
-    it('should display deployments across paginated object listings', async () => {
-      const listObjectsStub = sinon
-        .stub(awsDeployList.provider, 'request')
+    it('should print a deployment directory split across paginated object listings as one group', async () => {
+      const deployList = getAwsDeployListWithLogStubs();
+      sinon
+        .stub(S3Client.prototype, 'send')
         .onFirstCall()
         .resolves({
           Contents: [{ Key: `${s3Key}/113304333331-2016-08-18T13:40:06/artifact.zip` }],
           NextContinuationToken: 'next-page',
+        })
+        .onSecondCall()
+        .resolves({
+          Contents: [
+            { Key: `${s3Key}/113304333331-2016-08-18T13:40:06/cloudformation.json` },
+            { Key: `${s3Key}/903940390431-2016-08-18T23:42:08/artifact.zip` },
+          ],
+        });
+
+      await deployList.listDeployments();
+
+      expect(writeTextStub.firstCall.args).to.deep.equal([
+        formatDeploymentDate('2016-08-18T13:40:06'),
+        'Timestamp: 113304333331',
+        'Files:',
+      ]);
+      expect(writeTextStub.secondCall.args).to.deep.equal(['  - artifact.zip']);
+      expect(writeTextStub.thirdCall.args).to.deep.equal(['  - cloudformation.json']);
+      expect(writeTextStub.getCall(3).args).to.deep.equal([
+        formatDeploymentDate('2016-08-18T23:42:08'),
+        'Timestamp: 903940390431',
+        'Files:',
+      ]);
+      expect(writeTextStub.getCall(4).args).to.deep.equal(['  - artifact.zip']);
+      expect(noticeStub.skip.called).to.equal(false);
+    });
+
+    it('should ignore unrelated paginated keys while printing deployments', async () => {
+      const deployList = getAwsDeployListWithLogStubs();
+      sinon.stub(S3Client.prototype, 'send').resolves({
+        Contents: [
+          { Key: `${s3Key}/not-a-deploy-dir/artifact.zip` },
+          {
+            Key: `other-prefix/${serverless.service.service}/dev/113304333331-2016-08-18T13:40:06/other.zip`,
+          },
+          { Key: `${s3Key}/113304333331-2016-08-18T13:40:06/artifact.zip` },
+        ],
+      });
+
+      await deployList.listDeployments();
+
+      expect(writeTextStub.calledTwice).to.equal(true);
+      expect(writeTextStub.secondCall.args).to.deep.equal(['  - artifact.zip']);
+      expect(noticeStub.skip.called).to.equal(false);
+    });
+
+    it('should emit completed deployment output before fetching later pages', async () => {
+      const deployList = getAwsDeployListWithLogStubs();
+      sinon
+        .stub(S3Client.prototype, 'send')
+        .onFirstCall()
+        .resolves({
+          Contents: [{ Key: `${s3Key}/113304333331-2016-08-18T13:40:06/artifact.zip` }],
+          NextContinuationToken: 'second-page',
         })
         .onSecondCall()
         .resolves({
           Contents: [{ Key: `${s3Key}/903940390431-2016-08-18T23:42:08/artifact.zip` }],
+          NextContinuationToken: 'third-page',
+        })
+        .onThirdCall()
+        .callsFake(async () => {
+          expect(writeTextStub.called).to.equal(true);
+          expect(writeTextStub.firstCall.args).to.deep.equal([
+            formatDeploymentDate('2016-08-18T13:40:06'),
+            'Timestamp: 113304333331',
+            'Files:',
+          ]);
+          return { Contents: [] };
         });
 
-      try {
-        await awsDeployList.listDeployments();
-
-        expect(listObjectsStub).to.have.been.calledTwice;
-        expect(listObjectsStub.firstCall.args).to.deep.equal([
-          'S3',
-          'listObjectsV2',
-          {
-            Bucket: awsDeployList.bucketName,
-            Prefix: `${s3Key}/`,
-          },
-        ]);
-        expect(listObjectsStub.secondCall.args).to.deep.equal([
-          'S3',
-          'listObjectsV2',
-          {
-            Bucket: awsDeployList.bucketName,
-            Prefix: `${s3Key}/`,
-            ContinuationToken: 'next-page',
-          },
-        ]);
-      } finally {
-        awsDeployList.provider.request.restore();
-      }
+      await deployList.listDeployments();
     });
 
-    it('should print no deployments in case paginated listings contain no deployments', async () => {
+    it('should display deployments across paginated object listings', async () => {
       const listObjectsStub = sinon
-        .stub(awsDeployList.provider, 'request')
-        .onFirstCall()
-        .resolves({ Contents: [], NextContinuationToken: 'next-page' })
-        .onSecondCall()
-        .resolves({ Contents: [] });
-
-      try {
-        await awsDeployList.listDeployments();
-
-        expect(listObjectsStub).to.have.been.calledTwice;
-        expect(listObjectsStub.secondCall.args).to.deep.equal([
-          'S3',
-          'listObjectsV2',
-          {
-            Bucket: awsDeployList.bucketName,
-            Prefix: `${s3Key}/`,
-            ContinuationToken: 'next-page',
-          },
-        ]);
-      } finally {
-        awsDeployList.provider.request.restore();
-      }
-    });
-
-    it('should print a deployment directory split across paginated object listings as one group', async () => {
-      const writeTextStub = sinon.stub();
-      const ProxiedAwsDeployList = proxyquire('../../../../../lib/plugins/aws/deploy-list', {
-        '../../utils/serverless-utils/log': {
-          log: { notice: sinon.stub() },
-          writeText: writeTextStub,
-        },
-      });
-      const proxiedDeployList = new ProxiedAwsDeployList(serverless, {
-        stage: 'dev',
-        region: 'us-east-1',
-      });
-      proxiedDeployList.bucketName = 'deployment-bucket';
-      const listObjectsStub = sinon
-        .stub(proxiedDeployList.provider, 'request')
+        .stub(S3Client.prototype, 'send')
         .onFirstCall()
         .resolves({
           Contents: [{ Key: `${s3Key}/113304333331-2016-08-18T13:40:06/artifact.zip` }],
@@ -156,46 +224,57 @@ describe('AwsDeployList', () => {
         })
         .onSecondCall()
         .resolves({
-          Contents: [{ Key: `${s3Key}/113304333331-2016-08-18T13:40:06/cloudformation.json` }],
+          Contents: [{ Key: `${s3Key}/903940390431-2016-08-18T23:42:08/cloudformation.json` }],
         });
 
-      try {
-        await proxiedDeployList.listDeployments();
+      await awsDeployList.listDeployments();
 
-        expect(listObjectsStub).to.have.been.calledTwice;
-        expect(
-          writeTextStub.getCalls().filter((call) => call.args.includes('Timestamp: 113304333331'))
-        ).to.have.length(1);
-        expect(writeTextStub.calledWith('  - artifact.zip')).to.equal(true);
-        expect(writeTextStub.calledWith('  - cloudformation.json')).to.equal(true);
-      } finally {
-        proxiedDeployList.provider.request.restore();
-      }
+      expect(listObjectsStub.calledTwice).to.equal(true);
+      expect(listObjectsStub.secondCall.args[0]).to.be.instanceOf(ListObjectsV2Command);
+      expect(listObjectsStub.secondCall.args[0].input).to.include({
+        Bucket: awsDeployList.bucketName,
+        Prefix: `${s3Key}/`,
+        ContinuationToken: 'next-page',
+      });
     });
 
-    it('should translate access denied from a later page', async () => {
-      const listObjectsStub = sinon
-        .stub(awsDeployList.provider, 'request')
-        .onFirstCall()
-        .resolves({ Contents: [], NextContinuationToken: 'next-page' })
-        .onSecondCall()
-        .rejects(
-          Object.assign(new Error('denied'), { code: 'AWS_S3_LIST_OBJECTS_V2_ACCESS_DENIED' })
-        );
+    it('should translate S3 list access denied errors', async () => {
+      sinon.stub(S3Client.prototype, 'send').rejects({ $metadata: { httpStatusCode: 403 } });
 
       try {
         await awsDeployList.listDeployments();
-        throw new Error('Expected listDeployments to throw');
+        throw new Error('Expected listDeployments to reject');
       } catch (error) {
-        expect(listObjectsStub).to.have.been.calledTwice;
-        expect(error).to.have.property('code', 'AWS_S3_LIST_OBJECTS_V2_ACCESS_DENIED');
-        expect(error).to.have.property(
-          'message',
-          'Could not list objects in the deployment bucket. Make sure you have sufficient permissions to access it.'
-        );
-      } finally {
-        awsDeployList.provider.request.restore();
+        expect(error.code).to.equal('AWS_S3_LIST_OBJECTS_V2_ACCESS_DENIED');
       }
+    });
+
+    it('should preserve specific S3 list authentication failures', async () => {
+      const listError = new Error('signature mismatch');
+      listError.providerError = {
+        code: 'SignatureDoesNotMatch',
+        statusCode: 403,
+      };
+      sinon.stub(S3Client.prototype, 'send').rejects(listError);
+
+      try {
+        await awsDeployList.listDeployments();
+        throw new Error('Expected listDeployments to reject');
+      } catch (error) {
+        expect(error).to.equal(listError);
+      }
+    });
+
+    it('should translate wrapped status-only S3 list access denied errors', async () => {
+      const listError = new Error('forbidden');
+      listError.code = 'AWS_S3_LIST_OBJECTS_V2_ERROR';
+      listError.providerError = { statusCode: 403 };
+      sinon.stub(S3Client.prototype, 'send').rejects(listError);
+
+      await expect(awsDeployList.listDeployments()).to.be.eventually.rejected.and.have.property(
+        'code',
+        'AWS_S3_LIST_OBJECTS_V2_ACCESS_DENIED'
+      );
     });
   });
 
@@ -237,21 +316,27 @@ describe('AwsDeployList', () => {
           name: 'listDeployments-dev-func2',
         },
       };
-      listFunctionsStub = sinon.stub(awsDeployList.provider, 'request');
-      listFunctionsStub.onCall(0).resolves({
-        Configuration: {
-          FunctionName: 'listDeployments-dev-func1',
-        },
-      });
-      listFunctionsStub.onCall(1).resolves({
-        Configuration: {
-          FunctionName: 'listDeployments-dev-func2',
-        },
+      listFunctionsStub = sinon.stub(LambdaClient.prototype, 'send').callsFake(async (command) => {
+        if (command.input.FunctionName === 'listDeployments-dev-func1') {
+          return {
+            Configuration: {
+              FunctionName: 'listDeployments-dev-func1',
+            },
+          };
+        }
+        if (command.input.FunctionName === 'listDeployments-dev-func2') {
+          return {
+            Configuration: {
+              FunctionName: 'listDeployments-dev-func2',
+            },
+          };
+        }
+        throw new Error(`Unexpected function lookup ${command.input.FunctionName}`);
       });
     });
 
     afterEach(() => {
-      awsDeployList.provider.request.restore();
+      LambdaClient.prototype.send.restore();
     });
 
     it('should get all service related functions', async () => {
@@ -263,14 +348,48 @@ describe('AwsDeployList', () => {
       const result = await awsDeployList.getFunctions();
 
       expect(listFunctionsStub.callCount).to.equal(2);
+      for (const call of listFunctionsStub.getCalls()) {
+        expect(call.args[0]).to.be.instanceOf(GetFunctionCommand);
+      }
+      expect(listFunctionsStub.getCalls().map((call) => call.args[0].input)).to.deep.equal([
+        { FunctionName: 'listDeployments-dev-func1' },
+        { FunctionName: 'listDeployments-dev-func2' },
+      ]);
       expect(result).to.deep.equal(expectedResult);
+    });
+
+    it('limits concurrent Lambda getFunction requests to 6', async () => {
+      awsDeployList.serverless.service.functions = Object.fromEntries(
+        Array.from({ length: 10 }, (_, index) => [
+          `func${index}`,
+          { name: `listDeployments-dev-func${index}` },
+        ])
+      );
+      let activeRequests = 0;
+      let observedMaxActiveRequests = 0;
+      const pendingResolvers = [];
+      listFunctionsStub.callsFake(async (command) => {
+        activeRequests += 1;
+        observedMaxActiveRequests = Math.max(observedMaxActiveRequests, activeRequests);
+        expect(activeRequests).to.be.at.most(6);
+        await new Promise((resolve) => pendingResolvers.push(resolve));
+        activeRequests -= 1;
+        return { Configuration: { FunctionName: command.input.FunctionName } };
+      });
+
+      const promise = awsDeployList.getFunctions();
+
+      await waitForPendingRequests(pendingResolvers, 6);
+      expect(observedMaxActiveRequests).to.equal(6);
+      await releasePendingRequestsUntilSettled(pendingResolvers, promise);
+      expect(observedMaxActiveRequests).to.equal(6);
     });
   });
 
   describe('#getFunctionPaginatedVersions()', () => {
     beforeEach(() => {
       sinon
-        .stub(awsDeployList.provider, 'request')
+        .stub(LambdaClient.prototype, 'send')
         .onFirstCall()
         .resolves({
           Versions: [{ FunctionName: 'listDeployments-dev-func', Version: '1' }],
@@ -283,7 +402,7 @@ describe('AwsDeployList', () => {
     });
 
     afterEach(() => {
-      awsDeployList.provider.request.restore();
+      LambdaClient.prototype.send.restore();
     });
 
     it('should return the versions for the provided function when response is paginated', async () => {
@@ -300,6 +419,16 @@ describe('AwsDeployList', () => {
       };
 
       expect(result).to.deep.equal(expectedResult);
+      expect(LambdaClient.prototype.send.firstCall.args[0]).to.be.instanceOf(
+        ListVersionsByFunctionCommand
+      );
+      expect(LambdaClient.prototype.send.firstCall.args[0].input).to.deep.equal({
+        FunctionName: 'listDeployments-dev-func',
+      });
+      expect(LambdaClient.prototype.send.secondCall.args[0].input).to.deep.equal({
+        FunctionName: 'listDeployments-dev-func',
+        Marker: '123',
+      });
     });
   });
 
@@ -307,13 +436,13 @@ describe('AwsDeployList', () => {
     let listVersionsByFunctionStub;
 
     beforeEach(() => {
-      listVersionsByFunctionStub = sinon.stub(awsDeployList.provider, 'request').resolves({
+      listVersionsByFunctionStub = sinon.stub(LambdaClient.prototype, 'send').resolves({
         Versions: [{ FunctionName: 'listDeployments-dev-func', Version: '$LATEST' }],
       });
     });
 
     afterEach(() => {
-      awsDeployList.provider.request.restore();
+      LambdaClient.prototype.send.restore();
     });
 
     it('should return the versions for the provided functions', async () => {
@@ -333,7 +462,104 @@ describe('AwsDeployList', () => {
       ];
 
       expect(listVersionsByFunctionStub.calledTwice).to.equal(true);
+      expect(listVersionsByFunctionStub.firstCall.args[0]).to.be.instanceOf(
+        ListVersionsByFunctionCommand
+      );
+      expect(listVersionsByFunctionStub.getCalls().map((call) => call.args[0].input)).to.deep.equal(
+        [
+          { FunctionName: 'listDeployments-dev-func1' },
+          { FunctionName: 'listDeployments-dev-func2' },
+        ]
+      );
       expect(result).to.deep.equal(expectedResult);
+    });
+
+    it('limits concurrent per-function version chains to 6', async () => {
+      const funcs = Array.from({ length: 10 }, (_, index) => ({
+        FunctionName: `listDeployments-dev-func${index}`,
+      }));
+      let activeRequests = 0;
+      let observedMaxActiveRequests = 0;
+      const pendingResolvers = [];
+      listVersionsByFunctionStub.callsFake(async (command) => {
+        activeRequests += 1;
+        observedMaxActiveRequests = Math.max(observedMaxActiveRequests, activeRequests);
+        expect(activeRequests).to.be.at.most(6);
+        await new Promise((resolve) => pendingResolvers.push(resolve));
+        activeRequests -= 1;
+        return {
+          Versions: [{ FunctionName: command.input.FunctionName, Version: '$LATEST' }],
+        };
+      });
+
+      const promise = awsDeployList.getFunctionVersions(funcs);
+
+      await waitForPendingRequests(pendingResolvers, 6);
+      expect(observedMaxActiveRequests).to.equal(6);
+      await releasePendingRequestsUntilSettled(pendingResolvers, promise);
+      expect(observedMaxActiveRequests).to.equal(6);
+    });
+  });
+
+  describe('client reuse', () => {
+    it('reuses one Lambda client across function and version listing', async () => {
+      const lambdaClients = [];
+      const sends = [];
+      class FakeCommand {
+        constructor(input) {
+          this.input = input;
+        }
+      }
+      class FakeGetFunctionCommand extends FakeCommand {}
+      class FakeListVersionsByFunctionCommand extends FakeCommand {}
+      class FakeLambdaClient {
+        constructor(config) {
+          this.config = config;
+          lambdaClients.push(this);
+        }
+
+        async send(command) {
+          sends.push({ client: this, command });
+          if (command instanceof FakeGetFunctionCommand) {
+            return { Configuration: { FunctionName: command.input.FunctionName } };
+          }
+          if (command instanceof FakeListVersionsByFunctionCommand) {
+            return {
+              Versions: [{ FunctionName: command.input.FunctionName, Version: '$LATEST' }],
+            };
+          }
+          throw new Error(`Unexpected command ${command.constructor.name}`);
+        }
+      }
+      const AwsDeployListWithClientStubs = proxyquire(
+        '../../../../../lib/plugins/aws/deploy-list',
+        {
+          '@aws-sdk/client-lambda': {
+            LambdaClient: FakeLambdaClient,
+            GetFunctionCommand: FakeGetFunctionCommand,
+            ListVersionsByFunctionCommand: FakeListVersionsByFunctionCommand,
+          },
+        }
+      );
+      const deployList = new AwsDeployListWithClientStubs(serverless, {
+        stage: 'dev',
+        region: 'us-east-1',
+      });
+      deployList.serverless.service.functions = {
+        first: { name: 'listDeployments-dev-first' },
+        second: { name: 'listDeployments-dev-second' },
+      };
+
+      const funcs = await deployList.getFunctions();
+      await deployList.getFunctionVersions(funcs);
+
+      expect(lambdaClients).to.have.length(1);
+      expect(sends).to.have.length(4);
+      for (const send of sends) expect(send.client).to.equal(lambdaClients[0]);
+      expect(sends[0].command).to.be.instanceOf(FakeGetFunctionCommand);
+      expect(sends[1].command).to.be.instanceOf(FakeGetFunctionCommand);
+      expect(sends[2].command).to.be.instanceOf(FakeListVersionsByFunctionCommand);
+      expect(sends[3].command).to.be.instanceOf(FakeListVersionsByFunctionCommand);
     });
   });
 });

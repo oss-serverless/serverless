@@ -28,8 +28,12 @@
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "^15.3.5",
     "@aws-sdk/client-api-gateway": "^3.975.0",
+    "@aws-sdk/client-apigatewayv2": "^3.975.0",
     "@aws-sdk/client-cloudformation": "^3.975.0",
+    "@aws-sdk/client-cloudwatch": "^3.975.0",
+    "@aws-sdk/client-cloudwatch-logs": "^3.975.0",
     "@aws-sdk/client-cognito-identity-provider": "^3.975.0",
+    "@aws-sdk/client-ecr": "^3.975.0",
     "@aws-sdk/client-eventbridge": "^3.975.0",
     "@aws-sdk/client-iam": "^3.975.0",
     "@aws-sdk/client-lambda": "^3.975.0",

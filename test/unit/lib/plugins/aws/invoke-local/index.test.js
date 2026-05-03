@@ -13,6 +13,7 @@ const log = require('log').get('serverless:test');
 const proxyquire = require('proxyquire');
 const { overrideEnv } = require('../../../../../utils/process');
 const AwsProvider = require('../../../../../../lib/plugins/aws/provider');
+const { CloudFormationClient } = require('@aws-sdk/client-cloudformation');
 const Serverless = require('../../../../../../lib/serverless');
 const CLI = require('../../../../../../lib/classes/cli');
 const { getTmpDirPath } = require('../../../../../utils/fs');
@@ -366,10 +367,13 @@ describe('AwsInvokeLocal', () => {
 
     afterEach(() => {
       provider.request.restore();
+      if (CloudFormationClient.prototype.send.restore) {
+        CloudFormationClient.prototype.send.restore();
+      }
     });
 
     it('resolves Fn::ImportValue env vars', async () => {
-      requestStub.resolves({
+      const listExportsStub = sinon.stub(CloudFormationClient.prototype, 'send').resolves({
         Exports: [{ Name: 'some-export', Value: 'imported-value' }],
       });
 
@@ -382,6 +386,7 @@ describe('AwsInvokeLocal', () => {
       expect(result).to.deep.equal({
         IMPORTED: 'imported-value',
       });
+      expect(listExportsStub).to.have.been.calledOnce;
     });
 
     it('resolves Ref env vars', async () => {

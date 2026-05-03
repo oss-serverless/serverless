@@ -5,6 +5,10 @@ const sinon = require('sinon');
 const AwsInfo = require('../../../../../../lib/plugins/aws/info/index');
 const AwsProvider = require('../../../../../../lib/plugins/aws/provider');
 const Serverless = require('../../../../../../lib/serverless');
+const {
+  CloudFormationClient,
+  ListStackResourcesCommand,
+} = require('@aws-sdk/client-cloudformation');
 
 describe('#getResourceCount()', () => {
   let serverless;
@@ -25,11 +29,14 @@ describe('#getResourceCount()', () => {
     };
     awsInfo = new AwsInfo(serverless, options);
 
-    listStackResourcesStub = sinon.stub(awsInfo.provider, 'request');
+    listStackResourcesStub = sinon.stub(CloudFormationClient.prototype, 'send');
   });
 
   afterEach(() => {
-    awsInfo.provider.request.restore();
+    if (awsInfo.provider.getAwsSdkV3Config.restore) {
+      awsInfo.provider.getAwsSdkV3Config.restore();
+    }
+    CloudFormationClient.prototype.send.restore();
   });
 
   it('attach resourceCount to this.gatheredData after listStackResources call', async () => {
@@ -126,17 +133,17 @@ describe('#getResourceCount()', () => {
 
     return expect(awsInfo.getResourceCount()).to.be.fulfilled.then(() => {
       expect(listStackResourcesStub.calledOnce).to.equal(true);
-      expect(
-        listStackResourcesStub.calledWithExactly('CloudFormation', 'listStackResources', {
-          StackName: awsInfo.provider.naming.getStackName(),
-        })
-      ).to.equal(true);
+      expect(listStackResourcesStub.firstCall.args[0]).to.be.instanceOf(ListStackResourcesCommand);
+      expect(listStackResourcesStub.firstCall.args[0].input).to.deep.equal({
+        StackName: awsInfo.provider.naming.getStackName(),
+      });
 
       expect(awsInfo.gatheredData.info.resourceCount).to.equal(10);
     });
   });
 
   it('accumulates resourceCount across paginated listStackResources calls', async () => {
+    const getAwsSdkV3ConfigSpy = sinon.spy(awsInfo.provider, 'getAwsSdkV3Config');
     listStackResourcesStub
       .onFirstCall()
       .resolves({ StackResourceSummaries: [{}, {}], NextToken: 'next' })
@@ -148,17 +155,42 @@ describe('#getResourceCount()', () => {
     await awsInfo.getResourceCount();
 
     expect(listStackResourcesStub).to.have.been.calledTwice;
-    expect(listStackResourcesStub.firstCall.args).to.deep.equal([
-      'CloudFormation',
-      'listStackResources',
-      { StackName: awsInfo.provider.naming.getStackName() },
-    ]);
-    expect(listStackResourcesStub.secondCall.args).to.deep.equal([
-      'CloudFormation',
-      'listStackResources',
-      { StackName: awsInfo.provider.naming.getStackName(), NextToken: 'next' },
-    ]);
+    expect(listStackResourcesStub.firstCall.args[0]).to.be.instanceOf(ListStackResourcesCommand);
+    expect(listStackResourcesStub.firstCall.args[0].input).to.deep.equal({
+      StackName: awsInfo.provider.naming.getStackName(),
+    });
+    expect(listStackResourcesStub.secondCall.thisValue).to.equal(
+      listStackResourcesStub.firstCall.thisValue
+    );
+    expect(getAwsSdkV3ConfigSpy).to.have.been.calledOnce;
+    expect(listStackResourcesStub.secondCall.args[0].input).to.deep.equal({
+      StackName: awsInfo.provider.naming.getStackName(),
+      NextToken: 'next',
+    });
     expect(awsInfo.gatheredData.info.resourceCount).to.equal(3);
+  });
+
+  it('uses an existing CloudFormation client promise from the info context', async () => {
+    const send = sinon.stub().resolves({ StackResourceSummaries: [{}, {}] });
+    const getAwsSdkV3ConfigStub = sinon
+      .stub(awsInfo.provider, 'getAwsSdkV3Config')
+      .throws(new Error('Expected existing CloudFormation client to be reused'));
+    awsInfo.cloudFormationClientPromise = Promise.resolve({ send });
+    awsInfo.gatheredData = { info: {}, outputs: [] };
+
+    try {
+      await awsInfo.getResourceCount();
+
+      expect(getAwsSdkV3ConfigStub).to.not.have.been.called;
+      expect(send).to.have.been.calledOnce;
+      expect(send.firstCall.args[0]).to.be.instanceOf(ListStackResourcesCommand);
+      expect(send.firstCall.args[0].input).to.deep.equal({
+        StackName: awsInfo.provider.naming.getStackName(),
+      });
+      expect(awsInfo.gatheredData.info.resourceCount).to.equal(2);
+    } finally {
+      getAwsSdkV3ConfigStub.restore();
+    }
   });
 
   it('treats missing StackResourceSummaries as an empty page', async () => {

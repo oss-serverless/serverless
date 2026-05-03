@@ -13,6 +13,11 @@ const Serverless = require('../../../../../lib/serverless');
 const ServerlessError = require('../../../../../lib/serverless-error');
 const runServerless = require('../../../../utils/run-serverless');
 const { ensureDir, outputFile, remove } = require('../../../../utils/fs');
+const {
+  CloudFormationClient,
+  DescribeStackResourceCommand,
+} = require('@aws-sdk/client-cloudformation');
+const { STSClient, GetCallerIdentityCommand } = require('@aws-sdk/client-sts');
 
 const expect = chai.expect;
 const spawnModulePath = path.resolve(__dirname, '../../../../../lib/utils/spawn.js');
@@ -418,7 +423,10 @@ describe('AwsProvider', () => {
 
     it('passes profile and custom options to the config helpers', async () => {
       const buildClientConfigStub = sinon.stub().returns({ config: true });
-      const getAwsSdkV3CredentialsProviderStub = sinon.stub().returns('credentials');
+      const credentialsProvider = sinon
+        .stub()
+        .resolves({ accessKeyId: 'key', secretAccessKey: 'secret' });
+      const getAwsSdkV3CredentialsProviderStub = sinon.stub().returns(credentialsProvider);
       const getAwsSdkV3CredentialsProviderCacheKeyStub = sinon.stub().returns('cache-key');
       const AwsProviderProxyquired = proxyquire
         .noCallThru()
@@ -442,12 +450,91 @@ describe('AwsProvider', () => {
         provider,
         profile: 'custom-profile',
       });
-      expect(buildClientConfigStub).to.have.been.calledOnceWithExactly({
+      expect(buildClientConfigStub).to.have.been.calledOnce;
+      const buildConfigInput = buildClientConfigStub.firstCall.args[0];
+      expect(buildConfigInput).to.include({
         maxAttempts: 2,
         retryMode: 'adaptive',
         region: 'us-east-1',
-        credentials: 'credentials',
       });
+      expect(buildConfigInput.credentials).to.be.a('function');
+      await expect(buildConfigInput.credentials({ caller: 'test' })).to.eventually.deep.equal({
+        accessKeyId: 'key',
+        secretAccessKey: 'secret',
+      });
+      expect(credentialsProvider).to.have.been.calledOnceWithExactly({ caller: 'test' });
+    });
+
+    it('normalizes generic SDK v3 missing credentials errors', async () => {
+      const missingCredentialsError = new Error('Could not load credentials from any providers');
+      const credentialsProvider = sinon.stub().rejects(missingCredentialsError);
+      const AwsProviderProxyquired = proxyquire
+        .noCallThru()
+        .load('../../../../../lib/plugins/aws/provider.js', {
+          '../../aws/credentials': {
+            getAwsSdkV3CredentialsProviderCacheKey: sinon.stub().returns('cache-key'),
+            getAwsSdkV3CredentialsProvider: sinon.stub().returns(credentialsProvider),
+          },
+        });
+      const provider = new AwsProviderProxyquired(serverless, options);
+
+      const config = await provider.getAwsSdkV3Config();
+
+      try {
+        await config.credentials();
+        throw new Error('Expected credentials provider to reject');
+      } catch (error) {
+        expect(error.code).to.equal('AWS_CREDENTIALS_NOT_FOUND');
+      }
+    });
+
+    it('does not normalize specific SDK v3 credential provider errors', async () => {
+      const ssoError = Object.assign(new Error('The SSO session has expired'), {
+        name: 'CredentialsProviderError',
+      });
+      const credentialsProvider = sinon.stub().rejects(ssoError);
+      const AwsProviderProxyquired = proxyquire
+        .noCallThru()
+        .load('../../../../../lib/plugins/aws/provider.js', {
+          '../../aws/credentials': {
+            getAwsSdkV3CredentialsProviderCacheKey: sinon.stub().returns('cache-key'),
+            getAwsSdkV3CredentialsProvider: sinon.stub().returns(credentialsProvider),
+          },
+        });
+      const provider = new AwsProviderProxyquired(serverless, options);
+
+      const config = await provider.getAwsSdkV3Config();
+
+      try {
+        await config.credentials();
+        throw new Error('Expected credentials provider to reject');
+      } catch (error) {
+        expect(error).to.equal(ssoError);
+        expect(error.code).to.not.equal('AWS_CREDENTIALS_NOT_FOUND');
+      }
+    });
+
+    it('does not mask credential provider errors with non-string messages', async () => {
+      const nonStringMessageError = { message: { text: 'Could not load credentials' } };
+      const credentialsProvider = sinon.stub().rejects(nonStringMessageError);
+      const AwsProviderProxyquired = proxyquire
+        .noCallThru()
+        .load('../../../../../lib/plugins/aws/provider.js', {
+          '../../aws/credentials': {
+            getAwsSdkV3CredentialsProviderCacheKey: sinon.stub().returns('cache-key'),
+            getAwsSdkV3CredentialsProvider: sinon.stub().returns(credentialsProvider),
+          },
+        });
+      const provider = new AwsProviderProxyquired(serverless, options);
+
+      const config = await provider.getAwsSdkV3Config();
+
+      try {
+        await config.credentials();
+        throw new Error('Expected credentials provider to reject');
+      } catch (error) {
+        expect(error).to.equal(nonStringMessageError);
+      }
     });
 
     it('reuses SDK v3 credential providers for the same credential source', async () => {
@@ -511,39 +598,86 @@ describe('AwsProvider', () => {
 
   describe('#getServerlessDeploymentBucketName()', () => {
     it('should return the name of the serverless deployment bucket', async () => {
-      const describeStackResourcesStub = sinon.stub(awsProvider, 'request').resolves({
-        StackResourceDetail: {
-          PhysicalResourceId: 'serverlessDeploymentBucketName',
-        },
-      });
+      const describeStackResourcesStub = sinon
+        .stub(CloudFormationClient.prototype, 'send')
+        .resolves({
+          StackResourceDetail: {
+            PhysicalResourceId: 'serverlessDeploymentBucketName',
+          },
+        });
 
-      return awsProvider.getServerlessDeploymentBucketName().then((bucketName) => {
+      try {
+        const bucketName = await awsProvider.getServerlessDeploymentBucketName();
+
         expect(bucketName).to.equal('serverlessDeploymentBucketName');
         expect(describeStackResourcesStub.calledOnce).to.be.equal(true);
-        expect(
-          describeStackResourcesStub.calledWithExactly('CloudFormation', 'describeStackResource', {
-            StackName: awsProvider.naming.getStackName(),
-            LogicalResourceId: awsProvider.naming.getDeploymentBucketLogicalId(),
-          })
-        ).to.be.equal(true);
-        awsProvider.request.restore();
-      });
+        expect(describeStackResourcesStub.firstCall.args[0]).to.be.instanceOf(
+          DescribeStackResourceCommand
+        );
+        expect(describeStackResourcesStub.firstCall.args[0].input).to.deep.equal({
+          StackName: awsProvider.naming.getStackName(),
+          LogicalResourceId: awsProvider.naming.getDeploymentBucketLogicalId(),
+        });
+      } finally {
+        CloudFormationClient.prototype.send.restore();
+      }
     });
 
     it('should return the name of the custom deployment bucket', async () => {
       awsProvider.serverless.service.provider.deploymentBucket = 'custom-bucket';
 
-      const describeStackResourcesStub = sinon.stub(awsProvider, 'request').resolves({
-        StackResourceDetail: {
-          PhysicalResourceId: 'serverlessDeploymentBucketName',
-        },
-      });
+      const describeStackResourcesStub = sinon
+        .stub(CloudFormationClient.prototype, 'send')
+        .resolves({
+          StackResourceDetail: {
+            PhysicalResourceId: 'serverlessDeploymentBucketName',
+          },
+        });
 
-      return awsProvider.getServerlessDeploymentBucketName().then((bucketName) => {
+      try {
+        const bucketName = await awsProvider.getServerlessDeploymentBucketName();
+
         expect(describeStackResourcesStub.called).to.be.equal(false);
         expect(bucketName).to.equal('custom-bucket');
-        awsProvider.request.restore();
-      });
+      } finally {
+        CloudFormationClient.prototype.send.restore();
+      }
+    });
+
+    it('reuses one CloudFormation client across deployment bucket lookups', async () => {
+      const getAwsSdkV3ConfigSpy = sinon.spy(awsProvider, 'getAwsSdkV3Config');
+      const describeStackResourceStub = sinon
+        .stub(CloudFormationClient.prototype, 'send')
+        .onFirstCall()
+        .resolves({
+          StackResourceDetail: {
+            PhysicalResourceId: 'first-bucket',
+          },
+        })
+        .onSecondCall()
+        .resolves({
+          StackResourceDetail: {
+            PhysicalResourceId: 'second-bucket',
+          },
+        });
+
+      try {
+        await expect(awsProvider.getServerlessDeploymentBucketName()).to.eventually.equal(
+          'first-bucket'
+        );
+        await expect(awsProvider.getServerlessDeploymentBucketName()).to.eventually.equal(
+          'second-bucket'
+        );
+
+        expect(getAwsSdkV3ConfigSpy).to.have.been.calledOnce;
+        expect(describeStackResourceStub).to.have.been.calledTwice;
+        expect(describeStackResourceStub.firstCall.thisValue).to.equal(
+          describeStackResourceStub.secondCall.thisValue
+        );
+      } finally {
+        CloudFormationClient.prototype.send.restore();
+        awsProvider.getAwsSdkV3Config.restore();
+      }
     });
   });
 
@@ -577,25 +711,30 @@ describe('AwsProvider', () => {
       const accountId = '12345678';
       const partition = 'aws';
 
-      const stsGetCallerIdentityStub = sinon.stub(awsProvider, 'request').resolves({
+      const stsGetCallerIdentityStub = sinon.stub(STSClient.prototype, 'send').resolves({
         ResponseMetadata: { RequestId: '12345678-1234-1234-1234-123456789012' },
         UserId: 'ABCDEFGHIJKLMNOPQRSTU:VWXYZ',
         Account: accountId,
         Arn: 'arn:aws:sts::123456789012:assumed-role/ROLE-NAME/VWXYZ',
       });
 
-      return awsProvider.getAccountInfo().then((result) => {
+      try {
+        const result = await awsProvider.getAccountInfo();
+
         expect(stsGetCallerIdentityStub.calledOnce).to.equal(true);
+        expect(stsGetCallerIdentityStub.firstCall.args[0]).to.be.instanceOf(
+          GetCallerIdentityCommand
+        );
+        expect(stsGetCallerIdentityStub.firstCall.args[0].input).to.deep.equal({});
         expect(result.accountId).to.equal(accountId);
         expect(result.partition).to.equal(partition);
-        awsProvider.request.restore();
-      });
+      } finally {
+        STSClient.prototype.send.restore();
+      }
     });
 
     it('memoizes successful promise results', async () => {
-      const requestStub = sinon.stub(awsProvider, 'request');
-
-      requestStub.resolves({
+      const stsGetCallerIdentityStub = sinon.stub(STSClient.prototype, 'send').resolves({
         ResponseMetadata: { RequestId: '12345678-1234-1234-1234-123456789012' },
         UserId: 'ABCDEFGHIJKLMNOPQRSTU:VWXYZ',
         Account: '12345678',
@@ -608,9 +747,9 @@ describe('AwsProvider', () => {
 
         expect(firstResult.accountId).to.equal('12345678');
         expect(secondResult).to.equal(firstResult);
-        expect(requestStub).to.have.been.calledOnce;
+        expect(stsGetCallerIdentityStub).to.have.been.calledOnce;
       } finally {
-        awsProvider.request.restore();
+        STSClient.prototype.send.restore();
       }
     });
   });
@@ -619,18 +758,21 @@ describe('AwsProvider', () => {
     it('should return the AWS account id', async () => {
       const accountId = '12345678';
 
-      const stsGetCallerIdentityStub = sinon.stub(awsProvider, 'request').resolves({
+      const stsGetCallerIdentityStub = sinon.stub(STSClient.prototype, 'send').resolves({
         ResponseMetadata: { RequestId: '12345678-1234-1234-1234-123456789012' },
         UserId: 'ABCDEFGHIJKLMNOPQRSTU:VWXYZ',
         Account: accountId,
         Arn: 'arn:aws:sts::123456789012:assumed-role/ROLE-NAME/VWXYZ',
       });
 
-      return awsProvider.getAccountId().then((result) => {
+      try {
+        const result = await awsProvider.getAccountId();
+
         expect(stsGetCallerIdentityStub.calledOnce).to.equal(true);
         expect(result).to.equal(accountId);
-        awsProvider.request.restore();
-      });
+      } finally {
+        STSClient.prototype.send.restore();
+      }
     });
   });
 

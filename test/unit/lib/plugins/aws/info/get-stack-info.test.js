@@ -5,11 +5,18 @@ const sinon = require('sinon');
 const AwsInfo = require('../../../../../../lib/plugins/aws/info/index');
 const AwsProvider = require('../../../../../../lib/plugins/aws/provider');
 const Serverless = require('../../../../../../lib/serverless');
+const {
+  CloudFormationClient,
+  DescribeStacksCommand,
+  ListExportsCommand,
+} = require('@aws-sdk/client-cloudformation');
+const { ApiGatewayV2Client, GetApiCommand } = require('@aws-sdk/client-apigatewayv2');
 
 describe('#getStackInfo()', () => {
   let serverless;
   let awsInfo;
   let describeStacksStub;
+  let getApiStub;
 
   beforeEach(() => {
     const options = {
@@ -26,11 +33,13 @@ describe('#getStackInfo()', () => {
     serverless.service.layers = { test: {} };
     awsInfo = new AwsInfo(serverless, options);
 
-    describeStacksStub = sinon.stub(awsInfo.provider, 'request');
+    describeStacksStub = sinon.stub(CloudFormationClient.prototype, 'send');
+    getApiStub = sinon.stub(ApiGatewayV2Client.prototype, 'send');
   });
 
   afterEach(() => {
-    awsInfo.provider.request.restore();
+    CloudFormationClient.prototype.send.restore();
+    ApiGatewayV2Client.prototype.send.restore();
   });
 
   it('attach info from describeStack call to this.gatheredData if result is available', async () => {
@@ -152,11 +161,10 @@ describe('#getStackInfo()', () => {
 
     return awsInfo.getStackInfo().then(() => {
       expect(describeStacksStub.calledOnce).to.equal(true);
-      expect(
-        describeStacksStub.calledWithExactly('CloudFormation', 'describeStacks', {
-          StackName: awsInfo.provider.naming.getStackName(),
-        })
-      ).to.equal(true);
+      expect(describeStacksStub.firstCall.args[0]).to.be.instanceOf(DescribeStacksCommand);
+      expect(describeStacksStub.firstCall.args[0].input).to.deep.equal({
+        StackName: awsInfo.provider.naming.getStackName(),
+      });
 
       expect(awsInfo.gatheredData).to.deep.equal(expectedGatheredDataObj);
     });
@@ -182,14 +190,61 @@ describe('#getStackInfo()', () => {
 
     return awsInfo.getStackInfo().then(() => {
       expect(describeStacksStub.calledOnce).to.equal(true);
-      expect(
-        describeStacksStub.calledWithExactly('CloudFormation', 'describeStacks', {
-          StackName: awsInfo.provider.naming.getStackName(),
-        })
-      ).to.equal(true);
+      expect(describeStacksStub.firstCall.args[0]).to.be.instanceOf(DescribeStacksCommand);
+      expect(describeStacksStub.firstCall.args[0].input).to.deep.equal({
+        StackName: awsInfo.provider.naming.getStackName(),
+      });
 
       expect(awsInfo.gatheredData).to.deep.equal(expectedGatheredDataObj);
     });
+  });
+
+  it('uses an existing CloudFormation client promise from the info context', async () => {
+    const send = sinon.stub().resolves(null);
+    const getAwsSdkV3ConfigStub = sinon
+      .stub(awsInfo.provider, 'getAwsSdkV3Config')
+      .throws(new Error('Expected existing CloudFormation client to be reused'));
+    awsInfo.cloudFormationClientPromise = Promise.resolve({ send });
+
+    try {
+      await awsInfo.getStackInfo();
+
+      expect(getAwsSdkV3ConfigStub).to.not.have.been.called;
+      expect(send).to.have.been.calledOnce;
+      expect(send.firstCall.args[0]).to.be.instanceOf(DescribeStacksCommand);
+      expect(send.firstCall.args[0].input).to.deep.equal({
+        StackName: awsInfo.provider.naming.getStackName(),
+      });
+    } finally {
+      getAwsSdkV3ConfigStub.restore();
+    }
+  });
+
+  it('uses an existing API Gateway V2 client promise from the info context', async () => {
+    serverless.service.provider.httpApi = {
+      id: 'http-api-id',
+    };
+    const cloudFormationSend = sinon.stub().resolves(null);
+    const apiGatewaySend = sinon.stub().resolves({ ApiEndpoint: 'my-endpoint' });
+    const getAwsSdkV3ConfigStub = sinon
+      .stub(awsInfo.provider, 'getAwsSdkV3Config')
+      .throws(new Error('Expected existing clients to be reused'));
+    awsInfo.cloudFormationClientPromise = Promise.resolve({ send: cloudFormationSend });
+    awsInfo.apiGatewayV2ClientPromise = Promise.resolve({ send: apiGatewaySend });
+
+    try {
+      await awsInfo.getStackInfo();
+
+      expect(getAwsSdkV3ConfigStub).to.not.have.been.called;
+      expect(cloudFormationSend).to.have.been.calledOnce;
+      expect(cloudFormationSend.firstCall.args[0]).to.be.instanceOf(DescribeStacksCommand);
+      expect(apiGatewaySend).to.have.been.calledOnce;
+      expect(apiGatewaySend.firstCall.args[0]).to.be.instanceOf(GetApiCommand);
+      expect(apiGatewaySend.firstCall.args[0].input).to.deep.equal({ ApiId: 'http-api-id' });
+      expect(awsInfo.gatheredData.info.endpoints).to.deep.equal(['httpApi: my-endpoint']);
+    } finally {
+      getAwsSdkV3ConfigStub.restore();
+    }
   });
 
   it('should attach info from api gateway if httpApi is used', async () => {
@@ -197,19 +252,10 @@ describe('#getStackInfo()', () => {
       id: 'http-api-id',
     };
 
-    describeStacksStub
-      .withArgs('CloudFormation', 'describeStacks', {
-        StackName: awsInfo.provider.naming.getStackName(),
-      })
-      .resolves(null);
-
-    describeStacksStub
-      .withArgs('ApiGatewayV2', 'getApi', {
-        ApiId: 'http-api-id',
-      })
-      .resolves({
-        ApiEndpoint: 'my-endpoint',
-      });
+    describeStacksStub.resolves(null);
+    getApiStub.resolves({
+      ApiEndpoint: 'my-endpoint',
+    });
 
     const expectedGatheredDataObj = {
       info: {
@@ -225,19 +271,60 @@ describe('#getStackInfo()', () => {
     };
 
     return awsInfo.getStackInfo().then(() => {
-      expect(describeStacksStub.calledTwice).to.equal(true);
-      expect(
-        describeStacksStub.calledWithExactly('CloudFormation', 'describeStacks', {
-          StackName: awsInfo.provider.naming.getStackName(),
-        })
-      ).to.equal(true);
-      expect(
-        describeStacksStub.calledWithExactly('ApiGatewayV2', 'getApi', {
-          ApiId: 'http-api-id',
-        })
-      ).to.equal(true);
+      expect(describeStacksStub).to.have.been.calledOnce;
+      expect(describeStacksStub.firstCall.args[0].input).to.deep.equal({
+        StackName: awsInfo.provider.naming.getStackName(),
+      });
+      expect(getApiStub).to.have.been.calledOnce;
+      expect(getApiStub.firstCall.args[0]).to.be.instanceOf(GetApiCommand);
+      expect(getApiStub.firstCall.args[0].input).to.deep.equal({ ApiId: 'http-api-id' });
 
       expect(awsInfo.gatheredData).to.deep.equal(expectedGatheredDataObj);
     });
+  });
+
+  it('resolves imported httpApi id with the info CloudFormation client', async () => {
+    serverless.service.provider.httpApi = {
+      id: { 'Fn::ImportValue': 'exported-http-api-id' },
+    };
+    const getAwsSdkV3ConfigSpy = sinon.spy(awsInfo.provider, 'getAwsSdkV3Config');
+    describeStacksStub.callsFake(async (command) => {
+      if (command instanceof DescribeStacksCommand) return null;
+      if (command instanceof ListExportsCommand) {
+        if (!command.input.NextToken) return { Exports: [], NextToken: 'next' };
+        return {
+          Exports: [{ Name: 'exported-http-api-id', Value: 'imported-http-api-id' }],
+        };
+      }
+      throw new Error(`Unexpected CloudFormation command ${command.constructor.name}`);
+    });
+    getApiStub.resolves({ ApiEndpoint: 'imported-endpoint' });
+
+    try {
+      await awsInfo.getStackInfo();
+
+      expect(getAwsSdkV3ConfigSpy).to.have.been.calledTwice;
+      expect(describeStacksStub).to.have.been.calledThrice;
+      expect(describeStacksStub.firstCall.args[0]).to.be.instanceOf(DescribeStacksCommand);
+      expect(describeStacksStub.firstCall.args[0].input).to.deep.equal({
+        StackName: awsInfo.provider.naming.getStackName(),
+      });
+      expect(describeStacksStub.secondCall.args[0]).to.be.instanceOf(ListExportsCommand);
+      expect(describeStacksStub.secondCall.args[0].input).to.deep.equal({});
+      expect(describeStacksStub.thirdCall.args[0]).to.be.instanceOf(ListExportsCommand);
+      expect(describeStacksStub.thirdCall.args[0].input).to.deep.equal({ NextToken: 'next' });
+      expect(describeStacksStub.secondCall.thisValue).to.equal(
+        describeStacksStub.firstCall.thisValue
+      );
+      expect(describeStacksStub.thirdCall.thisValue).to.equal(
+        describeStacksStub.firstCall.thisValue
+      );
+      expect(getApiStub).to.have.been.calledOnce;
+      expect(getApiStub.firstCall.args[0]).to.be.instanceOf(GetApiCommand);
+      expect(getApiStub.firstCall.args[0].input).to.deep.equal({ ApiId: 'imported-http-api-id' });
+      expect(awsInfo.gatheredData.info.endpoints).to.deep.equal(['httpApi: imported-endpoint']);
+    } finally {
+      getAwsSdkV3ConfigSpy.restore();
+    }
   });
 });

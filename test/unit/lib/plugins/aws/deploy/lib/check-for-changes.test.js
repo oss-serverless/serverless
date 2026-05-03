@@ -12,6 +12,17 @@ const AwsDeploy = require('../../../../../../../lib/plugins/aws/deploy/index');
 const Serverless = require('../../../../../../../lib/serverless');
 const ServerlessError = require('../../../../../../../lib/serverless-error');
 const runServerless = require('../../../../../../utils/run-serverless');
+const { S3Client, ListObjectsV2Command, HeadObjectCommand } = require('@aws-sdk/client-s3');
+const { LambdaClient, GetFunctionCommand } = require('@aws-sdk/client-lambda');
+const {
+  CloudWatchLogsClient,
+  DescribeSubscriptionFiltersCommand,
+} = require('@aws-sdk/client-cloudwatch-logs');
+const {
+  CloudFormationClient,
+  DescribeStackResourceCommand,
+} = require('@aws-sdk/client-cloudformation');
+const releasePendingRequestsUntilSettled = require('../../../../../../utils/release-pending-requests-until-settled');
 
 const fsp = fs.promises;
 
@@ -27,12 +38,19 @@ function createAwsDeployTestInstance() {
   const provider = new AwsProvider(serverless, options);
   serverless.setProvider('aws', provider);
   serverless.service.service = 'my-service';
-  const awsDeploy = new AwsDeploy(serverless, options);
-  Object.assign(
-    awsDeploy,
-    require('../../../../../../../lib/plugins/aws/deploy/lib/check-for-changes.js')
-  );
-  return awsDeploy;
+  return new AwsDeploy(serverless, options);
+}
+
+async function waitForPendingRequests(pendingResolvers, count) {
+  for (let index = 0; index < 20 && pendingResolvers.length < count; index += 1) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+
+  if (pendingResolvers.length < count) {
+    throw new Error(
+      `Timed out waiting for ${count} pending requests; observed ${pendingResolvers.length}`
+    );
+  }
 }
 
 describe('checkForChanges', () => {
@@ -134,11 +152,11 @@ describe('checkForChanges', () => {
     let listObjectsV2Stub;
 
     beforeEach(() => {
-      listObjectsV2Stub = sandbox.stub(awsDeploy.provider, 'request');
+      listObjectsV2Stub = sandbox.stub(S3Client.prototype, 'send');
     });
 
     afterEach(() => {
-      awsDeploy.provider.request.restore();
+      S3Client.prototype.send.restore();
     });
 
     it('should translate error if rejected due to missing bucket', () => {
@@ -166,7 +184,8 @@ describe('checkForChanges', () => {
       listObjectsV2Stub.resolves(serviceObjects);
 
       return expect(awsDeploy.getMostRecentObjects()).to.be.fulfilled.then((result) => {
-        expect(listObjectsV2Stub).to.have.been.calledWithExactly('S3', 'listObjectsV2', {
+        expect(listObjectsV2Stub.firstCall.args[0]).to.be.instanceOf(ListObjectsV2Command);
+        expect(listObjectsV2Stub.firstCall.args[0].input).to.include({
           Bucket: awsDeploy.bucketName,
           Prefix: 'serverless/my-service/dev/',
         });
@@ -187,7 +206,8 @@ describe('checkForChanges', () => {
       listObjectsV2Stub.resolves(serviceObjects);
 
       return expect(awsDeploy.getMostRecentObjects()).to.be.fulfilled.then((result) => {
-        expect(listObjectsV2Stub).to.have.been.calledWithExactly('S3', 'listObjectsV2', {
+        expect(listObjectsV2Stub.firstCall.args[0]).to.be.instanceOf(ListObjectsV2Command);
+        expect(listObjectsV2Stub.firstCall.args[0].input).to.include({
           Bucket: awsDeploy.bucketName,
           Prefix: 'serverless/my-service/dev/',
         });
@@ -250,7 +270,8 @@ describe('checkForChanges', () => {
 
       const result = await awsDeploy.getMostRecentObjects();
 
-      expect(listObjectsV2Stub).to.have.been.calledWithExactly('S3', 'listObjectsV2', {
+      expect(listObjectsV2Stub.firstCall.args[0]).to.be.instanceOf(ListObjectsV2Command);
+      expect(listObjectsV2Stub.firstCall.args[0].input).to.include({
         Bucket: awsDeploy.bucketName,
         Prefix: 'foo/bar/my-service/dev/',
       });
@@ -282,39 +303,25 @@ describe('checkForChanges', () => {
         .onFirstCall()
         .resolves({
           Contents: [
-            { Key: `${s3Key}/141264711231-2016-08-18T15:42:00/artifact.zip` },
             { Key: `${s3Key}/141264711231-2016-08-18T15:42:00/cloudformation.json` },
+            { Key: `${s3Key}/141264711231-2016-08-18T15:42:00/artifact.zip` },
           ],
           NextContinuationToken: 'next-page',
         })
         .onSecondCall()
         .resolves({
           Contents: [
-            { Key: `${s3Key}/151224711231-2016-08-18T15:43:00/artifact.zip` },
             { Key: `${s3Key}/151224711231-2016-08-18T15:43:00/cloudformation.json` },
+            { Key: `${s3Key}/151224711231-2016-08-18T15:43:00/artifact.zip` },
           ],
         });
 
       const result = await awsDeploy.getMostRecentObjects();
 
       expect(listObjectsV2Stub).to.have.been.calledTwice;
-      expect(listObjectsV2Stub.firstCall.args).to.deep.equal([
-        'S3',
-        'listObjectsV2',
-        {
-          Bucket: awsDeploy.bucketName,
-          Prefix: 'serverless/my-service/dev/',
-        },
-      ]);
-      expect(listObjectsV2Stub.secondCall.args).to.deep.equal([
-        'S3',
-        'listObjectsV2',
-        {
-          Bucket: awsDeploy.bucketName,
-          Prefix: 'serverless/my-service/dev/',
-          ContinuationToken: 'next-page',
-        },
-      ]);
+      expect(listObjectsV2Stub.secondCall.args[0].input).to.include({
+        ContinuationToken: 'next-page',
+      });
       expect(result).to.deep.equal([
         { Key: `${s3Key}/151224711231-2016-08-18T15:43:00/cloudformation.json` },
         { Key: `${s3Key}/151224711231-2016-08-18T15:43:00/artifact.zip` },
@@ -325,12 +332,18 @@ describe('checkForChanges', () => {
       listObjectsV2Stub
         .onFirstCall()
         .resolves({
-          Contents: [{ Key: `${s3Key}/151224711231-2016-08-18T15:43:00/artifact.zip` }],
+          Contents: [
+            { Key: `${s3Key}/141264711231-2016-08-18T15:42:00/artifact.zip` },
+            { Key: `${s3Key}/151224711231-2016-08-18T15:43:00/artifact.zip` },
+          ],
           NextContinuationToken: 'next-page',
         })
         .onSecondCall()
         .resolves({
-          Contents: [{ Key: `${s3Key}/151224711231-2016-08-18T15:43:00/cloudformation.json` }],
+          Contents: [
+            { Key: `${s3Key}/151224711231-2016-08-18T15:43:00/cloudformation.json` },
+            { Key: `${s3Key}/not-a-deploy-dir/ignored.zip` },
+          ],
         });
 
       const result = await awsDeploy.getMostRecentObjects();
@@ -357,6 +370,9 @@ describe('checkForChanges', () => {
       }
 
       expect(listObjectsV2Stub).to.have.been.calledTwice;
+      expect(listObjectsV2Stub.secondCall.args[0].input).to.include({
+        ContinuationToken: 'next-page',
+      });
       expect(error).to.have.property('code', 'DEPLOYMENT_BUCKET_DOES_NOT_EXIST');
       expect(error).to.have.property(
         'message',
@@ -367,6 +383,24 @@ describe('checkForChanges', () => {
         ].join(' ')
       );
     });
+
+    it('should discard older directories encountered after the latest directory', async () => {
+      listObjectsV2Stub.resolves({
+        Contents: [
+          { Key: `${s3Key}/151224711231-2016-08-18T15:43:00/artifact.zip` },
+          { Key: `${s3Key}/141264711231-2016-08-18T15:42:00/cloudformation.json` },
+          { Key: `${s3Key}/151224711231-2016-08-18T15:43:00/cloudformation.json` },
+          { Key: `${s3Key}/141264711231-2016-08-18T15:42:00/artifact.zip` },
+        ],
+      });
+
+      const result = await awsDeploy.getMostRecentObjects();
+
+      expect(result).to.deep.equal([
+        { Key: `${s3Key}/151224711231-2016-08-18T15:43:00/cloudformation.json` },
+        { Key: `${s3Key}/151224711231-2016-08-18T15:43:00/artifact.zip` },
+      ]);
+    });
   });
 
   describe('#getFunctionsEarliestLastModifiedDate()', () => {
@@ -375,13 +409,13 @@ describe('checkForChanges', () => {
     let getFunctionStub;
 
     beforeEach(() => {
-      requestStub = sandbox.stub(awsDeploy.provider, 'request');
+      requestStub = sandbox.stub(LambdaClient.prototype, 'send');
       getAllFunctionsStub = sandbox.stub(awsDeploy.serverless.service, 'getAllFunctions');
       getFunctionStub = sandbox.stub(awsDeploy.serverless.service, 'getFunction');
     });
 
     afterEach(() => {
-      awsDeploy.provider.request.restore();
+      LambdaClient.prototype.send.restore();
       awsDeploy.serverless.service.getAllFunctions.restore();
       awsDeploy.serverless.service.getFunction.restore();
     });
@@ -398,7 +432,82 @@ describe('checkForChanges', () => {
 
       const result = await awsDeploy.getFunctionsEarliestLastModifiedDate();
 
+      expect(requestStub.firstCall.args[0]).to.be.instanceOf(GetFunctionCommand);
+      expect(requestStub.firstCall.args[0].input).to.deep.equal({ FunctionName: 'func-a' });
       expect(result.toISOString()).to.equal(new Date('2021-05-19T15:34:16.494+0000').toISOString());
+    });
+
+    it('reuses one Lambda client across function lookups', async () => {
+      const lambdaClients = [];
+      const sentInputs = [];
+      class FakeGetFunctionCommand {
+        constructor(input) {
+          this.input = input;
+        }
+      }
+      class FakeLambdaClient {
+        constructor(config) {
+          this.config = config;
+          lambdaClients.push(this);
+        }
+
+        async send(command) {
+          expect(command).to.be.instanceOf(FakeGetFunctionCommand);
+          sentInputs.push(command.input);
+          return { Configuration: { LastModified: '2021-05-20T15:34:16.494+0000' } };
+        }
+      }
+      const checkForChanges = proxyquire(
+        '../../../../../../../lib/plugins/aws/deploy/lib/check-for-changes.js',
+        {
+          '@aws-sdk/client-lambda': {
+            LambdaClient: FakeLambdaClient,
+            GetFunctionCommand: FakeGetFunctionCommand,
+          },
+        }
+      );
+      const awsDeployWithClientStub = createAwsDeployTestInstance();
+      Object.assign(awsDeployWithClientStub, checkForChanges);
+      const getAllFunctions = sandbox
+        .stub(awsDeployWithClientStub.serverless.service, 'getAllFunctions')
+        .returns(['a', 'b']);
+      const getFunction = sandbox
+        .stub(awsDeployWithClientStub.serverless.service, 'getFunction')
+        .callsFake((functionName) => ({ name: `func-${functionName}` }));
+
+      try {
+        await awsDeployWithClientStub.getFunctionsEarliestLastModifiedDate();
+
+        expect(lambdaClients).to.have.length(1);
+        expect(sentInputs).to.deep.equal([{ FunctionName: 'func-a' }, { FunctionName: 'func-b' }]);
+      } finally {
+        getAllFunctions.restore();
+        getFunction.restore();
+      }
+    });
+
+    it('limits concurrent Lambda getFunction requests to 6', async () => {
+      const functionNames = Array.from({ length: 10 }, (_, index) => `func${index}`);
+      getAllFunctionsStub.returns(functionNames);
+      getFunctionStub.callsFake((functionName) => ({ name: functionName }));
+      let activeRequests = 0;
+      let observedMaxActiveRequests = 0;
+      const pendingResolvers = [];
+      requestStub.callsFake(async () => {
+        activeRequests += 1;
+        observedMaxActiveRequests = Math.max(observedMaxActiveRequests, activeRequests);
+        expect(activeRequests).to.be.at.most(6);
+        await new Promise((resolve) => pendingResolvers.push(resolve));
+        activeRequests -= 1;
+        return { Configuration: { LastModified: '2021-05-20T15:34:16.494+0000' } };
+      });
+
+      const promise = awsDeploy.getFunctionsEarliestLastModifiedDate();
+
+      await waitForPendingRequests(pendingResolvers, 6);
+      expect(observedMaxActiveRequests).to.equal(6);
+      await releasePendingRequestsUntilSettled(pendingResolvers, promise);
+      expect(observedMaxActiveRequests).to.equal(6);
     });
   });
 
@@ -406,11 +515,11 @@ describe('checkForChanges', () => {
     let headObjectStub;
 
     beforeEach(() => {
-      headObjectStub = sandbox.stub(awsDeploy.provider, 'request').resolves({});
+      headObjectStub = sandbox.stub(S3Client.prototype, 'send').resolves({});
     });
 
     afterEach(() => {
-      awsDeploy.provider.request.restore();
+      S3Client.prototype.send.restore();
     });
 
     it('should resolve if no objects are provided as input', async () => {
@@ -432,23 +541,125 @@ describe('checkForChanges', () => {
 
       return expect(awsDeploy.getObjectMetadata(input)).to.be.fulfilled.then(() => {
         expect(headObjectStub.callCount).to.equal(4);
-        expect(headObjectStub).to.have.been.calledWithExactly('S3', 'headObject', {
-          Bucket: awsDeploy.bucketName,
-          Key: `${s3Key}/151224711231-2016-08-18T15:43:00/artifact.zip`,
-        });
-        expect(headObjectStub).to.have.been.calledWithExactly('S3', 'headObject', {
-          Bucket: awsDeploy.bucketName,
-          Key: `${s3Key}/151224711231-2016-08-18T15:43:00/cloudformation.json`,
-        });
-        expect(headObjectStub).to.have.been.calledWithExactly('S3', 'headObject', {
-          Bucket: awsDeploy.bucketName,
-          Key: `${s3Key}/141264711231-2016-08-18T15:42:00/artifact.zip`,
-        });
-        expect(headObjectStub).to.have.been.calledWithExactly('S3', 'headObject', {
-          Bucket: awsDeploy.bucketName,
-          Key: `${s3Key}/141264711231-2016-08-18T15:42:00/cloudformation.json`,
-        });
+        for (const [index, { Key }] of input.entries()) {
+          expect(headObjectStub.getCall(index).args[0]).to.be.instanceOf(HeadObjectCommand);
+          expect(headObjectStub.getCall(index).args[0].input).to.deep.equal({
+            Bucket: awsDeploy.bucketName,
+            Key,
+          });
+        }
       });
+    });
+
+    it('uses an existing S3 client promise from the plugin context', async () => {
+      const send = sandbox.stub().resolves({});
+      sandbox
+        .stub(awsDeploy.provider, 'getAwsSdkV3Config')
+        .throws(new Error('Expected existing S3 client to be reused'));
+      awsDeploy.s3ClientPromise = Promise.resolve({ send });
+
+      try {
+        await awsDeploy.getObjectMetadata([{ Key: `${s3Key}/artifact.zip` }]);
+
+        expect(awsDeploy.provider.getAwsSdkV3Config).to.not.have.been.called;
+        expect(send).to.have.been.calledOnce;
+        expect(send.firstCall.args[0]).to.be.instanceOf(HeadObjectCommand);
+        expect(send.firstCall.args[0].input).to.deep.equal({
+          Bucket: awsDeploy.bucketName,
+          Key: `${s3Key}/artifact.zip`,
+        });
+      } finally {
+        awsDeploy.provider.getAwsSdkV3Config.restore();
+      }
+    });
+
+    it('reuses one S3 client across list and headObject checks', async () => {
+      const s3Clients = [];
+      const paginatorClients = [];
+      const sentInputs = [];
+      class FakeHeadObjectCommand {
+        constructor(input) {
+          this.input = input;
+        }
+      }
+      class FakeS3Client {
+        constructor(config) {
+          this.config = config;
+          s3Clients.push(this);
+        }
+
+        async send(command) {
+          expect(command).to.be.instanceOf(FakeHeadObjectCommand);
+          sentInputs.push(command.input);
+          return { Metadata: { filesha256: 'hash' } };
+        }
+      }
+      async function* paginateListObjectsV2({ client }) {
+        paginatorClients.push(client);
+        yield {
+          Contents: [
+            { Key: `${s3Key}/151224711231-2016-08-18T15:43:00/artifact.zip` },
+            { Key: `${s3Key}/151224711231-2016-08-18T15:43:00/cloudformation.json` },
+          ],
+        };
+      }
+      const checkForChanges = proxyquire(
+        '../../../../../../../lib/plugins/aws/deploy/lib/check-for-changes.js',
+        {
+          '@aws-sdk/client-s3': {
+            S3Client: FakeS3Client,
+            HeadObjectCommand: FakeHeadObjectCommand,
+            paginateListObjectsV2,
+          },
+        }
+      );
+      const awsDeployWithClientStub = createAwsDeployTestInstance();
+      awsDeployWithClientStub.bucketName = 'deployment-bucket';
+      Object.assign(awsDeployWithClientStub, checkForChanges);
+
+      const objects = await awsDeployWithClientStub.getMostRecentObjects();
+      await awsDeployWithClientStub.getObjectMetadata(objects);
+
+      expect(s3Clients).to.have.length(1);
+      expect(paginatorClients).to.deep.equal([s3Clients[0]]);
+      expect(sentInputs).to.have.length(2);
+    });
+
+    it('should translate v3 forbidden errors', async () => {
+      headObjectStub.rejects({ $metadata: { httpStatusCode: 403 } });
+
+      try {
+        await awsDeploy.getObjectMetadata([
+          { Key: `${s3Key}/151224711231-2016-08-18T15:43:00/artifact.zip` },
+        ]);
+        throw new Error('Expected getObjectMetadata to reject');
+      } catch (error) {
+        expect(error.code).to.equal('AWS_S3_HEAD_OBJECT_FORBIDDEN');
+      }
+    });
+
+    it('limits concurrent S3 headObject requests to 6', async () => {
+      const input = Array.from({ length: 10 }, (_, index) => ({
+        Key: `${s3Key}/151224711231-2016-08-18T15:43:00/file-${index}.zip`,
+      }));
+      let activeRequests = 0;
+      let observedMaxActiveRequests = 0;
+      const pendingResolvers = [];
+      headObjectStub.callsFake(async () => {
+        activeRequests += 1;
+        observedMaxActiveRequests = Math.max(observedMaxActiveRequests, activeRequests);
+        expect(activeRequests).to.be.at.most(6);
+        await new Promise((resolve) => pendingResolvers.push(resolve));
+        activeRequests -= 1;
+        return { Metadata: { filesha256: 'hash' } };
+      });
+
+      const promise = awsDeploy.getObjectMetadata(input);
+
+      await waitForPendingRequests(pendingResolvers, 6);
+      expect(observedMaxActiveRequests).to.equal(6);
+      await releasePendingRequestsUntilSettled(pendingResolvers, promise);
+      expect(observedMaxActiveRequests).to.equal(6);
     });
   });
 
@@ -888,8 +1099,8 @@ const commonAwsSdkMock = {
 
 const generateMatchingListObjectsResponse = async (serverless) => {
   const provider = serverless.getProvider('aws');
-  const s3Key = `${provider.getDeploymentPrefix()}/${serverless.service.service}/${provider.getStage()}`;
   const packagePath = path.resolve(serverless.serviceDir, '.serverless');
+  const deploymentBase = `${provider.getDeploymentPrefix()}/${serverless.service.service}/${provider.getStage()}`;
   const artifactNames = (await glob('*.zip', { cwd: packagePath })).map((filename) =>
     path.basename(filename)
   );
@@ -897,11 +1108,11 @@ const generateMatchingListObjectsResponse = async (serverless) => {
   return {
     Contents: [
       {
-        Key: `${s3Key}/code-artifacts/sls-otel.0.2.2.zip`,
+        Key: `${deploymentBase}/code-artifacts/sls-otel.0.2.2.zip`,
         LastModified: new Date('2020-05-20T15:30:16.494+0000'),
       },
       ...artifactNames.map((artifactName) => ({
-        Key: `${s3Key}/1589988704359-2020-05-20T15:31:44.359Z/${artifactName}`,
+        Key: `${deploymentBase}/1589988704359-2020-05-20T15:31:44.359Z/${artifactName}`,
         LastModified: new Date('2020-05-20T15:30:16.494+0000'),
       })),
     ],
@@ -1386,13 +1597,11 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
             headBucket: () => {},
             listObjectsV2: () => {
               const provider = serverless.getProvider('aws');
-              const s3Key = `${provider.getDeploymentPrefix()}/${
-                serverless.service.service
-              }/${provider.getStage()}`;
+              const deploymentBase = `${provider.getDeploymentPrefix()}/${serverless.service.service}/${provider.getStage()}`;
               return {
                 Contents: [
                   {
-                    Key: `${s3Key}/1589988704359-2020-05-20T15:31:44.359Z/artifact.zip`,
+                    Key: `${deploymentBase}/1589988704359-2020-05-20T15:31:44.359Z/artifact.zip`,
                     LastModified: new Date(),
                     ETag: '"5102a4cf710cae6497dba9e61b85d0a4"',
                     Size: 356,
@@ -1410,7 +1619,10 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
   describe('checkLogGroupSubscriptionFilterResourceLimitExceeded', () => {
     it('treats omitted subscriptionFilters as no filters', async () => {
       const awsDeploy = createAwsDeployTestInstance();
-      const requestStub = sandbox.stub(awsDeploy.provider, 'request').resolves({});
+      const cloudWatchLogsStub = sandbox.stub(CloudWatchLogsClient.prototype, 'send').resolves({});
+      const cloudFormationStub = sandbox
+        .stub(CloudFormationClient.prototype, 'send')
+        .rejects(new Error('CloudFormation should not classify omitted subscription filters'));
 
       try {
         const result = await awsDeploy.fixLogGroupSubscriptionFilters({
@@ -1422,27 +1634,180 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
         });
 
         expect(result).to.equal(false);
-        expect(requestStub).to.have.been.calledOnceWithExactly(
-          'CloudWatchLogs',
-          'describeSubscriptionFilters',
-          { logGroupName: 'someLogGroupName' }
+        expect(cloudWatchLogsStub).to.have.been.calledOnce;
+        expect(cloudWatchLogsStub.firstCall.args[0]).to.be.instanceOf(
+          DescribeSubscriptionFiltersCommand
         );
-        expect(requestStub.calledWith('CloudFormation', 'describeStackResource')).to.equal(false);
-        expect(requestStub.calledWith('CloudWatchLogs', 'deleteSubscriptionFilter')).to.equal(
-          false
-        );
+        expect(cloudFormationStub).to.not.have.been.called;
       } finally {
-        awsDeploy.provider.request.restore();
+        CloudWatchLogsClient.prototype.send.restore();
+        CloudFormationClient.prototype.send.restore();
+      }
+    });
+
+    it('uses an existing CloudWatch Logs client promise during subscription filter discovery', async () => {
+      const awsDeploy = createAwsDeployTestInstance();
+      const send = sandbox.stub().resolves({ subscriptionFilters: [] });
+      sandbox
+        .stub(awsDeploy.provider, 'getAwsSdkV3Config')
+        .throws(new Error('Expected existing CloudWatch Logs client to be reused'));
+      awsDeploy.cloudWatchLogsClientPromise = Promise.resolve({ send });
+
+      try {
+        const result = await awsDeploy.fixLogGroupSubscriptionFilters({
+          accountId: '123456789012',
+          region: 'us-east-1',
+          partition: 'aws',
+          logGroupName: 'someLogGroupName',
+          cloudwatchLogEvents: [],
+        });
+
+        expect(result).to.equal(false);
+        expect(awsDeploy.provider.getAwsSdkV3Config).to.not.have.been.called;
+        expect(send).to.have.been.calledOnce;
+        expect(send.firstCall.args[0]).to.be.instanceOf(DescribeSubscriptionFiltersCommand);
+      } finally {
+        awsDeploy.provider.getAwsSdkV3Config.restore();
+      }
+    });
+
+    it('uses an existing CloudFormation client promise during subscription filter classification', async () => {
+      const awsDeploy = createAwsDeployTestInstance();
+      const send = sandbox.stub().resolves({
+        StackResourceDetail: { PhysicalResourceId: 'physical-id' },
+      });
+      sandbox
+        .stub(awsDeploy.provider, 'getAwsSdkV3Config')
+        .throws(new Error('Expected existing CloudFormation client to be reused'));
+      awsDeploy.cloudFormationClientPromise = Promise.resolve({ send });
+
+      try {
+        const result = await awsDeploy.isInternalSubscriptionFilter(
+          awsDeploy.provider.naming.getStackName(),
+          awsDeploy.provider.naming.getCloudWatchLogLogicalId('Fn1', 1),
+          'physical-id'
+        );
+
+        expect(result).to.equal(true);
+        expect(awsDeploy.provider.getAwsSdkV3Config).to.not.have.been.called;
+        expect(send).to.have.been.calledOnce;
+        expect(send.firstCall.args[0]).to.be.instanceOf(DescribeStackResourceCommand);
+      } finally {
+        awsDeploy.provider.getAwsSdkV3Config.restore();
+      }
+    });
+
+    it('limits concurrent CloudWatch Logs describeSubscriptionFilters requests to 2', async () => {
+      const awsDeploy = createAwsDeployTestInstance();
+      let activeRequests = 0;
+      let observedMaxActiveRequests = 0;
+      const pendingResolvers = [];
+      const describeSubscriptionFiltersStub = sandbox
+        .stub(CloudWatchLogsClient.prototype, 'send')
+        .callsFake(async (command) => {
+          expect(command).to.be.instanceOf(DescribeSubscriptionFiltersCommand);
+          activeRequests += 1;
+          observedMaxActiveRequests = Math.max(observedMaxActiveRequests, activeRequests);
+          expect(activeRequests).to.be.at.most(2);
+          await new Promise((resolve) => pendingResolvers.push(resolve));
+          activeRequests -= 1;
+          return { subscriptionFilters: [] };
+        });
+
+      try {
+        const promise = Promise.all(
+          Array.from({ length: 10 }, (_, index) =>
+            awsDeploy.fixLogGroupSubscriptionFilters({
+              accountId: '123456789012',
+              region: 'us-east-1',
+              partition: 'aws',
+              logGroupName: `log-group-${index}`,
+              cloudwatchLogEvents: [],
+            })
+          )
+        );
+
+        for (let index = 0; index < 10 && !pendingResolvers.length; index++) {
+          await Promise.resolve();
+        }
+        expect(observedMaxActiveRequests).to.equal(2);
+        await releasePendingRequestsUntilSettled(pendingResolvers, promise);
+        expect(observedMaxActiveRequests).to.equal(2);
+        expect(describeSubscriptionFiltersStub).to.have.callCount(10);
+      } finally {
+        CloudWatchLogsClient.prototype.send.restore();
+      }
+    });
+
+    it('limits concurrent CloudFormation describeStackResource requests to 2', async () => {
+      const awsDeploy = createAwsDeployTestInstance();
+      const stackName = awsDeploy.provider.naming.getStackName();
+      const logicalResourceId = awsDeploy.provider.naming.getCloudWatchLogLogicalId('Fn1', 1);
+      const filterName = `${stackName}-${logicalResourceId}-xxxxx`;
+      const cloudWatchLogsStub = sandbox.stub(CloudWatchLogsClient.prototype, 'send').resolves({
+        subscriptionFilters: Array.from({ length: 10 }, () => ({
+          filterName,
+          destinationArn: 'arn:aws:lambda:us-east-1:123456789012:function:service-dev-fn1',
+        })),
+      });
+      let activeRequests = 0;
+      let observedMaxActiveRequests = 0;
+      const pendingResolvers = [];
+      const describeStackResourceStub = sandbox
+        .stub(CloudFormationClient.prototype, 'send')
+        .callsFake(async (command) => {
+          expect(command).to.be.instanceOf(DescribeStackResourceCommand);
+          activeRequests += 1;
+          observedMaxActiveRequests = Math.max(observedMaxActiveRequests, activeRequests);
+          expect(activeRequests).to.be.at.most(2);
+          await new Promise((resolve) => pendingResolvers.push(resolve));
+          activeRequests -= 1;
+          return { StackResourceDetail: { PhysicalResourceId: filterName } };
+        });
+
+      try {
+        const promise = awsDeploy.fixLogGroupSubscriptionFilters({
+          accountId: '123456789012',
+          region: 'us-east-1',
+          partition: 'aws',
+          logGroupName: 'someLogGroupName',
+          cloudwatchLogEvents: [
+            {
+              FunctionName: 'service-dev-fn1',
+              functionName: 'Fn1',
+              logGroupName: 'someLogGroupName',
+              logSubscriptionSerialNumber: 1,
+            },
+          ],
+        });
+
+        for (let index = 0; index < 10 && !pendingResolvers.length; index++) {
+          await Promise.resolve();
+        }
+        expect(observedMaxActiveRequests).to.equal(2);
+        await releasePendingRequestsUntilSettled(pendingResolvers, promise);
+        expect(observedMaxActiveRequests).to.equal(2);
+        expect(cloudWatchLogsStub).to.have.been.calledOnce;
+        expect(describeStackResourceStub).to.have.callCount(10);
+      } finally {
+        CloudWatchLogsClient.prototype.send.restore();
+        CloudFormationClient.prototype.send.restore();
       }
     });
 
     it('treats missing log groups during subscription filter discovery as no filters', async () => {
       const awsDeploy = createAwsDeployTestInstance();
-      const requestStub = sandbox.stub(awsDeploy.provider, 'request').rejects(
-        Object.assign(new Error('missing log group'), {
-          providerError: { code: 'ResourceNotFoundException' },
-        })
-      );
+      const cloudWatchLogsStub = sandbox
+        .stub(CloudWatchLogsClient.prototype, 'send')
+        .callsFake(async (command) => {
+          expect(command).to.be.instanceOf(DescribeSubscriptionFiltersCommand);
+          throw Object.assign(new Error('missing log group'), {
+            name: 'ResourceNotFoundException',
+          });
+        });
+      const cloudFormationStub = sandbox
+        .stub(CloudFormationClient.prototype, 'send')
+        .rejects(new Error('CloudFormation should not classify missing log groups'));
 
       try {
         const result = await awsDeploy.fixLogGroupSubscriptionFilters({
@@ -1454,27 +1819,20 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
         });
 
         expect(result).to.equal(false);
-        expect(requestStub).to.have.been.calledOnceWithExactly(
-          'CloudWatchLogs',
-          'describeSubscriptionFilters',
-          { logGroupName: 'missingLogGroup' }
-        );
-        expect(requestStub.calledWith('CloudFormation', 'describeStackResource')).to.equal(false);
-        expect(requestStub.calledWith('CloudWatchLogs', 'deleteSubscriptionFilter')).to.equal(
-          false
-        );
+        expect(cloudWatchLogsStub).to.have.been.calledOnce;
+        expect(cloudFormationStub).to.not.have.been.called;
       } finally {
-        awsDeploy.provider.request.restore();
+        CloudWatchLogsClient.prototype.send.restore();
+        CloudFormationClient.prototype.send.restore();
       }
     });
 
     it('surfaces CloudWatch Logs access errors during subscription filter discovery', async () => {
       const awsDeploy = createAwsDeployTestInstance();
-      sandbox.stub(awsDeploy.provider, 'request').rejects(
-        Object.assign(new Error('denied'), {
-          providerError: { code: 'AccessDeniedException' },
-        })
-      );
+      sandbox.stub(CloudWatchLogsClient.prototype, 'send').callsFake(async (command) => {
+        expect(command).to.be.instanceOf(DescribeSubscriptionFiltersCommand);
+        throw Object.assign(new Error('denied'), { name: 'AccessDeniedException' });
+      });
 
       try {
         await expect(
@@ -1487,14 +1845,79 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
           })
         ).to.be.rejectedWith('denied');
       } finally {
-        awsDeploy.provider.request.restore();
+        CloudWatchLogsClient.prototype.send.restore();
+      }
+    });
+
+    it('treats missing CloudFormation subscription filter resources as external', async () => {
+      const awsDeploy = createAwsDeployTestInstance();
+      sandbox.stub(CloudFormationClient.prototype, 'send').callsFake(async (command) => {
+        expect(command).to.be.instanceOf(DescribeStackResourceCommand);
+        throw Object.assign(
+          new Error(
+            `Resource ${command.input.LogicalResourceId} does not exist for stack ${command.input.StackName}`
+          ),
+          { name: 'ValidationError' }
+        );
+      });
+
+      try {
+        await expect(
+          awsDeploy.isInternalSubscriptionFilter(
+            awsDeploy.provider.naming.getStackName(),
+            awsDeploy.provider.naming.getCloudWatchLogLogicalId('Fn1', 1),
+            'physical-id'
+          )
+        ).to.eventually.equal(false);
+      } finally {
+        CloudFormationClient.prototype.send.restore();
+      }
+    });
+
+    it('surfaces CloudFormation access errors during subscription filter classification', async () => {
+      const awsDeploy = createAwsDeployTestInstance();
+      sandbox.stub(CloudFormationClient.prototype, 'send').callsFake(async (command) => {
+        expect(command).to.be.instanceOf(DescribeStackResourceCommand);
+        throw Object.assign(new Error('denied'), { name: 'AccessDeniedException' });
+      });
+
+      try {
+        await expect(
+          awsDeploy.isInternalSubscriptionFilter(
+            awsDeploy.provider.naming.getStackName(),
+            awsDeploy.provider.naming.getCloudWatchLogLogicalId('Fn1', 1),
+            'physical-id'
+          )
+        ).to.be.rejectedWith('denied');
+      } finally {
+        CloudFormationClient.prototype.send.restore();
+      }
+    });
+
+    it('does not treat missing stacks with Resource in the name as missing resources', async () => {
+      const awsDeploy = createAwsDeployTestInstance();
+      sandbox.stub(CloudFormationClient.prototype, 'send').callsFake(async (command) => {
+        expect(command).to.be.instanceOf(DescribeStackResourceCommand);
+        throw Object.assign(new Error('Stack with id MyResourceStack does not exist'), {
+          name: 'ValidationError',
+        });
+      });
+
+      try {
+        await expect(
+          awsDeploy.isInternalSubscriptionFilter('MyResourceStack', 'LogicalId', 'physical-id')
+        ).to.be.rejectedWith('MyResourceStack');
+      } finally {
+        CloudFormationClient.prototype.send.restore();
       }
     });
 
     it('treats malformed external subscription filter names as external without CloudFormation lookup', async () => {
       const awsDeploy = createAwsDeployTestInstance();
-      const requestStub = sandbox.stub(awsDeploy.provider, 'request').callsFake(async (service) => {
-        if (service === 'CloudWatchLogs') {
+      const cloudWatchLogsStub = sandbox
+        .stub(CloudWatchLogsClient.prototype, 'send')
+        .callsFake(async (command) => {
+          expect(command).to.be.instanceOf(DescribeSubscriptionFiltersCommand);
           return {
             subscriptionFilters: [
               {
@@ -1507,9 +1930,10 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
               },
             ],
           };
-        }
-        throw new Error(`Unexpected ${service} request`);
-      });
+        });
+      const cloudFormationStub = sandbox
+        .stub(CloudFormationClient.prototype, 'send')
+        .rejects(new Error('CloudFormation should not classify malformed external filters'));
 
       try {
         await expect(
@@ -1531,12 +1955,11 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
           'code',
           'CLOUDWATCHLOG_LOG_GROUP_EVENT_PER_FUNCTION_LIMIT_EXCEEDED'
         );
-        expect(requestStub.calledWith('CloudFormation', 'describeStackResource')).to.equal(false);
-        expect(requestStub.calledWith('CloudWatchLogs', 'deleteSubscriptionFilter')).to.equal(
-          false
-        );
+        expect(cloudWatchLogsStub).to.have.been.calledOnce;
+        expect(cloudFormationStub).to.not.have.been.called;
       } finally {
-        awsDeploy.provider.request.restore();
+        CloudWatchLogsClient.prototype.send.restore();
+        CloudFormationClient.prototype.send.restore();
       }
     });
 
@@ -1679,69 +2102,6 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
       expect(deleteStub).to.not.have.been.called;
     });
 
-    it('treats missing CloudFormation subscription filter resources as external', async () => {
-      const awsDeploy = createAwsDeployTestInstance();
-      const requestStub = sandbox
-        .stub(awsDeploy.provider, 'request')
-        .rejects(
-          new Error(
-            `Resource ${awsDeploy.provider.naming.getCloudWatchLogLogicalId(
-              'Fn1',
-              1
-            )} does not exist for stack ${awsDeploy.provider.naming.getStackName()}`
-          )
-        );
-
-      try {
-        await expect(
-          awsDeploy.isInternalSubscriptionFilter(
-            awsDeploy.provider.naming.getStackName(),
-            awsDeploy.provider.naming.getCloudWatchLogLogicalId('Fn1', 1),
-            'physical-id'
-          )
-        ).to.eventually.equal(false);
-        expect(requestStub).to.have.been.calledOnce;
-      } finally {
-        awsDeploy.provider.request.restore();
-      }
-    });
-
-    it('surfaces CloudFormation access errors during subscription filter classification', async () => {
-      const awsDeploy = createAwsDeployTestInstance();
-      sandbox
-        .stub(awsDeploy.provider, 'request')
-        .rejects(Object.assign(new Error('denied'), { code: 'AccessDenied' }));
-
-      try {
-        await expect(
-          awsDeploy.isInternalSubscriptionFilter(
-            awsDeploy.provider.naming.getStackName(),
-            awsDeploy.provider.naming.getCloudWatchLogLogicalId('Fn1', 1),
-            'physical-id'
-          )
-        ).to.be.rejectedWith('denied');
-      } finally {
-        awsDeploy.provider.request.restore();
-      }
-    });
-
-    it('does not treat missing stacks with Resource in the name as missing resources', async () => {
-      const awsDeploy = createAwsDeployTestInstance();
-      sandbox.stub(awsDeploy.provider, 'request').rejects(
-        Object.assign(new Error('Stack with id MyResourceStack does not exist'), {
-          code: 'ValidationError',
-        })
-      );
-
-      try {
-        await expect(
-          awsDeploy.isInternalSubscriptionFilter('MyResourceStack', 'LogicalId', 'physical-id')
-        ).to.be.rejectedWith('MyResourceStack');
-      } finally {
-        awsDeploy.provider.request.restore();
-      }
-    });
-
     it('should not attempt to delete filter for 2 subscription filter per log group include externals', async () => {
       const deleteStub = sandbox.stub();
       let serverless;
@@ -1776,10 +2136,13 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
               })
               .callsFake(async (params) => {
                 const naming = serverless.getProvider('aws').naming;
-                throw new Error(
-                  `Resource ${
-                    params.LogicalResourceId
-                  } does not exist for stack ${naming.getStackName()}`
+                throw Object.assign(
+                  new Error(
+                    `Resource ${
+                      params.LogicalResourceId
+                    } does not exist for stack ${naming.getStackName()}`
+                  ),
+                  { name: 'ValidationError' }
                 );
               }),
           },
@@ -1848,10 +2211,13 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
               })
               .callsFake(async (params) => {
                 const naming = serverless.getProvider('aws').naming;
-                throw new Error(
-                  `Resource ${
-                    params.LogicalResourceId
-                  } does not exist for stack ${naming.getStackName()}`
+                throw Object.assign(
+                  new Error(
+                    `Resource ${
+                      params.LogicalResourceId
+                    } does not exist for stack ${naming.getStackName()}`
+                  ),
+                  { name: 'ValidationError' }
                 );
               }),
           },
