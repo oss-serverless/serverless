@@ -52,6 +52,18 @@ const serviceDefinitions = {
     clientName: 'ECRClient',
     commands: {
       describeRepositories: 'DescribeRepositoriesCommand',
+      getAuthorizationToken: 'GetAuthorizationTokenCommand',
+      createRepository: 'CreateRepositoryCommand',
+      putLifecyclePolicy: 'PutLifecyclePolicyCommand',
+      describeImages: 'DescribeImagesCommand',
+      deleteRepository: 'DeleteRepositoryCommand',
+    },
+  },
+  IAM: {
+    packageName: '@aws-sdk/client-iam',
+    clientName: 'IAMClient',
+    commands: {
+      getRole: 'GetRoleCommand',
     },
   },
   Lambda: {
@@ -60,6 +72,10 @@ const serviceDefinitions = {
     commands: {
       getFunction: 'GetFunctionCommand',
       listVersionsByFunction: 'ListVersionsByFunctionCommand',
+      invoke: 'InvokeCommand',
+      getLayerVersion: 'GetLayerVersionCommand',
+      updateFunctionCode: 'UpdateFunctionCodeCommand',
+      updateFunctionConfiguration: 'UpdateFunctionConfigurationCommand',
     },
   },
   S3: {
@@ -119,7 +135,11 @@ async function resolveStubValue({ state, service, method, value, input, context 
     value = value[Math.min(callIndex, value.length - 1)];
   }
 
-  return typeof value === 'function' ? value(input, context) : value;
+  return typeof value === 'function'
+    ? value.length > 1
+      ? value(input, context)
+      : value(input)
+    : value;
 }
 
 function isReadableUploadBody(body) {

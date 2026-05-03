@@ -258,6 +258,45 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
     expect(deleteRepositoryStub).not.to.be.called;
   });
 
+  for (const [description, error] of [
+    [
+      'repository does not exist with native SDK v3 error',
+      Object.assign(new Error('Repository not found'), { name: 'RepositoryNotFoundException' }),
+    ],
+    [
+      'repository cannot be accessed with native SDK v3 error',
+      Object.assign(new Error('Access denied'), { name: 'AccessDeniedException' }),
+    ],
+  ]) {
+    it(`executes expected operations during removal when ${description}`, async () => {
+      describeRepositoriesStub.throws(error);
+
+      const { awsNaming, awsSdkV3Stub, serverless } = await runServerless({
+        fixture: 'function',
+        command: 'remove',
+        awsRequestStubMap,
+      });
+
+      expect(deleteObjectsStub).to.be.calledOnce;
+      expect(deleteStackStub).to.be.calledWithExactly({ StackName: awsNaming.getStackName() });
+      expect(describeStackEventsStub).to.be.calledWithExactly({
+        StackName: awsNaming.getStackName(),
+      });
+      expect(deleteRepositoryStub).not.to.be.called;
+      const ecrSends = awsSdkV3Stub.sends.filter(({ service }) => service === 'ECR');
+      expect(ecrSends).to.have.length(1);
+      expect(ecrSends[0]).to.include({ method: 'describeRepositories' });
+      expect(ecrSends[0].input).to.deep.equal({
+        repositoryNames: [awsNaming.getEcrRepositoryName()],
+        registryId: '999999999999',
+      });
+      expect(ecrSends[0].clientConfig.region).to.equal('us-east-1');
+      expect(ecrSends[0].clientConfig.credentials).to.equal(
+        serverless.getProvider('aws').getAwsSdkV3CredentialsProvider()
+      );
+    });
+  }
+
   it('executes expected operations related to files removal when S3 bucket has files', async () => {
     await runServerless({
       fixture: 'function',
@@ -504,17 +543,48 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
 
   it('removes ECR repository if it exists', async () => {
     describeRepositoriesStub.resolves();
-    const { awsNaming } = await runServerless({
+    const { awsNaming, awsSdkV3Stub, serverless } = await runServerless({
       fixture: 'function',
       command: 'remove',
       awsRequestStubMap,
     });
+    const ecrSends = awsSdkV3Stub.sends.filter(({ service }) => service === 'ECR');
 
+    expect(ecrSends.map(({ method }) => method)).to.deep.equal([
+      'describeRepositories',
+      'deleteRepository',
+    ]);
+    expect(ecrSends[0].input).to.deep.equal({
+      repositoryNames: [awsNaming.getEcrRepositoryName()],
+      registryId: '999999999999',
+    });
+    expect(ecrSends[1].input).to.deep.equal({
+      repositoryName: awsNaming.getEcrRepositoryName(),
+      registryId: '999999999999',
+      force: true,
+    });
+    const expectedCredentials = serverless.getProvider('aws').getAwsSdkV3CredentialsProvider();
+    expect(
+      ecrSends.every(
+        ({ clientConfig }) =>
+          clientConfig.region === 'us-east-1' && clientConfig.credentials === expectedCredentials
+      )
+    ).to.equal(true);
     expect(deleteRepositoryStub).to.be.calledWithExactly({
       repositoryName: awsNaming.getEcrRepositoryName(),
       registryId: '999999999999',
       force: true,
     });
+    expect(
+      awsSdkV3Stub.sends.some(
+        ({ service, method, input }) =>
+          service === 'ECR' &&
+          method === 'deleteRepository' &&
+          input.repositoryName === awsNaming.getEcrRepositoryName() &&
+          input.registryId === '999999999999' &&
+          input.force === true
+      )
+    ).to.equal(true);
   });
 
   it('should execute expected operations with versioning enabled if no object versions are present', async () => {
