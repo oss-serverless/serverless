@@ -52,6 +52,18 @@ const serviceDefinitions = {
     clientName: 'ECRClient',
     commands: {
       describeRepositories: 'DescribeRepositoriesCommand',
+      getAuthorizationToken: 'GetAuthorizationTokenCommand',
+      createRepository: 'CreateRepositoryCommand',
+      putLifecyclePolicy: 'PutLifecyclePolicyCommand',
+      describeImages: 'DescribeImagesCommand',
+      deleteRepository: 'DeleteRepositoryCommand',
+    },
+  },
+  IAM: {
+    packageName: '@aws-sdk/client-iam',
+    clientName: 'IAMClient',
+    commands: {
+      getRole: 'GetRoleCommand',
     },
   },
   Lambda: {
@@ -60,6 +72,10 @@ const serviceDefinitions = {
     commands: {
       getFunction: 'GetFunctionCommand',
       listVersionsByFunction: 'ListVersionsByFunctionCommand',
+      invoke: 'InvokeCommand',
+      getLayerVersion: 'GetLayerVersionCommand',
+      updateFunctionCode: 'UpdateFunctionCodeCommand',
+      updateFunctionConfiguration: 'UpdateFunctionConfigurationCommand',
     },
   },
   S3: {
@@ -110,7 +126,15 @@ function createNamedClass(name, constructor) {
   return constructor;
 }
 
-async function resolveStubValue({ state, service, method, value, input, context }) {
+async function resolveStubValue({
+  state,
+  service,
+  method,
+  value,
+  input,
+  context,
+  passContextToCallbacks,
+}) {
   const callKey = `${service}.${method}`;
   const callIndex = state.callCounts.get(callKey) || 0;
   state.callCounts.set(callKey, callIndex + 1);
@@ -119,7 +143,8 @@ async function resolveStubValue({ state, service, method, value, input, context 
     value = value[Math.min(callIndex, value.length - 1)];
   }
 
-  return typeof value === 'function' ? value(input, context) : value;
+  if (typeof value !== 'function') return value;
+  return passContextToCallbacks ? value(input, context) : value(input);
 }
 
 function isReadableUploadBody(body) {
@@ -155,7 +180,7 @@ function supportsMethod(definition, method) {
   );
 }
 
-function createLibStorageModuleStub({ stubMap, state }) {
+function createLibStorageModuleStub({ stubMap, state, passContextToCallbacks }) {
   return {
     Upload: createNamedClass(
       'Upload',
@@ -191,6 +216,7 @@ function createLibStorageModuleStub({ stubMap, state }) {
             value,
             input: this.params,
             context,
+            passContextToCallbacks,
           });
           const bodyDrainPromise = drainUploadBody(this.params && this.params.Body);
           const [uploadResult] = await Promise.all([uploadResultPromise, bodyDrainPromise]);
@@ -201,7 +227,7 @@ function createLibStorageModuleStub({ stubMap, state }) {
   };
 }
 
-function createModuleStub({ service, definition, stubMap, state }) {
+function createModuleStub({ service, definition, stubMap, state, passContextToCallbacks }) {
   const exports = {};
 
   const Client = createNamedClass(
@@ -231,7 +257,15 @@ function createModuleStub({ service, definition, stubMap, state }) {
         state.sends.push(context);
 
         const value = getMethodStub(stubMap, service, method);
-        return resolveStubValue({ state, service, method, value, input, context });
+        return resolveStubValue({
+          state,
+          service,
+          method,
+          value,
+          input,
+          context,
+          passContextToCallbacks,
+        });
       }
     }
   );
@@ -271,7 +305,10 @@ function createModuleStub({ service, definition, stubMap, state }) {
   return exports;
 }
 
-module.exports = (stubMap, { ignoreUnsupportedServices = false } = {}) => {
+module.exports = (
+  stubMap,
+  { ignoreUnsupportedServices = false, passContextToCallbacks = true } = {}
+) => {
   stubMap = ensurePlainObject(stubMap, {
     errorMessage: 'Expected `awsSdkV3StubMap` to be a plain object, received %v',
   });
@@ -296,9 +333,14 @@ module.exports = (stubMap, { ignoreUnsupportedServices = false } = {}) => {
       definition,
       stubMap,
       state,
+      passContextToCallbacks,
     });
     if (service === 'S3') {
-      modulesCacheStub['@aws-sdk/lib-storage'] = createLibStorageModuleStub({ stubMap, state });
+      modulesCacheStub['@aws-sdk/lib-storage'] = createLibStorageModuleStub({
+        stubMap,
+        state,
+        passContextToCallbacks,
+      });
     }
   }
 

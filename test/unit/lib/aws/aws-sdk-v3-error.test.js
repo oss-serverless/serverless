@@ -102,7 +102,12 @@ describe('test/unit/lib/aws/aws-sdk-v3-error.test.js', () => {
 
   it('creates generic S3 upload errors and preserves existing Serverless errors', () => {
     const providerError = new Error('upload failed');
+    const inheritedServerlessError = Object.create({
+      name: ServerlessError.name,
+      message: 'inherited message',
+    });
     const uploadError = awsSdkV3Error.createS3UploadError(providerError);
+    const inheritedUploadError = awsSdkV3Error.createS3UploadError(inheritedServerlessError);
     const serverlessError = new ServerlessError(
       'AWS provider credentials not found.',
       'AWS_CREDENTIALS_NOT_FOUND'
@@ -113,6 +118,10 @@ describe('test/unit/lib/aws/aws-sdk-v3-error.test.js', () => {
     expect(uploadError.code).to.equal('AWS_S3_UPLOAD_ERROR');
     expect(uploadError.providerError).to.equal(providerError);
     expect(uploadError.providerErrorCodeExtension).to.equal('ERROR');
+    expect(inheritedUploadError).to.be.instanceOf(ServerlessError);
+    expect(inheritedUploadError).to.not.equal(inheritedServerlessError);
+    expect(inheritedUploadError.message).to.equal('Error');
+    expect(inheritedUploadError.code).to.equal('AWS_S3_UPLOAD_ERROR');
     expect(awsSdkV3Error.createS3UploadError(serverlessError)).to.equal(serverlessError);
   });
 
@@ -129,14 +138,16 @@ describe('test/unit/lib/aws/aws-sdk-v3-error.test.js', () => {
 
   it('ignores inherited legacy error codes, names, messages, and status fields', () => {
     const inheritedCodeError = Object.create({ code: 'AccessDenied', Code: 'NoSuchBucket' });
-    const inheritedNameError = Object.create({ name: 'NoSuchBucket' });
-    const inheritedMessageError = Object.create({ message: 'The specified bucket does not exist' });
+    const inheritedNameError = Object.create({ name: 'CredentialsProviderError' });
     const inheritedProviderError = Object.create({
       providerError: { code: 'AccessDenied', statusCode: 403 },
     });
     const inheritedMetadataError = Object.create({
       statusCode: 403,
       $metadata: { httpStatusCode: 404 },
+    });
+    const inheritedMessageError = Object.create({
+      message: 'The specified bucket does not exist',
     });
     const inheritedRegionError = Object.create({
       BucketRegion: 'eu-west-1',
@@ -149,10 +160,11 @@ describe('test/unit/lib/aws/aws-sdk-v3-error.test.js', () => {
     expect(awsSdkV3Error.getAwsErrorMessage(inheritedMessageError)).to.equal(undefined);
     expect(awsSdkV3Error.getAwsErrorStatusCode(inheritedMetadataError)).to.equal(undefined);
     expect(awsSdkV3Error.getS3BucketRegion(inheritedRegionError)).to.equal(undefined);
-    expect(awsSdkV3Error.isS3ListObjectsNoSuchBucketError(inheritedMessageError)).to.equal(false);
+    expect(awsSdkV3Error.isAwsCredentialProviderError(inheritedNameError)).to.equal(false);
     expect(awsSdkV3Error.isS3HeadObjectForbiddenError(inheritedCodeError)).to.equal(false);
     expect(awsSdkV3Error.isS3HeadBucketNotFoundError(inheritedMetadataError)).to.equal(false);
     expect(awsSdkV3Error.isS3ListObjectsAccessDeniedError(inheritedProviderError)).to.equal(false);
+    expect(awsSdkV3Error.isS3ListObjectsNoSuchBucketError(inheritedMessageError)).to.equal(false);
   });
 
   it('matches generic error codes and status codes', () => {
@@ -231,7 +243,59 @@ describe('test/unit/lib/aws/aws-sdk-v3-error.test.js', () => {
     ).to.equal(false);
   });
 
-  it('matches S3 GetObject, HeadObject, and HeadBucket shapes', () => {
+  it('matches credential provider error shapes', () => {
+    const credentialsError = new ServerlessError(
+      'AWS provider credentials not found.',
+      'AWS_CREDENTIALS_NOT_FOUND'
+    );
+    const sdkCredentialError = Object.assign(new Error('The SSO session has expired'), {
+      name: 'CredentialsProviderError',
+    });
+
+    expect(awsSdkV3Error.isAwsCredentialsNotFoundError(credentialsError)).to.equal(true);
+    expect(awsSdkV3Error.isAwsCredentialProviderError(sdkCredentialError)).to.equal(true);
+    expect(awsSdkV3Error.isAwsCredentialError(credentialsError)).to.equal(true);
+    expect(awsSdkV3Error.isAwsCredentialError(sdkCredentialError)).to.equal(true);
+    expect(
+      awsSdkV3Error.isAwsCredentialsNotFoundError(
+        Object.create({ code: 'AWS_CREDENTIALS_NOT_FOUND' })
+      )
+    ).to.equal(false);
+    expect(
+      awsSdkV3Error.isAwsCredentialProviderError(
+        Object.create({ name: 'CredentialsProviderError' })
+      )
+    ).to.equal(false);
+  });
+
+  it('matches generic SDK v3 missing credentials errors only by own message', () => {
+    expect(
+      awsSdkV3Error.isAwsSdkV3MissingCredentialsError(
+        new Error('Could not load credentials from any providers')
+      )
+    ).to.equal(true);
+    expect(
+      awsSdkV3Error.isAwsSdkV3MissingCredentialsError(
+        Object.assign(new Error('Could not load credentials from any providers'), {
+          name: 'CredentialsProviderError',
+        })
+      )
+    ).to.equal(true);
+    expect(
+      awsSdkV3Error.isAwsSdkV3MissingCredentialsError(
+        Object.assign(new Error('The SSO session has expired'), {
+          name: 'CredentialsProviderError',
+        })
+      )
+    ).to.equal(false);
+    expect(
+      awsSdkV3Error.isAwsSdkV3MissingCredentialsError(
+        Object.create({ message: 'Could not load credentials from any providers' })
+      )
+    ).to.equal(false);
+  });
+
+  it('matches only explicit S3 GetObject missing-key shapes', () => {
     expect(
       awsSdkV3Error.isS3GetObjectNoSuchKeyError({
         code: 'AWS_S3_GET_OBJECT_NO_SUCH_KEY',
@@ -355,9 +419,6 @@ describe('test/unit/lib/aws/aws-sdk-v3-error.test.js', () => {
     expect(
       awsSdkV3Error.isCloudWatchLogsResourceNotFoundError({ name: 'AccessDeniedException' })
     ).to.equal(false);
-    expect(
-      awsSdkV3Error.isEcrRepositoryNotFoundError({ name: 'RepositoryNotFoundException' })
-    ).to.equal(true);
     expect(awsSdkV3Error.isEcrAccessDeniedError({ name: 'AccessDeniedException' })).to.equal(true);
     expect(
       awsSdkV3Error.isEcrAccessDeniedError({
@@ -368,12 +429,53 @@ describe('test/unit/lib/aws/aws-sdk-v3-error.test.js', () => {
     expect(awsSdkV3Error.isEcrAccessDeniedError({ $metadata: { httpStatusCode: 403 } })).to.equal(
       false
     );
+    expect(
+      awsSdkV3Error.isEcrRepositoryNotFoundError({ name: 'RepositoryNotFoundException' })
+    ).to.equal(true);
+    expect(
+      awsSdkV3Error.isEcrRepositoryNotFoundError({ Code: 'RepositoryNotFoundException' })
+    ).to.equal(true);
+    expect(
+      awsSdkV3Error.isEcrRepositoryNotFoundError({ $metadata: { httpStatusCode: 404 } })
+    ).to.equal(false);
+    expect(
+      awsSdkV3Error.isEcrRepositoryNotFoundError(
+        Object.create({ name: 'RepositoryNotFoundException' })
+      )
+    ).to.equal(false);
     expect(awsSdkV3Error.isLambdaAccessDeniedError({ name: 'AccessDeniedException' })).to.equal(
       true
     );
     expect(
       awsSdkV3Error.isLambdaAccessDeniedError({ providerError: { statusCode: 403 } })
     ).to.equal(true);
+    expect(
+      awsSdkV3Error.isLambdaResourceNotFoundError({ name: 'ResourceNotFoundException' })
+    ).to.equal(true);
+    expect(
+      awsSdkV3Error.isLambdaResourceNotFoundError({ code: 'ResourceNotFoundException' })
+    ).to.equal(true);
+    expect(
+      awsSdkV3Error.isLambdaResourceNotFoundError({
+        providerError: { Code: 'ResourceNotFoundException' },
+      })
+    ).to.equal(true);
+    expect(
+      awsSdkV3Error.isLambdaResourceConflictError({ name: 'ResourceConflictException' })
+    ).to.equal(true);
+    expect(
+      awsSdkV3Error.isLambdaResourceConflictError({
+        providerError: { code: 'ResourceConflictException' },
+      })
+    ).to.equal(true);
+    expect(
+      awsSdkV3Error.isLambdaResourceNotFoundError(
+        Object.create({ code: 'ResourceNotFoundException' })
+      )
+    ).to.equal(false);
+    expect(
+      awsSdkV3Error.isLambdaResourceConflictError({ $metadata: { httpStatusCode: 409 } })
+    ).to.equal(false);
     expect(awsSdkV3Error.isSsmParameterNotFoundError({ name: 'ParameterNotFound' })).to.equal(true);
     expect(
       awsSdkV3Error.isSsmParameterNotFoundError({

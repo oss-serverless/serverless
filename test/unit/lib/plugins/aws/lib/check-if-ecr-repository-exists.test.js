@@ -112,21 +112,79 @@ describe('test/unit/lib/plugins/aws/lib/check-if-ecr-repository-exists.test.js',
     await expect(context.checkIfEcrRepositoryExists()).to.be.rejectedWith('boom');
   });
 
-  it('uses an existing ECR client promise from the plugin context', async () => {
-    const send = sinon.stub().resolves({ repositories: [{ repositoryName: 'repository' }] });
-    context.ecrClientPromise = Promise.resolve({ send });
-    context.provider.getAwsSdkV3Config.throws(
-      new Error('Expected existing ECR client to be reused')
+  it('reuses one ECR client across repository existence and delete operations', async () => {
+    const ecrClients = [];
+    const commands = [];
+    class FakeCommand {
+      constructor(input) {
+        this.input = input;
+      }
+    }
+    class FakeDescribeRepositoriesCommand extends FakeCommand {}
+    class FakeDeleteRepositoryCommand extends FakeCommand {}
+    class FakeECRClient {
+      constructor(config) {
+        this.config = config;
+        ecrClients.push(this);
+      }
+
+      async send(command) {
+        commands.push(command);
+        if (command instanceof FakeDescribeRepositoriesCommand) {
+          return { repositories: [{ repositoryName: 'repository' }] };
+        }
+        if (command instanceof FakeDeleteRepositoryCommand) return {};
+        throw new Error(`Unexpected ECR command ${command.constructor.name}`);
+      }
+    }
+    const checkIfEcrRepositoryExists = proxyquire(
+      '../../../../../../lib/plugins/aws/lib/check-if-ecr-repository-exists',
+      {
+        '@aws-sdk/client-ecr': {
+          ECRClient: FakeECRClient,
+          DescribeRepositoriesCommand: FakeDescribeRepositoriesCommand,
+        },
+        '../../../utils/serverless-utils/log': { log: { warning: warningStub } },
+      }
     );
+    const removeEcrRepository = proxyquire('../../../../../../lib/plugins/aws/remove/lib/ecr', {
+      '@aws-sdk/client-ecr': {
+        ECRClient: FakeECRClient,
+        DeleteRepositoryCommand: FakeDeleteRepositoryCommand,
+      },
+    });
+    const sharedContext = {
+      provider: {
+        getAccountId: sinon.stub().resolves('123456789012'),
+        getAwsSdkV3Config: sinon.stub().resolves({ region: 'us-east-1' }),
+        naming: {
+          getEcrRepositoryName: sinon.stub().returns('repository'),
+        },
+      },
+      serverless: {
+        service: {
+          provider: {},
+        },
+      },
+      ...checkIfEcrRepositoryExists,
+      ...removeEcrRepository,
+    };
 
-    await expect(context.checkIfEcrRepositoryExists()).to.eventually.equal(true);
+    await expect(sharedContext.checkIfEcrRepositoryExists()).to.eventually.equal(true);
+    await sharedContext.removeEcrRepository();
 
-    expect(context.provider.getAwsSdkV3Config).to.not.have.been.called;
-    expect(send).to.have.been.calledOnce;
-    expect(send.firstCall.args[0]).to.be.instanceOf(DescribeRepositoriesCommand);
-    expect(send.firstCall.args[0].input).to.deep.equal({
+    expect(ecrClients).to.have.length(1);
+    expect(sharedContext.provider.getAwsSdkV3Config).to.have.been.calledOnce;
+    expect(commands[0]).to.be.instanceOf(FakeDescribeRepositoriesCommand);
+    expect(commands[0].input).to.deep.equal({
       repositoryNames: ['repository'],
       registryId: '123456789012',
+    });
+    expect(commands[1]).to.be.instanceOf(FakeDeleteRepositoryCommand);
+    expect(commands[1].input).to.deep.equal({
+      registryId: '123456789012',
+      repositoryName: 'repository',
+      force: true,
     });
   });
 });

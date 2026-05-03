@@ -13,13 +13,19 @@ const log = require('log').get('serverless:test');
 const proxyquire = require('proxyquire');
 const { overrideEnv } = require('../../../../../utils/process');
 const AwsProvider = require('../../../../../../lib/plugins/aws/provider');
-const { CloudFormationClient } = require('@aws-sdk/client-cloudformation');
+const {
+  CloudFormationClient,
+  ListExportsCommand,
+  ListStackResourcesCommand,
+} = require('@aws-sdk/client-cloudformation');
 const Serverless = require('../../../../../../lib/serverless');
 const CLI = require('../../../../../../lib/classes/cli');
 const { getTmpDirPath } = require('../../../../../utils/fs');
 const skipWithNotice = require('../../../../../lib/skip-with-notice');
 const runServerless = require('../../../../../utils/run-serverless');
 const spawnExt = require('../../../../../../lib/utils/spawn');
+const configureAwsSdkV3Stub = require('../../../../../lib/configure-aws-sdk-v3-stub');
+const releasePendingRequestsUntilSettled = require('../../../../../utils/release-pending-requests-until-settled');
 
 const tmpServicePath = __dirname;
 
@@ -359,14 +365,7 @@ describe('AwsInvokeLocal', () => {
   });
 
   describe('#resolveConfiguredEnvVars()', () => {
-    let requestStub;
-
-    beforeEach(() => {
-      requestStub = sinon.stub(provider, 'request');
-    });
-
     afterEach(() => {
-      provider.request.restore();
       if (CloudFormationClient.prototype.send.restore) {
         CloudFormationClient.prototype.send.restore();
       }
@@ -387,10 +386,69 @@ describe('AwsInvokeLocal', () => {
         IMPORTED: 'imported-value',
       });
       expect(listExportsStub).to.have.been.calledOnce;
+      expect(listExportsStub.firstCall.args[0]).to.be.instanceOf(ListExportsCommand);
+      expect(listExportsStub.firstCall.args[0].input).to.deep.equal({});
+    });
+
+    it('follows Fn::ImportValue pagination', async () => {
+      const listExportsStub = sinon
+        .stub(CloudFormationClient.prototype, 'send')
+        .onFirstCall()
+        .resolves({ Exports: [{ Name: 'other-export', Value: 'other-value' }], NextToken: 'next' })
+        .onSecondCall()
+        .resolves({ Exports: [{ Name: 'some-export', Value: 'imported-value' }] });
+
+      const result = await awsInvokeLocal.resolveConfiguredEnvVars({
+        IMPORTED: {
+          'Fn::ImportValue': 'some-export',
+        },
+      });
+
+      expect(result).to.deep.equal({ IMPORTED: 'imported-value' });
+      expect(listExportsStub).to.have.been.calledTwice;
+      expect(listExportsStub.secondCall.args[0]).to.be.instanceOf(ListExportsCommand);
+      expect(listExportsStub.secondCall.args[0].input).to.deep.equal({ NextToken: 'next' });
+    });
+
+    it('tolerates Fn::ImportValue pages without Exports', async () => {
+      const listExportsStub = sinon
+        .stub(CloudFormationClient.prototype, 'send')
+        .onFirstCall()
+        .resolves({ NextToken: 'next' })
+        .onSecondCall()
+        .resolves({ Exports: [{ Name: 'some-export', Value: 'imported-value' }] });
+
+      const result = await awsInvokeLocal.resolveConfiguredEnvVars({
+        IMPORTED: {
+          'Fn::ImportValue': 'some-export',
+        },
+      });
+
+      expect(result).to.deep.equal({ IMPORTED: 'imported-value' });
+      expect(listExportsStub).to.have.been.calledTwice;
+    });
+
+    it('rejects missing Fn::ImportValue env vars', async () => {
+      sinon
+        .stub(CloudFormationClient.prototype, 'send')
+        .resolves({ Exports: [{ Name: 'other-export', Value: 'other-value' }] });
+
+      await expect(
+        awsInvokeLocal.resolveConfiguredEnvVars({
+          IMPORTED: {
+            'Fn::ImportValue': 'missing-export',
+          },
+        })
+      ).to.be.rejected.then((error) => {
+        expect(error.code).to.equal('INVOKE_LOCAL_INVALID_ENV_VARIABLE');
+        expect(error.message).to.include(
+          'Could not resolve Fn::ImportValue with name missing-export'
+        );
+      });
     });
 
     it('resolves Ref env vars', async () => {
-      requestStub.resolves({
+      const listStackResourcesStub = sinon.stub(CloudFormationClient.prototype, 'send').resolves({
         StackResourceSummaries: [
           {
             LogicalResourceId: 'SomeResource',
@@ -408,6 +466,177 @@ describe('AwsInvokeLocal', () => {
       expect(result).to.deep.equal({
         TARGET: 'physical-resource-id',
       });
+      expect(listStackResourcesStub).to.have.been.calledOnce;
+      expect(listStackResourcesStub.firstCall.args[0]).to.be.instanceOf(ListStackResourcesCommand);
+      expect(listStackResourcesStub.firstCall.args[0].input).to.deep.equal({
+        StackName: provider.naming.getStackName(),
+      });
+    });
+
+    it('follows Ref pagination', async () => {
+      const listStackResourcesStub = sinon
+        .stub(CloudFormationClient.prototype, 'send')
+        .onFirstCall()
+        .resolves({
+          StackResourceSummaries: [{ LogicalResourceId: 'OtherResource' }],
+          NextToken: 'next-page',
+        })
+        .onSecondCall()
+        .resolves({
+          StackResourceSummaries: [
+            {
+              LogicalResourceId: 'SomeResource',
+              PhysicalResourceId: 'physical-resource-id',
+            },
+          ],
+        });
+
+      const result = await awsInvokeLocal.resolveConfiguredEnvVars({
+        TARGET: {
+          Ref: 'SomeResource',
+        },
+      });
+
+      expect(result).to.deep.equal({ TARGET: 'physical-resource-id' });
+      expect(listStackResourcesStub).to.have.been.calledTwice;
+      expect(listStackResourcesStub.secondCall.args[0]).to.be.instanceOf(ListStackResourcesCommand);
+      expect(listStackResourcesStub.secondCall.args[0].input).to.deep.equal({
+        StackName: provider.naming.getStackName(),
+        NextToken: 'next-page',
+      });
+    });
+
+    it('stops Ref pagination when a match is found on the first page', async () => {
+      const listStackResourcesStub = sinon.stub(CloudFormationClient.prototype, 'send').resolves({
+        StackResourceSummaries: [
+          {
+            LogicalResourceId: 'SomeResource',
+            PhysicalResourceId: 'physical-resource-id',
+          },
+        ],
+        NextToken: 'next-page',
+      });
+
+      const result = await awsInvokeLocal.resolveConfiguredEnvVars({
+        TARGET: {
+          Ref: 'SomeResource',
+        },
+      });
+
+      expect(result).to.deep.equal({ TARGET: 'physical-resource-id' });
+      expect(listStackResourcesStub).to.have.been.calledOnce;
+    });
+
+    it('rejects missing Ref env vars', async () => {
+      sinon
+        .stub(CloudFormationClient.prototype, 'send')
+        .onFirstCall()
+        .resolves({
+          StackResourceSummaries: [{ LogicalResourceId: 'OtherResource' }],
+          NextToken: 'next-page',
+        })
+        .onSecondCall()
+        .resolves({ StackResourceSummaries: [{ LogicalResourceId: 'AnotherResource' }] });
+
+      await expect(
+        awsInvokeLocal.resolveConfiguredEnvVars({
+          TARGET: {
+            Ref: 'SomeResource',
+          },
+        })
+      ).to.be.rejected.then((error) => {
+        expect(error.code).to.equal('INVOKE_LOCAL_INVALID_ENV_VARIABLE');
+        expect(error.message).to.include('Could not resolve Ref with name SomeResource');
+      });
+    });
+
+    it('reuses one CloudFormation client across env var resolutions', async () => {
+      const getAwsSdkV3ConfigSpy = sinon.spy(provider, 'getAwsSdkV3Config');
+      const sendStub = sinon
+        .stub(CloudFormationClient.prototype, 'send')
+        .callsFake(async (command) => {
+          if (command instanceof ListExportsCommand) {
+            return { Exports: [{ Name: 'some-export', Value: 'imported-value' }] };
+          }
+          if (command instanceof ListStackResourcesCommand) {
+            return {
+              StackResourceSummaries: [
+                {
+                  LogicalResourceId: 'SomeResource',
+                  PhysicalResourceId: 'physical-resource-id',
+                },
+              ],
+            };
+          }
+          throw new Error(`Unexpected CloudFormation command ${command.constructor.name}`);
+        });
+
+      try {
+        const result = await awsInvokeLocal.resolveConfiguredEnvVars({
+          IMPORTED: {
+            'Fn::ImportValue': 'some-export',
+          },
+          TARGET: {
+            Ref: 'SomeResource',
+          },
+        });
+
+        expect(result).to.deep.equal({
+          IMPORTED: 'imported-value',
+          TARGET: 'physical-resource-id',
+        });
+        expect(getAwsSdkV3ConfigSpy).to.have.been.calledOnce;
+        expect(sendStub).to.have.been.calledTwice;
+        expect(sendStub.secondCall.thisValue).to.equal(sendStub.firstCall.thisValue);
+      } finally {
+        getAwsSdkV3ConfigSpy.restore();
+      }
+    });
+
+    it('passes credential provider unchanged to the CloudFormation client constructor', async () => {
+      const credentials = async () => ({ accessKeyId: 'key', secretAccessKey: 'secret' });
+      const clientConfigs = [];
+      const commands = [];
+      class StubCloudFormationClient {
+        constructor(config) {
+          clientConfigs.push(config);
+        }
+
+        async send(command) {
+          commands.push(command);
+          return { Exports: [{ Name: 'some-export', Value: 'imported-value' }] };
+        }
+      }
+      const AwsInvokeLocalWithStub = proxyquire(
+        '../../../../../../lib/plugins/aws/invoke-local/index',
+        {
+          '../../../utils/get-stdin': stdinStub,
+          '../../../utils/spawn': spawnExtStub,
+          '@aws-sdk/client-cloudformation': {
+            CloudFormationClient: StubCloudFormationClient,
+            ListExportsCommand,
+            ListStackResourcesCommand,
+          },
+        }
+      );
+      const invokeLocal = new AwsInvokeLocalWithStub(serverless, options);
+      invokeLocal.provider = {
+        ...provider,
+        getAwsSdkV3Config: sinon.stub().resolves({ region: 'us-west-2', credentials }),
+      };
+
+      const result = await invokeLocal.resolveConfiguredEnvVars({
+        IMPORTED: {
+          'Fn::ImportValue': 'some-export',
+        },
+      });
+
+      expect(result).to.deep.equal({ IMPORTED: 'imported-value' });
+      expect(clientConfigs).to.have.length(1);
+      expect(clientConfigs[0].region).to.equal('us-west-2');
+      expect(clientConfigs[0].credentials).to.equal(credentials);
+      expect(commands).to.have.length(1);
+      expect(commands[0]).to.be.instanceOf(ListExportsCommand);
     });
 
     it('rejects unsupported environment variable objects', async () => {
@@ -1103,6 +1332,49 @@ describe('AwsInvokeLocal', () => {
   });
 
   describe('#getLayerPaths()', () => {
+    const createRemoteLayerTestContext = ({
+      awsSdkV3Stub,
+      cacheDirPath,
+      copyStub,
+      dirExistsStub,
+      downloadStub,
+      ensureDirStub,
+    }) => {
+      const ProxyquiredAwsInvokeLocal = proxyquire
+        .noCallThru()
+        .load('../../../../../../lib/plugins/aws/invoke-local/index', {
+          ...awsSdkV3Stub.modulesCacheStub,
+          '../../../utils/get-stdin': sinon.stub().resolves(''),
+          '../../../utils/spawn': sinon.stub().resolves({ stdoutBuffer: Buffer.from('Mocked') }),
+          'fs': {
+            promises: {
+              mkdir: ensureDirStub,
+            },
+          },
+          '../../../utils/fs/copy': copyStub,
+          'cachedir': sinon.stub().returns(cacheDirPath),
+          '../../../utils/fs/dir-exists': dirExistsStub,
+          '../../../utils/serverless-utils/download': downloadStub,
+        });
+      const localOptions = {
+        stage: 'dev',
+        region: 'us-east-1',
+        function: 'first',
+      };
+      const localServerless = new Serverless({ commands: [], options: {} });
+      localServerless.serviceDir = 'servicePath';
+      localServerless.cli = new CLI(localServerless);
+      localServerless.processedInput = { commands: ['invoke'] };
+      localServerless.service.layers = {};
+
+      const localProvider = new AwsProvider(localServerless, localOptions);
+      localServerless.setProvider('aws', localProvider);
+      const invokeLocal = new ProxyquiredAwsInvokeLocal(localServerless, localOptions);
+      invokeLocal.provider = localProvider;
+
+      return { invokeLocal, localServerless };
+    };
+
     it('downloads remote layers from the provider content location', async () => {
       const cacheDirPath = path.join(os.tmpdir(), 'serverless-cache');
       const downloadStub = sinon.stub().resolves();
@@ -1112,10 +1384,20 @@ describe('AwsInvokeLocal', () => {
       const spawnExtLocalStub = sinon.stub().resolves({
         stdoutBuffer: Buffer.from('Mocked output'),
       });
+      const awsSdkV3Stub = configureAwsSdkV3Stub({
+        Lambda: {
+          getLayerVersion: {
+            Content: {
+              Location: 'https://layers.example.test/download?Signature=opaque',
+            },
+          },
+        },
+      });
 
       const ProxyquiredAwsInvokeLocal = proxyquire
         .noCallThru()
         .load('../../../../../../lib/plugins/aws/invoke-local/index', {
+          ...awsSdkV3Stub.modulesCacheStub,
           '../../../utils/get-stdin': sinon.stub().resolves(''),
           '../../../utils/spawn': spawnExtLocalStub,
           'fs': {
@@ -1149,14 +1431,9 @@ describe('AwsInvokeLocal', () => {
         layers: ['arn:aws:lambda:us-east-1:123456789012:layer:my-layer:3'],
       };
 
-      const requestStub = sinon.stub(localProvider, 'request').resolves({
-        Content: {
-          Location: 'https://layers.example.test/download?Signature=opaque',
-        },
-      });
-
       const expectedLayerPath = path.join('.serverless', 'layers', 'my-layer', '3');
       const expectedCachePath = path.join(cacheDirPath, 'invokeLocal', 'layers', 'my-layer', '3');
+      const expectedCredentials = localProvider.getAwsSdkV3CredentialsProvider();
 
       const result = await invokeLocal.getLayerPaths();
 
@@ -1165,12 +1442,18 @@ describe('AwsInvokeLocal', () => {
       expect(ensureDirStub.calledOnceWithExactly(expectedCachePath, { recursive: true })).to.equal(
         true
       );
-      expect(
-        requestStub.calledOnceWithExactly('Lambda', 'getLayerVersion', {
-          LayerName: 'arn:aws:lambda:us-east-1:123456789012:layer:my-layer',
-          VersionNumber: 3,
-        })
-      ).to.equal(true);
+      expect(awsSdkV3Stub.sends).to.have.length(1);
+      expect(awsSdkV3Stub.sends[0]).to.include({
+        service: 'Lambda',
+        method: 'getLayerVersion',
+        commandName: 'GetLayerVersionCommand',
+      });
+      expect(awsSdkV3Stub.sends[0].input).to.deep.equal({
+        LayerName: 'arn:aws:lambda:us-east-1:123456789012:layer:my-layer',
+        VersionNumber: 3,
+      });
+      expect(awsSdkV3Stub.sends[0].clientConfig.region).to.equal('us-east-1');
+      expect(awsSdkV3Stub.sends[0].clientConfig.credentials).to.equal(expectedCredentials);
       expect(
         downloadStub.calledOnceWithExactly(
           'https://layers.example.test/download?Signature=opaque',
@@ -1178,6 +1461,135 @@ describe('AwsInvokeLocal', () => {
           { extract: true }
         )
       ).to.equal(true);
+      expect(copyStub.calledOnceWithExactly(expectedCachePath, expectedLayerPath)).to.equal(true);
+      expect(result).to.deep.equal([expectedLayerPath]);
+    });
+
+    it('uses provider-level remote layers when function layers are not configured', async () => {
+      const cacheDirPath = path.join(os.tmpdir(), 'serverless-cache');
+      const downloadStub = sinon.stub().resolves();
+      const dirExistsStub = sinon.stub().resolves(false);
+      const ensureDirStub = sinon.stub().resolves();
+      const copyStub = sinon.stub().resolves();
+      const awsSdkV3Stub = configureAwsSdkV3Stub({
+        Lambda: {
+          getLayerVersion: {
+            Content: {
+              Location: 'https://layers.example.test/provider-layer.zip',
+            },
+          },
+        },
+      });
+      const { invokeLocal, localServerless } = createRemoteLayerTestContext({
+        awsSdkV3Stub,
+        cacheDirPath,
+        copyStub,
+        dirExistsStub,
+        downloadStub,
+        ensureDirStub,
+      });
+      localServerless.service.provider.layers = [
+        'arn:aws:lambda:us-east-1:123456789012:layer:provider-layer:7',
+      ];
+      invokeLocal.options.functionObj = {};
+
+      const expectedLayerPath = path.join('.serverless', 'layers', 'provider-layer', '7');
+      const expectedCachePath = path.join(
+        cacheDirPath,
+        'invokeLocal',
+        'layers',
+        'provider-layer',
+        '7'
+      );
+      const result = await invokeLocal.getLayerPaths();
+
+      expect(awsSdkV3Stub.sends).to.have.length(1);
+      expect(awsSdkV3Stub.sends[0].input).to.deep.equal({
+        LayerName: 'arn:aws:lambda:us-east-1:123456789012:layer:provider-layer',
+        VersionNumber: 7,
+      });
+      expect(
+        downloadStub.calledOnceWithExactly(
+          'https://layers.example.test/provider-layer.zip',
+          expectedCachePath,
+          { extract: true }
+        )
+      ).to.equal(true);
+      expect(copyStub.calledOnceWithExactly(expectedCachePath, expectedLayerPath)).to.equal(true);
+      expect(result).to.deep.equal([expectedLayerPath]);
+    });
+
+    it('uses existing local remote layer contents without SDK lookup or download', async () => {
+      const cacheDirPath = path.join(os.tmpdir(), 'serverless-cache');
+      const downloadStub = sinon.stub().resolves();
+      const dirExistsStub = sinon.stub().resolves(true);
+      const ensureDirStub = sinon.stub().resolves();
+      const copyStub = sinon.stub().resolves();
+      const awsSdkV3Stub = configureAwsSdkV3Stub({
+        Lambda: {
+          getLayerVersion: {
+            Content: { Location: 'https://layers.example.test/unused.zip' },
+          },
+        },
+      });
+      const { invokeLocal } = createRemoteLayerTestContext({
+        awsSdkV3Stub,
+        cacheDirPath,
+        copyStub,
+        dirExistsStub,
+        downloadStub,
+        ensureDirStub,
+      });
+      invokeLocal.options.functionObj = {
+        layers: ['arn:aws:lambda:us-east-1:123456789012:layer:my-layer:3'],
+      };
+
+      const expectedLayerPath = path.join('.serverless', 'layers', 'my-layer', '3');
+      const expectedCachePath = path.join(cacheDirPath, 'invokeLocal', 'layers', 'my-layer', '3');
+      const result = await invokeLocal.getLayerPaths();
+
+      expect(dirExistsStub.calledOnceWithExactly(expectedLayerPath)).to.equal(true);
+      expect(awsSdkV3Stub.sends).to.have.length(0);
+      expect(downloadStub).to.not.have.been.called;
+      expect(copyStub.calledOnceWithExactly(expectedCachePath, expectedLayerPath)).to.equal(true);
+      expect(result).to.deep.equal([expectedLayerPath]);
+    });
+
+    it('uses cached remote layer contents without SDK lookup or download', async () => {
+      const cacheDirPath = path.join(os.tmpdir(), 'serverless-cache');
+      const downloadStub = sinon.stub().resolves();
+      const dirExistsStub = sinon.stub();
+      dirExistsStub.onFirstCall().resolves(false).onSecondCall().resolves(true);
+      const ensureDirStub = sinon.stub().resolves();
+      const copyStub = sinon.stub().resolves();
+      const awsSdkV3Stub = configureAwsSdkV3Stub({
+        Lambda: {
+          getLayerVersion: {
+            Content: { Location: 'https://layers.example.test/unused.zip' },
+          },
+        },
+      });
+      const { invokeLocal } = createRemoteLayerTestContext({
+        awsSdkV3Stub,
+        cacheDirPath,
+        copyStub,
+        dirExistsStub,
+        downloadStub,
+        ensureDirStub,
+      });
+      invokeLocal.options.functionObj = {
+        layers: ['arn:aws:lambda:us-east-1:123456789012:layer:my-layer:3'],
+      };
+
+      const expectedLayerPath = path.join('.serverless', 'layers', 'my-layer', '3');
+      const expectedCachePath = path.join(cacheDirPath, 'invokeLocal', 'layers', 'my-layer', '3');
+      const result = await invokeLocal.getLayerPaths();
+
+      expect(dirExistsStub.firstCall.args[0]).to.equal(expectedLayerPath);
+      expect(dirExistsStub.secondCall.args[0]).to.equal(expectedCachePath);
+      expect(awsSdkV3Stub.sends).to.have.length(0);
+      expect(ensureDirStub).to.not.have.been.called;
+      expect(downloadStub).to.not.have.been.called;
       expect(copyStub.calledOnceWithExactly(expectedCachePath, expectedLayerPath)).to.equal(true);
       expect(result).to.deep.equal([expectedLayerPath]);
     });
@@ -1207,6 +1619,15 @@ describe('AwsInvokeLocal', () => {
       const ProxyquiredAwsInvokeLocal = proxyquire
         .noCallThru()
         .load('../../../../../../lib/plugins/aws/invoke-local/index', {
+          ...configureAwsSdkV3Stub({
+            Lambda: {
+              getLayerVersion: {
+                Content: {
+                  Location: `${baseUrl}/layer-download?Signature=opaque`,
+                },
+              },
+            },
+          }).modulesCacheStub,
           '../../../utils/get-stdin': sinon.stub().resolves(''),
           '../../../utils/spawn': sinon.stub().resolves({
             stdoutBuffer: Buffer.from('Mocked output'),
@@ -1237,12 +1658,6 @@ describe('AwsInvokeLocal', () => {
           layers: ['arn:aws:lambda:us-east-1:123456789012:layer:my-layer:3'],
         };
 
-        const requestStub = sinon.stub(localProvider, 'request').resolves({
-          Content: {
-            Location: `${baseUrl}/layer-download?Signature=opaque`,
-          },
-        });
-
         const result = await invokeLocal.getLayerPaths();
         const expectedLayerPath = path.join('.serverless', 'layers', 'my-layer', '3');
         const copiedFilePath = path.join(
@@ -1266,12 +1681,6 @@ describe('AwsInvokeLocal', () => {
           'index.js'
         );
 
-        expect(
-          requestStub.calledOnceWithExactly('Lambda', 'getLayerVersion', {
-            LayerName: 'arn:aws:lambda:us-east-1:123456789012:layer:my-layer',
-            VersionNumber: 3,
-          })
-        ).to.equal(true);
         expect(result).to.deep.equal([expectedLayerPath]);
         expect(await fsp.readFile(copiedFilePath, 'utf8')).to.equal('module.exports = 123;');
         expect(await fsp.readFile(cachedFilePath, 'utf8')).to.equal('module.exports = 123;');
@@ -1289,6 +1698,84 @@ describe('AwsInvokeLocal', () => {
         });
         await fsp.rm(tempRoot, { recursive: true, force: true });
       }
+    });
+
+    it('limits concurrent remote layer lookups to 6', async () => {
+      const cacheDirPath = path.join(os.tmpdir(), 'serverless-cache');
+      const pendingResolvers = [];
+      let activeRequests = 0;
+      let observedMaxActiveRequests = 0;
+      const awsSdkV3Stub = configureAwsSdkV3Stub({
+        Lambda: {
+          getLayerVersion: async (input) => {
+            activeRequests += 1;
+            observedMaxActiveRequests = Math.max(observedMaxActiveRequests, activeRequests);
+            expect(activeRequests).to.be.at.most(6);
+            await new Promise((resolve) => pendingResolvers.push(resolve));
+            activeRequests -= 1;
+            return {
+              Content: {
+                Location: `https://layers.example.test/${input.VersionNumber}.zip`,
+              },
+            };
+          },
+        },
+      });
+      const ProxyquiredAwsInvokeLocal = proxyquire
+        .noCallThru()
+        .load('../../../../../../lib/plugins/aws/invoke-local/index', {
+          ...awsSdkV3Stub.modulesCacheStub,
+          '../../../utils/get-stdin': sinon.stub().resolves(''),
+          '../../../utils/spawn': sinon.stub().resolves({ stdoutBuffer: Buffer.from('Mocked') }),
+          'fs': {
+            promises: {
+              mkdir: sinon.stub().resolves(),
+            },
+          },
+          '../../../utils/fs/copy': sinon.stub().resolves(),
+          'cachedir': sinon.stub().returns(cacheDirPath),
+          '../../../utils/fs/dir-exists': sinon.stub().resolves(false),
+          '../../../utils/serverless-utils/download': sinon.stub().resolves(),
+        });
+      const localOptions = {
+        stage: 'dev',
+        region: 'us-east-1',
+        function: 'first',
+      };
+      const localServerless = new Serverless({ commands: [], options: {} });
+      localServerless.serviceDir = 'servicePath';
+      localServerless.cli = new CLI(localServerless);
+      localServerless.processedInput = { commands: ['invoke'] };
+      localServerless.service.layers = {};
+      const localProvider = new AwsProvider(localServerless, localOptions);
+      localServerless.setProvider('aws', localProvider);
+      const invokeLocal = new ProxyquiredAwsInvokeLocal(localServerless, localOptions);
+      invokeLocal.provider = localProvider;
+      invokeLocal.options.functionObj = {
+        layers: Array.from(
+          { length: 10 },
+          (ignored, index) =>
+            `arn:aws:lambda:us-east-1:123456789012:layer:layer-${index}:${index + 1}`
+        ),
+      };
+
+      const promise = invokeLocal.getLayerPaths();
+
+      for (let index = 0; index < 20 && pendingResolvers.length < 6; index += 1) {
+        await Promise.resolve();
+      }
+      expect(observedMaxActiveRequests).to.equal(6);
+      await releasePendingRequestsUntilSettled(pendingResolvers, promise);
+      expect(observedMaxActiveRequests).to.equal(6);
+      expect(awsSdkV3Stub.sends).to.have.length(10);
+      expect(awsSdkV3Stub.clients.filter(({ service }) => service === 'Lambda')).to.have.length(1);
+      const expectedCredentials = localProvider.getAwsSdkV3CredentialsProvider();
+      expect(
+        awsSdkV3Stub.sends.every(
+          ({ clientConfig }) =>
+            clientConfig.region === 'us-east-1' && clientConfig.credentials === expectedCredentials
+        )
+      ).to.equal(true);
     });
   });
 

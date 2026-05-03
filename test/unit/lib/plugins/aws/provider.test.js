@@ -488,6 +488,32 @@ describe('AwsProvider', () => {
       }
     });
 
+    it('does not normalize inherited generic SDK v3 missing credentials messages', async () => {
+      const inheritedMissingCredentialsError = Object.create({
+        message: 'Could not load credentials from any providers',
+      });
+      const credentialsProvider = sinon.stub().rejects(inheritedMissingCredentialsError);
+      const AwsProviderProxyquired = proxyquire
+        .noCallThru()
+        .load('../../../../../lib/plugins/aws/provider.js', {
+          '../../aws/credentials': {
+            getAwsSdkV3CredentialsProviderCacheKey: sinon.stub().returns('cache-key'),
+            getAwsSdkV3CredentialsProvider: sinon.stub().returns(credentialsProvider),
+          },
+        });
+      const provider = new AwsProviderProxyquired(serverless, options);
+
+      const config = await provider.getAwsSdkV3Config();
+
+      try {
+        await config.credentials();
+        throw new Error('Expected credentials provider to reject');
+      } catch (error) {
+        expect(error).to.equal(inheritedMissingCredentialsError);
+        expect(error.code).to.equal(undefined);
+      }
+    });
+
     it('does not normalize specific SDK v3 credential provider errors', async () => {
       const ssoError = Object.assign(new Error('The SSO session has expired'), {
         name: 'CredentialsProviderError',
@@ -1767,6 +1793,114 @@ aws_secret_access_key = CUSTOMSECRET
           })
         ).to.be.eventually.rejected.and.have.property('code', 'LAMBDA_ECR_REGION_MISMATCH_ERROR');
       });
+
+      it('should surface native SDK v3 image lookup errors', async () => {
+        const imageNotFoundError = Object.assign(new Error('Image not found'), {
+          name: 'ImageNotFoundException',
+        });
+
+        try {
+          await runServerless({
+            fixture: 'function',
+            command: 'package',
+            configExt: {
+              functions: {
+                fnImageWithTag: {
+                  image: '000000000000.dkr.ecr.us-east-1.amazonaws.com/test-lambda-docker:stable',
+                },
+              },
+            },
+            awsRequestStubMap: {
+              ECR: {
+                describeImages: () => {
+                  throw imageNotFoundError;
+                },
+              },
+            },
+          });
+        } catch (error) {
+          expect(error).to.equal(imageNotFoundError);
+          return;
+        }
+
+        throw new Error('Expected package to reject');
+      });
+
+      it('limits concurrent ECR image tag lookups to 6', async () => {
+        const pendingResolvers = [];
+        let activeRequests = 0;
+        let observedMaxActiveRequests = 0;
+        const imageLookupStub = sinon.stub().callsFake(async () => {
+          activeRequests += 1;
+          observedMaxActiveRequests = Math.max(observedMaxActiveRequests, activeRequests);
+          expect(activeRequests).to.be.at.most(6);
+          await new Promise((resolve) => pendingResolvers.push(resolve));
+          activeRequests -= 1;
+          return { imageDetails: [{ imageDigest: imageDigestFromECR }] };
+        });
+        const functions = Object.fromEntries(
+          Array.from({ length: 10 }, (ignored, index) => [
+            `fnImageWithTag${index}`,
+            {
+              image: `000000000000.dkr.ecr.us-east-1.amazonaws.com/test-lambda-docker:tag${index}`,
+            },
+          ])
+        );
+
+        const promise = runServerless({
+          fixture: 'function',
+          command: 'package',
+          configExt: { functions },
+          awsRequestStubMap: {
+            ECR: {
+              describeImages: imageLookupStub,
+            },
+          },
+        });
+
+        let isSettled = false;
+        let result;
+        let thrownError;
+        promise
+          .then(
+            (value) => {
+              result = value;
+            },
+            (error) => {
+              thrownError = error;
+            }
+          )
+          .finally(() => {
+            isSettled = true;
+          })
+          .catch(() => {});
+        for (let index = 0; index < 100 && pendingResolvers.length < 6 && !isSettled; index += 1) {
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        }
+        expect(observedMaxActiveRequests).to.equal(6);
+        while (!isSettled) {
+          for (const resolve of pendingResolvers.splice(0)) resolve();
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        }
+        if (thrownError) throw thrownError;
+        const { awsSdkV3Stub, serverless } = result;
+        const expectedCredentials = serverless.getProvider('aws').getAwsSdkV3CredentialsProvider();
+        const imageLookupSends = awsSdkV3Stub.sends.filter(
+          ({ service, method }) => service === 'ECR' && method === 'describeImages'
+        );
+
+        expect(observedMaxActiveRequests).to.equal(6);
+        expect(imageLookupSends).to.have.length(10);
+        expect(new Set(imageLookupSends.map(({ client }) => client)).size).to.equal(1);
+        expect(imageLookupSends.map(({ input }) => input.imageIds[0].imageTag)).to.have.members(
+          Array.from({ length: 10 }, (ignored, index) => `tag${index}`)
+        );
+        expect(
+          imageLookupSends.every(
+            ({ clientConfig }) => clientConfig.credentials === expectedCredentials
+          )
+        ).to.equal(true);
+      });
     });
 
     describe('with `functions[].image` referencing images that require building', () => {
@@ -1807,10 +1941,21 @@ aws_secret_access_key = CUSTOMSECRET
       const modulesCacheStub = {
         [spawnModulePath]: spawnExtStub,
       };
+      const getEcrSend = (awsSdkV3Stub, method) =>
+        awsSdkV3Stub.sends.find((send) => send.service === 'ECR' && send.method === method);
+      const expectEcrSendInput = (awsSdkV3Stub, method, input) => {
+        const send = getEcrSend(awsSdkV3Stub, method);
+
+        expect(send).to.exist;
+        expect(send.input).to.deep.equal(input);
+        return send;
+      };
 
       beforeEach(() => {
         describeRepositoriesStub.reset();
         createRepositoryStub.reset();
+        createRepositoryStubScanOnPush.reset();
+        putLifecyclePolicyStub.reset();
         spawnExtStub.resetHistory();
       });
 
@@ -1827,7 +1972,9 @@ aws_secret_access_key = CUSTOMSECRET
         };
         const {
           awsNaming,
+          awsSdkV3Stub,
           cfTemplate,
+          serverless,
           fixtureData: { servicePath: serviceDir },
         } = await runServerless({
           fixture: 'ecr',
@@ -1843,7 +1990,20 @@ aws_secret_access_key = CUSTOMSECRET
         expect(functionCfConfig.Code.ImageUri).to.deep.equal(`${repositoryUri}@sha256:${imageSha}`);
         expect(versionCfConfig.CodeSha256).to.equal(imageSha);
         expect(describeRepositoriesStub).to.be.calledOnce;
+        expect(describeRepositoriesStub.firstCall.args[0]).to.deep.equal({
+          repositoryNames: [awsNaming.getEcrRepositoryName()],
+          registryId: '999999999999',
+        });
         expect(createRepositoryStub.notCalled).to.be.true;
+        expect(
+          awsSdkV3Stub.clients
+            .filter(({ service }) => service === 'ECR')
+            .every(
+              ({ config }) =>
+                config.credentials ===
+                serverless.getProvider('aws').getAwsSdkV3CredentialsProvider()
+            )
+        ).to.equal(true);
         expect(spawnExtStub).to.be.calledWith('docker', ['--version']);
         expect(spawnExtStub).not.to.be.calledWith('docker', [
           'login',
@@ -1883,7 +2043,7 @@ aws_secret_access_key = CUSTOMSECRET
           },
         };
 
-        const { awsNaming, cfTemplate } = await runServerless({
+        const { awsNaming, awsSdkV3Stub, cfTemplate, serverless } = await runServerless({
           fixture: 'ecr',
           command: 'package',
           awsRequestStubMap,
@@ -1911,9 +2071,13 @@ aws_secret_access_key = CUSTOMSECRET
         expect(versionCfConfig.CodeSha256).to.equal(imageSha);
         expect(describeRepositoriesStub).to.be.calledOnce;
         expect(createRepositoryStubScanOnPush).to.be.calledOnce;
-        expect(createRepositoryStubScanOnPush.args[0][0].imageScanningConfiguration).to.deep.equal({
-          scanOnPush: true,
+        const createRepositorySend = expectEcrSendInput(awsSdkV3Stub, 'createRepository', {
+          repositoryName: awsNaming.getEcrRepositoryName(),
+          imageScanningConfiguration: { scanOnPush: true },
         });
+        expect(createRepositorySend.clientConfig.credentials).to.equal(
+          serverless.getProvider('aws').getAwsSdkV3CredentialsProvider()
+        );
       });
 
       it('should work correctly when repository does not exist beforehand', async () => {
@@ -1928,7 +2092,7 @@ aws_secret_access_key = CUSTOMSECRET
           },
         };
 
-        const { awsNaming, cfTemplate } = await runServerless({
+        const { awsNaming, awsSdkV3Stub, cfTemplate, serverless } = await runServerless({
           fixture: 'ecr',
           command: 'package',
           awsRequestStubMap,
@@ -1943,7 +2107,52 @@ aws_secret_access_key = CUSTOMSECRET
         expect(versionCfConfig.CodeSha256).to.equal(imageSha);
         expect(describeRepositoriesStub).to.be.calledOnce;
         expect(createRepositoryStub).to.be.calledOnce;
+        const createRepositorySend = expectEcrSendInput(awsSdkV3Stub, 'createRepository', {
+          repositoryName: awsNaming.getEcrRepositoryName(),
+          imageScanningConfiguration: { scanOnPush: false },
+        });
+        expect(createRepositorySend.clientConfig.credentials).to.equal(
+          serverless.getProvider('aws').getAwsSdkV3CredentialsProvider()
+        );
         expect(putLifecyclePolicyStub).to.not.have.been.called;
+      });
+
+      it('should create repository for native SDK v3 repository not found errors', async () => {
+        const awsRequestStubMap = {
+          ...baseAwsRequestStubMap,
+          ECR: {
+            ...baseAwsRequestStubMap.ECR,
+            describeRepositories: describeRepositoriesStub.throws(
+              Object.assign(new Error('Repository not found'), {
+                name: 'RepositoryNotFoundException',
+              })
+            ),
+            createRepository: createRepositoryStub.resolves({ repository: { repositoryUri } }),
+          },
+        };
+
+        const { awsNaming, awsSdkV3Stub, cfTemplate, serverless } = await runServerless({
+          fixture: 'ecr',
+          command: 'package',
+          awsRequestStubMap,
+          modulesCacheStub,
+        });
+
+        const functionCfLogicalId = awsNaming.getLambdaLogicalId('foo');
+        const functionCfConfig = cfTemplate.Resources[functionCfLogicalId].Properties;
+        const versionCfConfig = findVersionCfConfig(cfTemplate.Resources, functionCfLogicalId);
+
+        expect(functionCfConfig.Code.ImageUri).to.deep.equal(`${repositoryUri}@sha256:${imageSha}`);
+        expect(versionCfConfig.CodeSha256).to.equal(imageSha);
+        expect(describeRepositoriesStub).to.be.calledOnce;
+        expect(createRepositoryStub).to.be.calledOnce;
+        const createRepositorySend = expectEcrSendInput(awsSdkV3Stub, 'createRepository', {
+          repositoryName: awsNaming.getEcrRepositoryName(),
+          imageScanningConfiguration: { scanOnPush: false },
+        });
+        expect(createRepositorySend.clientConfig.credentials).to.equal(
+          serverless.getProvider('aws').getAwsSdkV3CredentialsProvider()
+        );
       });
 
       it('should set ECR lifecycle policy correctly', async () => {
@@ -1959,7 +2168,7 @@ aws_secret_access_key = CUSTOMSECRET
           },
         };
 
-        await runServerless({
+        const { awsNaming, awsSdkV3Stub, serverless } = await runServerless({
           fixture: 'ecr',
           command: 'package',
           awsRequestStubMap,
@@ -1973,7 +2182,7 @@ aws_secret_access_key = CUSTOMSECRET
           },
         });
 
-        expect(JSON.parse(putLifecyclePolicyStub.args[0][0].lifecyclePolicyText)).to.deep.equal({
+        const expectedLifecyclePolicy = {
           rules: [
             {
               rulePriority: 1,
@@ -1985,7 +2194,18 @@ aws_secret_access_key = CUSTOMSECRET
               },
             },
           ],
+        };
+
+        expect(JSON.parse(putLifecyclePolicyStub.args[0][0].lifecyclePolicyText)).to.deep.equal(
+          expectedLifecyclePolicy
+        );
+        const putLifecyclePolicySend = expectEcrSendInput(awsSdkV3Stub, 'putLifecyclePolicy', {
+          repositoryName: awsNaming.getEcrRepositoryName(),
+          lifecyclePolicyText: JSON.stringify(expectedLifecyclePolicy),
         });
+        expect(putLifecyclePolicySend.clientConfig.credentials).to.equal(
+          serverless.getProvider('aws').getAwsSdkV3CredentialsProvider()
+        );
       });
 
       it('should login and retry when docker push fails with no basic auth credentials error', async () => {
@@ -2008,7 +2228,9 @@ aws_secret_access_key = CUSTOMSECRET
           .throws({ stdBuffer: 'no basic auth credentials' });
         const {
           awsNaming,
+          awsSdkV3Stub,
           cfTemplate,
+          serverless,
           fixtureData: { servicePath: serviceDir },
         } = await runServerless({
           fixture: 'ecr',
@@ -2054,6 +2276,14 @@ aws_secret_access_key = CUSTOMSECRET
           'dockerauthtoken',
           proxyEndpoint,
         ]);
+        const getAuthorizationTokenSend = expectEcrSendInput(
+          awsSdkV3Stub,
+          'getAuthorizationToken',
+          { registryIds: ['999999999999'] }
+        );
+        expect(getAuthorizationTokenSend.clientConfig.credentials).to.equal(
+          serverless.getProvider('aws').getAwsSdkV3CredentialsProvider()
+        );
       });
 
       it('should login and retry when docker push fails with token has expired error', async () => {
@@ -2074,7 +2304,7 @@ aws_secret_access_key = CUSTOMSECRET
           })
           .onCall(3)
           .throws({ stdBuffer: 'authorization token has expired' });
-        await runServerless({
+        const { awsSdkV3Stub, serverless } = await runServerless({
           fixture: 'ecr',
           command: 'package',
           awsRequestStubMap,
@@ -2096,6 +2326,14 @@ aws_secret_access_key = CUSTOMSECRET
           'dockerauthtoken',
           proxyEndpoint,
         ]);
+        const getAuthorizationTokenSend = expectEcrSendInput(
+          awsSdkV3Stub,
+          'getAuthorizationToken',
+          { registryIds: ['999999999999'] }
+        );
+        expect(getAuthorizationTokenSend.clientConfig.credentials).to.equal(
+          serverless.getProvider('aws').getAwsSdkV3CredentialsProvider()
+        );
       });
 
       it('should work correctly when image is defined with implicit path in provider', async () => {

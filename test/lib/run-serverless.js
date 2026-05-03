@@ -156,6 +156,7 @@ module.exports = async (
   if (effectiveAwsSdkV3StubMap) {
     awsSdkV3Stub = configureAwsSdkV3Stub(effectiveAwsSdkV3StubMap, {
       ignoreUnsupportedServices: !awsSdkV3StubMap,
+      passContextToCallbacks: Boolean(awsSdkV3StubMap),
     });
     const sdkV3ModuleStubs = Object.entries(awsSdkV3Stub.modulesCacheStub);
     if (sdkV3ModuleStubs.length) {

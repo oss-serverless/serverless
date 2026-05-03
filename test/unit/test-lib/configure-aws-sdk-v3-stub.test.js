@@ -105,6 +105,284 @@ describe('test/unit/test-lib/configure-aws-sdk-v3-stub.test.js', () => {
     ]);
   });
 
+  it('stubs ECR, Lambda, and IAM operational commands', async () => {
+    const credentials = async () => ({ accessKeyId: 'key', secretAccessKey: 'secret' });
+    const awsSdkV3Stub = configureAwsSdkV3Stub({
+      ECR: {
+        getAuthorizationToken: { authorizationData: [] },
+        describeRepositories: { repositories: [] },
+        createRepository: { repository: { repositoryUri: 'repository-uri' } },
+        putLifecyclePolicy: {},
+        describeImages: { imageDetails: [{ imageDigest: 'sha256:digest' }] },
+        deleteRepository: {},
+      },
+      Lambda: {
+        invoke: { Payload: new Uint8Array() },
+        getFunction: { Configuration: {} },
+        getLayerVersion: { Content: { Location: 'https://example.test/layer.zip' } },
+        updateFunctionCode: {},
+        updateFunctionConfiguration: {},
+      },
+      IAM: {
+        getRole: { Role: { Arn: 'arn:aws:iam::123456789012:role/role' } },
+      },
+    });
+    const {
+      ECRClient,
+      GetAuthorizationTokenCommand,
+      DescribeRepositoriesCommand,
+      CreateRepositoryCommand,
+      PutLifecyclePolicyCommand,
+      DescribeImagesCommand,
+      DeleteRepositoryCommand,
+    } = awsSdkV3Stub.modulesCacheStub['@aws-sdk/client-ecr'];
+    const {
+      LambdaClient,
+      InvokeCommand,
+      GetFunctionCommand,
+      GetLayerVersionCommand,
+      UpdateFunctionCodeCommand,
+      UpdateFunctionConfigurationCommand,
+    } = awsSdkV3Stub.modulesCacheStub['@aws-sdk/client-lambda'];
+    const { IAMClient, GetRoleCommand } = awsSdkV3Stub.modulesCacheStub['@aws-sdk/client-iam'];
+
+    const ecr = new ECRClient({ region: 'us-east-1', credentials });
+    const lambda = new LambdaClient({ region: 'us-east-1', credentials });
+    const iam = new IAMClient({ region: 'us-east-1', credentials });
+
+    await ecr.send(new GetAuthorizationTokenCommand({ registryIds: ['123456789012'] }));
+    await ecr.send(
+      new DescribeRepositoriesCommand({
+        repositoryNames: ['repo'],
+        registryId: '123456789012',
+      })
+    );
+    await ecr.send(
+      new CreateRepositoryCommand({
+        repositoryName: 'repo',
+        imageScanningConfiguration: { scanOnPush: true },
+      })
+    );
+    await ecr.send(
+      new PutLifecyclePolicyCommand({
+        repositoryName: 'repo',
+        lifecyclePolicyText: '{"rules":[]}',
+      })
+    );
+    await ecr.send(
+      new DescribeImagesCommand({
+        imageIds: [{ imageTag: 'stable' }],
+        repositoryName: 'repo/name',
+        registryId: '123456789012',
+      })
+    );
+    await ecr.send(
+      new DeleteRepositoryCommand({
+        registryId: '123456789012',
+        repositoryName: 'repo',
+        force: true,
+      })
+    );
+    await lambda.send(
+      new InvokeCommand({
+        FunctionName: 'fn',
+        InvocationType: 'RequestResponse',
+        LogType: 'Tail',
+        Payload: Buffer.from('{}'),
+      })
+    );
+    await lambda.send(new GetFunctionCommand({ FunctionName: 'fn' }));
+    await lambda.send(
+      new GetLayerVersionCommand({
+        LayerName: 'arn:aws:lambda:us-east-1:123456789012:layer:layer',
+        VersionNumber: 1,
+      })
+    );
+    await lambda.send(
+      new UpdateFunctionCodeCommand({ FunctionName: 'fn', ZipFile: Buffer.from('zip') })
+    );
+    await lambda.send(
+      new UpdateFunctionConfigurationCommand({ FunctionName: 'fn', Runtime: 'nodejs24.x' })
+    );
+    await iam.send(new GetRoleCommand({ RoleName: 'role' }));
+
+    expect(awsSdkV3Stub.sends.map(({ service, method }) => `${service}.${method}`)).to.deep.equal([
+      'ECR.getAuthorizationToken',
+      'ECR.describeRepositories',
+      'ECR.createRepository',
+      'ECR.putLifecyclePolicy',
+      'ECR.describeImages',
+      'ECR.deleteRepository',
+      'Lambda.invoke',
+      'Lambda.getFunction',
+      'Lambda.getLayerVersion',
+      'Lambda.updateFunctionCode',
+      'Lambda.updateFunctionConfiguration',
+      'IAM.getRole',
+    ]);
+    expect(awsSdkV3Stub.sends[0].input).to.deep.equal({ registryIds: ['123456789012'] });
+    expect(awsSdkV3Stub.sends[1].input).to.deep.equal({
+      repositoryNames: ['repo'],
+      registryId: '123456789012',
+    });
+    expect(awsSdkV3Stub.sends[2].input).to.deep.equal({
+      repositoryName: 'repo',
+      imageScanningConfiguration: { scanOnPush: true },
+    });
+    expect(awsSdkV3Stub.sends[3].input).to.deep.equal({
+      repositoryName: 'repo',
+      lifecyclePolicyText: '{"rules":[]}',
+    });
+    expect(awsSdkV3Stub.sends[4].input).to.deep.equal({
+      imageIds: [{ imageTag: 'stable' }],
+      repositoryName: 'repo/name',
+      registryId: '123456789012',
+    });
+    expect(awsSdkV3Stub.sends[5].input).to.deep.equal({
+      registryId: '123456789012',
+      repositoryName: 'repo',
+      force: true,
+    });
+    expect(awsSdkV3Stub.sends[6].input).to.deep.equal({
+      FunctionName: 'fn',
+      InvocationType: 'RequestResponse',
+      LogType: 'Tail',
+      Payload: Buffer.from('{}'),
+    });
+    expect(awsSdkV3Stub.sends[7].input).to.deep.equal({ FunctionName: 'fn' });
+    expect(awsSdkV3Stub.sends[8].input).to.deep.equal({
+      LayerName: 'arn:aws:lambda:us-east-1:123456789012:layer:layer',
+      VersionNumber: 1,
+    });
+    expect(awsSdkV3Stub.sends[9].input).to.deep.equal({
+      FunctionName: 'fn',
+      ZipFile: Buffer.from('zip'),
+    });
+    expect(awsSdkV3Stub.sends[10].input).to.deep.equal({
+      FunctionName: 'fn',
+      Runtime: 'nodejs24.x',
+    });
+    expect(awsSdkV3Stub.sends[11].input).to.deep.equal({ RoleName: 'role' });
+    expect(awsSdkV3Stub.clients.every(({ config }) => config.credentials === credentials)).to.equal(
+      true
+    );
+  });
+
+  it('passes send context to repeated SDK v3 stub callbacks', async () => {
+    const observedContexts = [];
+    const awsSdkV3Stub = configureAwsSdkV3Stub({
+      Lambda: {
+        getFunction: (input, context) => {
+          observedContexts.push(context);
+          return { Configuration: { FunctionName: input.FunctionName } };
+        },
+      },
+    });
+    const { LambdaClient, GetFunctionCommand } =
+      awsSdkV3Stub.modulesCacheStub['@aws-sdk/client-lambda'];
+    const client = new LambdaClient({ region: 'us-east-1' });
+
+    await client.send(new GetFunctionCommand({ FunctionName: 'first' }));
+    await client.send(new GetFunctionCommand({ FunctionName: 'second' }));
+
+    expect(observedContexts).to.have.length(2);
+    expect(observedContexts[0]).to.include({
+      service: 'Lambda',
+      method: 'getFunction',
+      commandName: 'GetFunctionCommand',
+      client,
+    });
+    expect(observedContexts[0].input).to.deep.equal({ FunctionName: 'first' });
+    expect(observedContexts[1].input).to.deep.equal({ FunctionName: 'second' });
+    expect(awsSdkV3Stub.sends.map(({ input }) => input.FunctionName)).to.deep.equal([
+      'first',
+      'second',
+    ]);
+  });
+
+  it('passes send context to SDK v3 stub callbacks that accept it', async () => {
+    let observedContext;
+    const awsSdkV3Stub = configureAwsSdkV3Stub({
+      Lambda: {
+        invoke: (input, context) => {
+          observedContext = context;
+          return { Payload: input.Payload };
+        },
+      },
+    });
+    const { LambdaClient, InvokeCommand } = awsSdkV3Stub.modulesCacheStub['@aws-sdk/client-lambda'];
+    const client = new LambdaClient({ region: 'us-east-1' });
+    const input = {
+      FunctionName: 'fn',
+      Payload: Buffer.from('{}'),
+    };
+
+    await expect(client.send(new InvokeCommand(input))).to.eventually.deep.equal({
+      Payload: input.Payload,
+    });
+
+    expect(observedContext).to.include({
+      service: 'Lambda',
+      method: 'invoke',
+      commandName: 'InvokeCommand',
+      client,
+    });
+    expect(observedContext.input).to.equal(input);
+    expect(observedContext.clientConfig).to.equal(client.config);
+  });
+
+  it('passes send context to SDK v3 stub callbacks with default parameters', async () => {
+    let observedContext;
+    const awsSdkV3Stub = configureAwsSdkV3Stub({
+      Lambda: {
+        invoke: (input, context = null) => {
+          observedContext = context;
+          return { Payload: input.Payload };
+        },
+      },
+    });
+    const { LambdaClient, InvokeCommand } = awsSdkV3Stub.modulesCacheStub['@aws-sdk/client-lambda'];
+    const client = new LambdaClient({ region: 'us-east-1' });
+    const input = {
+      FunctionName: 'fn',
+      Payload: Buffer.from('{}'),
+    };
+
+    await expect(client.send(new InvokeCommand(input))).to.eventually.deep.equal({
+      Payload: input.Payload,
+    });
+
+    expect(observedContext).to.include({
+      service: 'Lambda',
+      method: 'invoke',
+      commandName: 'InvokeCommand',
+      client,
+    });
+    expect(observedContext.input).to.equal(input);
+  });
+
+  it('can omit send context for legacy fallback callbacks', async () => {
+    const observedArgs = [];
+    const awsSdkV3Stub = configureAwsSdkV3Stub(
+      {
+        Lambda: {
+          invoke: (...args) => {
+            observedArgs.push(args);
+            return {};
+          },
+        },
+      },
+      { passContextToCallbacks: false }
+    );
+    const { LambdaClient, InvokeCommand } = awsSdkV3Stub.modulesCacheStub['@aws-sdk/client-lambda'];
+    const client = new LambdaClient({ region: 'us-east-1' });
+    const input = { FunctionName: 'fn' };
+
+    await expect(client.send(new InvokeCommand(input))).to.eventually.deep.equal({});
+
+    expect(observedArgs).to.deep.equal([[input]]);
+  });
+
   it('stubs additional S3 data-plane commands', async () => {
     const awsSdkV3Stub = configureAwsSdkV3Stub({
       S3: {
@@ -302,7 +580,7 @@ describe('test/unit/test-lib/configure-aws-sdk-v3-stub.test.js', () => {
     const awsSdkV3Stub = configureAwsSdkV3Stub(
       {
         Unsupported: { read: {} },
-        Lambda: { invoke: {} },
+        Lambda: { unsupportedInvoke: {} },
       },
       { ignoreUnsupportedServices: true }
     );
