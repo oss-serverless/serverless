@@ -897,6 +897,11 @@ describe('test/unit/lib/plugins/aws/package/compile/events/apiGateway/lib/hack/u
       awsRequestStubMap: {
         APIGateway: {
           createStage: {},
+          getStage: () => {
+            throw Object.assign(new Error('not found'), {
+              providerError: { code: 'NotFoundException' },
+            });
+          },
           getDeployments: getDeploymentsStub,
           getRestApis: { items: [{ id: 'api-id', name: `${serviceConfig.service}-${stage}` }] },
           tagResource: {},
