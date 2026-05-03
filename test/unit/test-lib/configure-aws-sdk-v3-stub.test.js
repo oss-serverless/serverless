@@ -1,5 +1,6 @@
 'use strict';
 
+const { PassThrough } = require('node:stream');
 const { expect } = require('chai');
 const configureAwsSdkV3Stub = require('../../lib/configure-aws-sdk-v3-stub');
 
@@ -102,6 +103,166 @@ describe('test/unit/test-lib/configure-aws-sdk-v3-stub.test.js', () => {
       credentials,
       credentials,
     ]);
+  });
+
+  it('stubs additional S3 data-plane commands', async () => {
+    const awsSdkV3Stub = configureAwsSdkV3Stub({
+      S3: {
+        getObject: { Body: 'body' },
+        deleteObjects: { Deleted: [{ Key: 'key' }] },
+        listObjectVersions: { Versions: [{ Key: 'key', VersionId: 'version' }] },
+      },
+    });
+    const { S3Client, GetObjectCommand, DeleteObjectsCommand, ListObjectVersionsCommand } =
+      awsSdkV3Stub.modulesCacheStub['@aws-sdk/client-s3'];
+    const client = new S3Client({ region: 'us-east-1' });
+
+    await expect(
+      client.send(new GetObjectCommand({ Bucket: 'bucket', Key: 'key' }))
+    ).to.eventually.deep.equal({ Body: 'body' });
+    await expect(
+      client.send(new DeleteObjectsCommand({ Bucket: 'bucket', Delete: { Objects: [] } }))
+    ).to.eventually.deep.equal({ Deleted: [{ Key: 'key' }] });
+    await expect(
+      client.send(new ListObjectVersionsCommand({ Bucket: 'bucket' }))
+    ).to.eventually.deep.equal({ Versions: [{ Key: 'key', VersionId: 'version' }] });
+
+    expect(awsSdkV3Stub.sends.map((send) => send.method)).to.deep.equal([
+      'getObject',
+      'deleteObjects',
+      'listObjectVersions',
+    ]);
+  });
+
+  it('stubs lib-storage Upload and records upload context', async () => {
+    const awsSdkV3Stub = configureAwsSdkV3Stub({
+      S3: {
+        upload: { Location: 's3://bucket/key' },
+      },
+    });
+    const { S3Client } = awsSdkV3Stub.modulesCacheStub['@aws-sdk/client-s3'];
+    const { Upload } = awsSdkV3Stub.modulesCacheStub['@aws-sdk/lib-storage'];
+    const client = new S3Client({ region: 'us-east-1' });
+    const params = { Bucket: 'bucket', Key: 'key', Body: 'body' };
+    const upload = new Upload({ client, params, queueSize: 6 });
+
+    expect(upload.on('httpUploadProgress', () => {})).to.equal(upload);
+    await expect(upload.done()).to.eventually.deep.equal({ Location: 's3://bucket/key' });
+
+    expect(awsSdkV3Stub.sends).to.have.length(1);
+    expect(awsSdkV3Stub.sends[0]).to.include({
+      service: 'S3',
+      method: 'upload',
+      commandName: 'Upload',
+      client,
+      upload,
+    });
+    expect(awsSdkV3Stub.sends[0].input).to.equal(params);
+    expect(awsSdkV3Stub.sends[0].clientConfig).to.equal(client.config);
+    expect(awsSdkV3Stub.sends[0].options).to.equal(upload.options);
+    expect(awsSdkV3Stub.sends[0].options).to.include({ queueSize: 6 });
+  });
+
+  it('drains readable Upload bodies before resolving', async () => {
+    const awsSdkV3Stub = configureAwsSdkV3Stub({
+      S3: {
+        upload: { Location: 's3://bucket/key' },
+      },
+    });
+    const { S3Client } = awsSdkV3Stub.modulesCacheStub['@aws-sdk/client-s3'];
+    const { Upload } = awsSdkV3Stub.modulesCacheStub['@aws-sdk/lib-storage'];
+    const body = new PassThrough();
+    const client = new S3Client({});
+    const upload = new Upload({
+      client,
+      params: { Bucket: 'bucket', Key: 'key', Body: body },
+    });
+    let isResolved = false;
+
+    const donePromise = upload.done().then((result) => {
+      isResolved = true;
+      return result;
+    });
+    await Promise.resolve();
+    expect(isResolved).to.equal(false);
+
+    body.end('body');
+
+    await expect(donePromise).to.eventually.deep.equal({ Location: 's3://bucket/key' });
+    expect(isResolved).to.equal(true);
+    expect(awsSdkV3Stub.sends[0].input.Body).to.equal(body);
+  });
+
+  it('rejects lib-storage Upload when a readable body errors', async () => {
+    const streamError = new Error('stream failed');
+    const awsSdkV3Stub = configureAwsSdkV3Stub({
+      S3: {
+        upload: { Location: 's3://bucket/key' },
+      },
+    });
+    const { S3Client } = awsSdkV3Stub.modulesCacheStub['@aws-sdk/client-s3'];
+    const { Upload } = awsSdkV3Stub.modulesCacheStub['@aws-sdk/lib-storage'];
+    const body = new PassThrough();
+    const client = new S3Client({});
+    const upload = new Upload({
+      client,
+      params: { Bucket: 'bucket', Key: 'key', Body: body },
+    });
+
+    const donePromise = upload.done();
+    body.destroy(streamError);
+
+    try {
+      await donePromise;
+    } catch (caughtError) {
+      expect(caughtError).to.equal(streamError);
+      expect(awsSdkV3Stub.sends[0].input.Body).to.equal(body);
+      return;
+    }
+
+    throw new Error('Expected upload to reject');
+  });
+
+  it('stubs lib-storage Upload even when S3.upload is not configured', async () => {
+    const awsSdkV3Stub = configureAwsSdkV3Stub({ S3: {} });
+    const { S3Client } = awsSdkV3Stub.modulesCacheStub['@aws-sdk/client-s3'];
+    const { Upload } = awsSdkV3Stub.modulesCacheStub['@aws-sdk/lib-storage'];
+    const client = new S3Client({});
+    const upload = new Upload({
+      client,
+      params: { Bucket: 'bucket', Key: 'key', Body: 'body' },
+    });
+
+    await expect(upload.done()).to.be.rejectedWith(
+      'Missing AWS SDK v3 stub configuration for S3.upload'
+    );
+  });
+
+  it('propagates configured Upload rejections', async () => {
+    const error = new Error('upload failed');
+    const awsSdkV3Stub = configureAwsSdkV3Stub({
+      S3: {
+        upload: () => {
+          throw error;
+        },
+      },
+    });
+    const { S3Client } = awsSdkV3Stub.modulesCacheStub['@aws-sdk/client-s3'];
+    const { Upload } = awsSdkV3Stub.modulesCacheStub['@aws-sdk/lib-storage'];
+    const client = new S3Client({});
+    const upload = new Upload({
+      client,
+      params: { Bucket: 'bucket', Key: 'key', Body: 'body' },
+    });
+
+    try {
+      await upload.done();
+    } catch (caughtError) {
+      expect(caughtError).to.equal(error);
+      return;
+    }
+
+    throw new Error('Expected upload to reject');
   });
 
   it('throws a clear error for missing method stubs', async () => {

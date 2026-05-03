@@ -1,6 +1,9 @@
 'use strict';
 
 const sinon = require('sinon');
+const proxyquire = require('proxyquire');
+const { S3Client, DeleteObjectsCommand } = require('@aws-sdk/client-s3');
+const emptyS3Bucket = require('../../../../../../lib/plugins/aws/remove/lib/bucket');
 const runServerless = require('../../../../../utils/run-serverless');
 
 const expect = require('chai').expect;
@@ -87,6 +90,124 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
     deleteRepositoryStub.resetHistory();
   });
 
+  it('preserves deleteObjectBatches one-argument plugin method signature', async () => {
+    const sendStub = sinon.stub(S3Client.prototype, 'send').resolves({});
+    const provider = {
+      getAwsSdkV3Config: sinon.stub().resolves({ region: 'us-east-1' }),
+    };
+
+    try {
+      await emptyS3Bucket.deleteObjectBatches.call(
+        {
+          bucketName: 'bucket',
+          provider,
+        },
+        [{ Key: 'first' }]
+      );
+
+      expect(provider.getAwsSdkV3Config).to.have.been.calledOnceWithExactly();
+      expect(sendStub).to.have.been.calledOnce;
+      expect(sendStub.firstCall.args[0]).to.be.instanceOf(DeleteObjectsCommand);
+      expect(sendStub.firstCall.args[0].input).to.deep.equal({
+        Bucket: 'bucket',
+        Delete: { Objects: [{ Key: 'first' }] },
+      });
+    } finally {
+      S3Client.prototype.send.restore();
+    }
+  });
+
+  it('uses an existing S3 client promise when deleting object batches', async () => {
+    const send = sinon.stub().resolves({});
+    const provider = {
+      getAwsSdkV3Config: sinon.stub().throws(new Error('Expected existing S3 client to be reused')),
+    };
+    const context = {
+      bucketName: 'bucket',
+      provider,
+      s3ClientPromise: Promise.resolve({ send }),
+    };
+
+    await emptyS3Bucket.deleteObjectBatches.call(context, [{ Key: 'first' }]);
+
+    expect(provider.getAwsSdkV3Config).to.not.have.been.called;
+    expect(send).to.have.been.calledOnce;
+    expect(send.firstCall.args[0]).to.be.instanceOf(DeleteObjectsCommand);
+    expect(send.firstCall.args[0].input).to.deep.equal({
+      Bucket: 'bucket',
+      Delete: { Objects: [{ Key: 'first' }] },
+    });
+  });
+
+  it('reuses one S3 client across listObjectsV2 and deleteObjectBatches', async () => {
+    const s3Clients = [];
+    const sends = [];
+    class FakeCommand {
+      constructor(input) {
+        this.input = input;
+      }
+    }
+    class FakeListObjectsV2Command extends FakeCommand {}
+    class FakeListObjectVersionsCommand extends FakeCommand {}
+    class FakeDeleteObjectsCommand extends FakeCommand {}
+    class FakeS3Client {
+      constructor(config) {
+        this.config = config;
+        s3Clients.push(this);
+      }
+
+      async send(command) {
+        sends.push({ client: this, command });
+        if (command instanceof FakeListObjectsV2Command) {
+          return { Contents: [{ Key: 'serverless/service/dev/123/file.zip' }] };
+        }
+        if (command instanceof FakeDeleteObjectsCommand) return {};
+        throw new Error(`Unexpected S3 command ${command.constructor.name}`);
+      }
+    }
+    const bucket = proxyquire('../../../../../../lib/plugins/aws/remove/lib/bucket', {
+      '@aws-sdk/client-s3': {
+        S3Client: FakeS3Client,
+        DeleteObjectsCommand: FakeDeleteObjectsCommand,
+        ListObjectsV2Command: FakeListObjectsV2Command,
+        ListObjectVersionsCommand: FakeListObjectVersionsCommand,
+      },
+    });
+    const context = {
+      bucketName: 'bucket',
+      provider: {
+        getAwsSdkV3Config: sinon.stub().resolves({ region: 'us-east-1' }),
+        getDeploymentPrefix: sinon.stub().returns('serverless'),
+        getStage: sinon.stub().returns('dev'),
+      },
+      serverless: {
+        service: {
+          service: 'service',
+        },
+      },
+      ...bucket,
+    };
+
+    await context.listObjectsV2();
+
+    expect(s3Clients).to.have.length(1);
+    expect(sends).to.have.length(2);
+    expect(sends[0].client).to.equal(s3Clients[0]);
+    expect(sends[1].client).to.equal(s3Clients[0]);
+    expect(sends[0].command).to.be.instanceOf(FakeListObjectsV2Command);
+    expect(sends[0].command.input).to.deep.equal({
+      Bucket: 'bucket',
+      Prefix: 'serverless/service/dev/',
+    });
+    expect(sends[1].command).to.be.instanceOf(FakeDeleteObjectsCommand);
+    expect(sends[1].command.input).to.deep.equal({
+      Bucket: 'bucket',
+      Delete: {
+        Objects: [{ Key: 'serverless/service/dev/123/file.zip' }],
+      },
+    });
+  });
+
   it('executes expected operations during removal when repository does not exist', async () => {
     describeRepositoriesStub.throws({ providerError: { code: 'RepositoryNotFoundException' } });
 
@@ -96,7 +217,8 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
       awsRequestStubMap,
     });
 
-    expect(deleteObjectsStub).to.be.calledWithExactly({
+    expect(deleteObjectsStub).to.be.calledOnce;
+    expect(deleteObjectsStub.firstCall.args[0]).to.deep.equal({
       Bucket: 'resource-id',
       Delete: {
         Objects: [{ Key: 'first' }, { Key: 'second' }],
@@ -120,7 +242,8 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
       awsRequestStubMap,
     });
 
-    expect(deleteObjectsStub).to.be.calledWithExactly({
+    expect(deleteObjectsStub).to.be.calledOnce;
+    expect(deleteObjectsStub.firstCall.args[0]).to.deep.equal({
       Bucket: 'resource-id',
       Delete: {
         Objects: [{ Key: 'first' }, { Key: 'second' }],
@@ -159,7 +282,8 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
       awsRequestStubMap,
     });
 
-    expect(deleteObjectsStub).to.be.calledWithExactly({
+    expect(deleteObjectsStub).to.be.calledOnce;
+    expect(deleteObjectsStub.firstCall.args[0]).to.deep.equal({
       Bucket: 'resource-id',
       Delete: {
         Objects: [{ Key: 'first' }, { Key: 'second' }],
@@ -417,7 +541,7 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
       },
     });
 
-    expect(listObjectVersionsStub).to.be.calledWithExactly({
+    expect(listObjectVersionsStub.firstCall.args[0]).to.deep.equal({
       Bucket: 'bucket',
       Prefix: `serverless/${serverless.service.service}/dev/`,
     });
@@ -462,12 +586,13 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
       },
     });
 
-    expect(listObjectVersionsStub).to.be.calledWithExactly({
+    expect(listObjectVersionsStub.firstCall.args[0]).to.deep.equal({
       Bucket: 'bucket',
       Prefix: `serverless/${serverless.service.service}/dev/`,
     });
 
-    expect(innerDeleteObjectsStub).to.be.calledWithExactly({
+    expect(innerDeleteObjectsStub).to.be.calledOnce;
+    expect(innerDeleteObjectsStub.firstCall.args[0]).to.deep.equal({
       Bucket: 'bucket',
       Delete: {
         Objects: [
@@ -711,6 +836,72 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
         },
       })
     ).to.be.eventually.rejected.and.have.property('code', 'CANNOT_DELETE_S3_OBJECTS_ACCESS_DENIED');
+  });
+
+  it('treats deleteObjects errors with lowercase code property as access denied failures', async () => {
+    const innerDeleteObjectsStub = sinon.stub().resolves({
+      Deleted: [],
+      Errors: [{ code: 'AccessDenied' }],
+    });
+
+    await expect(
+      runServerless({
+        command: 'remove',
+        fixture: 'function',
+        awsRequestStubMap: {
+          ...awsRequestStubMap,
+          S3: {
+            ...awsRequestStubMap.S3,
+            deleteObjects: innerDeleteObjectsStub,
+            headBucket: {},
+          },
+        },
+      })
+    ).to.be.eventually.rejected.and.have.property('code', 'CANNOT_DELETE_S3_OBJECTS_ACCESS_DENIED');
+  });
+
+  it('treats SDK v3 deleteObjects access denied names as access denied failures', async () => {
+    const innerDeleteObjectsStub = sinon.stub().resolves({
+      Deleted: [],
+      Errors: [{ name: 'AccessDenied' }],
+    });
+
+    await expect(
+      runServerless({
+        command: 'remove',
+        fixture: 'function',
+        awsRequestStubMap: {
+          ...awsRequestStubMap,
+          S3: {
+            ...awsRequestStubMap.S3,
+            deleteObjects: innerDeleteObjectsStub,
+            headBucket: {},
+          },
+        },
+      })
+    ).to.be.eventually.rejected.and.have.property('code', 'CANNOT_DELETE_S3_OBJECTS_ACCESS_DENIED');
+  });
+
+  it('does not treat inherited deleteObjects error codes as access denied failures', async () => {
+    const innerDeleteObjectsStub = sinon.stub().resolves({
+      Deleted: [],
+      Errors: [Object.create({ Code: 'AccessDenied' })],
+    });
+
+    await expect(
+      runServerless({
+        command: 'remove',
+        fixture: 'function',
+        awsRequestStubMap: {
+          ...awsRequestStubMap,
+          S3: {
+            ...awsRequestStubMap.S3,
+            deleteObjects: innerDeleteObjectsStub,
+            headBucket: {},
+          },
+        },
+      })
+    ).to.be.eventually.rejected.and.have.property('code', 'CANNOT_DELETE_S3_OBJECTS_GENERIC');
   });
 
   it('preserves specific S3 list authentication failures during remove', async () => {
