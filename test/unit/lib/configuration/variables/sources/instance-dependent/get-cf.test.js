@@ -20,6 +20,7 @@ describe('test/unit/lib/configuration/variables/sources/instance-dependent/get-c
         existing: '${cf:existing.someOutput}',
         existingInRegion: '${cf(eu-west-1):existing.someOutput}',
         noOutput: '${cf:existing.unrecognizedOutput, null}',
+        noOutputs: '${cf:noOutputs.someOutput, null}',
         noStack: '${cf:notExisting.someOutput, null}',
         missingAddress: '${cf:}',
         invalidAddress: '${cf:invalid}',
@@ -38,6 +39,9 @@ describe('test/unit/lib/configuration/variables/sources/instance-dependent/get-c
                 { Outputs: [{ OutputKey: 'someOutput', OutputValue: region || 'someValue' }] },
               ],
             };
+          }
+          if (StackName === 'noOutputs') {
+            return { Stacks: [{}] };
           }
           if (StackName === 'notExisting') {
             throw Object.assign(new Error('Stack with id not-existing does not exist'), {
@@ -72,6 +76,12 @@ describe('test/unit/lib/configuration/variables/sources/instance-dependent/get-c
   it('should resolve null on missing output', () => {
     if (variablesMeta.get('custom\0noOutput')) throw variablesMeta.get('custom\0noOutput').error;
     expect(configuration.custom.noOutput).to.equal(null);
+  });
+  it('should resolve null when stack has no outputs', () => {
+    if (variablesMeta.get('custom\0noOutputs')) {
+      throw variablesMeta.get('custom\0noOutputs').error;
+    }
+    expect(configuration.custom.noOutputs).to.equal(null);
   });
   it('should resolve null on missing stack', () => {
     if (variablesMeta.get('custom\0noStack')) throw variablesMeta.get('custom\0noStack').error;
