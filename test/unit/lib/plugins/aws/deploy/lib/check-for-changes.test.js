@@ -1533,6 +1533,67 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
       expect(deleteStub).to.not.have.been.called;
     });
 
+    it('treats missing CloudFormation subscription filter resources as external', async () => {
+      const awsDeploy = createAwsDeployTestInstance();
+      const requestStub = sandbox.stub(awsDeploy.provider, 'request').rejects(
+        new Error(
+          `Resource ${awsDeploy.provider.naming.getCloudWatchLogLogicalId(
+            'Fn1',
+            1
+          )} does not exist for stack ${awsDeploy.provider.naming.getStackName()}`
+        )
+      );
+
+      try {
+        await expect(
+          awsDeploy.isInternalSubscriptionFilter(
+            awsDeploy.provider.naming.getStackName(),
+            awsDeploy.provider.naming.getCloudWatchLogLogicalId('Fn1', 1),
+            'physical-id'
+          )
+        ).to.eventually.equal(false);
+        expect(requestStub).to.have.been.calledOnce;
+      } finally {
+        awsDeploy.provider.request.restore();
+      }
+    });
+
+    it('surfaces CloudFormation access errors during subscription filter classification', async () => {
+      const awsDeploy = createAwsDeployTestInstance();
+      sandbox
+        .stub(awsDeploy.provider, 'request')
+        .rejects(Object.assign(new Error('denied'), { code: 'AccessDenied' }));
+
+      try {
+        await expect(
+          awsDeploy.isInternalSubscriptionFilter(
+            awsDeploy.provider.naming.getStackName(),
+            awsDeploy.provider.naming.getCloudWatchLogLogicalId('Fn1', 1),
+            'physical-id'
+          )
+        ).to.be.rejectedWith('denied');
+      } finally {
+        awsDeploy.provider.request.restore();
+      }
+    });
+
+    it('does not treat missing stacks with Resource in the name as missing resources', async () => {
+      const awsDeploy = createAwsDeployTestInstance();
+      sandbox.stub(awsDeploy.provider, 'request').rejects(
+        Object.assign(new Error('Stack with id MyResourceStack does not exist'), {
+          code: 'ValidationError',
+        })
+      );
+
+      try {
+        await expect(
+          awsDeploy.isInternalSubscriptionFilter('MyResourceStack', 'LogicalId', 'physical-id')
+        ).to.be.rejectedWith('MyResourceStack');
+      } finally {
+        awsDeploy.provider.request.restore();
+      }
+    });
+
     it('should not attempt to delete filter for 2 subscription filter per log group include externals', async () => {
       const deleteStub = sandbox.stub();
       let serverless;
