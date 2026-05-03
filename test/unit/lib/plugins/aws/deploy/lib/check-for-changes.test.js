@@ -1345,6 +1345,63 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
       }
     });
 
+    it('treats missing log groups during subscription filter discovery as no filters', async () => {
+      const awsDeploy = createAwsDeployTestInstance();
+      const requestStub = sandbox
+        .stub(awsDeploy.provider, 'request')
+        .rejects(
+          Object.assign(new Error('missing log group'), {
+            providerError: { code: 'ResourceNotFoundException' },
+          })
+        );
+
+      try {
+        const result = await awsDeploy.fixLogGroupSubscriptionFilters({
+          accountId: '123456789012',
+          region: 'us-east-1',
+          partition: 'aws',
+          logGroupName: 'missingLogGroup',
+          cloudwatchLogEvents: [],
+        });
+
+        expect(result).to.equal(false);
+        expect(requestStub).to.have.been.calledOnceWithExactly(
+          'CloudWatchLogs',
+          'describeSubscriptionFilters',
+          { logGroupName: 'missingLogGroup' }
+        );
+        expect(requestStub.calledWith('CloudFormation', 'describeStackResource')).to.equal(false);
+        expect(requestStub.calledWith('CloudWatchLogs', 'deleteSubscriptionFilter')).to.equal(
+          false
+        );
+      } finally {
+        awsDeploy.provider.request.restore();
+      }
+    });
+
+    it('surfaces CloudWatch Logs access errors during subscription filter discovery', async () => {
+      const awsDeploy = createAwsDeployTestInstance();
+      sandbox.stub(awsDeploy.provider, 'request').rejects(
+        Object.assign(new Error('denied'), {
+          providerError: { code: 'AccessDeniedException' },
+        })
+      );
+
+      try {
+        await expect(
+          awsDeploy.fixLogGroupSubscriptionFilters({
+            accountId: '123456789012',
+            region: 'us-east-1',
+            partition: 'aws',
+            logGroupName: 'someLogGroupName',
+            cloudwatchLogEvents: [],
+          })
+        ).to.be.rejectedWith('denied');
+      } finally {
+        awsDeploy.provider.request.restore();
+      }
+    });
+
     it('treats malformed external subscription filter names as external without CloudFormation lookup', async () => {
       const awsDeploy = createAwsDeployTestInstance();
       const requestStub = sandbox.stub(awsDeploy.provider, 'request').callsFake(async (service) => {
