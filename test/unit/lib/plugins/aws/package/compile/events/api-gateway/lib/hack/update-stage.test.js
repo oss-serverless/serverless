@@ -2,6 +2,18 @@
 
 const chai = require('chai');
 const sinon = require('sinon');
+const proxyquire = require('proxyquire');
+const {
+  APIGatewayClient,
+  CreateStageCommand,
+  GetDeploymentsCommand,
+  GetRestApisCommand,
+  GetStageCommand,
+  TagResourceCommand,
+  UntagResourceCommand,
+  UpdateStageCommand,
+} = require('@aws-sdk/client-api-gateway');
+const { CloudWatchLogsClient, DeleteLogGroupCommand } = require('@aws-sdk/client-cloudwatch-logs');
 const Serverless = require('../../../../../../../../../../../lib/serverless');
 const AwsProvider = require('../../../../../../../../../../../lib/plugins/aws/provider');
 const {
@@ -13,12 +25,25 @@ const fixtures = require('../../../../../../../../../../fixtures/programmatic');
 
 const { expect } = chai;
 
+function getApiGatewayMethod(command) {
+  if (command instanceof GetRestApisCommand) return 'getRestApis';
+  if (command instanceof GetDeploymentsCommand) return 'getDeployments';
+  if (command instanceof GetStageCommand) return 'getStage';
+  if (command instanceof CreateStageCommand) return 'createStage';
+  if (command instanceof UpdateStageCommand) return 'updateStage';
+  if (command instanceof TagResourceCommand) return 'tagResource';
+  if (command instanceof UntagResourceCommand) return 'untagResource';
+  throw new Error(`Unexpected APIGateway command: ${command.constructor.name}`);
+}
+
 describe('#updateStage()', () => {
   let serverless;
   let options;
   let awsProvider;
   let providerGetAccountInfoStub;
   let providerRequestStub;
+  let apiGatewaySendStub;
+  let cloudWatchLogsSendStub;
   let context;
 
   beforeEach(() => {
@@ -33,7 +58,20 @@ describe('#updateStage()', () => {
       accountId: '123456',
       partition: 'aws',
     });
-    providerRequestStub = sinon.stub(awsProvider, 'request');
+    providerRequestStub = sinon.stub();
+    apiGatewaySendStub = sinon
+      .stub(APIGatewayClient.prototype, 'send')
+      .callsFake((command) =>
+        providerRequestStub('APIGateway', getApiGatewayMethod(command), command.input)
+      );
+    cloudWatchLogsSendStub = sinon
+      .stub(CloudWatchLogsClient.prototype, 'send')
+      .callsFake((command) => {
+        if (command instanceof DeleteLogGroupCommand) {
+          return providerRequestStub('CloudWatchLogs', 'deleteLogGroup', command.input);
+        }
+        throw new Error(`Unexpected CloudWatchLogs command: ${command.constructor.name}`);
+      });
     serverless.service.provider.compiledCloudFormationTemplate = {
       Resources: {
         ApiGatewayRestApi: {
@@ -131,7 +169,8 @@ describe('#updateStage()', () => {
 
   afterEach(() => {
     awsProvider.getAccountInfo.restore();
-    awsProvider.request.restore();
+    apiGatewaySendStub.restore();
+    cloudWatchLogsSendStub.restore();
   });
 
   it('should update the stage based on the serverless file configuration', async () => {
@@ -173,6 +212,12 @@ describe('#updateStage()', () => {
       ];
 
       expect(providerGetAccountInfoStub).to.be.calledOnce;
+      expect(apiGatewaySendStub.getCall(0).args[0]).to.be.instanceOf(GetRestApisCommand);
+      expect(apiGatewaySendStub.getCall(1).args[0]).to.be.instanceOf(GetDeploymentsCommand);
+      expect(apiGatewaySendStub.getCall(2).args[0]).to.be.instanceOf(GetStageCommand);
+      expect(apiGatewaySendStub.getCall(3).args[0]).to.be.instanceOf(UpdateStageCommand);
+      expect(apiGatewaySendStub.getCall(4).args[0]).to.be.instanceOf(TagResourceCommand);
+      expect(apiGatewaySendStub.getCall(5).args[0]).to.be.instanceOf(UntagResourceCommand);
       expect(providerRequestStub.args).to.have.length(6);
       expect(providerRequestStub.args[0][0]).to.equal('APIGateway');
       expect(providerRequestStub.args[0][1]).to.equal('getRestApis');
@@ -415,11 +460,7 @@ describe('#updateStage()', () => {
         restApiId: 'devRestApiId',
         stageName: 'dev',
       })
-      .rejects(
-        Object.assign(new Error('not found'), {
-          providerError: { code: 'NotFoundException' },
-        })
-      );
+      .rejects(Object.assign(new Error('not found'), { name: 'NotFoundException' }));
 
     providerRequestStub
       .withArgs('APIGateway', 'getDeployments', {
@@ -641,6 +682,189 @@ describe('#updateStage()', () => {
     expect(providerRequestStub.calledWith('APIGateway', 'createStage')).to.equal(false);
   });
 
+  it('should keep getDeployments first-page deployment selection', async () => {
+    context.state.service.provider.tracing = { apiGateway: false };
+    providerRequestStub
+      .withArgs('APIGateway', 'getStage', {
+        restApiId: 'devRestApiId',
+        stageName: 'dev',
+      })
+      .rejects(Object.assign(new Error('not found'), { name: 'NotFoundException' }));
+    providerRequestStub
+      .withArgs('APIGateway', 'getDeployments', {
+        restApiId: 'devRestApiId',
+        limit: 500,
+      })
+      .resolves({
+        items: [{ id: 'firstDeploymentId' }],
+        position: 'should-not-be-followed',
+      });
+    providerRequestStub
+      .withArgs('APIGateway', 'createStage', {
+        deploymentId: 'firstDeploymentId',
+        restApiId: 'devRestApiId',
+        stageName: 'dev',
+      })
+      .resolves();
+
+    await updateStage.call(context);
+
+    expect(
+      providerRequestStub.args.filter(
+        ([service, method]) => service === 'APIGateway' && method === 'getDeployments'
+      )
+    ).to.have.length(1);
+    expect(
+      providerRequestStub.calledWithExactly('APIGateway', 'createStage', {
+        deploymentId: 'firstDeploymentId',
+        restApiId: 'devRestApiId',
+        stageName: 'dev',
+      })
+    ).to.equal(true);
+  });
+
+  it('should surface credential and authorization errors while resolving the stage', async () => {
+    context.state.service.provider.tracing = { apiGateway: false };
+    providerRequestStub
+      .withArgs('APIGateway', 'getStage', {
+        restApiId: 'devRestApiId',
+        stageName: 'dev',
+      })
+      .rejects(Object.assign(new Error('denied'), { name: 'AccessDeniedException' }));
+
+    await expect(updateStage.call(context)).to.be.rejectedWith('denied');
+
+    expect(providerRequestStub.calledWith('APIGateway', 'createStage')).to.equal(false);
+  });
+
+  it('should treat API Gateway 404 status errors as missing stages', async () => {
+    context.state.service.provider.tracing = { apiGateway: false };
+    providerRequestStub
+      .withArgs('APIGateway', 'getStage', {
+        restApiId: 'devRestApiId',
+        stageName: 'dev',
+      })
+      .rejects(Object.assign(new Error('not found'), { $metadata: { httpStatusCode: 404 } }));
+    providerRequestStub
+      .withArgs('APIGateway', 'createStage', {
+        deploymentId: 'someDeploymentId',
+        restApiId: 'devRestApiId',
+        stageName: 'dev',
+      })
+      .resolves();
+
+    await updateStage.call(context);
+
+    expect(providerRequestStub.calledWith('APIGateway', 'createStage')).to.equal(true);
+  });
+
+  it('passes credential provider functions through separate SDK v3 configs', async () => {
+    const credentials = async () => ({ accessKeyId: 'key', secretAccessKey: 'secret' });
+    const apiGatewayRequestHandler = {};
+    const cloudWatchLogsRequestHandler = {};
+    const apiGatewayConfig = {
+      credentials,
+      region: 'us-east-1',
+      requestHandler: apiGatewayRequestHandler,
+    };
+    const cloudWatchLogsConfig = {
+      credentials,
+      region: 'us-east-1',
+      requestHandler: cloudWatchLogsRequestHandler,
+    };
+    const apiGatewayClients = [];
+    const cloudWatchLogsClients = [];
+    class FakeCommand {
+      constructor(input) {
+        this.input = input;
+      }
+    }
+    class FakeGetRestApisCommand extends FakeCommand {}
+    class FakeGetDeploymentsCommand extends FakeCommand {}
+    class FakeGetStageCommand extends FakeCommand {}
+    class FakeCreateStageCommand extends FakeCommand {}
+    class FakeUpdateStageCommand extends FakeCommand {}
+    class FakeTagResourceCommand extends FakeCommand {}
+    class FakeUntagResourceCommand extends FakeCommand {}
+    class FakeDeleteLogGroupCommand extends FakeCommand {}
+    class FakeAPIGatewayClient {
+      constructor(config) {
+        this.config = config;
+        apiGatewayClients.push(this);
+      }
+
+      async send(command) {
+        if (command instanceof FakeGetRestApisCommand) {
+          return { items: [{ name: 'dev-my-service', id: 'devRestApiId' }] };
+        }
+        if (command instanceof FakeGetDeploymentsCommand) {
+          return { items: [{ id: 'someDeploymentId' }] };
+        }
+        if (command instanceof FakeGetStageCommand) return { tags: {} };
+        if (command instanceof FakeUpdateStageCommand) return {};
+        if (command instanceof FakeCreateStageCommand) return {};
+        if (command instanceof FakeTagResourceCommand) return {};
+        if (command instanceof FakeUntagResourceCommand) return {};
+        throw new Error(`Unexpected APIGateway command: ${command.constructor.name}`);
+      }
+    }
+    class FakeCloudWatchLogsClient {
+      constructor(config) {
+        this.config = config;
+        cloudWatchLogsClients.push(this);
+      }
+
+      async send(command) {
+        if (command instanceof FakeDeleteLogGroupCommand) return {};
+        throw new Error(`Unexpected CloudWatchLogs command: ${command.constructor.name}`);
+      }
+    }
+    const { updateStage: updateStageWithClientStubs } = proxyquire(
+      '../../../../../../../../../../../lib/plugins/aws/package/compile/events/api-gateway/lib/hack/update-stage',
+      {
+        '@aws-sdk/client-api-gateway': {
+          APIGatewayClient: FakeAPIGatewayClient,
+          CreateStageCommand: FakeCreateStageCommand,
+          GetDeploymentsCommand: FakeGetDeploymentsCommand,
+          GetRestApisCommand: FakeGetRestApisCommand,
+          GetStageCommand: FakeGetStageCommand,
+          TagResourceCommand: FakeTagResourceCommand,
+          UntagResourceCommand: FakeUntagResourceCommand,
+          UpdateStageCommand: FakeUpdateStageCommand,
+        },
+        '@aws-sdk/client-cloudwatch-logs': {
+          CloudWatchLogsClient: FakeCloudWatchLogsClient,
+          DeleteLogGroupCommand: FakeDeleteLogGroupCommand,
+        },
+      }
+    );
+    const getAwsSdkV3ConfigStub = sinon.stub(awsProvider, 'getAwsSdkV3Config');
+    getAwsSdkV3ConfigStub.onFirstCall().resolves(apiGatewayConfig);
+    getAwsSdkV3ConfigStub.onSecondCall().resolves(cloudWatchLogsConfig);
+    context.state.service.provider.logs = {
+      restApi: {
+        accessLogging: false,
+      },
+    };
+
+    try {
+      await updateStageWithClientStubs.call(context);
+
+      expect(getAwsSdkV3ConfigStub).to.have.been.calledTwice;
+      expect(apiGatewayClients).to.have.length(1);
+      expect(cloudWatchLogsClients).to.have.length(1);
+      expect(apiGatewayClients[0].config).to.equal(apiGatewayConfig);
+      expect(cloudWatchLogsClients[0].config).to.equal(cloudWatchLogsConfig);
+      expect(apiGatewayClients[0].config).to.not.equal(cloudWatchLogsClients[0].config);
+      expect(apiGatewayClients[0].config.credentials).to.equal(credentials);
+      expect(cloudWatchLogsClients[0].config.credentials).to.equal(credentials);
+      expect(apiGatewayClients[0].config.requestHandler).to.equal(apiGatewayRequestHandler);
+      expect(cloudWatchLogsClients[0].config.requestHandler).to.equal(cloudWatchLogsRequestHandler);
+    } finally {
+      getAwsSdkV3ConfigStub.restore();
+    }
+  });
+
   it(
     'should not apply hack when restApiId could not be resolved and ' +
       'no custom settings are applied',
@@ -788,6 +1012,57 @@ describe('#updateStage()', () => {
     });
   });
 
+  it('should swallow expected missing CloudWatch LogGroup deletion errors', async () => {
+    context.state.service.provider.logs = {
+      restApi: {
+        accessLogging: false,
+      },
+    };
+    providerRequestStub
+      .withArgs('CloudWatchLogs', 'deleteLogGroup', {
+        logGroupName: '/aws/api-gateway/my-service-dev',
+      })
+      .rejects(Object.assign(new Error('not found'), { name: 'ResourceNotFoundException' }));
+
+    await updateStage.call(context);
+
+    expect(providerRequestStub.calledWith('CloudWatchLogs', 'deleteLogGroup')).to.equal(true);
+  });
+
+  it('should swallow 404 status CloudWatch LogGroup deletion errors', async () => {
+    context.state.service.provider.logs = {
+      restApi: {
+        accessLogging: false,
+      },
+    };
+    providerRequestStub
+      .withArgs('CloudWatchLogs', 'deleteLogGroup', {
+        logGroupName: '/aws/api-gateway/my-service-dev',
+      })
+      .rejects(Object.assign(new Error('not found'), { $metadata: { httpStatusCode: 404 } }));
+
+    await updateStage.call(context);
+
+    expect(providerRequestStub.calledWith('CloudWatchLogs', 'deleteLogGroup')).to.equal(true);
+  });
+
+  it('should swallow credential and authorization errors while deleting access log group', async () => {
+    context.state.service.provider.logs = {
+      restApi: {
+        accessLogging: false,
+      },
+    };
+    providerRequestStub
+      .withArgs('CloudWatchLogs', 'deleteLogGroup', {
+        logGroupName: '/aws/api-gateway/my-service-dev',
+      })
+      .rejects(Object.assign(new Error('denied'), { name: 'AccessDeniedException' }));
+
+    await updateStage.call(context);
+
+    expect(providerRequestStub.calledWith('CloudWatchLogs', 'deleteLogGroup')).to.equal(true);
+  });
+
   async function checkDataTrace(value) {
     context.state.service.provider.logs = {
       restApi: {
@@ -818,7 +1093,7 @@ describe('test/unit/lib/plugins/aws/package/compile/events/apiGateway/lib/hack/u
   it('should correctly add and remove stage tags during update', async () => {
     const tagResourceStub = sinon.stub();
     const untagResourceStub = sinon.stub();
-    await runServerless({
+    const { awsSdkV3Stub } = await runServerless({
       fixture: 'api-gateway',
       command: 'deploy',
       configExt: {
@@ -867,8 +1142,16 @@ describe('test/unit/lib/plugins/aws/package/compile/events/apiGateway/lib/hack/u
           tagResource: tagResourceStub,
           untagResource: untagResourceStub,
         },
+        CloudWatchLogs: {
+          deleteLogGroup: {},
+        },
       },
     });
+    expect(
+      awsSdkV3Stub.sends
+        .filter(({ service }) => service === 'APIGateway')
+        .map(({ method }) => method)
+    ).to.include.members(['getRestApis', 'getDeployments', 'getStage', 'tagResource']);
     expect(tagResourceStub).to.have.been.calledOnce;
     expect(tagResourceStub.args[0][0].tags).to.deep.equal({ key: 'value' });
     expect(untagResourceStub).to.have.been.calledOnce;
@@ -897,12 +1180,8 @@ describe('test/unit/lib/plugins/aws/package/compile/events/apiGateway/lib/hack/u
       awsRequestStubMap: {
         APIGateway: {
           createStage: {},
-          getStage: () => {
-            throw Object.assign(new Error('not found'), {
-              providerError: { code: 'NotFoundException' },
-            });
-          },
           getDeployments: getDeploymentsStub,
+          getStage: {},
           getRestApis: { items: [{ id: 'api-id', name: `${serviceConfig.service}-${stage}` }] },
           tagResource: {},
         },
@@ -943,6 +1222,9 @@ describe('test/unit/lib/plugins/aws/package/compile/events/apiGateway/lib/hack/u
             Account: '999999999999',
             Arn: 'arn:aws-us-gov:iam::999999999999:user/test',
           },
+        },
+        CloudWatchLogs: {
+          deleteLogGroup: {},
         },
       },
     });
@@ -1066,7 +1348,7 @@ describe('test/unit/lib/plugins/aws/package/compile/events/apiGateway/lib/hack/u
       awsRequestStubMap: {
         APIGateway: {
           updateStage: updateStageStub,
-          getStage: 'dev',
+          getStage: { id: 'stage-id' },
           getDeployments: getDeploymentsStub,
           getRestApis: { items: [{ id: 'api-id', name: `${serviceConfig.service}-${stage}` }] },
           tagResource: {},

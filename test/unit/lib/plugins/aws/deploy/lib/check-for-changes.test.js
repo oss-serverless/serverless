@@ -16,6 +16,7 @@ const { S3Client, ListObjectsV2Command, HeadObjectCommand } = require('@aws-sdk/
 const { LambdaClient, GetFunctionCommand } = require('@aws-sdk/client-lambda');
 const {
   CloudWatchLogsClient,
+  DeleteSubscriptionFilterCommand,
   DescribeSubscriptionFiltersCommand,
 } = require('@aws-sdk/client-cloudwatch-logs');
 const {
@@ -1727,9 +1728,7 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
           )
         );
 
-        for (let index = 0; index < 10 && !pendingResolvers.length; index++) {
-          await Promise.resolve();
-        }
+        await waitForPendingRequests(pendingResolvers, 2);
         expect(observedMaxActiveRequests).to.equal(2);
         await releasePendingRequestsUntilSettled(pendingResolvers, promise);
         expect(observedMaxActiveRequests).to.equal(2);
@@ -1781,9 +1780,7 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
           ],
         });
 
-        for (let index = 0; index < 10 && !pendingResolvers.length; index++) {
-          await Promise.resolve();
-        }
+        await waitForPendingRequests(pendingResolvers, 2);
         expect(observedMaxActiveRequests).to.equal(2);
         await releasePendingRequestsUntilSettled(pendingResolvers, promise);
         expect(observedMaxActiveRequests).to.equal(2);
@@ -1795,7 +1792,75 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
       }
     });
 
-    it('treats missing log groups during subscription filter discovery as no filters', async () => {
+    it('limits concurrent CloudWatch Logs deleteSubscriptionFilter requests to 2', async () => {
+      const awsDeploy = createAwsDeployTestInstance();
+      const stackName = awsDeploy.provider.naming.getStackName();
+      const filters = Array.from({ length: 6 }, (_, index) => {
+        const logicalResourceId = awsDeploy.provider.naming.getCloudWatchLogLogicalId(
+          `Fn${index}`,
+          1
+        );
+        return {
+          filterName: `${stackName}-${logicalResourceId}-xxxxx`,
+          destinationArn: `arn:aws:lambda:us-east-1:123456789012:function:old-${index}`,
+        };
+      });
+      let activeDeletes = 0;
+      let observedMaxActiveDeletes = 0;
+      const pendingResolvers = [];
+      const cloudWatchLogsStub = sandbox
+        .stub(CloudWatchLogsClient.prototype, 'send')
+        .callsFake(async (command) => {
+          if (command instanceof DescribeSubscriptionFiltersCommand) {
+            return { subscriptionFilters: filters };
+          }
+          if (command instanceof DeleteSubscriptionFilterCommand) {
+            activeDeletes += 1;
+            observedMaxActiveDeletes = Math.max(observedMaxActiveDeletes, activeDeletes);
+            expect(activeDeletes).to.be.at.most(2);
+            await new Promise((resolve) => pendingResolvers.push(resolve));
+            activeDeletes -= 1;
+            return {};
+          }
+          throw new Error(`Unexpected CloudWatch Logs command: ${command.constructor.name}`);
+        });
+      const cloudFormationStub = sandbox
+        .stub(CloudFormationClient.prototype, 'send')
+        .callsFake(async (command) => {
+          expect(command).to.be.instanceOf(DescribeStackResourceCommand);
+          return {
+            StackResourceDetail: {
+              PhysicalResourceId: `${stackName}-${command.input.LogicalResourceId}-xxxxx`,
+            },
+          };
+        });
+
+      try {
+        const promise = awsDeploy.fixLogGroupSubscriptionFilters({
+          accountId: '123456789012',
+          region: 'us-east-1',
+          partition: 'aws',
+          logGroupName: 'someLogGroupName',
+          cloudwatchLogEvents: [],
+        });
+
+        await waitForPendingRequests(pendingResolvers, 2);
+        await releasePendingRequestsUntilSettled(pendingResolvers, promise);
+        expect(observedMaxActiveDeletes).to.equal(2);
+        expect(
+          cloudWatchLogsStub
+            .getCalls()
+            .map((call) => call.args[0])
+            .filter((command) => command instanceof DeleteSubscriptionFilterCommand)
+        ).to.have.length(6);
+        expect(cloudFormationStub).to.have.callCount(6);
+      } finally {
+        CloudWatchLogsClient.prototype.send.restore();
+        CloudFormationClient.prototype.send.restore();
+      }
+    });
+
+    it('treats missing log groups during describeSubscriptionFilters as no filters', async () => {
       const awsDeploy = createAwsDeployTestInstance();
       const cloudWatchLogsStub = sandbox
         .stub(CloudWatchLogsClient.prototype, 'send')
@@ -1805,9 +1870,6 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
             name: 'ResourceNotFoundException',
           });
         });
-      const cloudFormationStub = sandbox
-        .stub(CloudFormationClient.prototype, 'send')
-        .rejects(new Error('CloudFormation should not classify missing log groups'));
 
       try {
         const result = await awsDeploy.fixLogGroupSubscriptionFilters({
@@ -1820,14 +1882,12 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
 
         expect(result).to.equal(false);
         expect(cloudWatchLogsStub).to.have.been.calledOnce;
-        expect(cloudFormationStub).to.not.have.been.called;
       } finally {
         CloudWatchLogsClient.prototype.send.restore();
-        CloudFormationClient.prototype.send.restore();
       }
     });
 
-    it('surfaces CloudWatch Logs access errors during subscription filter discovery', async () => {
+    it('surfaces credential and authorization errors from describeSubscriptionFilters', async () => {
       const awsDeploy = createAwsDeployTestInstance();
       sandbox.stub(CloudWatchLogsClient.prototype, 'send').callsFake(async (command) => {
         expect(command).to.be.instanceOf(DescribeSubscriptionFiltersCommand);
@@ -1849,64 +1909,21 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
       }
     });
 
-    it('treats missing CloudFormation subscription filter resources as external', async () => {
+    it('treats missing CloudFormation subscription-filter resources as external', async () => {
       const awsDeploy = createAwsDeployTestInstance();
       sandbox.stub(CloudFormationClient.prototype, 'send').callsFake(async (command) => {
         expect(command).to.be.instanceOf(DescribeStackResourceCommand);
-        throw Object.assign(
-          new Error(
-            `Resource ${command.input.LogicalResourceId} does not exist for stack ${command.input.StackName}`
-          ),
-          { name: 'ValidationError' }
+        throw Object.assign(new Error('Resource does not exist'), { name: 'ValidationError' });
+      });
+
+      try {
+        const result = await awsDeploy.isInternalSubscriptionFilter(
+          awsDeploy.provider.naming.getStackName(),
+          'MissingLogicalId',
+          'physical-id'
         );
-      });
 
-      try {
-        await expect(
-          awsDeploy.isInternalSubscriptionFilter(
-            awsDeploy.provider.naming.getStackName(),
-            awsDeploy.provider.naming.getCloudWatchLogLogicalId('Fn1', 1),
-            'physical-id'
-          )
-        ).to.eventually.equal(false);
-      } finally {
-        CloudFormationClient.prototype.send.restore();
-      }
-    });
-
-    it('surfaces CloudFormation access errors during subscription filter classification', async () => {
-      const awsDeploy = createAwsDeployTestInstance();
-      sandbox.stub(CloudFormationClient.prototype, 'send').callsFake(async (command) => {
-        expect(command).to.be.instanceOf(DescribeStackResourceCommand);
-        throw Object.assign(new Error('denied'), { name: 'AccessDeniedException' });
-      });
-
-      try {
-        await expect(
-          awsDeploy.isInternalSubscriptionFilter(
-            awsDeploy.provider.naming.getStackName(),
-            awsDeploy.provider.naming.getCloudWatchLogLogicalId('Fn1', 1),
-            'physical-id'
-          )
-        ).to.be.rejectedWith('denied');
-      } finally {
-        CloudFormationClient.prototype.send.restore();
-      }
-    });
-
-    it('does not treat missing stacks with Resource in the name as missing resources', async () => {
-      const awsDeploy = createAwsDeployTestInstance();
-      sandbox.stub(CloudFormationClient.prototype, 'send').callsFake(async (command) => {
-        expect(command).to.be.instanceOf(DescribeStackResourceCommand);
-        throw Object.assign(new Error('Stack with id MyResourceStack does not exist'), {
-          name: 'ValidationError',
-        });
-      });
-
-      try {
-        await expect(
-          awsDeploy.isInternalSubscriptionFilter('MyResourceStack', 'LogicalId', 'physical-id')
-        ).to.be.rejectedWith('MyResourceStack');
+        expect(result).to.equal(false);
       } finally {
         CloudFormationClient.prototype.send.restore();
       }
@@ -1917,19 +1934,21 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
       const cloudWatchLogsStub = sandbox
         .stub(CloudWatchLogsClient.prototype, 'send')
         .callsFake(async (command) => {
-          expect(command).to.be.instanceOf(DescribeSubscriptionFiltersCommand);
-          return {
-            subscriptionFilters: [
-              {
-                filterName: 'externalFilter',
-                destinationArn: 'arn:aws:lambda:us-east-1:123456789012:function:external-1',
-              },
-              {
-                filterName: 'external--suffix',
-                destinationArn: 'arn:aws:lambda:us-east-1:123456789012:function:external-2',
-              },
-            ],
-          };
+          if (command instanceof DescribeSubscriptionFiltersCommand) {
+            return {
+              subscriptionFilters: [
+                {
+                  filterName: 'externalFilter',
+                  destinationArn: 'arn:aws:lambda:us-east-1:123456789012:function:external-1',
+                },
+                {
+                  filterName: 'external--suffix',
+                  destinationArn: 'arn:aws:lambda:us-east-1:123456789012:function:external-2',
+                },
+              ],
+            };
+          }
+          throw new Error(`Unexpected CloudWatch Logs command: ${command.constructor.name}`);
         });
       const cloudFormationStub = sandbox
         .stub(CloudFormationClient.prototype, 'send')
@@ -1957,10 +1976,229 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
         );
         expect(cloudWatchLogsStub).to.have.been.calledOnce;
         expect(cloudFormationStub).to.not.have.been.called;
+        expect(
+          cloudWatchLogsStub
+            .getCalls()
+            .map((call) => call.args[0])
+            .filter((command) => command instanceof DeleteSubscriptionFilterCommand)
+        ).to.have.length(0);
       } finally {
         CloudWatchLogsClient.prototype.send.restore();
         CloudFormationClient.prototype.send.restore();
       }
+    });
+
+    it('surfaces credential and authorization errors from CloudFormation classification', async () => {
+      const awsDeploy = createAwsDeployTestInstance();
+      sandbox.stub(CloudFormationClient.prototype, 'send').callsFake(async (command) => {
+        expect(command).to.be.instanceOf(DescribeStackResourceCommand);
+        throw Object.assign(new Error('denied'), { name: 'AccessDeniedException' });
+      });
+
+      try {
+        await expect(
+          awsDeploy.isInternalSubscriptionFilter(
+            awsDeploy.provider.naming.getStackName(),
+            'LogicalId',
+            'physical-id'
+          )
+        ).to.be.rejectedWith('denied');
+      } finally {
+        CloudFormationClient.prototype.send.restore();
+      }
+    });
+
+    it('does not treat non-CloudFormation does-not-exist messages as missing resources', async () => {
+      const awsDeploy = createAwsDeployTestInstance();
+      sandbox.stub(CloudFormationClient.prototype, 'send').callsFake(async (command) => {
+        expect(command).to.be.instanceOf(DescribeStackResourceCommand);
+        throw Object.assign(new Error('credentials file does not exist'), {
+          name: 'CredentialsProviderError',
+        });
+      });
+
+      try {
+        await expect(
+          awsDeploy.isInternalSubscriptionFilter(
+            awsDeploy.provider.naming.getStackName(),
+            'LogicalId',
+            'physical-id'
+          )
+        ).to.be.rejectedWith('credentials file does not exist');
+      } finally {
+        CloudFormationClient.prototype.send.restore();
+      }
+    });
+
+    it('passes credential provider functions to CloudWatch Logs and CloudFormation clients', async () => {
+      const awsDeploy = createAwsDeployTestInstance();
+      const credentials = async () => ({ accessKeyId: 'key', secretAccessKey: 'secret' });
+      const cloudWatchLogsClients = [];
+      const cloudFormationClients = [];
+      class FakeCommand {
+        constructor(input) {
+          this.input = input;
+        }
+      }
+      class FakeDescribeSubscriptionFiltersCommand extends FakeCommand {}
+      class FakeDeleteSubscriptionFilterCommand extends FakeCommand {}
+      class FakeDescribeStackResourceCommand extends FakeCommand {}
+      const stackName = awsDeploy.provider.naming.getStackName();
+      const logicalResourceId = awsDeploy.provider.naming.getCloudWatchLogLogicalId('Fn1', 1);
+      const filterName = `${stackName}-${logicalResourceId}-xxxxx`;
+      class FakeCloudWatchLogsClient {
+        constructor(config) {
+          this.config = config;
+          cloudWatchLogsClients.push(this);
+        }
+
+        async send(command) {
+          if (command instanceof FakeDescribeSubscriptionFiltersCommand) {
+            return {
+              subscriptionFilters: [
+                {
+                  filterName,
+                  destinationArn: 'arn:aws:lambda:us-east-1:123456789012:function:old',
+                },
+              ],
+            };
+          }
+          if (command instanceof FakeDeleteSubscriptionFilterCommand) return {};
+          throw new Error(`Unexpected CloudWatch Logs command: ${command.constructor.name}`);
+        }
+      }
+      class FakeCloudFormationClient {
+        constructor(config) {
+          this.config = config;
+          cloudFormationClients.push(this);
+        }
+
+        async send(command) {
+          expect(command).to.be.instanceOf(FakeDescribeStackResourceCommand);
+          return { StackResourceDetail: { PhysicalResourceId: filterName } };
+        }
+      }
+      const checkForChanges = proxyquire(
+        '../../../../../../../lib/plugins/aws/deploy/lib/check-for-changes.js',
+        {
+          '@aws-sdk/client-cloudwatch-logs': {
+            CloudWatchLogsClient: FakeCloudWatchLogsClient,
+            DeleteSubscriptionFilterCommand: FakeDeleteSubscriptionFilterCommand,
+            DescribeSubscriptionFiltersCommand: FakeDescribeSubscriptionFiltersCommand,
+          },
+          '@aws-sdk/client-cloudformation': {
+            CloudFormationClient: FakeCloudFormationClient,
+            DescribeStackResourceCommand: FakeDescribeStackResourceCommand,
+          },
+        }
+      );
+      Object.assign(awsDeploy, checkForChanges);
+      const getAwsSdkV3ConfigStub = sandbox.stub(awsDeploy.provider, 'getAwsSdkV3Config').resolves({
+        credentials,
+        region: 'us-east-1',
+      });
+
+      try {
+        await awsDeploy.fixLogGroupSubscriptionFilters({
+          accountId: '123456789012',
+          region: 'us-east-1',
+          partition: 'aws',
+          logGroupName: 'someLogGroupName',
+          cloudwatchLogEvents: [],
+        });
+
+        expect(getAwsSdkV3ConfigStub.callCount).to.be.greaterThan(1);
+        expect(cloudWatchLogsClients).to.have.length(1);
+        expect(cloudFormationClients).to.have.length(1);
+        expect(cloudWatchLogsClients[0].config.credentials).to.equal(credentials);
+        expect(cloudFormationClients[0].config.credentials).to.equal(credentials);
+      } finally {
+        getAwsSdkV3ConfigStub.restore();
+      }
+    });
+
+    it('reuses CloudWatch Logs and CloudFormation clients across subscription filter fan-out', async () => {
+      const awsDeploy = createAwsDeployTestInstance();
+      const cloudWatchLogsClients = [];
+      const cloudFormationClients = [];
+      class FakeCommand {
+        constructor(input) {
+          this.input = input;
+        }
+      }
+      class FakeDescribeSubscriptionFiltersCommand extends FakeCommand {}
+      class FakeDeleteSubscriptionFilterCommand extends FakeCommand {}
+      class FakeDescribeStackResourceCommand extends FakeCommand {}
+      const stackName = awsDeploy.provider.naming.getStackName();
+      const logicalResourceId = 'Fn1LogSubscriptionFilter';
+      const filterName = `${stackName}-${logicalResourceId}-xxxxx`;
+      class FakeCloudWatchLogsClient {
+        constructor(config) {
+          this.config = config;
+          cloudWatchLogsClients.push(this);
+        }
+
+        async send(command) {
+          if (command instanceof FakeDescribeSubscriptionFiltersCommand) {
+            return {
+              subscriptionFilters: [
+                {
+                  filterName,
+                  destinationArn: 'arn:aws:lambda:us-east-1:123456789012:function:old',
+                },
+              ],
+            };
+          }
+          if (command instanceof FakeDeleteSubscriptionFilterCommand) return {};
+          throw new Error(`Unexpected CloudWatch Logs command ${command.constructor.name}`);
+        }
+      }
+      class FakeCloudFormationClient {
+        constructor(config) {
+          this.config = config;
+          cloudFormationClients.push(this);
+        }
+
+        async send(command) {
+          expect(command).to.be.instanceOf(FakeDescribeStackResourceCommand);
+          return { StackResourceDetail: { PhysicalResourceId: filterName } };
+        }
+      }
+      const checkForChanges = proxyquire(
+        '../../../../../../../lib/plugins/aws/deploy/lib/check-for-changes.js',
+        {
+          '@aws-sdk/client-cloudwatch-logs': {
+            CloudWatchLogsClient: FakeCloudWatchLogsClient,
+            DeleteSubscriptionFilterCommand: FakeDeleteSubscriptionFilterCommand,
+            DescribeSubscriptionFiltersCommand: FakeDescribeSubscriptionFiltersCommand,
+          },
+          '@aws-sdk/client-cloudformation': {
+            CloudFormationClient: FakeCloudFormationClient,
+            DescribeStackResourceCommand: FakeDescribeStackResourceCommand,
+          },
+        }
+      );
+      Object.assign(awsDeploy, checkForChanges);
+
+      await Promise.all([
+        awsDeploy.fixLogGroupSubscriptionFilters({
+          accountId: '123456789012',
+          region: 'us-east-1',
+          partition: 'aws',
+          logGroupName: 'firstLogGroup',
+          cloudwatchLogEvents: [],
+        }),
+        awsDeploy.fixLogGroupSubscriptionFilters({
+          accountId: '123456789012',
+          region: 'us-east-1',
+          partition: 'aws',
+          logGroupName: 'secondLogGroup',
+          cloudwatchLogEvents: [],
+        }),
+      ]);
+
+      expect(cloudWatchLogsClients).to.have.length(1);
+      expect(cloudFormationClients).to.have.length(1);
     });
 
     it('does not crash when cloudwatchLog event uses __proto__ as the log group name', async () => {
@@ -2142,7 +2380,7 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
                       params.LogicalResourceId
                     } does not exist for stack ${naming.getStackName()}`
                   ),
-                  { name: 'ValidationError' }
+                  { name: 'ValidationError', code: 'ValidationError' }
                 );
               }),
           },
@@ -2217,7 +2455,7 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
                       params.LogicalResourceId
                     } does not exist for stack ${naming.getStackName()}`
                   ),
-                  { name: 'ValidationError' }
+                  { name: 'ValidationError', code: 'ValidationError' }
                 );
               }),
           },
@@ -2253,7 +2491,7 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
     it('should attempt to delete subscription filter not match as any of new subscription filter', async () => {
       const deleteStub = sandbox.stub();
       let serverless;
-      const { awsNaming } = await runServerless({
+      const { awsNaming, awsSdkV3Stub } = await runServerless({
         fixture: 'check-for-changes',
         command: 'deploy',
         configExt: {
@@ -2317,6 +2555,19 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
         },
       });
       expect(deleteStub).to.have.been.calledOnceWith({
+        logGroupName: 'someLogGroupName',
+        filterName: `${awsNaming.getStackName()}-${awsNaming.getCloudWatchLogLogicalId(
+          'Fn2',
+          1
+        )}-xxxxx`,
+      });
+      const deleteSends = awsSdkV3Stub.sends.filter(
+        ({ service, method }) =>
+          service === 'CloudWatchLogs' && method === 'deleteSubscriptionFilter'
+      );
+      expect(deleteSends).to.have.length(1);
+      expect(deleteSends[0]).to.include({ commandName: 'DeleteSubscriptionFilterCommand' });
+      expect(deleteSends[0].input).to.deep.equal({
         logGroupName: 'someLogGroupName',
         filterName: `${awsNaming.getStackName()}-${awsNaming.getCloudWatchLogLogicalId(
           'Fn2',

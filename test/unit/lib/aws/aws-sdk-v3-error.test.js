@@ -520,4 +520,33 @@ describe('test/unit/lib/aws/aws-sdk-v3-error.test.js', () => {
       awsSdkV3Error.isSsmParameterNotFoundError(Object.create({ name: 'ParameterNotFound' }))
     ).to.equal(false);
   });
+
+  it('matches API Gateway and CloudWatch Logs missing-resource shapes by own fields', () => {
+    expect(awsSdkV3Error.isApiGatewayNotFoundError({ name: 'NotFoundException' })).to.equal(true);
+    expect(
+      awsSdkV3Error.isApiGatewayNotFoundError({ $metadata: { httpStatusCode: 404 } })
+    ).to.equal(true);
+    expect(
+      awsSdkV3Error.isApiGatewayNotFoundError(Object.create({ name: 'NotFoundException' }))
+    ).to.equal(false);
+    expect(awsSdkV3Error.isApiGatewayNotFoundError({ name: 'AccessDeniedException' })).to.equal(
+      false
+    );
+    expect(
+      awsSdkV3Error.isCloudWatchLogsResourceNotFoundError({ name: 'ResourceNotFoundException' })
+    ).to.equal(true);
+    expect(
+      awsSdkV3Error.isCloudWatchLogsResourceNotFoundError({
+        $metadata: { httpStatusCode: 404 },
+      })
+    ).to.equal(true);
+    expect(
+      awsSdkV3Error.isCloudWatchLogsResourceNotFoundError(
+        Object.create({ name: 'ResourceNotFoundException' })
+      )
+    ).to.equal(false);
+    expect(
+      awsSdkV3Error.isCloudWatchLogsResourceNotFoundError({ name: 'AccessDeniedException' })
+    ).to.equal(false);
+  });
 });

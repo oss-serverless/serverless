@@ -10,6 +10,15 @@ const serviceDefinitions = {
     clientName: 'APIGatewayClient',
     commands: {
       getApiKey: 'GetApiKeyCommand',
+      getRestApis: 'GetRestApisCommand',
+      getDeployments: 'GetDeploymentsCommand',
+      getStage: 'GetStageCommand',
+      createStage: 'CreateStageCommand',
+      updateStage: 'UpdateStageCommand',
+      tagResource: 'TagResourceCommand',
+      untagResource: 'UntagResourceCommand',
+      getUsagePlans: 'GetUsagePlansCommand',
+      updateUsagePlan: 'UpdateUsagePlanCommand',
     },
   },
   ApiGatewayV2: {
@@ -55,6 +64,8 @@ const serviceDefinitions = {
       describeLogStreams: 'DescribeLogStreamsCommand',
       filterLogEvents: 'FilterLogEventsCommand',
       describeSubscriptionFilters: 'DescribeSubscriptionFiltersCommand',
+      deleteSubscriptionFilter: 'DeleteSubscriptionFilterCommand',
+      deleteLogGroup: 'DeleteLogGroupCommand',
     },
   },
   ECR: {
