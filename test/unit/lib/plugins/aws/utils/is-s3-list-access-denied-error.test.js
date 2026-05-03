@@ -17,6 +17,39 @@ describe('test/unit/lib/plugins/aws/utils/is-s3-list-access-denied-error.test.js
     expect(isS3ListAccessDeniedError({ providerError: { name: 'AccessDenied' } })).to.equal(true);
   });
 
+  it('prefers meaningful SDK v3 error names over legacy codes', () => {
+    expect(
+      isS3ListAccessDeniedError({
+        name: 'AccessDenied',
+        code: 'SignatureDoesNotMatch',
+      })
+    ).to.equal(true);
+    expect(
+      isS3ListAccessDeniedError({
+        name: 'SignatureDoesNotMatch',
+        code: 'AccessDenied',
+        statusCode: 403,
+      })
+    ).to.equal(false);
+    expect(
+      isS3ListAccessDeniedError({
+        providerError: {
+          name: 'AccessDenied',
+          code: 'SignatureDoesNotMatch',
+        },
+      })
+    ).to.equal(true);
+    expect(
+      isS3ListAccessDeniedError({
+        providerError: {
+          name: 'SignatureDoesNotMatch',
+          code: 'AccessDenied',
+          statusCode: 403,
+        },
+      })
+    ).to.equal(false);
+  });
+
   it('matches status-only 403 errors', () => {
     expect(isS3ListAccessDeniedError({ statusCode: 403 })).to.equal(true);
     expect(isS3ListAccessDeniedError({ $metadata: { httpStatusCode: 403 } })).to.equal(true);
@@ -56,6 +89,24 @@ describe('test/unit/lib/plugins/aws/utils/is-s3-list-access-denied-error.test.js
         })
       ).to.equal(false);
     }
+  });
+
+  it('does not match inherited legacy error fields', () => {
+    expect(isS3ListAccessDeniedError(Object.create({ code: 'AccessDenied' }))).to.equal(false);
+    expect(isS3ListAccessDeniedError(Object.create({ Code: 'AccessDenied' }))).to.equal(false);
+    expect(isS3ListAccessDeniedError(Object.create({ name: 'AccessDenied' }))).to.equal(false);
+    expect(isS3ListAccessDeniedError(Object.create({ statusCode: 403 }))).to.equal(false);
+    expect(
+      isS3ListAccessDeniedError(
+        Object.create({ providerError: { code: 'AccessDenied', statusCode: 403 } })
+      )
+    ).to.equal(false);
+    expect(
+      isS3ListAccessDeniedError({ providerError: Object.create({ name: 'AccessDenied' }) })
+    ).to.equal(false);
+    expect(
+      isS3ListAccessDeniedError(Object.create({ $metadata: { httpStatusCode: 403 } }))
+    ).to.equal(false);
   });
 
   it('does not match unrelated errors', () => {

@@ -8,6 +8,8 @@ const AwsMetrics = require('../../../../../lib/plugins/aws/metrics');
 const Serverless = require('../../../../../lib/serverless');
 const CLI = require('../../../../../lib/classes/cli');
 const dayjs = require('dayjs');
+const { CloudWatchClient, GetMetricStatisticsCommand } = require('@aws-sdk/client-cloudwatch');
+const releasePendingRequestsUntilSettled = require('../../../../utils/release-pending-requests-until-settled');
 
 const LocalizedFormat = require('dayjs/plugin/localizedFormat');
 
@@ -179,11 +181,11 @@ describe('AwsMetrics', () => {
       };
       awsMetrics.options.startTime = new Date('1970-01-01');
       awsMetrics.options.endTime = new Date('1970-01-02');
-      requestStub = sinon.stub(awsMetrics.provider, 'request');
+      requestStub = sinon.stub(CloudWatchClient.prototype, 'send');
     });
 
     afterEach(() => {
-      awsMetrics.provider.request.restore();
+      CloudWatchClient.prototype.send.restore();
     });
 
     it('should gather service wide function metrics if no function option is specified', async () => {
@@ -348,6 +350,57 @@ describe('AwsMetrics', () => {
       expect(result).to.deep.equal(expectedResult);
     });
 
+    it('limits total CloudWatch metric requests to 6 across all functions', async () => {
+      awsMetrics.serverless.service.functions = Object.fromEntries(
+        Array.from({ length: 3 }, (_, index) => [`function${index}`, { name: `func${index}` }])
+      );
+      let activeRequests = 0;
+      let observedMaxActiveRequests = 0;
+      const pendingResolvers = [];
+      requestStub.callsFake(async (command) => {
+        activeRequests += 1;
+        observedMaxActiveRequests = Math.max(observedMaxActiveRequests, activeRequests);
+        expect(activeRequests).to.be.at.most(6);
+        await new Promise((resolve) => pendingResolvers.push(resolve));
+        activeRequests -= 1;
+        return {
+          Label: command.input.MetricName,
+          Datapoints: [],
+        };
+      });
+
+      const promise = awsMetrics.getMetrics();
+
+      for (let index = 0; index < 20 && pendingResolvers.length < 6; index += 1) {
+        await Promise.resolve();
+      }
+      expect(observedMaxActiveRequests).to.equal(6);
+      await releasePendingRequestsUntilSettled(pendingResolvers, promise);
+      expect(observedMaxActiveRequests).to.equal(6);
+    });
+
+    it('reuses one CloudWatch client across repeated metric gathers', async () => {
+      const getAwsSdkV3ConfigSpy = sinon.spy(awsMetrics.provider, 'getAwsSdkV3Config');
+      requestStub.callsFake(async (command) => ({
+        Label: command.input.MetricName,
+        Datapoints: [],
+      }));
+
+      try {
+        await awsMetrics.getMetrics();
+        await awsMetrics.getMetrics();
+
+        expect(getAwsSdkV3ConfigSpy).to.have.been.calledOnce;
+        expect(requestStub).to.have.callCount(16);
+        for (const call of requestStub.getCalls()) {
+          expect(call.args[0]).to.be.instanceOf(GetMetricStatisticsCommand);
+          expect(call.thisValue).to.equal(requestStub.firstCall.thisValue);
+        }
+      } finally {
+        getAwsSdkV3ConfigSpy.restore();
+      }
+    });
+
     it('should gather metrics with 1 hour period for time span < 24 hours', async () => {
       awsMetrics.options.startTime = new Date('1970-01-01T09:00');
       awsMetrics.options.endTime = new Date('1970-01-01T16:00');
@@ -355,11 +408,13 @@ describe('AwsMetrics', () => {
       await awsMetrics.getMetrics();
 
       expect(
-        requestStub.calledWith(
-          sinon.match.string,
-          sinon.match.string,
-          sinon.match.has('Period', 3600)
-        )
+        requestStub
+          .getCalls()
+          .some(
+            (call) =>
+              call.args[0] instanceof GetMetricStatisticsCommand &&
+              call.args[0].input.Period === 3600
+          )
       ).to.equal(true);
     });
 
@@ -370,11 +425,13 @@ describe('AwsMetrics', () => {
       await awsMetrics.getMetrics();
 
       expect(
-        requestStub.calledWith(
-          sinon.match.string,
-          sinon.match.string,
-          sinon.match.has('Period', 24 * 3600)
-        )
+        requestStub
+          .getCalls()
+          .some(
+            (call) =>
+              call.args[0] instanceof GetMetricStatisticsCommand &&
+              call.args[0].input.Period === 24 * 3600
+          )
       ).to.equal(true);
     });
 
@@ -385,11 +442,13 @@ describe('AwsMetrics', () => {
       await awsMetrics.getMetrics();
 
       expect(
-        requestStub.calledWith(
-          sinon.match.string,
-          sinon.match.string,
-          sinon.match.has('Period', 3600)
-        )
+        requestStub
+          .getCalls()
+          .some(
+            (call) =>
+              call.args[0] instanceof GetMetricStatisticsCommand &&
+              call.args[0].input.Period === 3600
+          )
       ).to.equal(true);
     });
   });

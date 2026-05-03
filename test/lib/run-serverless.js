@@ -14,6 +14,7 @@ const observeOutput = require('./observe-output');
 const disableServerlessStatsRequests = require('./disable-serverless-stats-requests');
 const provisionTmpDir = require('./provision-tmp-dir');
 const configureAwsRequestStub = require('./configure-aws-request-stub');
+const configureAwsSdkV3Stub = require('./configure-aws-sdk-v3-stub');
 const { writeJsonFile } = require('../utils/fs');
 
 const resolveModuleRealPath = (basePath, moduleId) =>
@@ -56,6 +57,7 @@ module.exports = async (
   serverlessPath,
   {
     awsRequestStubMap,
+    awsSdkV3StubMap,
     command,
     options,
     config,
@@ -145,11 +147,36 @@ module.exports = async (
     errorMessage: 'Expected `envWhitelist` to be a var names collection, received %v',
   });
   awsRequestStubMap = ensurePlainObject(awsRequestStubMap, { isOptional: true });
+  awsSdkV3StubMap = ensurePlainObject(awsSdkV3StubMap, { isOptional: true });
+  if (modulesCacheStub) modulesCacheStub = { ...modulesCacheStub };
+  let awsSdkV3Stub;
+  const effectiveAwsSdkV3StubMap = awsSdkV3StubMap || awsRequestStubMap;
+  if (effectiveAwsSdkV3StubMap) {
+    awsSdkV3Stub = configureAwsSdkV3Stub(effectiveAwsSdkV3StubMap, {
+      ignoreUnsupportedServices: !awsSdkV3StubMap,
+    });
+    const sdkV3ModuleStubs = Object.entries(awsSdkV3Stub.modulesCacheStub);
+    if (sdkV3ModuleStubs.length) {
+      if (!modulesCacheStub) modulesCacheStub = {};
+      for (const [moduleName, moduleStub] of sdkV3ModuleStubs) {
+        if (modulesCacheStub[moduleName]) {
+          throw new Error(`Duplicate module cache stub for ${moduleName}`);
+        }
+        modulesCacheStub[moduleName] = moduleStub;
+      }
+    }
+  }
   if (shouldStubSpawn) {
     if (!modulesCacheStub) modulesCacheStub = {};
     modulesCacheStub[path.resolve(serverlessPath, 'lib/utils/spawn.js')] = sinon
       .stub()
       .resolves({});
+  }
+  if (modulesCacheStub) {
+    const httpsProxyAgentPath = require.resolve('https-proxy-agent');
+    if (!modulesCacheStub[httpsProxyAgentPath]) {
+      modulesCacheStub[httpsProxyAgentPath] = require('https-proxy-agent');
+    }
   }
   const confirmedCwd = await resolveCwd({ cwd, config });
 
@@ -371,6 +398,7 @@ module.exports = async (
               output,
               cfTemplate: serverless.service.provider.compiledCloudFormationTemplate,
               awsNaming: awsProvider && awsProvider.naming,
+              awsSdkV3Stub,
             };
           } catch (error) {
             throw Object.assign(error, {

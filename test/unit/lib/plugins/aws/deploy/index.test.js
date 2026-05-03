@@ -1319,6 +1319,47 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
     );
   });
 
+  it('with existing stack - with custom deployment bucket region redirect error', async () => {
+    const awsRequestStubMap = {
+      ...baseAwsRequestStubMap,
+      ECR: {
+        describeRepositories: sinon.stub().throws({
+          providerError: { code: 'RepositoryNotFoundException' },
+        }),
+      },
+      S3: {
+        headBucket: () => {
+          const err = new Error('Moved Permanently');
+          err.name = 'PermanentRedirect';
+          err.$metadata = { httpStatusCode: 301 };
+          err.$response = { headers: { 'x-amz-bucket-region': 'us-west-1' } };
+          throw err;
+        },
+      },
+      CloudFormation: {
+        describeStacks: { Stacks: [{}] },
+        validateTemplate: {},
+      },
+    };
+
+    await expect(
+      runServerless({
+        fixture: 'function',
+        command: 'deploy',
+        awsRequestStubMap,
+        lastLifecycleHookName: 'aws:deploy:deploy:checkForChanges',
+        configExt: {
+          provider: {
+            deploymentBucket: 'bucket-name',
+          },
+        },
+      })
+    ).to.eventually.have.been.rejected.and.have.property(
+      'code',
+      'DEPLOYMENT_BUCKET_INVALID_REGION'
+    );
+  });
+
   it('with existing stack - with deployment bucket from CloudFormation deleted manually', async () => {
     const awsRequestStubMap = {
       ...baseAwsRequestStubMap,

@@ -306,6 +306,78 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
     expect(describeStackEventsStub.calledAfter(deleteStackStub)).to.be.true;
   });
 
+  it('skips S3 object removal if SDK v3 reports deployment bucket resource missing', async () => {
+    const headBucketStub = sinon.stub();
+    const { awsNaming } = await runServerless({
+      fixture: 'function',
+      command: 'remove',
+      awsRequestStubMap: {
+        ...awsRequestStubMap,
+        S3: {
+          ...awsRequestStubMap.S3,
+          headBucket: headBucketStub,
+        },
+        CloudFormation: {
+          ...awsRequestStubMap.CloudFormation,
+          describeStackResource: () => {
+            const err = new Error('Resource does not exist for stack new-service-dev');
+            err.name = 'ValidationError';
+            throw err;
+          },
+        },
+      },
+    });
+
+    expect(headBucketStub).not.to.be.called;
+    expect(deleteObjectsStub).not.to.be.called;
+    expect(deleteStackStub).to.be.calledWithExactly({ StackName: awsNaming.getStackName() });
+    expect(describeStackEventsStub).to.be.calledWithExactly({
+      StackName: awsNaming.getStackName(),
+    });
+    expect(describeStackEventsStub.calledAfter(deleteStackStub)).to.be.true;
+  });
+
+  it('rethrows unexpected SDK v3 deployment bucket lookup validation errors', async () => {
+    await expect(
+      runServerless({
+        fixture: 'function',
+        command: 'remove',
+        awsRequestStubMap: {
+          ...awsRequestStubMap,
+          CloudFormation: {
+            ...awsRequestStubMap.CloudFormation,
+            describeStackResource: () => {
+              const err = new Error('Some other validation failure');
+              err.name = 'ValidationError';
+              throw err;
+            },
+          },
+        },
+      })
+    ).to.be.eventually.rejectedWith('Some other validation failure');
+  });
+
+  it('rethrows inherited SDK v3 deployment bucket lookup missing-resource messages', async () => {
+    await expect(
+      runServerless({
+        fixture: 'function',
+        command: 'remove',
+        awsRequestStubMap: {
+          ...awsRequestStubMap,
+          CloudFormation: {
+            ...awsRequestStubMap.CloudFormation,
+            describeStackResource: () => {
+              const err = Object.assign(Object.create({ message: 'does not exist for stack' }), {
+                name: 'ValidationError',
+              });
+              throw err;
+            },
+          },
+        },
+      })
+    ).to.be.eventually.rejectedWith('does not exist for stack');
+  });
+
   it('removes ECR repository if it exists', async () => {
     describeRepositoriesStub.resolves();
     const { awsNaming } = await runServerless({
