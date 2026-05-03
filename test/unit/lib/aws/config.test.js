@@ -99,6 +99,22 @@ describe('test/unit/lib/aws/config.test.js', () => {
         'https://proxy.example.com:1234'
       );
       expect(config.requestHandler.options.httpsAgent.options).to.include({
+        keepAlive: true,
+        rejectUnauthorized: true,
+      });
+      expect(config.requestHandler.options.httpsAgent.options.ca).to.deep.equal(['certificate']);
+    });
+  });
+
+  it('passes CA options when constructing the native HTTPS agent', async () => {
+    await overrideEnv(async () => {
+      process.env.HTTPS_CA = 'certificate';
+      const { buildClientConfig } = loadConfig();
+
+      const config = buildClientConfig();
+
+      expect(config.requestHandler.options.httpsAgent.options).to.include({
+        keepAlive: true,
         rejectUnauthorized: true,
       });
       expect(config.requestHandler.options.httpsAgent.options.ca).to.deep.equal(['certificate']);
