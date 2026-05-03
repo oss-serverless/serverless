@@ -25,6 +25,7 @@ describe('#resolveCfImportValue', () => {
 
   it('should continue pagination when a page has no exports', async () => {
     const requests = [];
+    const sdkParams = { SomeParam: 'kept' };
     const provider = {
       request: async (service, method, params) => {
         requests.push({ service, method, params });
@@ -40,15 +41,16 @@ describe('#resolveCfImportValue', () => {
       },
     };
 
-    const result = await resolveCfImportValue(provider, 'exportName');
+    const result = await resolveCfImportValue(provider, 'exportName', sdkParams);
 
     expect(result).to.equal('exportValue');
+    expect(sdkParams).to.deep.equal({ SomeParam: 'kept' });
     expect(requests).to.deep.equal([
-      { service: 'CloudFormation', method: 'listExports', params: {} },
+      { service: 'CloudFormation', method: 'listExports', params: { SomeParam: 'kept' } },
       {
         service: 'CloudFormation',
         method: 'listExports',
-        params: { NextToken: 'next-page' },
+        params: { SomeParam: 'kept', NextToken: 'next-page' },
       },
     ]);
   });

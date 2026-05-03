@@ -28,6 +28,7 @@ describe('#resolveCfRefValue', () => {
 
   it('should continue pagination when a page has no stack resources', async () => {
     const requests = [];
+    const sdkParams = { SomeParam: 'kept' };
     const provider = {
       naming: {
         getStackName: () => 'stack-name',
@@ -46,19 +47,20 @@ describe('#resolveCfRefValue', () => {
       },
     };
 
-    const result = await resolveCfRefValue(provider, 'myDB');
+    const result = await resolveCfRefValue(provider, 'myDB', sdkParams);
 
     expect(result).to.equal('stack-name-db-id');
+    expect(sdkParams).to.deep.equal({ SomeParam: 'kept' });
     expect(requests).to.deep.equal([
       {
         service: 'CloudFormation',
         method: 'listStackResources',
-        params: { StackName: 'stack-name' },
+        params: { SomeParam: 'kept', StackName: 'stack-name' },
       },
       {
         service: 'CloudFormation',
         method: 'listStackResources',
-        params: { NextToken: 'next-page', StackName: 'stack-name' },
+        params: { SomeParam: 'kept', NextToken: 'next-page', StackName: 'stack-name' },
       },
     ]);
   });
