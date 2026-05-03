@@ -105,4 +105,23 @@ describe('test/unit/lib/configuration/variables/sources/instance-dependent/get-a
     );
     expect(configuration.custom.region).to.equal('eu-central-1');
   });
+
+  it('should ignore inherited region from options', async () => {
+    const source = getAwsSource({
+      getProvider: () => ({
+        constructor: {
+          getProviderName: () => 'aws',
+        },
+        request: async () => ({ Account: '1234567890' }),
+      }),
+    });
+
+    const result = await source.resolve({
+      address: 'region',
+      options: Object.create({ region: 'eu-central-1' }),
+      resolveConfigurationProperty: async () => 'eu-west-1',
+    });
+
+    expect(result.value).to.equal('eu-west-1');
+  });
 });
