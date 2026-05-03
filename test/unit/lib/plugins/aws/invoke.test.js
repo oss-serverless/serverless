@@ -96,6 +96,25 @@ describe('test/unit/lib/plugins/aws/invoke.test.js', () => {
     });
   });
 
+  it('should ignore empty payload responses', async () => {
+    await expect(
+      runServerless({
+        fixture: 'invocation',
+        command: 'invoke',
+        options: {
+          function: 'callback',
+        },
+        awsRequestStubMap: {
+          Lambda: {
+            invoke: {
+              Payload: Buffer.alloc(0),
+            },
+          },
+        },
+      })
+    ).to.eventually.be.fulfilled;
+  });
+
   it('should support plain string data', async () => {
     const lambdaInvokeStub = sinon.stub();
     const result = await runServerless({
@@ -455,6 +474,26 @@ describe('test/unit/lib/plugins/aws/invoke.test.js', () => {
         },
       })
     ).to.be.eventually.rejectedWith(Error, 'Invoked function failed');
+  });
+
+  it('should fail the process for failed invocations with empty payload responses', async () => {
+    await expect(
+      runServerless({
+        fixture: 'invocation',
+        command: 'invoke',
+        options: {
+          function: 'callback',
+        },
+        awsRequestStubMap: {
+          Lambda: {
+            invoke: {
+              Payload: Buffer.alloc(0),
+              FunctionError: true,
+            },
+          },
+        },
+      })
+    ).to.be.eventually.rejected.and.have.property('code', 'AWS_LAMBDA_INVOCATION_FAILED');
   });
 
   it('should resolve if path is not given', async () => {
