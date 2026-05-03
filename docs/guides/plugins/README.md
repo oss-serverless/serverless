@@ -51,7 +51,7 @@ Note for plugin authors: read [Extending the configuration](custom-configuration
 
 AWS plugin authors should use AWS SDK v3 clients directly and obtain
 osls-resolved client configuration with `provider.getAwsSdkV3Config()`.
-See [AWS SDK v3 clients](creating-plugins.md#aws-sdk-v3-clients) for details.
+See [AWS plugins](creating-plugins.md#aws-plugins) for details.
 
 Only helpers documented in the plugin guides are considered supported for
 plugin authors. Avoid importing osls internal files under `lib/**`

@@ -612,7 +612,7 @@ describe('uploadArtifacts', () => {
       uploadStub = sinon.stub(Upload.prototype, 'done').resolves();
       serviceDirPath = createTmpDir();
       customResourcesFilePath = path.join(serviceDirPath, '.serverless', 'custom-resources.zip');
-      // Ensure no file stream is created, as by having provider.request mocked it'll be not consumed.
+      // Ensure no file stream is created, as the stubbed upload does not consume it.
       // File stream points file in temporary home folder which is cleaned after this test file is run.
       // There were observed race conditions where this temporary home folder was cleaned
       // before stream initialized fully, hence throwing uncaught ENOENT exception into the air.

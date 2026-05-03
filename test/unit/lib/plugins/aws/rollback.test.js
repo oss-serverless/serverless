@@ -49,7 +49,6 @@ describe('AwsRollback', () => {
   );
 
   afterEach(() => {
-    if (provider.request.restore) provider.request.restore();
     if (S3Client.prototype.send.restore) S3Client.prototype.send.restore();
     serverless.pluginManager.spawn.restore();
   });

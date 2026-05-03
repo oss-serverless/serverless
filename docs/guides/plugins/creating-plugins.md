@@ -193,15 +193,19 @@ class MyPlugin {
 
 The plugin will now only be executed when the service's provider matches the given provider.
 
-## AWS SDK v3 clients
+## AWS plugins
 
-AWS plugins should use AWS SDK v3 clients directly instead of using `provider.request()`
-as a generic AWS API proxy.
+AWS plugins should create and own the AWS SDK v3 clients they use. osls
+provides provider-resolved AWS client configuration through
+`provider.getAwsSdkV3Config()`, so plugins can use the same region, credentials,
+retry, proxy, custom CA, and timeout behavior as osls.
 
-Plugins should own the AWS SDK v3 clients they use. Do not rely on AWS SDK
-packages that happen to be installed by osls.
+### Install SDK client packages
 
-If your published plugin imports AWS SDK v3 clients at runtime, declare them in
+Declare every AWS SDK v3 package your plugin imports. Do not rely on SDK packages
+that happen to be installed by osls.
+
+If your published plugin imports SDK clients at runtime, declare them in
 `dependencies`:
 
 ```json
@@ -212,9 +216,9 @@ If your published plugin imports AWS SDK v3 clients at runtime, declare them in
 }
 ```
 
-If your plugin publishes a self-contained bundle that includes AWS SDK v3 client
-code, declare those clients in `devDependencies` instead and make sure your
-bundler does not externalize them:
+If your plugin publishes a self-contained bundle that includes SDK client code,
+declare those clients in `devDependencies` instead and make sure your bundler
+does not externalize them:
 
 ```json
 {
@@ -224,8 +228,9 @@ bundler does not externalize them:
 }
 ```
 
-Use `provider.getAwsSdkV3Config()` to get osls-resolved AWS configuration for
-those clients:
+### Configure clients
+
+Use `provider.getAwsSdkV3Config()` when constructing AWS SDK v3 clients:
 
 ```javascript
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
@@ -233,28 +238,43 @@ const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 class MyPlugin {
   constructor(serverless) {
     this.provider = serverless.getProvider('aws');
+    this.s3ClientPromise = null;
   }
 
-  async upload() {
-    const config = await this.provider.getAwsSdkV3Config();
-    const s3 = new S3Client(config);
+  async getS3Client() {
+    this.s3ClientPromise ||= this.provider
+      .getAwsSdkV3Config()
+      .then((config) => new S3Client(config));
+
+    return this.s3ClientPromise;
+  }
+
+  async upload({ bucket, key, body }) {
+    const s3 = await this.getS3Client();
 
     await s3.send(
       new PutObjectCommand({
-        Bucket: 'bucket',
-        Key: 'key',
-        Body: 'body',
+        Bucket: bucket,
+        Key: key,
+        Body: body,
       })
     );
   }
 }
+
+module.exports = MyPlugin;
 ```
 
 `provider.getAwsSdkV3Config(options)` returns AWS SDK v3 client configuration,
 including osls-resolved region, credentials, retry settings, and proxy,
-custom CA, or timeout configuration.
+custom CA, or timeout configuration. The returned `credentials` value is a
+credential provider function and should be passed to AWS SDK v3 clients
+unchanged.
 
-The returned `credentials` value is an AWS SDK v3 credential provider function.
+Create separate client instances when you need different regions, profiles, or
+client options.
+
+### Configuration options
 
 Supported osls-specific options are:
 
@@ -264,10 +284,15 @@ Supported osls-specific options are:
 Other AWS SDK v3 client options, such as `endpoint`, `logger`, `requestHandler`,
 `forcePathStyle`, or `useAccelerateEndpoint`, are passed through to the returned config.
 
-`provider.request()` and `provider.sdk` are legacy AWS SDK v2 surfaces retained
-for compatibility until the next major release. Core osls internals that have not
-migrated still use that legacy path. They are not the recommended AWS SDK v3
-plugin API, so this section describes the plugin-created SDK v3 client path only.
+For example:
+
+```javascript
+const config = await this.provider.getAwsSdkV3Config({
+  region: 'us-west-2',
+  forcePathStyle: true,
+});
+const s3 = new S3Client(config);
+```
 
 ## ESM plugins
 
