@@ -91,12 +91,7 @@
     "ws": "^8.20.0"
   },
   "scripts": {
-    "integration-test-cleanup": "node test/utils/aws-cleanup.js",
-    "integration-test-run-all": "mocha --config test/mocha/integration.cjs --parallel --jobs 20 \"test/integration/**/*.test.js\"",
-    "integration-test-run-basic": "mocha --config test/mocha/integration.cjs test/integration-basic.test.js",
     "integration-test-run-package": "mocha --config test/mocha/package.cjs \"test/integration-package/**/*.tests.js\"",
-    "integration-test-setup": "node ./scripts/test/integration-setup/index.js",
-    "integration-test-teardown": "node ./scripts/test/integration-teardown.js",
     "lint": "eslint .",
     "lint:updated": "pipe-git-updated --ext=cjs --ext=js --ext=mjs --base=main -- eslint",
     "prettier-check": "prettier -c \"**/*.{cjs,css,html,js,json,md,mjs,yaml,yml}\"",

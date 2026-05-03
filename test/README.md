@@ -36,42 +36,10 @@ If we're about to add new tests to an existing test file with tests written old 
 
 _Note: PR's which rewrite existing tests into new method are very welcome! (but, ideally each PR should cover single test file rewrite)_
 
-## AWS Integration tests
+## Package integration tests
 
-Run all tests via:
-
-```
-AWS_ACCESS_KEY_ID=XXX AWS_SECRET_ACCESS_KEY=xxx npm run integration-test-run-all
-```
-
-_Note: Home folder is mocked for test run, therefore relying on `AWS_PROFILE` won't work. _ and _secret key_, need to be configured directly into env variables\_
-
-_Note: Some integration tests depend on shared infrastructure stack (see below)_
-
-Ideally any feature that integrates with AWS functionality should be backed by integration test.
-
-Check existing set of AWS integration tests at [test/integration](./integration)
-
-### Running specific integration test
-
-Pass test file to Mocha directly as follows
+Package integration tests live under [test/integration-package](./integration-package) and run in CI with:
 
 ```
-AWS_ACCESS_KEY_ID=XXX AWS_SECRET_ACCESS_KEY=xxx npx mocha test/integration/{chosen}.test.js
+npm run integration-test-run-package
 ```
-
-### Tests that depend on shared infrastructure stack
-
-Due to the fact that some of the tests require a bit more complex infrastructure setup which might be lengthy, two additional commands has been made available:
-
-- `integration-test-setup` - used for setting up all needed infrastructure dependencies
-- `integration-test-teardown` - used for tearing down the infrastructure setup by the above command
-
-Such tests take advantage of `isDependencyStackAvailable` util to check if all needed dependencies are ready. If not, it skips the given test suite.
-
-Examples of such tests:
-
-- [MSK](./integration/aws/infra-dependent/msk.test.js)
-- [ActiveMQ](./integration/infra-dependent/active-mq.test.js)
-- [RabbitMQ](./integration/infra-dependent/rabbit-mq.test.js)
-- [FileSystemConfig](./integration/infra-dependent/file-system-config.test.js)
