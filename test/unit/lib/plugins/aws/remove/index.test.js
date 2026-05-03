@@ -211,7 +211,7 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
   it('executes expected operations during removal when repository does not exist', async () => {
     describeRepositoriesStub.throws({ providerError: { code: 'RepositoryNotFoundException' } });
 
-    const { awsNaming } = await runServerless({
+    const { awsNaming, awsSdkV3Stub, serverless } = await runServerless({
       fixture: 'function',
       command: 'remove',
       awsRequestStubMap,
@@ -231,6 +231,26 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
     expect(deleteStackStub.calledAfter(deleteObjectsStub)).to.be.true;
     expect(describeStackEventsStub.calledAfter(deleteStackStub)).to.be.true;
     expect(deleteRepositoryStub).not.to.be.called;
+    const cloudFormationSends = awsSdkV3Stub.sends.filter(
+      ({ service }) => service === 'CloudFormation'
+    );
+    expect(cloudFormationSends.map(({ method }) => method)).to.include.members([
+      'deleteStack',
+      'describeStackEvents',
+    ]);
+    expect(cloudFormationSends.find(({ method }) => method === 'deleteStack').input).to.deep.equal({
+      StackName: awsNaming.getStackName(),
+    });
+    const expectedCredentials = serverless.getProvider('aws').getAwsSdkV3CredentialsProvider();
+    expect(
+      cloudFormationSends.every(
+        ({ clientConfig }) =>
+          clientConfig.region === 'us-east-1' && clientConfig.credentials === expectedCredentials
+      )
+    ).to.equal(true);
+    expect(
+      cloudFormationSends.find(({ method }) => method === 'describeStackEvents').client
+    ).to.equal(cloudFormationSends.find(({ method }) => method === 'deleteStack').client);
   });
 
   it('executes expected operations during removal when repository cannot be accessed due to denied access', async () => {

@@ -5,6 +5,7 @@ const sinon = require('sinon');
 const AwsProvider = require('../../../../../../../lib/plugins/aws/provider');
 const AwsRemove = require('../../../../../../../lib/plugins/aws/remove/index');
 const Serverless = require('../../../../../../../lib/serverless');
+const { CloudFormationClient, DeleteStackCommand } = require('@aws-sdk/client-cloudformation');
 
 describe('removeStack', () => {
   const options = {
@@ -21,20 +22,44 @@ describe('removeStack', () => {
   beforeEach(() => {
     awsRemove = new AwsRemove(serverless, options);
     awsRemove.serverless.cli = new serverless.classes.CLI();
-    removeStackStub = sinon.stub(awsRemove.provider, 'request').resolves();
+    removeStackStub = sinon.stub(CloudFormationClient.prototype, 'send').resolves();
+  });
+
+  afterEach(() => {
+    CloudFormationClient.prototype.send.restore();
   });
 
   describe('#remove()', () => {
     it('should remove a stack', async () =>
-      awsRemove.remove().then(() => {
+      awsRemove.remove().then((result) => {
+        const stackName = `${serverless.service.service}-${awsRemove.provider.getStage()}`;
+
+        expect(result).to.deep.equal({ StackId: stackName });
         expect(removeStackStub.calledOnce).to.be.equal(true);
-        expect(
-          removeStackStub.calledWithExactly('CloudFormation', 'deleteStack', {
-            StackName: `${serverless.service.service}-${awsRemove.provider.getStage()}`,
-          })
-        ).to.be.equal(true);
-        awsRemove.provider.request.restore();
+        expect(removeStackStub.firstCall.args[0]).to.be.instanceOf(DeleteStackCommand);
+        expect(removeStackStub.firstCall.args[0].input).to.deep.equal({ StackName: stackName });
       }));
+
+    it('uses an existing CloudFormation client promise from the plugin context', async () => {
+      const send = sinon.stub().resolves();
+      sinon
+        .stub(awsRemove.provider, 'getAwsSdkV3Config')
+        .throws(new Error('Expected existing CloudFormation client to be reused'));
+      awsRemove.cloudFormationClientPromise = Promise.resolve({ send });
+
+      try {
+        const result = await awsRemove.remove();
+        const stackName = `${serverless.service.service}-${awsRemove.provider.getStage()}`;
+
+        expect(result).to.deep.equal({ StackId: stackName });
+        expect(awsRemove.provider.getAwsSdkV3Config).to.not.have.been.called;
+        expect(send).to.have.been.calledOnce;
+        expect(send.firstCall.args[0]).to.be.instanceOf(DeleteStackCommand);
+        expect(send.firstCall.args[0].input).to.deep.equal({ StackName: stackName });
+      } finally {
+        awsRemove.provider.getAwsSdkV3Config.restore();
+      }
+    });
 
     it('should use CloudFormation service role if it is specified', async () => {
       awsRemove.serverless.service.provider.iam = {
@@ -42,10 +67,10 @@ describe('removeStack', () => {
       };
 
       return awsRemove.remove().then(() => {
-        expect(removeStackStub.args[0][2].RoleARN).to.equal(
+        expect(removeStackStub.firstCall.args[0]).to.be.instanceOf(DeleteStackCommand);
+        expect(removeStackStub.firstCall.args[0].input.RoleARN).to.equal(
           'arn:aws:iam::123456789012:role/myrole'
         );
-        awsRemove.provider.request.restore();
       });
     });
   });

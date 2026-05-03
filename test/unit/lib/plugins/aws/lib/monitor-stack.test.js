@@ -2,10 +2,15 @@
 
 const chai = require('chai');
 const sinon = require('sinon');
+const proxyquire = require('proxyquire');
 const Serverless = require('../../../../../../lib/serverless');
 const AwsProvider = require('../../../../../../lib/plugins/aws/provider');
 const CLI = require('../../../../../../lib/classes/cli');
 const monitorStack = require('../../../../../../lib/plugins/aws/lib/monitor-stack');
+const {
+  CloudFormationClient,
+  DescribeStackEventsCommand,
+} = require('@aws-sdk/client-cloudformation');
 
 const { expect } = chai;
 
@@ -26,18 +31,200 @@ describe('monitorStack', () => {
     Object.assign(awsPlugin, monitorStack);
   });
 
+  afterEach(() => {
+    delete awsPlugin.cloudFormationClientPromise;
+    if (CloudFormationClient.prototype.send.restore) {
+      CloudFormationClient.prototype.send.restore();
+    }
+  });
+
+  const stubDescribeStackEvents = () => {
+    const describeStackEventsStub = sinon.stub();
+    const sendStub = sinon.stub(CloudFormationClient.prototype, 'send').callsFake((command) => {
+      expect(command).to.be.instanceOf(DescribeStackEventsCommand);
+      return describeStackEventsStub('CloudFormation', 'describeStackEvents', command.input);
+    });
+    describeStackEventsStub.sendStub = sendStub;
+    return describeStackEventsStub;
+  };
+
   describe('#monitorStack()', () => {
+    it('passes credential provider unchanged to the CloudFormation client constructor', async () => {
+      const credentials = async () => ({ accessKeyId: 'key', secretAccessKey: 'secret' });
+      const clientConfigs = [];
+      const commands = [];
+      class StubCloudFormationClient {
+        constructor(config) {
+          clientConfigs.push(config);
+        }
+
+        async send(command) {
+          commands.push(command);
+          return {
+            StackEvents: [
+              {
+                EventId: 'complete',
+                StackName: 'stack-id',
+                LogicalResourceId: 'stack-id',
+                ResourceType: 'AWS::CloudFormation::Stack',
+                ResourceStatus: 'CREATE_COMPLETE',
+              },
+              {
+                EventId: 'start',
+                StackName: 'stack-id',
+                LogicalResourceId: 'stack-id',
+                ResourceType: 'AWS::CloudFormation::Stack',
+                ResourceStatus: 'CREATE_IN_PROGRESS',
+              },
+            ],
+          };
+        }
+      }
+      const monitorStackWithStub = proxyquire(
+        '../../../../../../lib/plugins/aws/lib/monitor-stack',
+        {
+          '../../../utils/sleep': sinon.stub().resolves(),
+          '@aws-sdk/client-cloudformation': {
+            CloudFormationClient: StubCloudFormationClient,
+            DescribeStackEventsCommand,
+          },
+        }
+      );
+      const plugin = {
+        provider: {
+          getAwsSdkV3Config: sinon.stub().resolves({ region: 'us-west-2', credentials }),
+        },
+        options: {},
+        ...monitorStackWithStub,
+      };
+
+      const stackStatus = await plugin.checkStackProgress(
+        'create',
+        { StackId: 'stack-id' },
+        'https://example.test/stack',
+        { frequency: 0 },
+        {}
+      );
+
+      expect(stackStatus).to.equal('CREATE_COMPLETE');
+      expect(clientConfigs).to.have.length(1);
+      expect(clientConfigs[0].region).to.equal('us-west-2');
+      expect(clientConfigs[0].credentials).to.equal(credentials);
+      expect(commands).to.have.length(1);
+      expect(commands[0]).to.be.instanceOf(DescribeStackEventsCommand);
+    });
+
     it('should skip monitoring if the stack was already created', async () => {
-      const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+      const describeStackEventsStub = stubDescribeStackEvents();
 
       return awsPlugin.monitorStack('update', 'alreadyCreated', { frequency: 10 }).then(() => {
         expect(describeStackEventsStub.callCount).to.be.equal(0);
-        awsPlugin.provider.request.restore();
       });
     });
 
+    it('reuses one CloudFormation client across stack monitoring polls', async () => {
+      const cloudFormationClients = [];
+      let sendCount = 0;
+      class FakeDescribeStackEventsCommand {
+        constructor(input) {
+          this.input = input;
+        }
+      }
+      class FakeCloudFormationClient {
+        constructor(config) {
+          this.config = config;
+          cloudFormationClients.push(this);
+        }
+
+        async send(command) {
+          expect(command).to.be.instanceOf(FakeDescribeStackEventsCommand);
+          expect(command.input).to.deep.equal({ StackName: 'new-service-dev' });
+          sendCount += 1;
+          if (sendCount === 1) {
+            return {
+              StackEvents: [
+                {
+                  EventId: 'start',
+                  StackName: 'new-service-dev',
+                  LogicalResourceId: 'new-service-dev',
+                  ResourceType: 'AWS::CloudFormation::Stack',
+                  ResourceStatus: 'CREATE_IN_PROGRESS',
+                },
+              ],
+            };
+          }
+          return {
+            StackEvents: [
+              {
+                EventId: 'done',
+                StackName: 'new-service-dev',
+                LogicalResourceId: 'new-service-dev',
+                ResourceType: 'AWS::CloudFormation::Stack',
+                ResourceStatus: 'CREATE_COMPLETE',
+              },
+            ],
+          };
+        }
+      }
+      const monitorStackWithClientStub = proxyquire(
+        '../../../../../../lib/plugins/aws/lib/monitor-stack',
+        {
+          '../../../utils/sleep': sinon.stub().resolves(),
+          '@aws-sdk/client-cloudformation': {
+            CloudFormationClient: FakeCloudFormationClient,
+            DescribeStackEventsCommand: FakeDescribeStackEventsCommand,
+          },
+        }
+      );
+      Object.assign(awsPlugin, monitorStackWithClientStub);
+
+      const stackStatus = await awsPlugin.monitorStack(
+        'create',
+        { StackId: 'new-service-dev', Changes: [] },
+        { frequency: 10 }
+      );
+
+      expect(stackStatus).to.equal('CREATE_COMPLETE');
+      expect(sendCount).to.equal(2);
+      expect(cloudFormationClients).to.have.length(1);
+    });
+
+    it('uses an existing CloudFormation client promise from the plugin context', async () => {
+      const send = sinon.stub().resolves({
+        StackEvents: [
+          {
+            EventId: 'done',
+            StackName: 'stack-id',
+            LogicalResourceId: 'stack-id',
+            ResourceType: 'AWS::CloudFormation::Stack',
+            ResourceStatus: 'CREATE_COMPLETE',
+          },
+        ],
+      });
+      const getAwsSdkV3ConfigStub = sinon
+        .stub(awsPlugin.provider, 'getAwsSdkV3Config')
+        .throws(new Error('Expected existing CloudFormation client to be reused'));
+      awsPlugin.cloudFormationClientPromise = Promise.resolve({ send });
+
+      try {
+        const stackStatus = await awsPlugin.monitorStack(
+          'create',
+          { StackId: 'stack-id' },
+          { frequency: 10 }
+        );
+
+        expect(stackStatus).to.equal('CREATE_COMPLETE');
+        expect(getAwsSdkV3ConfigStub).to.not.have.been.called;
+        expect(send).to.have.been.calledOnce;
+        expect(send.firstCall.args[0]).to.be.instanceOf(DescribeStackEventsCommand);
+        expect(send.firstCall.args[0].input).to.deep.equal({ StackName: 'stack-id' });
+      } finally {
+        getAwsSdkV3ConfigStub.restore();
+      }
+    });
+
     it('should keep monitoring until CREATE_COMPLETE stack status', async () => {
-      const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+      const describeStackEventsStub = stubDescribeStackEvents();
       const cfDataMock = {
         StackId: 'new-service-dev',
       };
@@ -77,12 +264,11 @@ describe('monitorStack', () => {
           })
         ).to.be.equal(true);
         expect(stackStatus).to.be.equal('CREATE_COMPLETE');
-        awsPlugin.provider.request.restore();
       });
     });
 
     it('should keep monitoring until UPDATE_COMPLETE stack status', async () => {
-      const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+      const describeStackEventsStub = stubDescribeStackEvents();
       const cfDataMock = {
         StackId: 'new-service-dev',
       };
@@ -122,12 +308,11 @@ describe('monitorStack', () => {
           })
         ).to.be.equal(true);
         expect(stackStatus).to.be.equal('UPDATE_COMPLETE');
-        awsPlugin.provider.request.restore();
       });
     });
 
     it('should keep monitoring until DELETE_COMPLETE stack status', async () => {
-      const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+      const describeStackEventsStub = stubDescribeStackEvents();
       const cfDataMock = {
         StackId: 'new-service-dev',
       };
@@ -167,12 +352,11 @@ describe('monitorStack', () => {
           })
         ).to.be.equal(true);
         expect(stackStatus).to.be.equal('DELETE_COMPLETE');
-        awsPlugin.provider.request.restore();
       });
     });
 
     it('should not stop monitoring on CREATE_COMPLETE nested stack status', async () => {
-      const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+      const describeStackEventsStub = stubDescribeStackEvents();
       const cfDataMock = {
         StackId: 'new-service-dev',
       };
@@ -225,12 +409,11 @@ describe('monitorStack', () => {
           })
         ).to.be.equal(true);
         expect(stackStatus).to.be.equal('CREATE_COMPLETE');
-        awsPlugin.provider.request.restore();
       });
     });
 
     it('should not stop monitoring on UPDATE_COMPLETE nested stack status', async () => {
-      const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+      const describeStackEventsStub = stubDescribeStackEvents();
       const cfDataMock = {
         StackId: 'new-service-dev',
       };
@@ -283,12 +466,11 @@ describe('monitorStack', () => {
           })
         ).to.be.equal(true);
         expect(stackStatus).to.be.equal('UPDATE_COMPLETE');
-        awsPlugin.provider.request.restore();
       });
     });
 
     it('should not stop monitoring on DELETE_COMPLETE nested stack status', async () => {
-      const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+      const describeStackEventsStub = stubDescribeStackEvents();
       const cfDataMock = {
         StackId: 'new-service-dev',
       };
@@ -341,12 +523,11 @@ describe('monitorStack', () => {
           })
         ).to.be.equal(true);
         expect(stackStatus).to.be.equal('DELETE_COMPLETE');
-        awsPlugin.provider.request.restore();
       });
     });
 
     it('should keep monitoring until DELETE_COMPLETE or stack not found catch', async () => {
-      const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+      const describeStackEventsStub = stubDescribeStackEvents();
       const cfDataMock = {
         StackId: 'new-service-dev',
       };
@@ -362,9 +543,9 @@ describe('monitorStack', () => {
           },
         ],
       };
-      const stackNotFoundError = {
-        message: 'Stack new-service-dev does not exist',
-      };
+      const stackNotFoundError = Object.assign(new Error('Stack new-service-dev does not exist'), {
+        name: 'ValidationError',
+      });
 
       describeStackEventsStub.onCall(0).resolves(updateStartEvent);
       describeStackEventsStub.onCall(1).rejects(stackNotFoundError);
@@ -377,13 +558,61 @@ describe('monitorStack', () => {
           })
         ).to.be.equal(true);
         expect(stackStatus).to.be.equal('DELETE_COMPLETE');
-        awsPlugin.provider.request.restore();
       });
+    });
+
+    it('should preserve first-page-only DescribeStackEvents behavior', async () => {
+      const describeStackEventsStub = stubDescribeStackEvents();
+      const cfDataMock = {
+        StackId: 'new-service-dev',
+      };
+
+      describeStackEventsStub.resolves({
+        StackEvents: [
+          {
+            EventId: '1e2f3g4h',
+            StackName: 'new-service-dev',
+            LogicalResourceId: 'new-service-dev',
+            ResourceType: 'AWS::CloudFormation::Stack',
+            Timestamp: new Date(),
+            ResourceStatus: 'CREATE_COMPLETE',
+          },
+        ],
+        NextToken: 'next-page',
+      });
+
+      const stackStatus = await awsPlugin.monitorStack('create', cfDataMock, { frequency: 10 });
+
+      expect(stackStatus).to.equal('CREATE_COMPLETE');
+      expect(describeStackEventsStub.sendStub).to.have.been.calledOnce;
+      expect(describeStackEventsStub.sendStub.firstCall.args[0].input).to.deep.equal({
+        StackName: cfDataMock.StackId,
+      });
+      expect(describeStackEventsStub).to.have.been.calledOnceWithExactly(
+        'CloudFormation',
+        'describeStackEvents',
+        { StackName: cfDataMock.StackId }
+      );
+    });
+
+    it('should not treat message-only stack-not-found errors as delete complete', async () => {
+      const describeStackEventsStub = stubDescribeStackEvents();
+      const cfDataMock = {
+        StackId: 'new-service-dev',
+      };
+      const stackNotFoundError = new Error('Stack new-service-dev does not exist');
+
+      describeStackEventsStub.rejects(stackNotFoundError);
+
+      await expect(
+        awsPlugin.monitorStack('delete', cfDataMock, { frequency: 10 })
+      ).to.eventually.be.rejectedWith('Stack new-service-dev does not exist');
+      expect(describeStackEventsStub).to.have.been.calledOnce;
     });
 
     it('should output all stack events information with the --verbose option', () => {
       awsPlugin.options.verbose = true;
-      const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+      const describeStackEventsStub = stubDescribeStackEvents();
       const cfDataMock = {
         StackId: 'new-service-dev',
       };
@@ -453,13 +682,12 @@ describe('monitorStack', () => {
             StackName: cfDataMock.StackId,
           })
         ).to.be.equal(true);
-        awsPlugin.provider.request.restore();
       });
     });
 
     it('should exit on failure with --verbose when stack status is CREATE_FAILED', async () => {
       awsPlugin.options.verbose = true;
-      const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+      const describeStackEventsStub = stubDescribeStackEvents();
       const cfDataMock = {
         StackId: 'new-service-dev',
       };
@@ -505,26 +733,22 @@ describe('monitorStack', () => {
       describeStackEventsStub.onCall(1).resolves(resourceFailedEvent);
       describeStackEventsStub.onCall(2).resolves(stackCreateFailedEvent);
 
-      try {
-        await expect(
-          awsPlugin.monitorStack('create', cfDataMock, { frequency: 10 })
-        ).to.eventually.be.rejectedWith(
-          'An error occurred: mochaLambda - Resource creation cancelled.'
-        );
-        expect(describeStackEventsStub.callCount).to.be.equal(3);
-        expect(
-          describeStackEventsStub.calledWithExactly('CloudFormation', 'describeStackEvents', {
-            StackName: cfDataMock.StackId,
-          })
-        ).to.be.equal(true);
-      } finally {
-        awsPlugin.provider.request.restore();
-      }
+      await expect(
+        awsPlugin.monitorStack('create', cfDataMock, { frequency: 10 })
+      ).to.eventually.be.rejectedWith(
+        'An error occurred: mochaLambda - Resource creation cancelled.'
+      );
+      expect(describeStackEventsStub.callCount).to.be.equal(3);
+      expect(
+        describeStackEventsStub.calledWithExactly('CloudFormation', 'describeStackEvents', {
+          StackName: cfDataMock.StackId,
+        })
+      ).to.be.equal(true);
     });
 
     it('should exit on failure with --verbose when stack status is UPDATE_FAILED', async () => {
       awsPlugin.options.verbose = true;
-      const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+      const describeStackEventsStub = stubDescribeStackEvents();
       const cfDataMock = {
         StackId: 'new-service-dev',
       };
@@ -570,26 +794,22 @@ describe('monitorStack', () => {
       describeStackEventsStub.onCall(1).resolves(resourceFailedEvent);
       describeStackEventsStub.onCall(2).resolves(stackUpdateFailedEvent);
 
-      try {
-        await expect(
-          awsPlugin.monitorStack('update', cfDataMock, { frequency: 10 })
-        ).to.eventually.be.rejectedWith(
-          'An error occurred: mochaApiGw - Invalid stage identifier specified.'
-        );
-        expect(describeStackEventsStub.callCount).to.be.equal(3);
-        expect(
-          describeStackEventsStub.calledWithExactly('CloudFormation', 'describeStackEvents', {
-            StackName: cfDataMock.StackId,
-          })
-        ).to.be.equal(true);
-      } finally {
-        awsPlugin.provider.request.restore();
-      }
+      await expect(
+        awsPlugin.monitorStack('update', cfDataMock, { frequency: 10 })
+      ).to.eventually.be.rejectedWith(
+        'An error occurred: mochaApiGw - Invalid stage identifier specified.'
+      );
+      expect(describeStackEventsStub.callCount).to.be.equal(3);
+      expect(
+        describeStackEventsStub.calledWithExactly('CloudFormation', 'describeStackEvents', {
+          StackName: cfDataMock.StackId,
+        })
+      ).to.be.equal(true);
     });
 
     it('should exit on failure with --verbose when stack status is ROLLBACK_FAILED', async () => {
       awsPlugin.options.verbose = true;
-      const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+      const describeStackEventsStub = stubDescribeStackEvents();
       const cfDataMock = {
         StackId: 'new-service-dev',
       };
@@ -648,26 +868,22 @@ describe('monitorStack', () => {
       describeStackEventsStub.onCall(2).resolves(rollbackInProgressEvent);
       describeStackEventsStub.onCall(3).resolves(rollbackFailedEvent);
 
-      try {
-        await expect(
-          awsPlugin.monitorStack('create', cfDataMock, { frequency: 10 })
-        ).to.eventually.be.rejectedWith(
-          'An error occurred: mochaLambda - Resource creation cancelled.'
-        );
-        expect(describeStackEventsStub.callCount).to.be.equal(4);
-        expect(
-          describeStackEventsStub.calledWithExactly('CloudFormation', 'describeStackEvents', {
-            StackName: cfDataMock.StackId,
-          })
-        ).to.be.equal(true);
-      } finally {
-        awsPlugin.provider.request.restore();
-      }
+      await expect(
+        awsPlugin.monitorStack('create', cfDataMock, { frequency: 10 })
+      ).to.eventually.be.rejectedWith(
+        'An error occurred: mochaLambda - Resource creation cancelled.'
+      );
+      expect(describeStackEventsStub.callCount).to.be.equal(4);
+      expect(
+        describeStackEventsStub.calledWithExactly('CloudFormation', 'describeStackEvents', {
+          StackName: cfDataMock.StackId,
+        })
+      ).to.be.equal(true);
     });
 
     it('should exit on failure with --verbose when stack status is UPDATE_ROLLBACK_FAILED', async () => {
       awsPlugin.options.verbose = true;
-      const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+      const describeStackEventsStub = stubDescribeStackEvents();
       const cfDataMock = {
         StackId: 'new-service-dev',
       };
@@ -726,25 +942,21 @@ describe('monitorStack', () => {
       describeStackEventsStub.onCall(2).resolves(updateRollbackInProgressEvent);
       describeStackEventsStub.onCall(3).resolves(updateRollbackFailedEvent);
 
-      try {
-        await expect(
-          awsPlugin.monitorStack('update', cfDataMock, { frequency: 10 })
-        ).to.eventually.be.rejectedWith(
-          'An error occurred: mochaApiGw - Invalid stage identifier specified.'
-        );
-        expect(describeStackEventsStub.callCount).to.be.equal(4);
-        expect(
-          describeStackEventsStub.calledWithExactly('CloudFormation', 'describeStackEvents', {
-            StackName: cfDataMock.StackId,
-          })
-        ).to.be.equal(true);
-      } finally {
-        awsPlugin.provider.request.restore();
-      }
+      await expect(
+        awsPlugin.monitorStack('update', cfDataMock, { frequency: 10 })
+      ).to.eventually.be.rejectedWith(
+        'An error occurred: mochaApiGw - Invalid stage identifier specified.'
+      );
+      expect(describeStackEventsStub.callCount).to.be.equal(4);
+      expect(
+        describeStackEventsStub.calledWithExactly('CloudFormation', 'describeStackEvents', {
+          StackName: cfDataMock.StackId,
+        })
+      ).to.be.equal(true);
     });
 
     it('should keep monitoring when 1st ResourceType is not "AWS::CloudFormation::Stack"', async () => {
-      const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+      const describeStackEventsStub = stubDescribeStackEvents();
       const cfDataMock = {
         StackId: 'new-service-dev',
       };
@@ -794,12 +1006,11 @@ describe('monitorStack', () => {
             StackName: cfDataMock.StackId,
           })
         ).to.be.equal(true);
-        awsPlugin.provider.request.restore();
       });
     });
 
     it('should catch describeStackEvents error if stack was not in deleting state', () => {
-      const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+      const describeStackEventsStub = stubDescribeStackEvents();
       const cfDataMock = {
         StackId: 'new-service-dev',
       };
@@ -817,12 +1028,11 @@ describe('monitorStack', () => {
             StackName: cfDataMock.StackId,
           })
         ).to.be.equal(true);
-        awsPlugin.provider.request.restore();
       });
     });
 
     it('should throw an error and exit immediately if stack status is *_FAILED', () => {
-      const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+      const describeStackEventsStub = stubDescribeStackEvents();
       const cfDataMock = {
         StackId: 'new-service-dev',
       };
@@ -889,12 +1099,11 @@ describe('monitorStack', () => {
             StackName: cfDataMock.StackId,
           })
         ).to.be.equal(true);
-        awsPlugin.provider.request.restore();
       });
     });
 
     it('should throw an error and exit immediately if stack status is DELETE_FAILED', () => {
-      const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+      const describeStackEventsStub = stubDescribeStackEvents();
       const cfDataMock = {
         StackId: 'new-service-dev',
       };
@@ -965,7 +1174,6 @@ describe('monitorStack', () => {
             StackName: cfDataMock.StackId,
           })
         ).to.be.equal(true);
-        awsPlugin.provider.request.restore();
       });
     });
 
@@ -974,7 +1182,7 @@ describe('monitorStack', () => {
         'stack events information with the --verbose option',
       () => {
         awsPlugin.options.verbose = true;
-        const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+        const describeStackEventsStub = stubDescribeStackEvents();
         const cfDataMock = {
           StackId: 'new-service-dev',
         };
@@ -1045,7 +1253,6 @@ describe('monitorStack', () => {
               StackName: cfDataMock.StackId,
             })
           ).to.be.equal(true);
-          awsPlugin.provider.request.restore();
         });
       }
     );
@@ -1055,7 +1262,7 @@ describe('monitorStack', () => {
         'stack events information with the --verbose option',
       async () => {
         awsPlugin.options.verbose = true;
-        const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+        const describeStackEventsStub = stubDescribeStackEvents();
         const cfDataMock = {
           StackId: 'new-service-dev',
         };
@@ -1116,12 +1323,11 @@ describe('monitorStack', () => {
         await expect(
           awsPlugin.monitorStack('create', cfDataMock, { frequency: 10 })
         ).to.eventually.be.rejectedWith('myBucket - Invalid Property for X.');
-        awsPlugin.provider.request.restore();
       }
     );
 
     it('should report root DELETE_IN_PROGRESS as a create failure', async () => {
-      const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+      const describeStackEventsStub = stubDescribeStackEvents();
       const cfDataMock = {
         StackId: 'new-service-dev',
       };
@@ -1154,21 +1360,17 @@ describe('monitorStack', () => {
       describeStackEventsStub.onCall(0).resolves(createStartEvent);
       describeStackEventsStub.onCall(1).resolves(deleteInProgressEvent);
 
-      try {
-        await expect(
-          awsPlugin.monitorStack('create', cfDataMock, { frequency: 10 })
-        ).to.eventually.be.rejectedWith(
-          'An error occurred: new-service-dev - No export named missing-export found. Delete requested by user.'
-        );
-        expect(describeStackEventsStub.callCount).to.be.equal(2);
-        expect(
-          describeStackEventsStub.calledWithExactly('CloudFormation', 'describeStackEvents', {
-            StackName: cfDataMock.StackId,
-          })
-        ).to.be.equal(true);
-      } finally {
-        describeStackEventsStub.restore();
-      }
+      await expect(
+        awsPlugin.monitorStack('create', cfDataMock, { frequency: 10 })
+      ).to.eventually.be.rejectedWith(
+        'An error occurred: new-service-dev - No export named missing-export found. Delete requested by user.'
+      );
+      expect(describeStackEventsStub.callCount).to.be.equal(2);
+      expect(
+        describeStackEventsStub.calledWithExactly('CloudFormation', 'describeStackEvents', {
+          StackName: cfDataMock.StackId,
+        })
+      ).to.be.equal(true);
     });
 
     it(
@@ -1176,7 +1378,7 @@ describe('monitorStack', () => {
         '--verbose option after cleanup',
       async () => {
         awsPlugin.options.verbose = true;
-        const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+        const describeStackEventsStub = stubDescribeStackEvents();
         const cfDataMock = {
           StackId: 'new-service-dev',
         };
@@ -1223,26 +1425,22 @@ describe('monitorStack', () => {
         describeStackEventsStub.onCall(1).resolves(deleteInProgressEvent);
         describeStackEventsStub.onCall(2).resolves(deleteCompleteEvent);
 
-        try {
-          await expect(
-            awsPlugin.monitorStack('create', cfDataMock, { frequency: 10 })
-          ).to.eventually.be.rejectedWith(
-            'An error occurred: new-service-dev - No export named missing-export found. Delete requested by user.'
-          );
-          expect(describeStackEventsStub.callCount).to.be.equal(3);
-          expect(
-            describeStackEventsStub.calledWithExactly('CloudFormation', 'describeStackEvents', {
-              StackName: cfDataMock.StackId,
-            })
-          ).to.be.equal(true);
-        } finally {
-          describeStackEventsStub.restore();
-        }
+        await expect(
+          awsPlugin.monitorStack('create', cfDataMock, { frequency: 10 })
+        ).to.eventually.be.rejectedWith(
+          'An error occurred: new-service-dev - No export named missing-export found. Delete requested by user.'
+        );
+        expect(describeStackEventsStub.callCount).to.be.equal(3);
+        expect(
+          describeStackEventsStub.calledWithExactly('CloudFormation', 'describeStackEvents', {
+            StackName: cfDataMock.StackId,
+          })
+        ).to.be.equal(true);
       }
     );
 
     it('should not report nested stack DELETE_IN_PROGRESS during update as a root stack failure', async () => {
-      const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+      const describeStackEventsStub = stubDescribeStackEvents();
       const cfDataMock = {
         StackId: 'new-service-dev',
       };
@@ -1287,25 +1485,21 @@ describe('monitorStack', () => {
       describeStackEventsStub.onCall(1).resolves(nestedStackDeleteEvent);
       describeStackEventsStub.onCall(2).resolves(updateCompleteEvent);
 
-      try {
-        const stackStatus = await awsPlugin.monitorStack('update', cfDataMock, {
-          frequency: 10,
-        });
-        expect(stackStatus).to.be.equal('UPDATE_COMPLETE');
-        expect(describeStackEventsStub.callCount).to.be.equal(3);
-        expect(
-          describeStackEventsStub.calledWithExactly('CloudFormation', 'describeStackEvents', {
-            StackName: cfDataMock.StackId,
-          })
-        ).to.be.equal(true);
-      } finally {
-        describeStackEventsStub.restore();
-      }
+      const stackStatus = await awsPlugin.monitorStack('update', cfDataMock, {
+        frequency: 10,
+      });
+      expect(stackStatus).to.be.equal('UPDATE_COMPLETE');
+      expect(describeStackEventsStub.callCount).to.be.equal(3);
+      expect(
+        describeStackEventsStub.calledWithExactly('CloudFormation', 'describeStackEvents', {
+          StackName: cfDataMock.StackId,
+        })
+      ).to.be.equal(true);
     });
 
     it('should resolve properly first stack event (when CREATE fails and is followed with DELETE)', async () => {
       awsPlugin.options.verbose = true;
-      const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+      const describeStackEventsStub = stubDescribeStackEvents();
       const cfDataMock = {
         StackId: 'new-service-dev',
       };
@@ -1361,11 +1555,10 @@ describe('monitorStack', () => {
       await expect(
         awsPlugin.monitorStack('create', cfDataMock, { frequency: 10 })
       ).to.eventually.be.rejectedWith('myBucket - Invalid Property for X.');
-      awsPlugin.provider.request.restore();
     });
 
     it('should record an error and fail if status is UPDATE_ROLLBACK_IN_PROGRESS', () => {
-      const describeStackEventsStub = sinon.stub(awsPlugin.provider, 'request');
+      const describeStackEventsStub = stubDescribeStackEvents();
       const cfDataMock = {
         StackId: 'new-service-dev',
       };
@@ -1419,7 +1612,6 @@ describe('monitorStack', () => {
             StackName: cfDataMock.StackId,
           })
         ).to.be.equal(true);
-        awsPlugin.provider.request.restore();
       });
     });
   });

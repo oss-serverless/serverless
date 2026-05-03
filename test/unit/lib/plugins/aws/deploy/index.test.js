@@ -18,12 +18,20 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
     },
   };
 
+  const createCloudFormationValidationError = (message) =>
+    Object.assign(new Error(message), { name: 'ValidationError' });
+
+  const getCloudFormationSends = (awsSdkV3Stub, method) =>
+    awsSdkV3Stub.sends.filter(
+      ({ service, method: sendMethod }) => service === 'CloudFormation' && sendMethod === method
+    );
+
   describe('with direct create/update calls', () => {
     it('with nonexistent stack - first deploy', async () => {
       const describeStacksStub = sinon
         .stub()
         .onFirstCall()
-        .throws('error', 'stack does not exist')
+        .throws(createCloudFormationValidationError('stack does not exist'))
         .onSecondCall()
         .resolves({ Stacks: [{}] });
       const createStackStub = sinon.stub().resolves({});
@@ -67,7 +75,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
         },
       };
 
-      await runServerless({
+      const { serverless, awsSdkV3Stub } = await runServerless({
         fixture: 'function',
         command: 'deploy',
         awsRequestStubMap,
@@ -80,6 +88,19 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
 
       expect(createStackStub).to.be.calledOnce;
       expect(updateStackStub).to.be.calledOnce;
+      const createStackSends = getCloudFormationSends(awsSdkV3Stub, 'createStack');
+      const updateStackSends = getCloudFormationSends(awsSdkV3Stub, 'updateStack');
+      const validateTemplateSends = getCloudFormationSends(awsSdkV3Stub, 'validateTemplate');
+      expect(createStackSends).to.have.length(1);
+      expect(updateStackSends).to.have.length(1);
+      expect(validateTemplateSends).to.have.length(1);
+      expect(updateStackSends[0].client).to.equal(createStackSends[0].client);
+      expect(validateTemplateSends[0].client).to.equal(createStackSends[0].client);
+      const expectedCredentials = serverless.getProvider('aws').getAwsSdkV3CredentialsProvider();
+      expect(createStackSends[0].clientConfig.region).to.equal('us-east-1');
+      expect(createStackSends[0].clientConfig.credentials).to.equal(expectedCredentials);
+      expect(updateStackSends[0].clientConfig.region).to.equal('us-east-1');
+      expect(updateStackSends[0].clientConfig.credentials).to.equal(expectedCredentials);
       const wasCloudFormationTemplateUploadInitiated = s3UploadStub.args.some((call) =>
         call[0].Key.endsWith('compiled-cloudformation-template.json')
       );
@@ -91,7 +112,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       const describeStacksStub = sinon
         .stub()
         .onFirstCall()
-        .throws('error', 'stack does not exist')
+        .throws(createCloudFormationValidationError('stack does not exist'))
         .onSecondCall()
         .resolves({ Stacks: [{}] });
       const createStackStub = sinon.stub().resolves({});
@@ -160,6 +181,52 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       );
       expect(wasCloudFormationTemplateUploadInitiated).to.be.true;
       expect(deleteObjectsStub).not.to.be.called;
+    });
+
+    it('does not treat message-only stack-not-found errors as missing stacks', async () => {
+      await expect(
+        runServerless({
+          fixture: 'function',
+          command: 'deploy',
+          awsRequestStubMap: {
+            ...baseAwsRequestStubMap,
+            CloudFormation: {
+              describeStacks: () => {
+                throw new Error('stack does not exist');
+              },
+            },
+          },
+          configExt: {
+            provider: {
+              deploymentMethod: 'direct',
+            },
+          },
+        })
+      ).to.eventually.be.rejectedWith('stack does not exist');
+    });
+
+    it('does not treat credential provider errors as missing stacks', async () => {
+      await expect(
+        runServerless({
+          fixture: 'function',
+          command: 'deploy',
+          awsRequestStubMap: {
+            ...baseAwsRequestStubMap,
+            CloudFormation: {
+              describeStacks: () => {
+                throw Object.assign(new Error('stack does not exist'), {
+                  name: 'CredentialsProviderError',
+                });
+              },
+            },
+          },
+          configExt: {
+            provider: {
+              deploymentMethod: 'direct',
+            },
+          },
+        })
+      ).to.eventually.be.rejectedWith('stack does not exist');
     });
 
     it('with existing stack - subsequent deploy', async () => {
@@ -268,6 +335,105 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       });
     });
 
+    it('does not treat message-only direct update no-op errors as expected no-ops', async () => {
+      await expect(
+        runServerless({
+          fixture: 'function',
+          command: 'deploy',
+          options: {
+            force: true,
+          },
+          awsRequestStubMap: {
+            ...baseAwsRequestStubMap,
+            ECR: {
+              describeRepositories: sinon.stub().throws({
+                providerError: { code: 'RepositoryNotFoundException' },
+              }),
+            },
+            S3: {
+              listObjectsV2: { Contents: [] },
+              upload: {},
+              headBucket: {},
+            },
+            CloudFormation: {
+              describeStacks: { Stacks: [{}] },
+              describeStackResource: {
+                StackResourceDetail: { PhysicalResourceId: 's3-bucket-resource' },
+              },
+              validateTemplate: {},
+              updateStack: () => {
+                throw new Error('No updates are to be performed.');
+              },
+            },
+          },
+          configExt: {
+            provider: {
+              deploymentMethod: 'direct',
+            },
+          },
+        })
+      ).to.eventually.be.rejectedWith('No updates are to be performed.');
+    });
+
+    it('treats native SDK v3 direct update no-op errors as expected no-ops', async () => {
+      await runServerless({
+        fixture: 'function',
+        command: 'deploy',
+        options: {
+          force: true,
+        },
+        awsRequestStubMap: {
+          ...baseAwsRequestStubMap,
+          ECR: {
+            describeRepositories: sinon.stub().throws({
+              providerError: { code: 'RepositoryNotFoundException' },
+            }),
+          },
+          S3: {
+            listObjectsV2: { Contents: [] },
+            upload: {},
+            headBucket: {},
+          },
+          CloudFormation: {
+            describeStacks: { Stacks: [{}] },
+            describeStackResource: {
+              StackResourceDetail: { PhysicalResourceId: 's3-bucket-resource' },
+            },
+            validateTemplate: {},
+            listStackResources: { StackResourceSummaries: [] },
+            updateStack: () => {
+              throw createCloudFormationValidationError('No updates are to be performed.');
+            },
+          },
+        },
+        configExt: {
+          provider: {
+            deploymentMethod: 'direct',
+          },
+        },
+      });
+    });
+
+    it('does not treat message-only deployment bucket lookup errors as missing resources', async () => {
+      await expect(
+        runServerless({
+          fixture: 'function',
+          command: 'deploy',
+          awsRequestStubMap: {
+            ...baseAwsRequestStubMap,
+            CloudFormation: {
+              describeStacks: { Stacks: [{}] },
+              validateTemplate: {},
+              describeStackResource: () => {
+                throw new Error('does not exist for stack');
+              },
+            },
+          },
+          lastLifecycleHookName: 'aws:deploy:deploy:checkForChanges',
+        })
+      ).to.eventually.be.rejectedWith('does not exist for stack');
+    });
+
     it('with existing stack - with deployment bucket resource missing from CloudFormation template', async () => {
       const createStackStub = sinon.stub().resolves({});
       const updateStackStub = sinon.stub().resolves({});
@@ -327,7 +493,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
         },
       };
 
-      const { serverless, awsNaming } = await runServerless({
+      const { serverless, awsNaming, awsSdkV3Stub } = await runServerless({
         fixture: 'function',
         command: 'deploy',
         awsRequestStubMap,
@@ -351,6 +517,112 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
           Outputs: serverless.service.provider.coreCloudFormationTemplate.Outputs,
         }),
       });
+      const getTemplateSend = getCloudFormationSends(awsSdkV3Stub, 'getTemplate')[0];
+      const updateStackSend = getCloudFormationSends(awsSdkV3Stub, 'updateStack')[0];
+      expect(getTemplateSend.commandName).to.equal('GetTemplateCommand');
+      expect(updateStackSend.client).to.equal(getTemplateSend.client);
+      expect(getTemplateSend.input).to.deep.equal({
+        StackName: awsNaming.getStackName(),
+        TemplateStage: 'Original',
+      });
+      const expectedCredentials = serverless.getProvider('aws').getAwsSdkV3CredentialsProvider();
+      expect(updateStackSend.commandName).to.equal('UpdateStackCommand');
+      expect(updateStackSend.clientConfig.credentials).to.equal(expectedCredentials);
+    });
+
+    it('with existing stack - repairs missing deployment bucket from YAML template', async () => {
+      const updateStackStub = sinon.stub().resolves({});
+      const describeStackResourceStub = sinon
+        .stub()
+        .onFirstCall()
+        .throws(() => {
+          const err = new Error('does not exist for stack');
+          err.providerError = {
+            code: 'ValidationError',
+          };
+          return err;
+        })
+        .onSecondCall()
+        .resolves({
+          StackResourceDetail: { PhysicalResourceId: 's3-bucket-resource' },
+        });
+      const awsRequestStubMap = {
+        ...baseAwsRequestStubMap,
+        ECR: {
+          describeRepositories: sinon.stub().throws({
+            providerError: { code: 'RepositoryNotFoundException' },
+          }),
+        },
+        S3: {
+          listObjectsV2: { Contents: [] },
+          headBucket: () => {
+            const err = new Error();
+            err.code = 'AWS_S3_HEAD_BUCKET_NOT_FOUND';
+            throw err;
+          },
+        },
+        CloudFormation: {
+          describeStacks: { Stacks: [{}] },
+          validateTemplate: {},
+          updateStack: updateStackStub,
+          getTemplate: {
+            TemplateBody: [
+              'Resources:',
+              '  ExistingBucket:',
+              '    Type: AWS::S3::Bucket',
+              'Outputs:',
+              '  ExistingOutput:',
+              '    Value: existing',
+            ].join('\n'),
+          },
+          describeStackEvents: {
+            StackEvents: [
+              {
+                EventId: '1e2f3g4h',
+                StackName: 'new-service-dev',
+                LogicalResourceId: 'new-service-dev',
+                ResourceType: 'AWS::CloudFormation::Stack',
+                Timestamp: new Date(),
+                ResourceStatus: 'UPDATE_COMPLETE',
+              },
+            ],
+          },
+          describeStackResource: describeStackResourceStub,
+        },
+      };
+
+      const { serverless, awsSdkV3Stub } = await runServerless({
+        fixture: 'function',
+        command: 'deploy',
+        awsRequestStubMap,
+        configExt: {
+          provider: {
+            deploymentMethod: 'direct',
+          },
+        },
+        lastLifecycleHookName: 'aws:deploy:deploy:checkForChanges',
+      });
+
+      const templateBody = JSON.parse(updateStackStub.firstCall.args[0].TemplateBody);
+      expect(templateBody.Resources.ExistingBucket).to.deep.equal({
+        Type: 'AWS::S3::Bucket',
+      });
+      expect(templateBody.Outputs.ExistingOutput).to.deep.equal({
+        Value: 'existing',
+      });
+      expect(templateBody.Resources).to.include.keys(
+        Object.keys(serverless.service.provider.coreCloudFormationTemplate.Resources)
+      );
+      expect(templateBody.Outputs).to.include.keys(
+        Object.keys(serverless.service.provider.coreCloudFormationTemplate.Outputs)
+      );
+      expect(getCloudFormationSends(awsSdkV3Stub, 'getTemplate')[0].commandName).to.equal(
+        'GetTemplateCommand'
+      );
+      const getTemplateSend = getCloudFormationSends(awsSdkV3Stub, 'getTemplate')[0];
+      const updateStackSend = getCloudFormationSends(awsSdkV3Stub, 'updateStack')[0];
+      expect(updateStackSend.commandName).to.equal('UpdateStackCommand');
+      expect(updateStackSend.client).to.equal(getTemplateSend.client);
     });
 
     describe('custom deployment-related properties', () => {
@@ -392,7 +664,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
         const describeStacksStub = sinon
           .stub()
           .onFirstCall()
-          .throws('error', 'stack does not exist')
+          .throws(createCloudFormationValidationError('stack does not exist'))
           .onSecondCall()
           .resolves({ Stacks: [{}] });
         createStackStub = sinon.stub().resolves({});
@@ -507,7 +779,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       const describeStacksStub = sinon
         .stub()
         .onFirstCall()
-        .throws('error', 'stack does not exist')
+        .throws(createCloudFormationValidationError('stack does not exist'))
         .onSecondCall()
         .resolves({ Stacks: [{}] });
       const createChangeSetStub = sinon.stub().resolves({});
@@ -589,7 +861,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       const describeStacksStub = sinon
         .stub()
         .onFirstCall()
-        .throws('error', 'stack does not exist')
+        .throws(createCloudFormationValidationError('stack does not exist'))
         .onSecondCall()
         .resolves({ Stacks: [{}] });
       const createChangeSetStub = sinon.stub().resolves({});
@@ -640,7 +912,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
         },
       };
 
-      await runServerless({
+      const { serverless, awsSdkV3Stub } = await runServerless({
         fixture: 'function',
         command: 'deploy',
         awsRequestStubMap,
@@ -650,6 +922,13 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       expect(createChangeSetStub.getCall(0).args[0].ChangeSetType).to.equal('CREATE');
       expect(createChangeSetStub.getCall(1).args[0].ChangeSetType).to.equal('UPDATE');
       expect(executeChangeSetStub).to.be.calledTwice;
+      const createChangeSetSends = getCloudFormationSends(awsSdkV3Stub, 'createChangeSet');
+      const executeChangeSetSends = getCloudFormationSends(awsSdkV3Stub, 'executeChangeSet');
+      expect(createChangeSetSends).to.have.length(2);
+      expect(executeChangeSetSends).to.have.length(2);
+      const expectedCredentials = serverless.getProvider('aws').getAwsSdkV3CredentialsProvider();
+      expect(createChangeSetSends[0].clientConfig.credentials).to.equal(expectedCredentials);
+      expect(executeChangeSetSends[0].clientConfig.credentials).to.equal(expectedCredentials);
       const wasCloudFormationTemplateUploadInitiated = s3UploadStub.args.some((call) =>
         call[0].Key.endsWith('compiled-cloudformation-template.json')
       );
@@ -1007,7 +1286,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
         },
       };
 
-      const { serverless, awsNaming } = await runServerless({
+      const { serverless, awsNaming, awsSdkV3Stub } = await runServerless({
         fixture: 'function',
         command: 'deploy',
         awsRequestStubMap,
@@ -1031,12 +1310,128 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
         StackName: awsNaming.getStackName(),
         ChangeSetName: awsNaming.getStackChangeSetName(),
       });
+      const getTemplateSend = getCloudFormationSends(awsSdkV3Stub, 'getTemplate')[0];
+      const deleteChangeSetSend = getCloudFormationSends(awsSdkV3Stub, 'deleteChangeSet')[0];
+      const createChangeSetSend = getCloudFormationSends(awsSdkV3Stub, 'createChangeSet')[0];
+      const executeChangeSetSend = getCloudFormationSends(awsSdkV3Stub, 'executeChangeSet')[0];
+      expect(getTemplateSend.commandName).to.equal('GetTemplateCommand');
+      expect(deleteChangeSetSend.commandName).to.equal('DeleteChangeSetCommand');
+      expect(createChangeSetSend.commandName).to.equal('CreateChangeSetCommand');
+      expect(executeChangeSetSend.commandName).to.equal('ExecuteChangeSetCommand');
+      expect(deleteChangeSetSend.client).to.equal(getTemplateSend.client);
+      expect(createChangeSetSend.client).to.equal(getTemplateSend.client);
+      expect(executeChangeSetSend.client).to.equal(getTemplateSend.client);
+      expect(createChangeSetSend.clientConfig.credentials).to.equal(
+        serverless.getProvider('aws').getAwsSdkV3CredentialsProvider()
+      );
+    });
+
+    it('with existing stack - repairs missing deployment bucket from YAML template with change set', async () => {
+      const createChangeSetStub = sinon.stub().resolves({});
+      const executeChangeSetStub = sinon.stub().resolves({});
+      const describeStackResourceStub = sinon
+        .stub()
+        .onFirstCall()
+        .throws(() => {
+          const err = new Error('does not exist for stack');
+          err.providerError = {
+            code: 'ValidationError',
+          };
+          return err;
+        })
+        .onSecondCall()
+        .resolves({
+          StackResourceDetail: { PhysicalResourceId: 's3-bucket-resource' },
+        });
+
+      const awsRequestStubMap = {
+        ...baseAwsRequestStubMap,
+        ECR: {
+          describeRepositories: sinon.stub().throws({
+            providerError: { code: 'RepositoryNotFoundException' },
+          }),
+        },
+        S3: {
+          listObjectsV2: { Contents: [] },
+          headBucket: () => {
+            const err = new Error();
+            err.code = 'AWS_S3_HEAD_BUCKET_NOT_FOUND';
+            throw err;
+          },
+        },
+        CloudFormation: {
+          describeStacks: { Stacks: [{}] },
+          validateTemplate: {},
+          deleteChangeSet: {},
+          createChangeSet: createChangeSetStub,
+          executeChangeSet: executeChangeSetStub,
+          describeChangeSet: {
+            ChangeSetName: 'new-service-dev-change-set',
+            ChangeSetId: 'some-change-set-id',
+            StackName: 'new-service-dev',
+            Status: 'CREATE_COMPLETE',
+          },
+          getTemplate: {
+            TemplateBody: [
+              'Resources:',
+              '  ExistingBucket:',
+              '    Type: AWS::S3::Bucket',
+              'Outputs:',
+              '  ExistingOutput:',
+              '    Value: existing',
+            ].join('\n'),
+          },
+          describeStackEvents: {
+            StackEvents: [
+              {
+                EventId: '1e2f3g4h',
+                StackName: 'new-service-dev',
+                LogicalResourceId: 'new-service-dev',
+                ResourceType: 'AWS::CloudFormation::Stack',
+                Timestamp: new Date(),
+                ResourceStatus: 'UPDATE_COMPLETE',
+              },
+            ],
+          },
+          describeStackResource: describeStackResourceStub,
+        },
+      };
+
+      const { serverless, awsSdkV3Stub } = await runServerless({
+        fixture: 'function',
+        command: 'deploy',
+        awsRequestStubMap,
+        lastLifecycleHookName: 'aws:deploy:deploy:checkForChanges',
+      });
+
+      const templateBody = JSON.parse(createChangeSetStub.firstCall.args[0].TemplateBody);
+      expect(templateBody.Resources.ExistingBucket).to.deep.equal({
+        Type: 'AWS::S3::Bucket',
+      });
+      expect(templateBody.Outputs.ExistingOutput).to.deep.equal({
+        Value: 'existing',
+      });
+      expect(templateBody.Resources).to.include.keys(
+        Object.keys(serverless.service.provider.coreCloudFormationTemplate.Resources)
+      );
+      expect(templateBody.Outputs).to.include.keys(
+        Object.keys(serverless.service.provider.coreCloudFormationTemplate.Outputs)
+      );
+      const getTemplateSend = getCloudFormationSends(awsSdkV3Stub, 'getTemplate')[0];
+      const createChangeSetSend = getCloudFormationSends(awsSdkV3Stub, 'createChangeSet')[0];
+      const executeChangeSetSend = getCloudFormationSends(awsSdkV3Stub, 'executeChangeSet')[0];
+      expect(getTemplateSend.commandName).to.equal('GetTemplateCommand');
+      expect(createChangeSetSend.commandName).to.equal('CreateChangeSetCommand');
+      expect(executeChangeSetSend.commandName).to.equal('ExecuteChangeSetCommand');
+      expect(createChangeSetSend.client).to.equal(getTemplateSend.client);
+      expect(executeChangeSetSend.client).to.equal(getTemplateSend.client);
     });
 
     describe('custom deployment-related properties', () => {
       let createChangeSetStub;
       let executeChangeSetStub;
       let setStackPolicyStub;
+      let awsSdkV3Stub;
       const deploymentRole = 'arn:xxx';
       const notificationArns = ['arn:xxx', 'arn:yyy'];
       const stackParameters = [
@@ -1073,7 +1468,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
         const describeStacksStub = sinon
           .stub()
           .onFirstCall()
-          .throws('error', 'stack does not exist')
+          .throws(createCloudFormationValidationError('stack does not exist'))
           .onSecondCall()
           .resolves({ Stacks: [{}] });
         createChangeSetStub = sinon.stub().resolves({});
@@ -1124,7 +1519,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
           },
         };
 
-        await runServerless({
+        ({ awsSdkV3Stub } = await runServerless({
           fixture: 'function',
           command: 'deploy',
           awsRequestStubMap,
@@ -1141,7 +1536,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
               },
             },
           },
-        });
+        }));
       });
 
       it('should support custom deployment role', () => {
@@ -1170,6 +1565,15 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
 
       it('should only set `stackPolicy` after applying change set', () => {
         expect(setStackPolicyStub).to.not.be.calledBefore(executeChangeSetStub);
+        const cfMethods = awsSdkV3Stub.sends
+          .filter(({ service }) => service === 'CloudFormation')
+          .map(({ method }) => method);
+        expect(cfMethods.indexOf('executeChangeSet')).to.be.lessThan(
+          cfMethods.indexOf('setStackPolicy')
+        );
+        expect(getCloudFormationSends(awsSdkV3Stub, 'setStackPolicy')[0].commandName).to.equal(
+          'SetStackPolicyCommand'
+        );
       });
 
       it('should support `rollbackConfiguration`', () => {

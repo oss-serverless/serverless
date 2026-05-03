@@ -268,6 +268,87 @@ describe('test/unit/test-lib/configure-aws-sdk-v3-stub.test.js', () => {
     );
   });
 
+  it('stubs CloudFormation deploy and remove commands', async () => {
+    const credentials = async () => ({ accessKeyId: 'key', secretAccessKey: 'secret' });
+    const awsSdkV3Stub = configureAwsSdkV3Stub({
+      CloudFormation: {
+        createStack: { StackId: 'stack' },
+        updateStack: { StackId: 'stack' },
+        deleteStack: {},
+        createChangeSet: { Id: 'change-set-id', StackId: 'stack' },
+        describeChangeSet: { Status: 'CREATE_COMPLETE', Changes: [] },
+        executeChangeSet: {},
+        deleteChangeSet: {},
+        getTemplate: { TemplateBody: '{}' },
+        setStackPolicy: {},
+        describeStackEvents: { StackEvents: [] },
+        describeStacks: { Stacks: [] },
+        listStackResources: { StackResourceSummaries: [] },
+      },
+    });
+    const {
+      CloudFormationClient,
+      CreateStackCommand,
+      UpdateStackCommand,
+      DeleteStackCommand,
+      CreateChangeSetCommand,
+      DescribeChangeSetCommand,
+      ExecuteChangeSetCommand,
+      DeleteChangeSetCommand,
+      GetTemplateCommand,
+      SetStackPolicyCommand,
+      DescribeStackEventsCommand,
+      DescribeStacksCommand,
+      ListStackResourcesCommand,
+    } = awsSdkV3Stub.modulesCacheStub['@aws-sdk/client-cloudformation'];
+
+    const cloudFormation = new CloudFormationClient({ region: 'us-east-1', credentials });
+
+    await cloudFormation.send(new CreateStackCommand({ StackName: 'stack' }));
+    await cloudFormation.send(new UpdateStackCommand({ StackName: 'stack' }));
+    await cloudFormation.send(new DeleteStackCommand({ StackName: 'stack' }));
+    await cloudFormation.send(
+      new CreateChangeSetCommand({ StackName: 'stack', ChangeSetName: 'change-set' })
+    );
+    await cloudFormation.send(
+      new DescribeChangeSetCommand({ StackName: 'stack', ChangeSetName: 'change-set' })
+    );
+    await cloudFormation.send(
+      new ExecuteChangeSetCommand({ StackName: 'stack', ChangeSetName: 'change-set' })
+    );
+    await cloudFormation.send(
+      new DeleteChangeSetCommand({ StackName: 'stack', ChangeSetName: 'change-set' })
+    );
+    await cloudFormation.send(new GetTemplateCommand({ StackName: 'stack' }));
+    await cloudFormation.send(new SetStackPolicyCommand({ StackName: 'stack' }));
+    await cloudFormation.send(new DescribeStackEventsCommand({ StackName: 'stack' }));
+    await cloudFormation.send(new DescribeStacksCommand({ StackName: 'stack' }));
+    await cloudFormation.send(new ListStackResourcesCommand({ StackName: 'stack' }));
+
+    expect(awsSdkV3Stub.sends.map(({ service, method }) => `${service}.${method}`)).to.deep.equal([
+      'CloudFormation.createStack',
+      'CloudFormation.updateStack',
+      'CloudFormation.deleteStack',
+      'CloudFormation.createChangeSet',
+      'CloudFormation.describeChangeSet',
+      'CloudFormation.executeChangeSet',
+      'CloudFormation.deleteChangeSet',
+      'CloudFormation.getTemplate',
+      'CloudFormation.setStackPolicy',
+      'CloudFormation.describeStackEvents',
+      'CloudFormation.describeStacks',
+      'CloudFormation.listStackResources',
+    ]);
+    expect(awsSdkV3Stub.sends[0].input).to.deep.equal({ StackName: 'stack' });
+    expect(awsSdkV3Stub.sends[3].input).to.deep.equal({
+      StackName: 'stack',
+      ChangeSetName: 'change-set',
+    });
+    expect(awsSdkV3Stub.clients.every(({ config }) => config.credentials === credentials)).to.equal(
+      true
+    );
+  });
+
   it('passes send context to repeated SDK v3 stub callbacks', async () => {
     const observedContexts = [];
     const awsSdkV3Stub = configureAwsSdkV3Stub({

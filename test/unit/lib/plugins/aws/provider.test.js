@@ -16,6 +16,7 @@ const { ensureDir, outputFile, remove } = require('../../../../utils/fs');
 const {
   CloudFormationClient,
   DescribeStackResourceCommand,
+  ListStackResourcesCommand,
 } = require('@aws-sdk/client-cloudformation');
 const { STSClient, GetCallerIdentityCommand } = require('@aws-sdk/client-sts');
 
@@ -37,7 +38,12 @@ describe('AwsProvider', () => {
     serverless.cli = new serverless.classes.CLI();
     awsProvider = new AwsProvider(serverless, options);
   });
-  afterEach(() => restoreEnv());
+  afterEach(() => {
+    if (CloudFormationClient.prototype.send.restore) {
+      CloudFormationClient.prototype.send.restore();
+    }
+    restoreEnv();
+  });
 
   describe('#getRuntime()', () => {
     it('should default to "nodejs24.x" when no runtime is configured', () => {
@@ -704,6 +710,95 @@ describe('AwsProvider', () => {
         CloudFormationClient.prototype.send.restore();
         awsProvider.getAwsSdkV3Config.restore();
       }
+    });
+  });
+
+  describe('#getStackResources()', () => {
+    it('paginates ListStackResources with one SDK v3 client', async () => {
+      const getAwsSdkV3ConfigSpy = sinon.spy(awsProvider, 'getAwsSdkV3Config');
+      const listStackResourcesStub = sinon
+        .stub(CloudFormationClient.prototype, 'send')
+        .onFirstCall()
+        .resolves({
+          StackResourceSummaries: [{ LogicalResourceId: 'First' }],
+          NextToken: 'next-page',
+        })
+        .onSecondCall()
+        .resolves({
+          StackResourceSummaries: [{ LogicalResourceId: 'Second' }],
+        });
+
+      const resources = await awsProvider.getStackResources();
+
+      expect(resources).to.deep.equal([
+        { LogicalResourceId: 'First' },
+        { LogicalResourceId: 'Second' },
+      ]);
+      expect(listStackResourcesStub).to.have.been.calledTwice;
+      expect(listStackResourcesStub.firstCall.thisValue).to.equal(
+        listStackResourcesStub.secondCall.thisValue
+      );
+      expect(getAwsSdkV3ConfigSpy).to.have.been.calledOnce;
+      expect(listStackResourcesStub.firstCall.args[0]).to.be.instanceOf(ListStackResourcesCommand);
+      expect(listStackResourcesStub.firstCall.args[0].input).to.deep.equal({
+        StackName: awsProvider.naming.getStackName(),
+      });
+      expect(listStackResourcesStub.secondCall.args[0].input).to.deep.equal({
+        StackName: awsProvider.naming.getStackName(),
+        NextToken: 'next-page',
+      });
+    });
+
+    it('preserves initial token and pre-seeded resources', async () => {
+      const listStackResourcesStub = sinon.stub(CloudFormationClient.prototype, 'send').resolves({
+        StackResourceSummaries: [{ LogicalResourceId: 'Second' }],
+      });
+
+      const resources = await awsProvider.getStackResources('next-page', [
+        { LogicalResourceId: 'First' },
+      ]);
+
+      expect(resources).to.deep.equal([
+        { LogicalResourceId: 'First' },
+        { LogicalResourceId: 'Second' },
+      ]);
+      expect(listStackResourcesStub).to.have.been.calledOnce;
+      expect(listStackResourcesStub.firstCall.args[0].input).to.deep.equal({
+        StackName: awsProvider.naming.getStackName(),
+        NextToken: 'next-page',
+      });
+    });
+
+    it('uses an existing CloudFormation client promise when listing stack resources', async () => {
+      const send = sinon.stub().resolves({
+        StackResourceSummaries: [{ LogicalResourceId: 'ExistingClientResource' }],
+      });
+      const getAwsSdkV3ConfigStub = sinon
+        .stub(awsProvider, 'getAwsSdkV3Config')
+        .throws(new Error('Expected existing CloudFormation client to be reused'));
+      awsProvider.cloudFormationClientPromise = Promise.resolve({ send });
+
+      try {
+        const resources = await awsProvider.getStackResources();
+
+        expect(resources).to.deep.equal([{ LogicalResourceId: 'ExistingClientResource' }]);
+        expect(getAwsSdkV3ConfigStub).to.not.have.been.called;
+        expect(send).to.have.been.calledOnce;
+        expect(send.firstCall.args[0]).to.be.instanceOf(ListStackResourcesCommand);
+        expect(send.firstCall.args[0].input).to.deep.equal({
+          StackName: awsProvider.naming.getStackName(),
+        });
+      } finally {
+        awsProvider.getAwsSdkV3Config.restore();
+      }
+    });
+
+    it('treats missing StackResourceSummaries as an empty page', async () => {
+      sinon.stub(CloudFormationClient.prototype, 'send').resolves({});
+
+      const resources = await awsProvider.getStackResources();
+
+      expect(resources).to.deep.equal([]);
     });
   });
 
