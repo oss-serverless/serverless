@@ -353,7 +353,7 @@ describe('test/unit/lib/aws/aws-sdk-v3-error.test.js', () => {
     ).to.equal(true);
   });
 
-  it('matches CloudFormation validation errors by own message only', () => {
+  it('matches CloudFormation lifecycle validation errors by own message only', () => {
     const missingStackError = Object.assign(new Error('Stack with id service-dev does not exist'), {
       name: 'ValidationError',
     });
@@ -375,24 +375,58 @@ describe('test/unit/lib/aws/aws-sdk-v3-error.test.js', () => {
         name: 'ValidationError',
       }
     );
+    const noUpdateError = {
+      providerError: { code: 'ValidationError' },
+      message: 'No updates are to be performed.',
+    };
+    const credentialError = Object.assign(new Error('The SSO session has expired'), {
+      name: 'CredentialsProviderError',
+    });
 
     expect(
       awsSdkV3Error.isCloudFormationValidationErrorWithMessage(missingStackError, 'does not exist')
+    ).to.equal(true);
+    expect(awsSdkV3Error.isCloudFormationMissingStackError(missingStackError)).to.equal(true);
+    expect(
+      awsSdkV3Error.isCloudFormationMissingStackError(missingResourceNamedStackError)
     ).to.equal(true);
     expect(awsSdkV3Error.isCloudFormationMissingResourceError(missingResourceError)).to.equal(true);
     expect(
       awsSdkV3Error.isCloudFormationMissingResourceError(missingSubscriptionFilterResourceError)
     ).to.equal(true);
+    expect(awsSdkV3Error.isCloudFormationNoUpdateError(noUpdateError)).to.equal(true);
+
+    expect(awsSdkV3Error.isCloudFormationMissingStackError(missingResourceError)).to.equal(false);
+    expect(
+      awsSdkV3Error.isCloudFormationMissingStackError(missingSubscriptionFilterResourceError)
+    ).to.equal(false);
     expect(awsSdkV3Error.isCloudFormationMissingResourceError(missingStackError)).to.equal(false);
     expect(
       awsSdkV3Error.isCloudFormationMissingResourceError(missingResourceNamedStackError)
     ).to.equal(false);
+    expect(awsSdkV3Error.isCloudFormationNoUpdateError(missingStackError)).to.equal(false);
+    expect(awsSdkV3Error.isCloudFormationMissingStackError(credentialError)).to.equal(false);
+    expect(awsSdkV3Error.isCloudFormationMissingResourceError(credentialError)).to.equal(false);
+    expect(awsSdkV3Error.isCloudFormationNoUpdateError(credentialError)).to.equal(false);
     expect(
       awsSdkV3Error.isCloudFormationValidationErrorWithMessage(
-        Object.assign(Object.create({ name: 'ValidationError' }), {
-          message: 'Stack with id service-dev does not exist',
-        }),
+        new Error('Stack with id service-dev does not exist'),
         'does not exist'
+      )
+    ).to.equal(false);
+    expect(
+      awsSdkV3Error.isCloudFormationMissingStackError(
+        Object.create({
+          name: 'ValidationError',
+          message: 'Stack with id service-dev does not exist',
+        })
+      )
+    ).to.equal(false);
+    expect(
+      awsSdkV3Error.isCloudFormationNoUpdateError(
+        Object.assign(Object.create({ code: 'ValidationError' }), {
+          message: 'No updates are to be performed.',
+        })
       )
     ).to.equal(false);
     expect(
