@@ -1347,13 +1347,11 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
 
     it('treats missing log groups during subscription filter discovery as no filters', async () => {
       const awsDeploy = createAwsDeployTestInstance();
-      const requestStub = sandbox
-        .stub(awsDeploy.provider, 'request')
-        .rejects(
-          Object.assign(new Error('missing log group'), {
-            providerError: { code: 'ResourceNotFoundException' },
-          })
-        );
+      const requestStub = sandbox.stub(awsDeploy.provider, 'request').rejects(
+        Object.assign(new Error('missing log group'), {
+          providerError: { code: 'ResourceNotFoundException' },
+        })
+      );
 
       try {
         const result = await awsDeploy.fixLogGroupSubscriptionFilters({
