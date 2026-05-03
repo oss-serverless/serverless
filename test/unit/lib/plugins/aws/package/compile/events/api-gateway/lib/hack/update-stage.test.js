@@ -415,7 +415,11 @@ describe('#updateStage()', () => {
         restApiId: 'devRestApiId',
         stageName: 'dev',
       })
-      .rejects();
+      .rejects(
+        Object.assign(new Error('not found'), {
+          providerError: { code: 'NotFoundException' },
+        })
+      );
 
     providerRequestStub
       .withArgs('APIGateway', 'getDeployments', {
@@ -477,6 +481,49 @@ describe('#updateStage()', () => {
         logGroupName: '/aws/api-gateway/my-service-dev',
       });
     });
+  });
+
+  it('should surface credential and authorization errors while resolving the stage', async () => {
+    context.state.service.provider.tracing = { apiGateway: false };
+    providerRequestStub
+      .withArgs('APIGateway', 'getStage', {
+        restApiId: 'devRestApiId',
+        stageName: 'dev',
+      })
+      .rejects(
+        Object.assign(new Error('denied'), {
+          providerError: { code: 'AccessDeniedException' },
+        })
+      );
+
+    await expect(updateStage.call(context)).to.be.rejectedWith('denied');
+
+    expect(providerRequestStub.calledWith('APIGateway', 'createStage')).to.equal(false);
+  });
+
+  it('should treat API Gateway 404 status errors as missing stages', async () => {
+    context.state.service.provider.tracing = { apiGateway: false };
+    providerRequestStub
+      .withArgs('APIGateway', 'getStage', {
+        restApiId: 'devRestApiId',
+        stageName: 'dev',
+      })
+      .rejects(
+        Object.assign(new Error('not found'), {
+          providerError: { statusCode: 404 },
+        })
+      );
+    providerRequestStub
+      .withArgs('APIGateway', 'createStage', {
+        deploymentId: 'someDeploymentId',
+        restApiId: 'devRestApiId',
+        stageName: 'dev',
+      })
+      .resolves();
+
+    await updateStage.call(context);
+
+    expect(providerRequestStub.calledWith('APIGateway', 'createStage')).to.equal(true);
   });
 
   it('should ignore external api gateway', async () => {
