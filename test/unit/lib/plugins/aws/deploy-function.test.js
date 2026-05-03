@@ -125,7 +125,7 @@ describe('AwsDeployFunction', () => {
         .resolves({ accountId: '123456789012', partition: 'aws' });
       getRoleStub = sinon
         .stub(awsDeployFunction.provider, 'request')
-        .resolves({ Arn: 'arn:aws:iam::123456789012:role/role_2' });
+        .resolves({ Role: { Arn: 'arn:aws:iam::123456789012:role/role_2' } });
 
       serverless.service.resources = {
         Resources: {
@@ -171,6 +171,9 @@ describe('AwsDeployFunction', () => {
       const result = await awsDeployFunction.normalizeArnRole(roleObj);
 
       expect(getRoleStub.calledOnce).to.be.equal(true);
+      expect(getRoleStub.calledWithExactly('IAM', 'getRole', { RoleName: 'role_2' })).to.equal(
+        true
+      );
       expect(getAccountInfoStub).to.not.have.been.called;
       expect(result).to.be.equal('arn:aws:iam::123456789012:role/role_2');
     });
