@@ -276,6 +276,97 @@ describe('checkForChanges', () => {
         { Key: `${s3Key}/151224711231-2016-08-18T15:43:00/artifact.zip` },
       ]);
     });
+
+    it('should select the newest deployment directory across paginated results', async () => {
+      listObjectsV2Stub
+        .onFirstCall()
+        .resolves({
+          Contents: [
+            { Key: `${s3Key}/141264711231-2016-08-18T15:42:00/artifact.zip` },
+            { Key: `${s3Key}/141264711231-2016-08-18T15:42:00/cloudformation.json` },
+          ],
+          NextContinuationToken: 'next-page',
+        })
+        .onSecondCall()
+        .resolves({
+          Contents: [
+            { Key: `${s3Key}/151224711231-2016-08-18T15:43:00/artifact.zip` },
+            { Key: `${s3Key}/151224711231-2016-08-18T15:43:00/cloudformation.json` },
+          ],
+        });
+
+      const result = await awsDeploy.getMostRecentObjects();
+
+      expect(listObjectsV2Stub).to.have.been.calledTwice;
+      expect(listObjectsV2Stub.firstCall.args).to.deep.equal([
+        'S3',
+        'listObjectsV2',
+        {
+          Bucket: awsDeploy.bucketName,
+          Prefix: 'serverless/my-service/dev/',
+        },
+      ]);
+      expect(listObjectsV2Stub.secondCall.args).to.deep.equal([
+        'S3',
+        'listObjectsV2',
+        {
+          Bucket: awsDeploy.bucketName,
+          Prefix: 'serverless/my-service/dev/',
+          ContinuationToken: 'next-page',
+        },
+      ]);
+      expect(result).to.deep.equal([
+        { Key: `${s3Key}/151224711231-2016-08-18T15:43:00/cloudformation.json` },
+        { Key: `${s3Key}/151224711231-2016-08-18T15:43:00/artifact.zip` },
+      ]);
+    });
+
+    it('should collect the latest deployment directory when it is split across pages', async () => {
+      listObjectsV2Stub
+        .onFirstCall()
+        .resolves({
+          Contents: [{ Key: `${s3Key}/151224711231-2016-08-18T15:43:00/artifact.zip` }],
+          NextContinuationToken: 'next-page',
+        })
+        .onSecondCall()
+        .resolves({
+          Contents: [{ Key: `${s3Key}/151224711231-2016-08-18T15:43:00/cloudformation.json` }],
+        });
+
+      const result = await awsDeploy.getMostRecentObjects();
+
+      expect(listObjectsV2Stub).to.have.been.calledTwice;
+      expect(result).to.deep.equal([
+        { Key: `${s3Key}/151224711231-2016-08-18T15:43:00/cloudformation.json` },
+        { Key: `${s3Key}/151224711231-2016-08-18T15:43:00/artifact.zip` },
+      ]);
+    });
+
+    it('should translate missing bucket errors from later pages', async () => {
+      listObjectsV2Stub
+        .onFirstCall()
+        .resolves({ Contents: [], NextContinuationToken: 'next-page' })
+        .onSecondCall()
+        .rejects(new ServerlessError('The specified bucket does not exist'));
+
+      let error;
+      try {
+        await awsDeploy.getMostRecentObjects();
+      } catch (caughtError) {
+        error = caughtError;
+      }
+
+      expect(listObjectsV2Stub).to.have.been.calledTwice;
+      expect(error).to.have.property('code', 'DEPLOYMENT_BUCKET_DOES_NOT_EXIST');
+      expect(error).to.have.property(
+        'message',
+        [
+          `The serverless deployment bucket "${awsDeploy.bucketName}" does not exist.`,
+          'Create it manually if you want to reuse the CloudFormation stack "my-service-dev",',
+          'or delete the stack if it is no longer required.',
+        ].join(' ')
+      );
+    });
   });
 
   describe('#getFunctionsEarliestLastModifiedDate()', () => {
