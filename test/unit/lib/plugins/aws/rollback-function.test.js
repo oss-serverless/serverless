@@ -172,6 +172,7 @@ describe('AwsRollbackFunction', () => {
 
         return awsRollbackFunction.getFunctionToBeRestored().catch((error) => {
           expect(error.message.match(/something went wrong/));
+          expect(error.code).to.equal('AWS_FUNCTION_NOT_ACCESSIBLE');
           expect(getFunctionStub.calledOnce).to.equal(true);
           expect(
             getFunctionStub.calledWithExactly('Lambda', 'getFunction', {
