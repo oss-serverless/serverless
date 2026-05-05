@@ -31,7 +31,7 @@ After the `serverless deploy` command runs, the framework runs `serverless packa
 serverless deploy
 ```
 
-This is the simplest deployment usage possible. With this command Serverless will deploy your service to the defined
+This is the simplest deployment usage possible. With this command OSLS Framework will deploy your service to the defined
 provider in the default stage (`dev`) to the default region (`us-east-1`).
 
 ### Deployment with stage and region options
@@ -49,7 +49,7 @@ With this example we've defined that we want our service to be deployed to the `
 serverless deploy --package /path/to/package/directory
 ```
 
-With this example, the packaging step will be skipped and the framework will start deploying the package from the `/path/to/package/directory` directory.
+With this example, the packaging step will be skipped and the CLI will start deploying the package from the `/path/to/package/directory` directory.
 
 ### Environment variables
 

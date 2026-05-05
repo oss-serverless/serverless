@@ -1,8 +1,8 @@
 # AWS Credentials
 
-The Serverless Framework needs access to your cloud provider account so that it can create and manage resources on your behalf.
+OSLS Framework needs access to your cloud provider account so that it can create and manage resources on your behalf.
 
-This guide is for the Amazon Web Services (AWS) provider, so we'll step through the process of setting up credentials for AWS and using them with Serverless.
+This guide is for the Amazon Web Services (AWS) provider, so we'll step through the process of setting up credentials for AWS and using them with OSLS Framework.
 
 ## Sign up for an AWS account
 
@@ -35,17 +35,17 @@ Follow these steps to create new AWS access keys:
 
 1. Login to your AWS account and go to the Identity & Access Management (IAM) page.
 
-2. Click on **Users** and then **Add user**. Enter a name in the first field to remind you this user is related to the Serverless Framework, like `serverless-admin`. Enable **Programmatic access** by clicking the checkbox. Click **Next** to go through to the Permissions page. Click on **Attach existing policies directly**. Search for and select **AdministratorAccess** then click **Next: Review**. Check to make sure everything looks good and click **Create user**.
+2. Click on **Users** and then **Add user**. Enter a name in the first field to remind you this user is related to OSLS Framework, like `serverless-admin`. Enable **Programmatic access** by clicking the checkbox. Click **Next** to go through to the Permissions page. Click on **Attach existing policies directly**. Search for and select **AdministratorAccess** then click **Next: Review**. Check to make sure everything looks good and click **Create user**.
 
 3. View and copy the **API Key** & **Secret** to a temporary place. These are your AWS access keys.
 
-Note that the above steps grant Serverless Framework administrative access to your account. While this makes things simple when starting out, we recommend that you create and use more fine-grained permissions once you determine the scope of your serverless applications and move them into production.
+Note that the above steps grant OSLS Framework administrative access to your account. While this makes things simple when starting out, we recommend that you create and use more fine-grained permissions once you determine the scope of your serverless applications and move them into production.
 
-To limit the Serverless Framework’s access your AWS account, follow these steps to **create an IAM User** and attach a custom JSON file policy to your new IAM User. This IAM User will have its own set of AWS Access Keys.
+To limit OSLS Framework’s access your AWS account, follow these steps to **create an IAM User** and attach a custom JSON file policy to your new IAM User. This IAM User will have its own set of AWS Access Keys.
 
 1. Login to your AWS Account and go to the Identity & Access Management (IAM) page.
 
-2. Click on **Users** and then **Add user**. Enter a name in the first field to remind you this User is related to the Service you are deploying with the Serverless Framework, like `serverless-servicename-agent`. Enable **Programmatic access** by clicking the checkbox. Click **Next** to go through to the Permissions page. Click on **Create policy**. Select the **JSON** tab, and add a JSON file. You can use [this gist](https://gist.github.com/ServerlessBot/7618156b8671840a539f405dea2704c8) as a guide.
+2. Click on **Users** and then **Add user**. Enter a name in the first field to remind you this User is related to the Service you are deploying with OSLS Framework, like `serverless-servicename-agent`. Enable **Programmatic access** by clicking the checkbox. Click **Next** to go through to the Permissions page. Click on **Create policy**. Select the **JSON** tab, and add a JSON file. You can use [this gist](https://gist.github.com/ServerlessBot/7618156b8671840a539f405dea2704c8) as a guide.
 
    When you are finished, select **Review policy**. You can assign this policy a **Name** and **Description**, then choose **Create Policy**. Check to make sure everything looks good and click **Create user**. Later, you can create different IAM Users for different apps and different stages of those apps. That is, if you don't use separate AWS accounts for stages/apps, which is most common.
 
@@ -53,11 +53,11 @@ To limit the Serverless Framework’s access your AWS account, follow these step
 
 ### Using AWS Access Keys
 
-You can configure the Serverless Framework to use your AWS access keys in two ways:
+You can configure OSLS Framework to use your AWS access keys in two ways:
 
 #### Quick Setup
 
-As a quick setup to get started you can export them as environment variables so they would be accessible to Serverless and the AWS SDK in your shell:
+As a quick setup to get started you can export them as environment variables so they would be accessible to OSLS Framework and the AWS SDK in your shell:
 
 ```bash
 export AWS_ACCESS_KEY_ID=<your-key-here>
@@ -94,7 +94,7 @@ For a more permanent solution you can also set up credentials through AWS profil
 
 ##### Setup with `serverless config credentials` command
 
-Serverless provides a convenient way to configure AWS profiles with the help of the `serverless config credentials` command.
+OSLS Framework provides a convenient way to configure AWS profiles with the help of the `serverless config credentials` command.
 
 Here's an example how you can configure the `default` AWS profile:
 
@@ -121,7 +121,7 @@ Default output format [None]: ENTER
 
 Credentials are stored in INI format in `~/.aws/credentials`, which you can edit directly if needed. You can change the path to the credentials file via the AWS_SHARED_CREDENTIALS_FILE environment variable. Read more about that file in the [AWS documentation](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html#cli-config-files)
 
-You can even set up different profiles for different accounts, which can be used by Serverless as well. To specify a default profile to use, you can add a `profile` setting to your `provider` configuration in `serverless.yml`:
+You can even set up different profiles for different accounts, which can be used by OSLS Framework as well. To specify a default profile to use, you can add a `profile` setting to your `provider` configuration in `serverless.yml`:
 
 ```yml
 service: new-service

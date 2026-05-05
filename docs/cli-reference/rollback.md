@@ -6,7 +6,7 @@ Rollback a service to a specific deployment.
 serverless rollback --timestamp timestamp
 ```
 
-If `timestamp` is not specified, Framework will show your existing deployments.
+If `timestamp` is not specified, The CLI will show your existing deployments.
 
 ## Options
 

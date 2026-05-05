@@ -40,9 +40,9 @@ serverless create \
   --name my-new-service
 ```
 
-This example will download the template into the `my-new-service` directory. This directory will be created if not present. Serverless will not overwrite an existing target directory when `--path` is used.
+This example will download the template into the `my-new-service` directory. This directory will be created if not present. OSLS Framework will not overwrite an existing target directory when `--path` is used.
 
-Additionally Serverless will rename the service according to the name you provide. If `--path` is omitted, Serverless uses `--name` as the target directory. If `--name` is omitted, the service name defaults to the target directory's final path segment.
+Additionally OSLS Framework will rename the service according to the name you provide. If `--path` is omitted, OSLS Framework uses `--name` as the target directory. If `--name` is omitted, the service name defaults to the target directory's final path segment.
 
 ### Creating a new service using a local template
 
@@ -55,4 +55,4 @@ serverless create \
 
 This will copy the `path/to/my/template/folder` folder into `path/to/my/service`. If `--name` is provided, the copied template's service name will be renamed to `my-new-service`. If `--name` is omitted, the service name defaults to the target directory's final path segment.
 
-If neither `--path` nor `--name` is provided, Serverless will create a new directory named after the local template folder and preserve the template's existing service name.
+If neither `--path` nor `--name` is provided, OSLS Framework will create a new directory named after the local template folder and preserve the template's existing service name.

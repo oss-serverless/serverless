@@ -1,6 +1,6 @@
-# Serverless Framework Services
+# Services
 
-A service, aka a project, is the Framework's unit of organization.
+A service, aka a project, is the CLI's unit of organization.
 
 A service is configured via a `serverless.yml` file where you define your functions, the events that trigger them, and the AWS resources to deploy. For example:
 
@@ -68,7 +68,7 @@ You'll see the following files in your working directory:
 
 Each `service` configuration is managed in the `serverless.yml` file. The main responsibilities of this file are:
 
-- Declare a serverless service
+- Declare a service
 - Define the cloud provider the service will be deployed to
 - Define one or more functions
 - Define the events that trigger each function (e.g. HTTP requests)
@@ -143,13 +143,13 @@ The removal process will only remove the service on your provider's infrastructu
 
 ## Version Pinning
 
-The Serverless Framework is usually installed globally via `npm install -g osls`. This way you have the Serverless CLI available for all your services.
+OSLS Framework is usually installed globally via `npm install -g osls`. This way you have the OSLS Framework CLI available for all your services.
 
-Installing tools globally has the downside that the version can't be pinned inside package.json. This can lead to issues if you upgrade Serverless, but your colleagues or CI system don't. You can now use a new feature in your serverless.yml which is available only in the latest version without worrying that your CI system will deploy with an old version of Serverless.
+Installing tools globally has the downside that the version can't be pinned inside package.json. This can lead to issues if you upgrade OSLS Framework, but your colleagues or CI system don't. You can now use a new feature in your `serverless.yml` which is available only in the latest version without worrying that your CI system will deploy with an old OSLS Framework version.
 
 ### Pinning a Version
 
-To configure version pinning define a `frameworkVersion` property in your serverless.yaml. Whenever you run a Serverless command from the CLI it checks if your current Serverless version is matching the `frameworkVersion` range. The CLI uses [Semantic Versioning](http://semver.org/) so you can pin it to an exact version or provide a range. In general we recommend to pin to an exact version to ensure everybody in your team has the exact same setup and no unexpected problems happen.
+To configure version pinning define a `frameworkVersion` property in your `serverless.yml`. Whenever you run an OSLS Framework command, the CLI checks if your current OSLS Framework version matches the `frameworkVersion` range. The CLI uses [Semantic Versioning](http://semver.org/) so you can pin it to an exact version or provide a range. In general we recommend to pin to an exact version to ensure everybody in your team has the exact same setup and no unexpected problems happen.
 
 ### Examples
 
@@ -187,18 +187,18 @@ provider:
 …
 ```
 
-## Installing Serverless in an existing service
+## Installing the CLI in an existing service
 
-If you already have a Serverless service, and would prefer to lock down the framework version using `package.json`, then you can install Serverless as follows:
+If you already have a service, and would prefer to lock down the framework version using `package.json`, then you can install the CLI as follows:
 
 ```bash
 # from within a service
-npm install serverless --save-dev
+npm install osls --save-dev
 ```
 
-### Invoking Serverless locally
+### Invoking the CLI locally
 
-To execute the locally installed Serverless executable you have to reference the binary out of the node modules directory.
+To execute the locally installed CLI executable you have to reference the binary out of the node modules directory.
 
 Example:
 
@@ -209,5 +209,5 @@ npx serverless deploy
 or
 
 ```bash
-node ./node_modules/serverless/bin/serverless deploy
+node ./node_modules/osls/bin/serverless deploy
 ```

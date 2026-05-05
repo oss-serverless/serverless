@@ -42,7 +42,7 @@ describe('test/unit/lib/utils/logDeprecation.test.js', () => {
     expect(error).to.have.property('code', 'REJECTED_DEPRECATION_CODE1');
     expect(error.message).to.include('Start using deprecation log');
     expect(error.message).to.include(
-      'More Info: https://github.com/oss-serverless/serverless/blob/main/docs/guides/deprecations.md#CODE1'
+      'More Info: https://github.com/oss-serverless/framework/blob/main/docs/guides/deprecations.md#CODE1'
     );
   });
 
@@ -57,7 +57,7 @@ describe('test/unit/lib/utils/logDeprecation.test.js', () => {
 
     expect(summary).to.include('Start using deprecation log');
     expect(summary).to.include(
-      'More info: https://github.com/oss-serverless/serverless/blob/main/docs/guides/deprecations.md#CODE1'
+      'More info: https://github.com/oss-serverless/framework/blob/main/docs/guides/deprecations.md#CODE1'
     );
   });
 

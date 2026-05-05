@@ -1,17 +1,17 @@
 # CLI output in plugins
 
-Plugins can integrate and extend the CLI output of Serverless in different ways.
+Plugins can integrate and extend the CLI output of OSLS Framework in different ways.
 
 ## Writing to the output
 
-In older Serverless versions, plugins could write to the CLI output via `serverless.cli.log()`:
+In older OSLS Framework versions, plugins could write to the CLI output via `serverless.cli.log()`:
 
 ```js
 // This approach is deprecated:
 serverless.cli.log('Message');
 ```
 
-The method above is deprecated. It should not be used in Serverless plugins.
+The method above is deprecated. It should not be used in OSLS Framework plugins.
 
 Instead, plugins can log messages to the CLI output via a standard `log` interface:
 
@@ -60,7 +60,7 @@ log.warning('Here is a %s log', 'formatted');
 - **Keep the default CLI output minimal.**
 - Log most information to the `--verbose` output.
 - Warnings should be used exceptionally. Consider whether the plugin should instead throw an exception, log a `--verbose` message or trigger a deprecation (see below).
-- Before using `log.error()`, consider [throwing an exception](#errors): exceptions are automatically caught by Serverless and formatted with details.
+- Before using `log.error()`, consider [throwing an exception](#errors): exceptions are automatically caught by OSLS Framework and formatted with details.
 - Debugging logs should be logged to the `--debug` level. Debug logs can be namespaced following the [`debug` convention](https://github.com/visionmedia/debug#usage) via `log.get('my-namespace').debug('Debug message')`. Such logs can then be filtered in the CLI output via `--debug=plugin-name:my-namespace`.
 
 **By default, logs are written to `stderr`**, which displays in terminals (humans cannot tell the difference). This is intentional: plugins can safely log extra messages to any command, even commands meant to be piped or parsed by another program. Read the next section to learn more.
@@ -108,24 +108,24 @@ manual colorization.
 **Best practices:**
 
 - Prefer plain text and built-in helpers over manual colors.
-- Keep primary information concise and leave decorative formatting to the framework.
+- Keep primary information concise and leave decorative formatting to OSLS Framework.
 - Plugins should generally not use any other color, nor introduce any other custom formatting. Output formatting is meant to be minimalistic.
 - Plugins should use built-in formats documented in this page: success messages (`log.success()`), interactive progress…
-- Avoid trying to reproduce the Serverless red accent in plugins; it is reserved for Serverless' most attention-grabbing output.
+- Avoid trying to reproduce the OSLS Framework red accent in plugins; it is reserved for OSLS Framework's most attention-grabbing output.
 
-The Serverless red color (`#fd5750`) is used to grab the user's attention:
+The OSLS Framework red color (`#fd5750`) is used to grab the user's attention:
 
 - It should be used minimally, and maximum once per command.
 - It should be used only to grab attention to the command's most important information.
 
 ## Errors
 
-Serverless differentiates between 2 errors:
+OSLS Framework differentiates between 2 errors:
 
 - user errors (wrong input, invalid configuration, etc.)
 - programmer errors (aka bugs)
 
-To throw a **user error** and have it properly formatted, use the Serverless error class:
+To throw a **user error** and have it properly formatted, use the OSLS Framework error class:
 
 ```js
 throw new serverless.classes.Error('Invalid configuration in X');
@@ -234,7 +234,7 @@ serverless.logDeprecation(
 );
 ```
 
-These deprecations will integrate with the deprecation system of Serverless.
+These deprecations will integrate with the deprecation system of OSLS Framework.
 
 **Best practices:**
 
@@ -254,8 +254,8 @@ class MyPlugin {
 ```
 
 The I/O API is injected into plugin constructors and should be the default way
-to access framework-provided output helpers.
+to access OSLS Framework-provided output helpers.
 
 Do not rely on undocumented internal paths such as
-`lib/utils/serverless-utils/*` or other framework internals. Those are
+`lib/utils/serverless-utils/*` or other OSLS Framework internals. Those are
 implementation details and may change without notice.

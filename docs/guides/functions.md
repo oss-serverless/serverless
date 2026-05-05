@@ -36,7 +36,7 @@ functions:
     tracing: PassThrough # optional, overwrite, can be 'Active' or 'PassThrough'
 ```
 
-If `provider.runtime` is omitted for AWS services, Serverless defaults to the latest supported Node.js Lambda runtime. Today that is `nodejs24.x`.
+If `provider.runtime` is omitted for AWS services, OSLS Framework defaults to the latest supported Node.js Lambda runtime. Today that is `nodejs24.x`.
 
 We still recommend explicitly setting the runtime you want to deploy, either at `provider.runtime` or per function, so your service does not change runtimes when that default advances.
 
@@ -297,7 +297,7 @@ functions:
 
 Alternatively lambda environment can be configured through docker images. Image published to AWS ECR registry can be referenced as lambda source (check [AWS Lambda – Container Image Support](https://aws.amazon.com/blogs/aws/new-for-aws-lambda-container-image-support/)). In addition, you can also define your own images that will be built locally and uploaded to AWS ECR registry.
 
-Serverless will create an ECR repository for your image, but it currently does not manage updates to it. An ECR repository is created only for new services or the first time that a function configured with an `image` is deployed. In service configuration, you can configure the ECR repository to scan for CVEs via the `provider.ecr.scanOnPush` property, which is `false` by default. (See [documentation](https://docs.aws.amazon.com/AmazonECR/latest/userguide/image-scanning.html))
+OSLS Framework will create an ECR repository for your image, but it currently does not manage updates to it. An ECR repository is created only for new services or the first time that a function configured with an `image` is deployed. In service configuration, you can configure the ECR repository to scan for CVEs via the `provider.ecr.scanOnPush` property, which is `false` by default. (See [documentation](https://docs.aws.amazon.com/AmazonECR/latest/userguide/image-scanning.html))
 
 You can also configure an ECR lifecycle policy to automatically clean up old images by setting `provider.ecr.maxImageCount` to a positive integer. When set, images exceeding this count will be expired. (See [documentation](https://docs.aws.amazon.com/AmazonECR/latest/userguide/LifecyclePolicies.html))
 
@@ -391,7 +391,7 @@ functions:
         - flag
 ```
 
-During the first deployment when locally built images are used, Framework will automatically create a dedicated ECR repository to store these images, with name `serverless-<service>-<stage>`. By default, older versions of images uploaded to ECR are not removed as they still might be in use by versioned functions. To automatically expire old images, set `provider.ecr.maxImageCount` to limit the number of images retained in the repository. During `sls remove`, the created ECR repository will be removed. During deployment, Framework will attempt to `docker login` to ECR if needed. Depending on your local configuration, docker authorization token might be stored unencrypted. Please refer to documentation for more details: https://docs.docker.com/engine/reference/commandline/login/#credentials-store
+During the first deployment when locally built images are used, The CLI will automatically create a dedicated ECR repository to store these images, with name `serverless-<service>-<stage>`. By default, older versions of images uploaded to ECR are not removed as they still might be in use by versioned functions. To automatically expire old images, set `provider.ecr.maxImageCount` to limit the number of images retained in the repository. During `sls remove`, the created ECR repository will be removed. During deployment, The CLI will attempt to `docker login` to ECR if needed. Depending on your local configuration, docker authorization token might be stored unencrypted. Please refer to documentation for more details: https://docs.docker.com/engine/reference/commandline/login/#credentials-store
 
 ## Instruction set architecture
 
@@ -698,7 +698,7 @@ To publish Lambda Layers, check out the [Layers](./layers.md) documentation.
 
 ## Log Group Resources
 
-By default, the framework will create LogGroups for your Lambdas. This makes it easy to clean up your log groups in the case you remove your service, and make the lambda IAM permissions much more specific and secure.
+By default, OSLS Framework will create LogGroups for your Lambdas. This makes it easy to clean up your log groups in the case you remove your service, and make the lambda IAM permissions much more specific and secure.
 
 You can opt out of the default behavior by setting `disableLogs: true`
 
@@ -720,9 +720,9 @@ functions:
 
 ## Versioning Deployed Functions
 
-By default, the framework creates function versions for every deploy. This behavior is optional, and can be turned off in cases where you don't invoke past versions by their qualifier. If you would like to do this, you can invoke your functions as `arn:aws:lambda:....:function/myFunc:3` to invoke version 3 for example.
+By default, OSLS Framework creates function versions for every deploy. This behavior is optional, and can be turned off in cases where you don't invoke past versions by their qualifier. If you would like to do this, you can invoke your functions as `arn:aws:lambda:....:function/myFunc:3` to invoke version 3 for example.
 
-Versions are not cleaned up by serverless, so make sure you use a plugin or other tool to prune sufficiently old versions. The framework can't clean up versions because it doesn't have information about whether older versions are invoked or not. This feature adds to the number of total stack outputs and resources because a function version is a separate resource from the function it refers to.
+Versions are not cleaned up by OSLS Framework, so make sure you use a plugin or other tool to prune sufficiently old versions. OSLS Framework can't clean up versions because it doesn't have information about whether older versions are invoked or not. This feature adds to the number of total stack outputs and resources because a function version is a separate resource from the function it refers to.
 
 To turn off function versioning, set the provider-level option `versionFunctions`.
 

@@ -882,7 +882,7 @@ describe('monitorStack', () => {
         errorMessage += 'mochaS3 - Bucket already exists.';
         expect(e.name).to.be.equal('ServerlessError');
         expect(e.message).to.be.equal(errorMessage);
-        // callCount is 2 because Serverless will immediately exits and shows the error
+        // callCount is 2 because OSLS Framework immediately exits and shows the error
         expect(describeStackEventsStub.callCount).to.be.equal(2);
         expect(
           describeStackEventsStub.calledWithExactly('CloudFormation', 'describeStackEvents', {
@@ -958,7 +958,7 @@ describe('monitorStack', () => {
         errorMessage += 'mochaLambda - You are not authorized to perform this operation.';
         expect(e.name).to.be.equal('ServerlessError');
         expect(e.message).to.be.equal(errorMessage);
-        // callCount is 2 because Serverless will immediately exits and shows the error
+        // callCount is 2 because OSLS Framework immediately exits and shows the error
         expect(describeStackEventsStub.callCount).to.be.equal(3);
         expect(
           describeStackEventsStub.calledWithExactly('CloudFormation', 'describeStackEvents', {
@@ -1038,7 +1038,7 @@ describe('monitorStack', () => {
           errorMessage += 'mochaLambda - You are not authorized to perform this operation.';
           expect(e.name).to.be.equal('ServerlessError');
           expect(e.message).to.be.equal(errorMessage);
-          // callCount is 2 because Serverless will immediately exits and shows the error
+          // callCount is 2 because OSLS Framework immediately exits and shows the error
           expect(describeStackEventsStub.callCount).to.be.equal(4);
           expect(
             describeStackEventsStub.calledWithExactly('CloudFormation', 'describeStackEvents', {
@@ -1412,7 +1412,7 @@ describe('monitorStack', () => {
         errorMessage += 'mocha - UPDATE_ROLLBACK_IN_PROGRESS.';
         expect(e.name).to.be.equal('ServerlessError');
         expect(e.message).to.be.equal(errorMessage);
-        // callCount is 2 because Serverless will immediately exits and shows the error
+        // callCount is 2 because OSLS Framework immediately exits and shows the error
         expect(describeStackEventsStub.callCount).to.be.equal(2);
         expect(
           describeStackEventsStub.calledWithExactly('CloudFormation', 'describeStackEvents', {

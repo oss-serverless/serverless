@@ -1,4 +1,4 @@
-# Serverless Framework Deprecations
+# OSLS Framework Deprecations
 
 ## How to disable a specific deprecation
 
@@ -36,9 +36,9 @@ Note:
 
 Deprecation code: `CONSOLE_CONFIGURATION`
 
-Starting with v3.24.0, Serverless will no longer recognize inner `console` configuration. All Serverless Console related configuration is expected to be maintained at https://console.serverless.com
+Starting with v3.24.0, OSLS Framework will no longer recognize inner `console` configuration. All Serverless Console related configuration is expected to be maintained at https://console.serverless.com
 
-Learn more about configuration validation here: http://slss.io/configuration-validation
+Learn more about configuration validation here: ./configuration-validation.md
 
 <a name="VARIABLES_RESOLUTION_MODE"><div>&nbsp;</div></a>
 
@@ -46,9 +46,9 @@ Learn more about configuration validation here: http://slss.io/configuration-val
 
 Deprecation code: `VARIABLES_RESOLUTION_MODE`
 
-Starting with v4.0.0, Serverless will no longer recognize `variablesResolutionMode`, as supported configuration property. Drop it to avoid validation errors
+Starting with Serverless Framework v4.0.0, `variablesResolutionMode` is no longer recognized as a supported configuration property. Drop it to avoid validation errors
 
-Learn more about configuration validation here: http://slss.io/configuration-validation
+Learn more about configuration validation here: ./configuration-validation.md
 
 <a name="PROJECT_DIR"><div>&nbsp;</div></a>
 
@@ -56,9 +56,9 @@ Learn more about configuration validation here: http://slss.io/configuration-val
 
 Deprecation code: `PROJECT_DIR`
 
-Starting with v4.0.0, Serverless will no longer recognize `projectDir`, as supported configuration property. Drop it to avoid validation errors
+Starting with Serverless Framework v4.0.0, `projectDir` is no longer recognized as a supported configuration property. Drop it to avoid validation errors
 
-Learn more about configuration validation here: http://slss.io/configuration-validation
+Learn more about configuration validation here: ./configuration-validation.md
 
 <a name="CLI_OPTIONS_SCHEMA_V3"><div>&nbsp;</div></a>
 
@@ -98,9 +98,9 @@ Starting with v4.0.0 old versions of settings will no longer be supported
 
 Deprecation code: `CONFIG_VALIDATION_MODE_DEFAULT_V3`
 
-Starting with v4.0.0, Serverless will throw on configuration errors by default. This is changing from the previous default, `configValidationMode: warn`
+Starting with Serverless Framework v4.0.0, configuration errors are thrown by default. This is changing from the previous default, `configValidationMode: warn`
 
-Learn more about configuration validation here: http://slss.io/configuration-validation
+Learn more about configuration validation here: ./configuration-validation.md
 
 <a name="PACKAGE_PATTERNS"><div>&nbsp;</div></a>
 

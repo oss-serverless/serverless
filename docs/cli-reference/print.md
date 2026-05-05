@@ -2,7 +2,7 @@
 
 Print your `serverless.yml` config file with all variables resolved.
 
-If you're using [Serverless Variables](../guides/variables.md)
+If you're using [OSLS Framework variables](../guides/variables.md)
 in your `serverless.yml`, it can be difficult to know if your syntax is correct
 or if the variables are resolving as you expect.
 

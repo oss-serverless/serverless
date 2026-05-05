@@ -121,7 +121,7 @@ provider:
     Name: data-protection-policy
   # KMS key ARN to use for encryption for all functions
   kmsKeyArn: arn:aws:kms:us-east-1:XXXXXX:key/some-hash
-  # Version of hashing algorithm used by Serverless Framework for function packaging
+  # Version of hashing algorithm used by OSLS Framework for function packaging
   lambdaHashingVersion: 20201221
   # Use function versioning (enabled by default)
   versionFunctions: false
@@ -129,19 +129,19 @@ provider:
   architecture: x86_64
 ```
 
-If `provider.runtime` is omitted for AWS services, Serverless defaults to the latest supported Node.js Lambda runtime. Today that is `nodejs24.x`.
+If `provider.runtime` is omitted for AWS services, OSLS Framework defaults to the latest supported Node.js Lambda runtime. Today that is `nodejs24.x`.
 
 Even so, we recommend explicitly setting the runtime you want to deploy so your service does not change runtimes when that default advances.
 
 ### Deployment bucket
 
-Serverless Framework needs a S3 bucket to store artifacts for deploying. That bucket is automatically created and managed by Serverless, but you can configure it explicitly if needed:
+OSLS Framework needs a S3 bucket to store artifacts for deploying. That bucket is automatically created and managed by OSLS Framework, but you can configure it explicitly if needed:
 
 ```yaml
 provider:
   # The S3 prefix under which deployed artifacts are stored (default: serverless)
   deploymentPrefix: serverless
-  # Configure the S3 bucket used by Serverless Framework to deploy code packages to Lambda
+  # Configure the S3 bucket used by OSLS Framework to deploy code packages to Lambda
   deploymentBucket:
     # Name of an existing bucket to use (default: created by serverless)
     name: com.serverless.${self:provider.region}.deploys
@@ -452,7 +452,7 @@ provider:
   iam:
     # Instruct Serverless to use an existing IAM role for all Lambda functions
     role: arn:aws:iam::XXXXXX:role/role
-    # OR configure the role that will be created by Serverless (simplest):
+    # OR configure the role that will be created by OSLS Framework (simplest):
     role:
       # Add statements to the IAM role to give permissions to Lambda functions
       statements:
@@ -530,18 +530,18 @@ provider:
       applicationLogLevel: ERROR
       # The System Log Level to be used, This can only be set if `logFormat` is set to `JSON`
       systemLogLevel: INFO
-      # The LogGroup that will be used by default. If this is set the Framework will not create LogGroups for any functions
+      # The LogGroup that will be used by default. If this is set the CLI will not create LogGroups for any functions
       logGroup: /aws/lambda/global-log-group
 
     # Enable HTTP API logs
     # This can either be set to `httpApi: true` to use defaults, or configured via subproperties
-    # Can only be configured if the API is created by Serverless Framework
+    # Can only be configured if the API is created by OSLS Framework
     httpApi:
       format: '{ "requestId":"$context.requestId", "ip": "$context.identity.sourceIp", "requestTime":"$context.requestTime", "httpMethod":"$context.httpMethod","routeKey":"$context.routeKey", "status":"$context.status","protocol":"$context.protocol", "responseLength":"$context.responseLength" }'
 
     # Enable REST API logs
     # This can either be set to `restApi: true` to use defaults, or configured via subproperties
-    # Can only be configured if the API is created by Serverless Framework
+    # Can only be configured if the API is created by OSLS Framework
     restApi:
       # Enables HTTP access logs (default: true)
       accessLogging: true
@@ -555,7 +555,7 @@ provider:
       fullExecutionData: true
       # Existing IAM role to use for API Gateway when writing CloudWatch Logs (default: automatically created)
       role: arn:aws:iam::123456:role
-      # Whether the API Gateway CloudWatch Logs role setting is not managed by Serverless (default: false)
+      # Whether the API Gateway CloudWatch Logs role setting is not managed by OSLS Framework (default: false)
       roleManagedExternally: false
 
     # Enable Websocket API logs
@@ -572,7 +572,7 @@ provider:
       # Log full requests/responses for execution logging (default: true)
       fullExecutionData: true
 
-    # Optional, whether to write CloudWatch logs for custom resource lambdas as added by the framework
+    # Optional, whether to write CloudWatch logs for custom resource lambdas as added by OSLS Framework
     frameworkLambda: true
 ```
 

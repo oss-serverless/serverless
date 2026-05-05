@@ -5,7 +5,7 @@ Quick recommendations and tips for various processes.
 ### Development Workflow
 
 1. Write your functions
-2. Use `serverless deploy` only when you've made changes to `serverless.yml` and in CI/CD systems. For more information on setting up CI/CD for your Serverless app, read [this article](https://serverless.com/blog/ci-cd-workflow-serverless-apps-with-circleci).
+2. Use `serverless deploy` only when you've made changes to `serverless.yml` and in CI/CD systems. For more information on setting up CI/CD for your serverless app, read [this article](https://serverless.com/blog/ci-cd-workflow-serverless-apps-with-circleci).
 3. Use `serverless deploy function -f myFunction` to rapidly deploy changes when you are working on a specific AWS Lambda Function.
 4. Use `serverless invoke -f myFunction -l` to test your AWS Lambda Functions on AWS.
 5. Open up a separate tab in your console and stream logs in there via `serverless logs -f myFunction -t`.
@@ -19,13 +19,13 @@ Quick recommendations and tips for various processes.
 
 ### Larger Projects
 
-- Break your application/project into multiple Serverless Services.
-- Model your Serverless Services around Data Models or Workflows.
-- Keep the Functions and Resources in your Serverless Services to a minimum.
+- Break your application/project into multiple services.
+- Model your services around Data Models or Workflows.
+- Keep the Functions and Resources in your services to a minimum.
 
 ## Cheat Sheet
 
-A handy list of commands to use when developing with the Serverless Framework.
+A handy list of commands to use when developing with OSLS Framework.
 
 ##### Create A Service:
 
@@ -37,7 +37,7 @@ serverless create -p [TARGET DIRECTORY] --template-url [TEMPLATE URL]
 
 ##### Install A Service
 
-This is a convenience method to install a pre-made Serverless Service locally by downloading the Github repo and unzipping it.
+This is a convenience method to install a pre-made service locally by downloading the Github repo and unzipping it.
 
 ```bash
 serverless install -u [GITHUB URL OF SERVICE]

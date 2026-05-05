@@ -431,7 +431,7 @@ provider:
 
 In the above example, the tag project: myProject will be applied to API Gateway and API Gateway Stage.
 
-_Note: If the API Gateway has any existing tags applied outside of Serverless Framework, they will be removed during deployment._
+_Note: If the API Gateway has any existing tags applied outside of OSLS Framework, they will be removed during deployment._
 
 ## Disable Default Endpoint
 

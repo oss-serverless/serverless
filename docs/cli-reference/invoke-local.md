@@ -22,7 +22,7 @@ serverless invoke local --function functionName
   runtimes.
 * `--docker-arg` Pass additional arguments to docker run command when `--docker` is option used. e.g. `--docker-arg '-p 9229:9229' --docker-arg '-v /var:/host_var'`
 
-> **Security note:** When `serverless invoke local` receives a `--path` or `--contextPath` value ending in `.js`, the Framework loads it with Node.js (`require()`), which executes the file so it can export event or context data. Treat JavaScript input files and paths supplied by scripts or CI as trusted input. Prefer JSON or YAML files for event and context data from untrusted sources.
+> **Security note:** When `serverless invoke local` receives a `--path` or `--contextPath` value ending in `.js`, the CLI loads it with Node.js (`require()`), which executes the file so it can export event or context data. Treat JavaScript input files and paths supplied by scripts or CI as trusted input. Prefer JSON or YAML files for event and context data from untrusted sources.
 
 ## Environment
 

@@ -7,7 +7,7 @@ This setup specifies that the `compute` function should be triggered whenever:
 
 The ARN for the stream can be specified as a string, the reference to the ARN of a resource by logical ID, or the import of an ARN that was exported by a different service or CloudFormation stack.
 
-**Note:** The `stream` event will hook up your existing streams to a Lambda function. Serverless won't create a new stream for you.
+**Note:** The `stream` event will hook up your existing streams to a Lambda function. OSLS Framework won't create a new stream for you.
 
 ```yml
 functions:
@@ -122,7 +122,7 @@ functions:
 
 This configuration provides the ability to recursively split a failed batch and retry on a smaller subset of records, eventually isolating the metadata causing the error.
 
-**Note:** Serverless only sets this property if you explicitly add it to the stream configuration (see example below).
+**Note:** OSLS Framework only sets this property if you explicitly add it to the stream configuration (see example below).
 
 [Related AWS documentation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-lambda-eventsourcemapping.html#cfn-lambda-eventsourcemapping-bisectbatchonfunctionerror)
 
@@ -140,7 +140,7 @@ functions:
 
 This configuration sets up the maximum number of times to retry when the function returns an error.
 
-**Note:** Serverless only sets this property if you explicitly add it to the stream configuration (see example below).
+**Note:** OSLS Framework only sets this property if you explicitly add it to the stream configuration (see example below).
 
 [Related AWS documentation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-lambda-eventsourcemapping.html#cfn-lambda-eventsourcemapping-maximumretryattempts)
 
@@ -161,7 +161,7 @@ functions:
 
 This configuration sets up the maximum age of a record that Lambda sends to a function for processing.
 
-**Note:** Serverless only sets this property if you explicitly add it to the stream configuration (see example below).
+**Note:** OSLS Framework only sets this property if you explicitly add it to the stream configuration (see example below).
 
 [Related AWS documentation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-lambda-eventsourcemapping.html#cfn-lambda-eventsourcemapping-maximumrecordageinseconds)
 
@@ -179,13 +179,13 @@ functions:
 
 This configuration sets up the onFailure location for events to be sent to once it has reached the maximum number of times to retry when the function returns an error.
 
-**Note:** Serverless only sets this property if you explicitly add it to the stream configuration (see example below).
+**Note:** OSLS Framework only sets this property if you explicitly add it to the stream configuration (see example below).
 
 [Related AWS documentation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-lambda-eventsourcemapping.html#cfn-lambda-eventsourcemapping-destinationconfig)
 
 The ARN for the SNS or SQS can be specified as a string, the reference to the ARN of a resource by logical ID, or the import of an ARN that was exported by a different service or CloudFormation stack.
 
-**Note:** The `destinationConfig` will hook up your existing SNS or SQS resources. Serverless won't create a new SNS or SQS for you.
+**Note:** The `destinationConfig` will hook up your existing SNS or SQS resources. OSLS Framework won't create a new SNS or SQS for you.
 
 ```yml
 functions:
@@ -322,7 +322,7 @@ This configuration allows customers to aggregate values in near-realtime, allowi
 
 For more information and examples, read the [AWS release announcement](https://aws.amazon.com/blogs/compute/using-aws-lambda-for-streaming-analytics/)
 
-Note: Serverless only sets this property if you explicitly add it to the stream configuration (see example below).
+Note: OSLS Framework only sets this property if you explicitly add it to the stream configuration (see example below).
 
 ```yml
 functions:
@@ -340,7 +340,7 @@ This configuration allows customers to filter event before lambda invocation. It
 
 For more details and examples of filter patterns, please see the [AWS event filtering documentation](https://docs.aws.amazon.com/lambda/latest/dg/invocation-eventfiltering.html)
 
-Note: Serverless only sets this property if you explicitly add it to the stream configuration (see an example below). The following example will only process inserted items in the DynamoDB table (it will skip removed and modified items).
+Note: OSLS Framework only sets this property if you explicitly add it to the stream configuration (see an example below). The following example will only process inserted items in the DynamoDB table (it will skip removed and modified items).
 
 ```yml
 functions:

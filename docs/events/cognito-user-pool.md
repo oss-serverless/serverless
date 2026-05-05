@@ -2,7 +2,7 @@
 
 ## Valid Triggers
 
-Serverless supports all Cognito User Pool Triggers as specified [here][aws-triggers-list]. Use [this guide][aws-triggers-guide] to understand
+OSLS Framework supports all Cognito User Pool Triggers as specified [here][aws-triggers-list]. Use [this guide][aws-triggers-guide] to understand
 the event objects that will be passed to your function.
 
 ## Simple event definition

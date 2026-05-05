@@ -1,13 +1,13 @@
-# Serverless Framework Concepts
+# OSLS Framework Concepts
 
-The Serverless Framework helps you develop and deploy AWS Lambda functions, along with the AWS infrastructure resources they require. It's a CLI that offers structure, automation and best practices out-of-the-box, allowing you to focus on building sophisticated, event-driven, serverless architectures, comprised of [Functions](#functions) and [Events](#events).
+OSLS Framework helps you develop and deploy AWS Lambda functions, along with the AWS infrastructure resources they require. It's a CLI that offers structure, automation and best practices out-of-the-box, allowing you to focus on building sophisticated, event-driven, serverless architectures, comprised of [Functions](#functions) and [Events](#events).
 
-The Serverless Framework is different from other application frameworks because:
+OSLS Framework is different from other application frameworks because:
 
 - It manages your code as well as your infrastructure
 - It supports multiple languages (Node.js, Python, Java, and more)
 
-Here are the Framework's main concepts and how they pertain to AWS and Lambda.
+Here are the CLI's main concepts and how they pertain to AWS and Lambda.
 
 ## Functions
 
@@ -32,7 +32,7 @@ Functions are triggered by events. Events come from other AWS resources, for exa
 - A CloudWatch alert
 - And more...
 
-When you configure an event on a Lambda function, Serverless Framework will automatically create the infrastructure needed for that event (e.g. an API Gateway endpoint) and configure your functions to listen to it.
+When you configure an event on a Lambda function, OSLS Framework will automatically create the infrastructure needed for that event (e.g. an API Gateway endpoint) and configure your functions to listen to it.
 
 [Learn more on defining function events](./events.md)
 
@@ -43,15 +43,15 @@ Resources are AWS infrastructure components which your functions use such as:
 - A DynamoDB table (e.g. for saving users/posts/comments data)
 - An S3 bucket (e.g. for saving images or files)
 - An SNS topic (e.g. for sending messages asynchronously)
-- Anything that can be defined in CloudFormation is supported by the Serverless Framework
+- Anything that can be defined in CloudFormation is supported by OSLS Framework
 
-Serverless Framework can deploy functions and their events, but also AWS resources.
+OSLS Framework can deploy functions and their events, but also AWS resources.
 
 [Learn more on defining AWS resources](./resources.md)
 
 ## Services
 
-A service is the Framework's unit of organization. You can think of it as a project file, though you can have multiple services for a single application.
+A service is the CLI's unit of organization. You can think of it as a project file, though you can have multiple services for a single application.
 
 A service is configured via a `serverless.yml` file where you define your functions, events and AWS resources to deploy. It looks like this:
 
@@ -69,7 +69,7 @@ functions: # Your "Functions"
 resources: # The "Resources" your "Functions" use. Raw AWS CloudFormation goes in here.
 ```
 
-When deploying with the Framework via `serverless deploy`, everything in the configuration file is deployed at once.
+When deploying with the CLI via `serverless deploy`, everything in the configuration file is deployed at once.
 
 [Learn more on configuring a service](./services.md)
 
@@ -77,9 +77,9 @@ When deploying with the Framework via `serverless deploy`, everything in the con
 
 In case you need more flexibility, you can also define the service configuration in JSON (`serverless.json`), JavaScript (`serverless.js`) or TypeScript (`serverless.ts`).
 
-> **Security note:** JavaScript and TypeScript service configuration files are executed by Node.js when the Framework loads the service. Treat `serverless.js`, `serverless.cjs`, `serverless.mjs`, `serverless.ts`, and `serverless.mts` as trusted code. Do not run Serverless commands against untrusted projects, templates, or pull requests that include executable service configuration files.
+> **Security note:** JavaScript and TypeScript service configuration files are executed by Node.js when the CLI loads the service. Treat `serverless.js`, `serverless.cjs`, `serverless.mjs`, `serverless.ts`, and `serverless.mts` as trusted code. Do not run OSLS Framework commands against untrusted projects, templates, or pull requests that include executable service configuration files.
 
-While Serverless Framework is language-agnostic, projects written in Node.js can benefit from using the same language all around. When using JavaScript or TypeScript, the file must export the configuration as a JS object, for example:
+While OSLS Framework is language-agnostic, projects written in Node.js can benefit from using the same language all around. When using JavaScript or TypeScript, the file must export the configuration as a JS object, for example:
 
 ```js
 'use strict';
@@ -130,7 +130,7 @@ For the sake of simplicity, most examples in the documentation refer to the `ser
 
 ### Plugins
 
-You can overwrite or extend the functionality of the Framework using plugins. Every `serverless.yml` can contain a `plugins:` property, which features multiple plugins.
+You can overwrite or extend the functionality of the CLI using plugins. Every `serverless.yml` can contain a `plugins:` property, which features multiple plugins.
 
 ```yml
 # serverless.yml

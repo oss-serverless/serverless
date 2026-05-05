@@ -12,7 +12,7 @@ const isSupportedNodeVersion = require('../lib/cli/is-supported-node-version');
 if (!isSupportedNodeVersion(process.version)) {
   const serverlessVersion = require('../package.json').version;
   process.stderr.write(
-    `Error: Serverless Framework v${serverlessVersion} does not support ` +
+    `Error: OSLS Framework v${serverlessVersion} does not support ` +
       `Node.js ${process.version}. Please use a supported release. ` +
       `Supported versions: ${isSupportedNodeVersion.supportedRange}.\n`
   );

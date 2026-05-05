@@ -1,6 +1,6 @@
 # Plugin Uninstall
 
-Uninstall a Serverless plugin and remove it from the services `plugins` array.
+Uninstall an OSLS Framework plugin and remove it from the services `plugins` array.
 
 ```bash
 serverless plugin uninstall --name pluginName

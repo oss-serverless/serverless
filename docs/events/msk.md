@@ -109,7 +109,7 @@ This configuration allows customers to filter event before lambda invocation. It
 
 For more details and examples of filter patterns, please see the [AWS event filtering documentation](https://docs.aws.amazon.com/lambda/latest/dg/invocation-eventfiltering.html)
 
-Note: Serverless only sets this property if you explicitly add it to the `msk` configuration (see an example below). The following example will only process records that are published in the MSK cluster where field `a` is equal to 1 or 2.
+Note: OSLS Framework only sets this property if you explicitly add it to the `msk` configuration (see an example below). The following example will only process records that are published in the MSK cluster where field `a` is equal to 1 or 2.
 
 ```yml
 functions:
@@ -146,4 +146,4 @@ functions:
 
 ## IAM Permissions
 
-The Serverless Framework will automatically configure the most minimal set of IAM permissions for you. However you can still add additional permissions if you need to. Read the official [AWS documentation](https://docs.aws.amazon.com/lambda/latest/dg/with-msk.html) for more information about IAM Permissions for MSK events.
+OSLS Framework will automatically configure the most minimal set of IAM permissions for you. However you can still add additional permissions if you need to. Read the official [AWS documentation](https://docs.aws.amazon.com/lambda/latest/dg/with-msk.html) for more information about IAM Permissions for MSK events.

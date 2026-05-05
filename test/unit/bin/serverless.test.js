@@ -36,7 +36,7 @@ describe('test/unit/bin/serverless.test.js', () => {
 
     expect(isSupportedNodeVersion).to.have.been.calledOnceWithExactly(process.version);
     expect(stderrWrite).to.have.been.calledOnceWithExactly(
-      'Error: Serverless Framework v3.40.1 does not support ' +
+      'Error: OSLS Framework v3.40.1 does not support ' +
         `Node.js ${process.version}. Please use a supported release. ` +
         'Supported versions: ^20.19.0 || ^22.13.0 || >=24.\n'
     );

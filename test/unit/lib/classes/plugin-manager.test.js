@@ -635,7 +635,7 @@ describe('PluginManager', () => {
       expect(pluginIndexes).to.deep.equal(pluginIndexes.slice().sort((a, b) => a - b));
     });
 
-    it('should load the Serverless core plugins', async () => {
+    it('should load the OSLS Framework core plugins', async () => {
       await pluginManager.loadAllPlugins();
 
       expect(pluginManager.plugins.length).to.be.above(1);
@@ -1384,7 +1384,7 @@ describe('PluginManager', () => {
       const command = pluginManager.getCommand(['create']);
 
       expect(command).to.deep.include({
-        usage: 'Create new Serverless service',
+        usage: 'Create new service',
         lifecycleEvents: ['create'],
         key: 'create',
         pluginName: 'Create',

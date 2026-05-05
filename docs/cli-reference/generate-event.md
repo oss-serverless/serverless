@@ -1,5 +1,5 @@
 <!--
-title: Serverless Framework Commands - AWS Lambda - Generate Event
+title: OSLS Framework Commands - AWS Lambda - Generate Event
 menuText: generate event
 menuOrder: 21
 description: Generate sample Lambda function event payload

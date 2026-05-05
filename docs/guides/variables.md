@@ -22,7 +22,7 @@ You can define your own variable syntax (regex) if it conflicts with CloudFormat
 ## Current variable sources:
 
 - [Other properties defined in `serverless.yml`](#reference-properties-in-serverlessyml)
-- [Serverless Core variables](#referencing-serverless-core-variables)
+- [OSLS Framework core variables](#referencing-osls-framework-core-variables)
 - [Environment variables](#referencing-environment-variables)
 - [Parameters](#referencing-parameters)
 - [CLI options](#referencing-cli-options)
@@ -95,15 +95,15 @@ resources:
 
 In the above example you're setting a global schedule for all functions by referencing the `globalSchedule` property in the same `serverless.yml` file. This way, you can easily change the schedule for all functions whenever you like.
 
-## Referencing Serverless Core Variables
+## Referencing OSLS Framework Core Variables
 
-Serverless initializes core variables which are used internally by the Framework itself. Those values are exposed via the Serverless Variables system and can be reused with the `{sls:}` variable prefix.
+OSLS Framework initializes core variables which are used internally by the CLI itself. Those values are exposed via the OSLS Framework variables system and can be reused with the `{sls:}` variable prefix.
 
 The following variables are available:
 
 **instanceId**
 
-A random id which will be generated whenever the Serverless CLI is run. This value can be used when predictable random variables are required.
+A random id which will be generated whenever the OSLS Framework CLI is run. This value can be used when predictable random variables are required.
 
 ```yml
 service: new-service
@@ -119,7 +119,7 @@ functions:
 
 **stage**
 
-The stage used by the Serverless CLI. The `${sls:stage}` variable is a shortcut for `${opt:stage, self:provider.stage, "dev"}`.
+The stage used by the OSLS Framework CLI. The `${sls:stage}` variable is a shortcut for `${opt:stage, self:provider.stage, "dev"}`.
 
 ## Referencing Environment Variables
 
@@ -191,7 +191,7 @@ functions:
     handler: handler.world
 ```
 
-In that case, the framework will fetch the values of those `functionPrefix` outputs from the provided stack names and populate your variables. There are many use cases for this functionality and it allows your service to communicate with other services/stacks.
+In that case, OSLS Framework will fetch the values of those `functionPrefix` outputs from the provided stack names and populate your variables. There are many use cases for this functionality and it allows your service to communicate with other services/stacks.
 
 You can add such custom output to CloudFormation stack. For example:
 
@@ -300,7 +300,7 @@ functions:
 
 ## Referencing AWS-specific variables
 
-You can reference AWS-specific values as the source of your variables. Those values are exposed via the Serverless Variables system through the `{aws:}` variable prefix.
+You can reference AWS-specific values as the source of your variables. Those values are exposed via the OSLS Framework variables system through the `{aws:}` variable prefix.
 
 The following variables are available:
 
@@ -323,7 +323,7 @@ functions:
 
 **region**
 
-The region used by the Serverless CLI. The `${aws:region}` variable is a shortcut for `${opt:region, self:provider.region, "us-east-1"}`.
+The region used by the OSLS Framework CLI. The `${aws:region}` variable is a shortcut for `${opt:region, self:provider.region, "us-east-1"}`.
 
 ### Resolution of non plain string types
 
@@ -550,7 +550,7 @@ custom:
 
 ## Multiple Configuration Files
 
-Adding many custom resources to your `serverless.yml` file could bloat the whole file, so you can use the Serverless Variable syntax to split this up.
+Adding many custom resources to your `serverless.yml` file could bloat the whole file, so you can use the OSLS Framework variable syntax to split this up.
 
 ```yml
 resources:
@@ -587,7 +587,7 @@ Resources:
 
 ## Nesting Variable References
 
-The Serverless variable system allows you to nest variable references within each other for ultimate flexibility. So you can reference certain variables based on other variables. Here's an example:
+The OSLS Framework variable system allows you to nest variable references within each other for ultimate flexibility. So you can reference certain variables based on other variables. Here's an example:
 
 ```yml
 service: new-service
@@ -600,11 +600,11 @@ functions:
     handler: handler.hello
 ```
 
-In the above example, if you pass `dev` as a stage option, the framework will look for the `dev_arn` environment variable. If you pass `production`, the framework will look for `production_arn`, and so on. This allows you to creatively use multiple variables by using a certain naming pattern without having to update the values of these variables constantly. You can go as deep as you want in your nesting, and can reference variables at any level of nesting from any source (env, opt, self or file).
+In the above example, if you pass `dev` as a stage option, OSLS Framework will look for the `dev_arn` environment variable. If you pass `production`, OSLS Framework will look for `production_arn`, and so on. This allows you to creatively use multiple variables by using a certain naming pattern without having to update the values of these variables constantly. You can go as deep as you want in your nesting, and can reference variables at any level of nesting from any source (env, opt, self or file).
 
 ## Overwriting Variables
 
-The Serverless framework gives you an intuitive way to reference multiple variables as a fallback strategy in case one of the variables is missing. This way you'll be able to use a default value from a certain source, if the variable from another source is missing.
+The OSLS Framework gives you an intuitive way to reference multiple variables as a fallback strategy in case one of the variables is missing. This way you'll be able to use a default value from a certain source, if the variable from another source is missing.
 
 For example, if you want to reference the stage you're deploying to, but you don't want to keep on providing the `stage` option in the CLI. What you can do in `serverless.yml` is:
 
@@ -661,6 +661,6 @@ ${strToBool(anything)} => Error
 [AWS Pseudo Parameters](http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/pseudo-parameter-reference.html)
 can be used in values which are passed through as is to CloudFormation template properties.
 
-Otherwise Serverless Framework has no implied understanding of them and does not try to resolve them on its own.
+Otherwise OSLS Framework has no implied understanding of them and does not try to resolve them on its own.
 
 Same handling applies to [CloudFormation Intrinsic functions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference.html)

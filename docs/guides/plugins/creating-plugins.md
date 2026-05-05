@@ -11,7 +11,7 @@ Creating a custom plugin lets you:
 
 ## Creating a plugin
 
-The simplest way to create a Serverless plugin is to write a JavaScript file:
+The simplest way to create an OSLS Framework plugin is to write a JavaScript file:
 
 ```javascript
 'use strict';
@@ -50,7 +50,7 @@ To correctly configure the plugin's NPM package, set the `main` property to poin
 }
 ```
 
-It is also a good practice to add `osls` to the `peerDependencies` section. That ensures that your plugin runs only with the Serverless versions it supports.
+It is also a good practice to add `osls` to the `peerDependencies` section. That ensures that your plugin runs only with the OSLS Framework versions it supports.
 
 ```json
 {
@@ -142,7 +142,7 @@ module.exports = MyPlugin;
 
 ## Constructor-injected utilities
 
-The framework may pass utility helpers as the third constructor argument:
+OSLS Framework may pass utility helpers as the third constructor argument:
 
 ```javascript
 class MyPlugin {
@@ -157,7 +157,7 @@ class MyPlugin {
 ```
 
 Use these injected helpers for CLI I/O instead of relying on undocumented
-framework internals.
+OSLS Framework internals.
 
 ## CLI options
 
@@ -176,7 +176,7 @@ class MyPlugin {
 
 Plugins can be provider specific, which means that run only with a specific provider.
 
-**Note:** Binding a plugin to a provider is optional. Serverless will always consider your plugin if you don't specify a `provider`.
+**Note:** Binding a plugin to a provider is optional. OSLS Framework will always consider your plugin if you don't specify a `provider`.
 
 To bind to a specific provider, retrieve it and set the `this.provider` property in the plugin constructor:
 
@@ -199,7 +199,7 @@ AWS plugins should use AWS SDK v3 clients directly instead of using `provider.re
 as a generic AWS API proxy.
 
 Plugins should own the AWS SDK v3 clients they use. Do not rely on AWS SDK
-packages that happen to be installed by Serverless.
+packages that happen to be installed by OSLS Framework.
 
 If your published plugin imports AWS SDK v3 clients at runtime, declare them in
 `dependencies`:
@@ -224,7 +224,7 @@ bundler does not externalize them:
 }
 ```
 
-Use `provider.getAwsSdkV3Config()` to get Serverless-resolved AWS configuration for
+Use `provider.getAwsSdkV3Config()` to get OSLS Framework-resolved AWS configuration for
 those clients:
 
 ```javascript
@@ -251,12 +251,12 @@ class MyPlugin {
 ```
 
 `provider.getAwsSdkV3Config(options)` returns AWS SDK v3 client configuration,
-including Serverless-resolved region, credentials, retry settings, and proxy,
+including OSLS Framework-resolved region, credentials, retry settings, and proxy,
 custom CA, or timeout configuration.
 
 The returned `credentials` value is an AWS SDK v3 credential provider function.
 
-Supported Serverless-specific options are:
+Supported OSLS Framework-specific options are:
 
 - `region`: override the resolved provider region for this client
 - `profile`: resolve credentials from a specific AWS profile
@@ -265,7 +265,7 @@ Other AWS SDK v3 client options, such as `endpoint`, `logger`, `requestHandler`,
 `forcePathStyle`, or `useAccelerateEndpoint`, are passed through to the returned config.
 
 `provider.request()` and `provider.sdk` are legacy AWS SDK v2 surfaces. They are
-not the recommended AWS SDK v3 plugin API. Core framework internals that have
+not the recommended AWS SDK v3 plugin API. Core OSLS Framework internals that have
 not migrated still use that legacy path, so this section describes the
 plugin-created SDK v3 client path only.
 

@@ -1,10 +1,10 @@
 # Deploying to AWS
 
-The Serverless Framework was designed to provision your AWS Lambda Functions, Events and infrastructure Resources safely and quickly. It does this via a couple of methods designed for different types of deployments.
+OSLS Framework was designed to provision your AWS Lambda Functions, Events and infrastructure Resources safely and quickly. It does this via a couple of methods designed for different types of deployments.
 
 ## Deploy All
 
-This is the main method for doing deployments with the Serverless Framework:
+This is the main method for doing deployments with OSLS Framework:
 
 ```bash
 serverless deploy
@@ -16,15 +16,15 @@ Use this method when you have updated your Function, Event or Resource configura
 
 ### How It Works
 
-The Serverless Framework translates all syntax in `serverless.yml` to a single AWS CloudFormation template. By depending on CloudFormation for deployments, users of the Serverless Framework get the safety and reliability of CloudFormation.
+OSLS Framework translates all syntax in `serverless.yml` to a single AWS CloudFormation template. By depending on CloudFormation for deployments, users of OSLS Framework get the safety and reliability of CloudFormation.
 
 - An AWS CloudFormation template is created from your `serverless.yml`.
 - If a Stack has not yet been created, then it is created with no resources except for an S3 Bucket, which will store zip files of your Function code.
 - If you're using locally build ECR images, dedicated ECR repository is created for your service. You also will be logged to that repository via `docker login` if needed.
 - The code of your Functions is then packaged into zip files.
 - If you're using locally build ECR images, they are built and uploaded to ECR.
-- Serverless fetches the hashes for all files of the previous deployment (if any) and compares them against the hashes of the local files.
-- Serverless terminates the deployment process if all file hashes are the same.
+- OSLS Framework fetches the hashes for all files of the previous deployment (if any) and compares them against the hashes of the local files.
+- OSLS Framework terminates the deployment process if all file hashes are the same.
 - Zip files of your Functions' code are uploaded to your Code S3 Bucket.
 - Any IAM Roles, Functions, Events and Resources are added to the AWS CloudFormation template.
 - The CloudFormation Stack is updated with the new CloudFormation template.
@@ -32,7 +32,7 @@ The Serverless Framework translates all syntax in `serverless.yml` to a single A
 
 ### Deployment method
 
-Since Serverless Framework v3, deployments are done using [CloudFormation change sets](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-updating-stacks-changesets.html). It is possible to use [CloudFormation direct deployments](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-updating-stacks-direct.html) instead.
+Since OSLS Framework v3, deployments are done using [CloudFormation change sets](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-updating-stacks-changesets.html). It is possible to use [CloudFormation direct deployments](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-updating-stacks-direct.html) instead.
 
 Direct deployments **are faster** and have no downsides (unless you specifically use the generated change sets). They will become the default in Serverless Framework 4.
 
@@ -81,7 +81,7 @@ provider:
 - You can make uploading to S3 faster by adding `--aws-s3-accelerate`
 
 - You can disable creation of default S3 bucket policy by setting `skipPolicySetup` under `deploymentBucket` config. It only applies to deployment bucket that is automatically created
-  by the Serverless Framework.
+  by OSLS Framework.
 
 - You can enable versioning for the deployment bucket by setting `versioning` under `deploymentBucket` config to `true`.
 
@@ -101,9 +101,9 @@ serverless deploy function --function myFunction
 
 ### How It Works
 
-- The Framework packages up the targeted AWS Lambda Function into a zip file.
-- The Framework fetches the hash of the already uploaded function .zip file and compares it to the local .zip file hash.
-- The Framework terminates if both hashes are the same.
+- The CLI packages up the targeted AWS Lambda Function into a zip file.
+- The CLI fetches the hash of the already uploaded function .zip file and compares it to the local .zip file hash.
+- The CLI terminates if both hashes are the same.
 - That zip file is uploaded to your S3 bucket using the same name as the previous function, which the CloudFormation stack is pointing to.
 
 ### Tips
@@ -115,7 +115,7 @@ Check out the [deploy command docs](../cli-reference/deploy.md) for all details 
 
 ## Deploying a package
 
-This deployment option takes a deployment directory that has already been created with `serverless package` and deploys it to the cloud provider. This allows you to easily integrate CI / CD workflows with the Serverless Framework.
+This deployment option takes a deployment directory that has already been created with `serverless package` and deploys it to the cloud provider. This allows you to easily integrate CI / CD workflows with OSLS Framework.
 
 ```bash
 serverless deploy --package path-to-package
@@ -123,5 +123,5 @@ serverless deploy --package path-to-package
 
 ### How It Works
 
-- The argument to the `--package` flag is a directory that has been previously packaged by Serverless (with `serverless package`).
+- The argument to the `--package` flag is a directory that has been previously packaged by OSLS Framework (with `serverless package`).
 - The deploy process bypasses the package step and uses the existing package to deploy and update CloudFormation stacks.

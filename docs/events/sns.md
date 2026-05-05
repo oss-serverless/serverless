@@ -28,7 +28,7 @@ This will run both functions for a message sent to the dispatch topic.
 
 ## Using a pre-existing topic
 
-If an `arn:` is specified, the framework will give permission to the topic to invoke the function and subscribe the function to the topic.
+If an `arn:` is specified, OSLS Framework will give permission to the topic to invoke the function and subscribe the function to the topic.
 
 ```yml
 functions:
