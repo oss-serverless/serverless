@@ -21,22 +21,25 @@ describe('test/unit/src/utils/serverless-utils/log-reporters/node/style.test.js'
 
     proxyquire
       .noCallThru()
-      .load('../../../../../../../../lib/compose/utils/serverless-utils/lib/log-reporters/node/style', {
-        'ext/function/identity': (value) => value,
-        '../../../../colors': {
-          stderrColors: {
-            gray: (value) => `stderr-gray(${value})`,
-            brandRed: (value) => `stderr-red(${value})`,
-            underline: (value) => `stderr-underline(${value})`,
-            warning: (value) => `stderr-warning(${value})`,
+      .load(
+        '../../../../../../../../lib/compose/utils/serverless-utils/lib/log-reporters/node/style',
+        {
+          'ext/function/identity': (value) => value,
+          '../../../../colors': {
+            stderrColors: {
+              gray: (value) => `stderr-gray(${value})`,
+              brandRed: (value) => `stderr-red(${value})`,
+              underline: (value) => `stderr-underline(${value})`,
+              warning: (value) => `stderr-warning(${value})`,
+            },
           },
-        },
-        '../../../log': {
-          style: styleState,
-          log: logState,
-        },
-        '../../log/join-text-tokens': (tokens) => `${tokens.join('')}\n`,
-      });
+          '../../../log': {
+            style: styleState,
+            log: logState,
+          },
+          '../../log/join-text-tokens': (tokens) => `${tokens.join('')}\n`,
+        }
+      );
 
     expect(styleState.aside('x')).to.equal('stderr-gray(x)');
     expect(styleState.error('x')).to.equal('stderr-red(x)');

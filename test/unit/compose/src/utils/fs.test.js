@@ -9,7 +9,13 @@ const sinon = require('sinon');
 const { expect } = require('chai');
 
 const utilsFs = require('../../../../../lib/compose/utils/fs');
-const { ensureDir, outputFile, outputFileSync, remove, removeSync } = require('../../../../lib/compose/fs');
+const {
+  ensureDir,
+  outputFile,
+  outputFileSync,
+  remove,
+  removeSync,
+} = require('../../../../lib/compose/fs');
 const skipOnDisabledSymlinksInWindows = require('../../../../lib/compose/skip-on-disabled-symlinks-in-windows');
 
 describe('test/unit/src/utils/fs.test.js', () => {

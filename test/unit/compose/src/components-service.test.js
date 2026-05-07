@@ -256,9 +256,12 @@ describe('test/unit/src/components-service.test.js', () => {
       commands: {},
       alias,
     }));
-    const ComponentsServiceWithStubbedLoad = proxyquire('../../../../lib/compose/ComponentsService', {
-      './load': { loadComponent },
-    });
+    const ComponentsServiceWithStubbedLoad = proxyquire(
+      '../../../../lib/compose/ComponentsService',
+      {
+        './load': { loadComponent },
+      }
+    );
     const context = new Context({
       root: process.cwd(),
       stage: 'dev',
@@ -307,9 +310,12 @@ describe('test/unit/src/components-service.test.js', () => {
       commands: {},
       alias,
     }));
-    const ComponentsServiceWithStubbedLoad = proxyquire('../../../../lib/compose/ComponentsService', {
-      './load': { loadComponent },
-    });
+    const ComponentsServiceWithStubbedLoad = proxyquire(
+      '../../../../lib/compose/ComponentsService',
+      {
+        './load': { loadComponent },
+      }
+    );
     const context = new Context({
       root: process.cwd(),
       stage: 'dev',
@@ -354,9 +360,12 @@ describe('test/unit/src/components-service.test.js', () => {
         order.push(alias);
       },
     }));
-    const ComponentsServiceWithStubbedLoad = proxyquire('../../../../lib/compose/ComponentsService', {
-      './load': { loadComponent },
-    });
+    const ComponentsServiceWithStubbedLoad = proxyquire(
+      '../../../../lib/compose/ComponentsService',
+      {
+        './load': { loadComponent },
+      }
+    );
 
     const context = new Context({
       root: process.cwd(),
@@ -400,9 +409,12 @@ describe('test/unit/src/components-service.test.js', () => {
         order.push(alias);
       },
     }));
-    const ComponentsServiceWithStubbedLoad = proxyquire('../../../../lib/compose/ComponentsService', {
-      './load': { loadComponent },
-    });
+    const ComponentsServiceWithStubbedLoad = proxyquire(
+      '../../../../lib/compose/ComponentsService',
+      {
+        './load': { loadComponent },
+      }
+    );
 
     const context = new Context({
       root: process.cwd(),
@@ -447,9 +459,12 @@ describe('test/unit/src/components-service.test.js', () => {
         order.push(alias);
       },
     }));
-    const ComponentsServiceWithStubbedLoad = proxyquire('../../../../lib/compose/ComponentsService', {
-      './load': { loadComponent },
-    });
+    const ComponentsServiceWithStubbedLoad = proxyquire(
+      '../../../../lib/compose/ComponentsService',
+      {
+        './load': { loadComponent },
+      }
+    );
 
     const context = new Context({
       root: process.cwd(),
@@ -511,9 +526,12 @@ describe('test/unit/src/components-service.test.js', () => {
         context.progresses.success(alias, 'deployed');
       },
     }));
-    const ComponentsServiceWithStubbedLoad = proxyquire('../../../../lib/compose/ComponentsService', {
-      './load': { loadComponent },
-    });
+    const ComponentsServiceWithStubbedLoad = proxyquire(
+      '../../../../lib/compose/ComponentsService',
+      {
+        './load': { loadComponent },
+      }
+    );
 
     const context = new Context({
       root: process.cwd(),
@@ -571,9 +589,12 @@ describe('test/unit/src/components-service.test.js', () => {
         active -= 1;
       },
     }));
-    const ComponentsServiceWithStubbedLoad = proxyquire('../../../../lib/compose/ComponentsService', {
-      './load': { loadComponent },
-    });
+    const ComponentsServiceWithStubbedLoad = proxyquire(
+      '../../../../lib/compose/ComponentsService',
+      {
+        './load': { loadComponent },
+      }
+    );
 
     const context = new Context({
       root: process.cwd(),
@@ -804,9 +825,12 @@ describe('test/unit/src/components-service.test.js', () => {
 
   it('returns without loading components when graph execution has no nodes', async () => {
     const loadComponent = sinon.stub();
-    const ComponentsServiceWithStubbedLoad = proxyquire('../../../../lib/compose/ComponentsService', {
-      './load': { loadComponent },
-    });
+    const ComponentsServiceWithStubbedLoad = proxyquire(
+      '../../../../lib/compose/ComponentsService',
+      {
+        './load': { loadComponent },
+      }
+    );
     const context = new Context({
       root: process.cwd(),
       stage: 'dev',
@@ -850,9 +874,12 @@ describe('test/unit/src/components-service.test.js', () => {
     const loadComponent = sinon.stub().resolves({
       commands: {},
     });
-    const ComponentsServiceWithStubbedLoad = proxyquire('../../../../lib/compose/ComponentsService', {
-      './load': { loadComponent },
-    });
+    const ComponentsServiceWithStubbedLoad = proxyquire(
+      '../../../../lib/compose/ComponentsService',
+      {
+        './load': { loadComponent },
+      }
+    );
     const context = new Context({
       root: process.cwd(),
       stage: 'dev',
@@ -889,9 +916,12 @@ describe('test/unit/src/components-service.test.js', () => {
         },
       }),
     });
-    const ComponentsServiceWithStubbedLoad = proxyquire('../../../../lib/compose/ComponentsService', {
-      './load': { loadComponent },
-    });
+    const ComponentsServiceWithStubbedLoad = proxyquire(
+      '../../../../lib/compose/ComponentsService',
+      {
+        './load': { loadComponent },
+      }
+    );
     const context = new Context({
       root: process.cwd(),
       stage: 'dev',
@@ -928,9 +958,12 @@ describe('test/unit/src/components-service.test.js', () => {
         },
       },
     });
-    const ComponentsServiceWithStubbedLoad = proxyquire('../../../../lib/compose/ComponentsService', {
-      './load': { loadComponent },
-    });
+    const ComponentsServiceWithStubbedLoad = proxyquire(
+      '../../../../lib/compose/ComponentsService',
+      {
+        './load': { loadComponent },
+      }
+    );
     const context = new Context({
       root: process.cwd(),
       stage: 'dev',
@@ -968,10 +1001,13 @@ describe('test/unit/src/components-service.test.js', () => {
     }
 
     const loadComponent = sinon.stub().resolves(new FakeServerlessFramework());
-    const ComponentsServiceWithStubbedLoad = proxyquire('../../../../lib/compose/ComponentsService', {
-      './load': { loadComponent },
-      '../../lib/compose/components/framework': FakeServerlessFramework,
-    });
+    const ComponentsServiceWithStubbedLoad = proxyquire(
+      '../../../../lib/compose/ComponentsService',
+      {
+        './load': { loadComponent },
+        '../../lib/compose/components/framework': FakeServerlessFramework,
+      }
+    );
     const context = new Context({
       root: process.cwd(),
       stage: 'dev',
@@ -1037,9 +1073,12 @@ describe('test/unit/src/components-service.test.js', () => {
     }
 
     const loadComponent = sinon.stub().resolves(new FakeComponent());
-    const ComponentsServiceWithStubbedLoad = proxyquire('../../../../lib/compose/ComponentsService', {
-      './load': { loadComponent },
-    });
+    const ComponentsServiceWithStubbedLoad = proxyquire(
+      '../../../../lib/compose/ComponentsService',
+      {
+        './load': { loadComponent },
+      }
+    );
     const context = new Context({
       root: process.cwd(),
       stage: 'dev',

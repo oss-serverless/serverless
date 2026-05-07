@@ -47,17 +47,19 @@ describe('test/unit/lib/cli/Output.test.js', () => {
   });
 
   it('uses stream-specific palettes for stdout and stderr output', async () => {
-    const OutputWithStubbedColors = proxyquire.noCallThru().load('../../../../../lib/compose/cli/Output', {
-      './colors': {
-        stdoutCliColors: {
-          gray: (value) => `stdout-gray(${value})`,
+    const OutputWithStubbedColors = proxyquire
+      .noCallThru()
+      .load('../../../../../lib/compose/cli/Output', {
+        './colors': {
+          stdoutCliColors: {
+            gray: (value) => `stdout-gray(${value})`,
+          },
+          stderrCliColors: {
+            gray: (value) => `stderr-gray(${value})`,
+            red: (value) => `stderr-red(${value})`,
+          },
         },
-        stderrCliColors: {
-          gray: (value) => `stderr-gray(${value})`,
-          red: (value) => `stderr-red(${value})`,
-        },
-      },
-    });
+      });
     const localOutput = new OutputWithStubbedColors(true, true);
 
     localOutput.writeText('Message', ['service']);

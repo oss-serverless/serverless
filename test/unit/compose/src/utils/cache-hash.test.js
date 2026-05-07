@@ -139,9 +139,12 @@ describe('test/unit/src/utils/cache-hash.test.js', () => {
   });
 
   it('rejects when a matched cache pattern file cannot be read', async () => {
-    const calculateCacheHashWithMissingFile = proxyquire('../../../../../lib/compose/utils/cache-hash', {
-      './glob': sinon.stub().resolves(['missing.txt']),
-    });
+    const calculateCacheHashWithMissingFile = proxyquire(
+      '../../../../../lib/compose/utils/cache-hash',
+      {
+        './glob': sinon.stub().resolves(['missing.txt']),
+      }
+    );
 
     await expect(calculateCacheHashWithMissingFile(['**/*'], tmpDir)).to.be.rejected;
   });

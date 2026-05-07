@@ -79,9 +79,12 @@ describe('test/unit/components/framework/index.test.js', () => {
       },
       kill: () => {},
     });
-    const FrameworkComponent = proxyquire('../../../../../lib/compose/components/framework/index.js', {
-      '../../utils/spawn': spawnStub,
-    });
+    const FrameworkComponent = proxyquire(
+      '../../../../../lib/compose/components/framework/index.js',
+      {
+        '../../utils/spawn': spawnStub,
+      }
+    );
 
     const context = await getContext();
     const component = new FrameworkComponent('some-id', context, { path: 'path' });
@@ -111,9 +114,12 @@ describe('test/unit/components/framework/index.test.js', () => {
         stdout: 'region: us-east-1\n\nStack Outputs:\n  Key: Output',
       })
     );
-    const FrameworkComponent = proxyquire('../../../../../lib/compose/components/framework/index.js', {
-      '../../utils/spawn': spawnStub,
-    });
+    const FrameworkComponent = proxyquire(
+      '../../../../../lib/compose/components/framework/index.js',
+      {
+        '../../utils/spawn': spawnStub,
+      }
+    );
 
     const context = await getContext();
     const component = new FrameworkComponent('some-id', context, { path: 'path' });
@@ -137,9 +143,12 @@ describe('test/unit/components/framework/index.test.js', () => {
       },
       kill: () => {},
     });
-    const FrameworkComponent = proxyquire('../../../../../lib/compose/components/framework/index.js', {
-      '../../utils/spawn': spawnStub,
-    });
+    const FrameworkComponent = proxyquire(
+      '../../../../../lib/compose/components/framework/index.js',
+      {
+        '../../utils/spawn': spawnStub,
+      }
+    );
 
     const context = await getContext();
     const component = new FrameworkComponent('some-id', context, { path: 'path' });
@@ -167,9 +176,12 @@ describe('test/unit/components/framework/index.test.js', () => {
       },
       kill: () => {},
     });
-    const FrameworkComponent = proxyquire('../../../../../lib/compose/components/framework/index.js', {
-      '../../utils/spawn': spawnStub,
-    });
+    const FrameworkComponent = proxyquire(
+      '../../../../../lib/compose/components/framework/index.js',
+      {
+        '../../utils/spawn': spawnStub,
+      }
+    );
 
     const context = await getContext();
     const component = new FrameworkComponent('some-id', context, { path: 'path' });
@@ -197,9 +209,12 @@ describe('test/unit/components/framework/index.test.js', () => {
       },
       kill: () => {},
     });
-    const FrameworkComponent = proxyquire('../../../../../lib/compose/components/framework/index.js', {
-      '../../utils/spawn': spawnStub,
-    });
+    const FrameworkComponent = proxyquire(
+      '../../../../../lib/compose/components/framework/index.js',
+      {
+        '../../utils/spawn': spawnStub,
+      }
+    );
 
     const context = await getContext();
     const component = new FrameworkComponent('some-id', context, {
@@ -237,9 +252,12 @@ describe('test/unit/components/framework/index.test.js', () => {
       },
       kill: () => {},
     });
-    const FrameworkComponent = proxyquire('../../../../../lib/compose/components/framework/index.js', {
-      '../../utils/spawn': spawnStub,
-    });
+    const FrameworkComponent = proxyquire(
+      '../../../../../lib/compose/components/framework/index.js',
+      {
+        '../../utils/spawn': spawnStub,
+      }
+    );
 
     const context = await getContext();
     const component = new FrameworkComponent('some-id', context, {
@@ -277,9 +295,12 @@ describe('test/unit/components/framework/index.test.js', () => {
       },
       kill: () => {},
     });
-    const FrameworkComponent = proxyquire('../../../../../lib/compose/components/framework/index.js', {
-      '../../utils/spawn': spawnStub,
-    });
+    const FrameworkComponent = proxyquire(
+      '../../../../../lib/compose/components/framework/index.js',
+      {
+        '../../utils/spawn': spawnStub,
+      }
+    );
 
     const context = await getContext();
     const component = new FrameworkComponent('some-id', context, { path: 'path' });
@@ -311,9 +332,12 @@ describe('test/unit/components/framework/index.test.js', () => {
         },
         kill: () => {},
       });
-      const FrameworkComponent = proxyquire('../../../../../lib/compose/components/framework/index.js', {
-        '../../utils/spawn': spawnStub,
-      });
+      const FrameworkComponent = proxyquire(
+        '../../../../../lib/compose/components/framework/index.js',
+        {
+          '../../utils/spawn': spawnStub,
+        }
+      );
 
       const context = await getContext();
       const component = new FrameworkComponent('some-id', context, { path: 'path' });
@@ -352,9 +376,12 @@ describe('test/unit/components/framework/index.test.js', () => {
       },
       kill: () => {},
     });
-    const FrameworkComponent = proxyquire('../../../../../lib/compose/components/framework/index.js', {
-      '../../utils/spawn': spawnStub,
-    });
+    const FrameworkComponent = proxyquire(
+      '../../../../../lib/compose/components/framework/index.js',
+      {
+        '../../utils/spawn': spawnStub,
+      }
+    );
 
     const context = await getContext();
     const component = new FrameworkComponent('some-id', context, { path: 'path' });
@@ -377,9 +404,12 @@ describe('test/unit/components/framework/index.test.js', () => {
       kill: () => {},
     });
 
-    const FrameworkComponent = proxyquire('../../../../../lib/compose/components/framework/index.js', {
-      '../../utils/spawn': spawnStub,
-    });
+    const FrameworkComponent = proxyquire(
+      '../../../../../lib/compose/components/framework/index.js',
+      {
+        '../../utils/spawn': spawnStub,
+      }
+    );
 
     const context = await getContext();
     const component = new FrameworkComponent('some-id', context, { path: 'path' });
@@ -409,9 +439,12 @@ describe('test/unit/components/framework/index.test.js', () => {
       kill: () => {},
     });
 
-    const FrameworkComponent = proxyquire('../../../../../lib/compose/components/framework/index.js', {
-      '../../utils/spawn': spawnStub,
-    });
+    const FrameworkComponent = proxyquire(
+      '../../../../../lib/compose/components/framework/index.js',
+      {
+        '../../utils/spawn': spawnStub,
+      }
+    );
 
     const context = await getContext();
     const component = new FrameworkComponent('some-id', context, { path: 'custom-path' });
@@ -502,9 +535,12 @@ describe('test/unit/components/framework/index.test.js', () => {
         },
         kill: () => {},
       });
-      const FrameworkComponent = proxyquire('../../../../../lib/compose/components/framework/index.js', {
-        '../../utils/spawn': spawnStub,
-      });
+      const FrameworkComponent = proxyquire(
+        '../../../../../lib/compose/components/framework/index.js',
+        {
+          '../../utils/spawn': spawnStub,
+        }
+      );
 
       const context = await getContext();
       const component = new FrameworkComponent('some-id', context, { path: 'path' });
@@ -528,9 +564,12 @@ describe('test/unit/components/framework/index.test.js', () => {
       kill: () => {},
     });
 
-    const FrameworkComponent = proxyquire('../../../../../lib/compose/components/framework/index.js', {
-      '../../utils/spawn': spawnStub,
-    });
+    const FrameworkComponent = proxyquire(
+      '../../../../../lib/compose/components/framework/index.js',
+      {
+        '../../utils/spawn': spawnStub,
+      }
+    );
 
     const context = await getContext();
     const component = new FrameworkComponent('some-id', context, { path: 'path' });
@@ -611,9 +650,12 @@ describe('test/unit/components/framework/index.test.js', () => {
         },
         kill: () => {},
       });
-      const FrameworkComponent = proxyquire('../../../../../lib/compose/components/framework/index.js', {
-        '../../utils/spawn': spawnStub,
-      });
+      const FrameworkComponent = proxyquire(
+        '../../../../../lib/compose/components/framework/index.js',
+        {
+          '../../utils/spawn': spawnStub,
+        }
+      );
 
       const context = await getContext();
       sinon.spy(context, 'startProgress');
@@ -638,9 +680,12 @@ describe('test/unit/components/framework/index.test.js', () => {
       kill: () => {},
     });
 
-    const FrameworkComponent = proxyquire('../../../../../lib/compose/components/framework/index.js', {
-      '../../utils/spawn': spawnStub,
-    });
+    const FrameworkComponent = proxyquire(
+      '../../../../../lib/compose/components/framework/index.js',
+      {
+        '../../utils/spawn': spawnStub,
+      }
+    );
 
     const context = await getContext();
     sinon.spy(context, 'startProgress');
@@ -665,9 +710,12 @@ describe('test/unit/components/framework/index.test.js', () => {
       kill: () => {},
     });
 
-    const FrameworkComponent = proxyquire('../../../../../lib/compose/components/framework/index.js', {
-      '../../utils/spawn': spawnStub,
-    });
+    const FrameworkComponent = proxyquire(
+      '../../../../../lib/compose/components/framework/index.js',
+      {
+        '../../utils/spawn': spawnStub,
+      }
+    );
 
     const context = await getContext();
     const component = new FrameworkComponent('some-id', context, { path: 'custom-path' });
@@ -690,9 +738,12 @@ describe('test/unit/components/framework/index.test.js', () => {
       stdoutBuffer: Buffer.from('Framework Core: 2.1.0'),
     });
 
-    const FrameworkComponent = proxyquire('../../../../../lib/compose/components/framework/index.js', {
-      '../../utils/spawn': spawnExtStub,
-    });
+    const FrameworkComponent = proxyquire(
+      '../../../../../lib/compose/components/framework/index.js',
+      {
+        '../../utils/spawn': spawnExtStub,
+      }
+    );
 
     const context = await getContext();
     const component = new FrameworkComponent('some-id', context, { path: 'foo' });
@@ -715,9 +766,12 @@ describe('test/unit/components/framework/index.test.js', () => {
       },
       kill: () => {},
     });
-    const FrameworkComponent = proxyquire('../../../../../lib/compose/components/framework/index.js', {
-      '../../utils/spawn': spawnStub,
-    });
+    const FrameworkComponent = proxyquire(
+      '../../../../../lib/compose/components/framework/index.js',
+      {
+        '../../utils/spawn': spawnStub,
+      }
+    );
 
     const context = await getContext();
     const component = new FrameworkComponent('some-id', context, { path: 'path' });
@@ -758,9 +812,12 @@ describe('test/unit/components/framework/index.test.js', () => {
       },
       kill: () => {},
     });
-    const FrameworkComponent = proxyquire('../../../../../lib/compose/components/framework/index.js', {
-      '../../utils/spawn': spawnStub,
-    });
+    const FrameworkComponent = proxyquire(
+      '../../../../../lib/compose/components/framework/index.js',
+      {
+        '../../utils/spawn': spawnStub,
+      }
+    );
 
     const context = await getContext();
     const component = new FrameworkComponent('some-id', context, { path: 'path' });
@@ -785,9 +842,12 @@ describe('test/unit/components/framework/index.test.js', () => {
       },
       kill: () => {},
     });
-    const FrameworkComponent = proxyquire('../../../../../lib/compose/components/framework/index.js', {
-      '../../utils/spawn': spawnStub,
-    });
+    const FrameworkComponent = proxyquire(
+      '../../../../../lib/compose/components/framework/index.js',
+      {
+        '../../utils/spawn': spawnStub,
+      }
+    );
 
     const context = await getContext();
     const component = new FrameworkComponent('some-id', context, { path: 'path' });
@@ -839,9 +899,12 @@ describe('test/unit/components/framework/index.test.js', () => {
       await outputFile(path.join(serviceDir, 'handler.js'), 'module.exports = 1;\n');
 
       const spawnStub = sinon.stub();
-      const FrameworkComponent = proxyquire('../../../../../lib/compose/components/framework/index.js', {
-        '../../utils/spawn': spawnStub,
-      });
+      const FrameworkComponent = proxyquire(
+        '../../../../../lib/compose/components/framework/index.js',
+        {
+          '../../utils/spawn': spawnStub,
+        }
+      );
 
       const context = await getContext();
       const inputs = {
@@ -876,9 +939,12 @@ describe('test/unit/components/framework/index.test.js', () => {
         })
       );
 
-      const FrameworkComponent = proxyquire('../../../../../lib/compose/components/framework/index.js', {
-        '../../utils/spawn': spawnStub,
-      });
+      const FrameworkComponent = proxyquire(
+        '../../../../../lib/compose/components/framework/index.js',
+        {
+          '../../utils/spawn': spawnStub,
+        }
+      );
 
       const context = await getContext();
       const inputs = {
