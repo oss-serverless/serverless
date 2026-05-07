@@ -69,7 +69,6 @@ describe('test/unit/src/index.test.js', () => {
     });
     const validateConfiguration = sinon.stub();
     const handleError = sinon.stub();
-    const initializeNodeLogging = sinon.stub();
 
     const listenerSnapshot = snapshotListeners();
     listenerSnapshots.push(listenerSnapshot);
@@ -87,7 +86,7 @@ describe('test/unit/src/index.test.js', () => {
         validateConfiguration,
       },
       './validate-options': validateOptions,
-      './utils/serverless-utils/log-reporters/node': initializeNodeLogging,
+      '../utils/serverless-utils/log-reporters/node': {},
     });
 
     return {
@@ -102,7 +101,6 @@ describe('test/unit/src/index.test.js', () => {
       readConfiguration,
       validateConfiguration,
       handleError,
-      initializeNodeLogging,
     };
   };
 
