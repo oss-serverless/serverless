@@ -14,7 +14,7 @@ describe('test/unit/src/cli/Progresses.test.js', () => {
 
   const loadProgresses = (isUnicodeSupported = true, cliCursor = createCliCursorStub()) => {
     const Progresses = proxyquire.noCallThru().load('../../../../../lib/compose/cli/Progresses', {
-      'cli-cursor': { default: cliCursor },
+      './cursor': cliCursor,
       './is-unicode-supported': () => isUnicodeSupported,
     });
     loadedProgresses.push(Progresses);

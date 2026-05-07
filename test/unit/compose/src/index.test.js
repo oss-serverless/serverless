@@ -225,7 +225,7 @@ describe('test/unit/src/index.test.js', () => {
       caughtError = error;
     }
 
-    expect(caughtError).to.have.property('code', 'INVALID_STAGE');
+    expect(caughtError).to.have.property('code', 'MISSING_CLI_PARAM_VALUE');
     expect(resolveConfigurationPath).to.not.have.been.called;
     expect(contextInstances).to.have.length(0);
     expect(contextInit).to.not.have.been.called;
@@ -242,7 +242,7 @@ describe('test/unit/src/index.test.js', () => {
       caughtError = error;
     }
 
-    expect(caughtError).to.have.property('code', 'INVALID_STAGE');
+    expect(caughtError).to.have.property('code', 'UNEXPECTED_CLI_PARAM_MULTIPLE_VALUE');
     expect(resolveConfigurationPath).to.not.have.been.called;
     expect(contextInstances).to.have.length(0);
     expect(contextInit).to.not.have.been.called;
