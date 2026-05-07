@@ -35,7 +35,7 @@
     "@aws-sdk/client-lambda": "^3.975.0",
     "@aws-sdk/client-s3": "^3.975.0",
     "@aws-sdk/credential-providers": "^3.975.0",
-    "@dagrejs/graphlib": "^3.0.4",
+    "@dagrejs/graphlib": "^4.0.1",
     "@smithy/node-http-handler": "^4.6.1",
     "ajv": "^8.12.0",
     "ajv-formats": "^3.0.1",
