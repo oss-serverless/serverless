@@ -45,7 +45,7 @@ describe('test/unit/bin/serverless.test.js', () => {
   });
 
   it('dispatches compose requests through run-compose on supported Node versions', async () => {
-    const triage = sinon.stub().returns(Promise.resolve('@osls/compose'));
+    const triage = sinon.stub().returns(Promise.resolve('compose'));
     const runCompose = sinon.stub().resolves();
     const isSupportedNodeVersion = sinon.stub().returns(true);
     isSupportedNodeVersion.supportedRange = '^20.19.0 || ^22.13.0 || >=24';

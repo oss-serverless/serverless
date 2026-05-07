@@ -35,17 +35,21 @@ describe('test/unit/lib/cli/triage/index.test.js', () => {
     });
     after(() => restoreArgv());
 
-    for (const cliName of ['serverless', '@osls/compose']) {
-      for (const extension of fs.readdirSync(path.resolve(fixturesDirname, cliName))) {
+    const fixtureCliNames = [
+      { fixtureDir: 'serverless', expected: 'serverless' },
+      { fixtureDir: '@osls/compose', expected: 'compose' },
+    ];
+    for (const { fixtureDir, expected } of fixtureCliNames) {
+      for (const extension of fs.readdirSync(path.resolve(fixturesDirname, fixtureDir))) {
         for (const fixtureName of fs.readdirSync(
-          path.resolve(fixturesDirname, cliName, extension)
+          path.resolve(fixturesDirname, fixtureDir, extension)
         )) {
-          const testName = `should recognize "${cliName}" at "${cliName}/${extension}/${fixtureName}"`;
+          const testName = `should recognize "${fixtureDir}" at "${fixtureDir}/${extension}/${fixtureName}"`;
           it(testName, async () =>
             overrideCwd(
-              path.resolve(fixturesDirname, cliName, extension, fixtureName),
+              path.resolve(fixturesDirname, fixtureDir, extension, fixtureName),
               async () => {
-                expect(await triage()).to.equal(cliName);
+                expect(await triage()).to.equal(expected);
               }
             )
           );
@@ -62,7 +66,7 @@ describe('test/unit/lib/cli/triage/index.test.js', () => {
       });
       after(() => restoreArgv());
 
-      it('should not resolve to `@osls/compose` with compose config present when command should be ignored', async () => {
+      it('should not resolve to `compose` with compose config present when command should be ignored', async () => {
         await overrideCwd(
           path.resolve(fixturesDirname, '@osls/compose', 'yml', 'project'),
           async () => {
@@ -71,7 +75,7 @@ describe('test/unit/lib/cli/triage/index.test.js', () => {
         );
       });
 
-      it('should not resolve to `@osls/compose` for "config" when compose config is present', async () => {
+      it('should not resolve to `compose` for "config" when compose config is present', async () => {
         await overrideArgv({ args: ['sls', 'config'] }, async () =>
           overrideCwd(
             path.resolve(fixturesDirname, '@osls/compose', 'yml', 'project'),
@@ -82,7 +86,7 @@ describe('test/unit/lib/cli/triage/index.test.js', () => {
         );
       });
 
-      it('should not resolve to `@osls/compose` for "config credentials" when compose config is present', async () => {
+      it('should not resolve to `compose` for "config credentials" when compose config is present', async () => {
         await overrideArgv({ args: ['sls', 'config', 'credentials'] }, async () =>
           overrideCwd(
             path.resolve(fixturesDirname, '@osls/compose', 'yml', 'project'),
@@ -93,7 +97,7 @@ describe('test/unit/lib/cli/triage/index.test.js', () => {
         );
       });
 
-      it('should not resolve to `@osls/compose` for "config --help" when compose config is present', async () => {
+      it('should not resolve to `compose` for "config --help" when compose config is present', async () => {
         await overrideArgv({ args: ['sls', 'config', '--help'] }, async () =>
           overrideCwd(
             path.resolve(fixturesDirname, '@osls/compose', 'yml', 'project'),
@@ -104,7 +108,7 @@ describe('test/unit/lib/cli/triage/index.test.js', () => {
         );
       });
 
-      it('should not resolve to `@osls/compose` for "config credentials --help" when compose config is present', async () => {
+      it('should not resolve to `compose` for "config credentials --help" when compose config is present', async () => {
         await overrideArgv({ args: ['sls', 'config', 'credentials', '--help'] }, async () =>
           overrideCwd(
             path.resolve(fixturesDirname, '@osls/compose', 'yml', 'project'),
@@ -123,11 +127,11 @@ describe('test/unit/lib/cli/triage/index.test.js', () => {
       });
       after(() => restoreArgv());
 
-      it('should resolve to `@osls/compose` with `--help` when compose config present', async () => {
+      it('should resolve to `compose` with `--help` when compose config present', async () => {
         await overrideCwd(
           path.resolve(fixturesDirname, '@osls/compose', 'yml', 'project'),
           async () => {
-            expect(await triage()).to.equal('@osls/compose');
+            expect(await triage()).to.equal('compose');
           }
         );
       });

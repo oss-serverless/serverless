@@ -36,7 +36,7 @@ require('../lib/cli/triage')()
     switch (cliName) {
       case 'serverless':
         return require('../scripts/serverless');
-      case '@osls/compose':
+      case 'compose':
         return require('../lib/cli/run-compose')();
       default:
         throw new Error(`Unrecognized CLI name "${cliName}"`);
