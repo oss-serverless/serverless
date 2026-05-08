@@ -142,7 +142,7 @@ describe('test/unit/src/utils/cache-hash.test.js', () => {
     const calculateCacheHashWithMissingFile = proxyquire(
       '../../../../../lib/compose/utils/cache-hash',
       {
-        './glob': sinon.stub().resolves(['missing.txt']),
+        '../../utils/glob': sinon.stub().resolves(['missing.txt']),
       }
     );
 

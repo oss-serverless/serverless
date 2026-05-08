@@ -82,7 +82,7 @@ describe('test/unit/components/framework/index.test.js', () => {
     const FrameworkComponent = proxyquire(
       '../../../../../lib/compose/components/framework/index.js',
       {
-        '../../utils/spawn': spawnStub,
+        '../../../utils/spawn': spawnStub,
       }
     );
 
@@ -117,7 +117,7 @@ describe('test/unit/components/framework/index.test.js', () => {
     const FrameworkComponent = proxyquire(
       '../../../../../lib/compose/components/framework/index.js',
       {
-        '../../utils/spawn': spawnStub,
+        '../../../utils/spawn': spawnStub,
       }
     );
 
@@ -146,7 +146,7 @@ describe('test/unit/components/framework/index.test.js', () => {
     const FrameworkComponent = proxyquire(
       '../../../../../lib/compose/components/framework/index.js',
       {
-        '../../utils/spawn': spawnStub,
+        '../../../utils/spawn': spawnStub,
       }
     );
 
@@ -179,7 +179,7 @@ describe('test/unit/components/framework/index.test.js', () => {
     const FrameworkComponent = proxyquire(
       '../../../../../lib/compose/components/framework/index.js',
       {
-        '../../utils/spawn': spawnStub,
+        '../../../utils/spawn': spawnStub,
       }
     );
 
@@ -212,7 +212,7 @@ describe('test/unit/components/framework/index.test.js', () => {
     const FrameworkComponent = proxyquire(
       '../../../../../lib/compose/components/framework/index.js',
       {
-        '../../utils/spawn': spawnStub,
+        '../../../utils/spawn': spawnStub,
       }
     );
 
@@ -255,7 +255,7 @@ describe('test/unit/components/framework/index.test.js', () => {
     const FrameworkComponent = proxyquire(
       '../../../../../lib/compose/components/framework/index.js',
       {
-        '../../utils/spawn': spawnStub,
+        '../../../utils/spawn': spawnStub,
       }
     );
 
@@ -298,7 +298,7 @@ describe('test/unit/components/framework/index.test.js', () => {
     const FrameworkComponent = proxyquire(
       '../../../../../lib/compose/components/framework/index.js',
       {
-        '../../utils/spawn': spawnStub,
+        '../../../utils/spawn': spawnStub,
       }
     );
 
@@ -335,7 +335,7 @@ describe('test/unit/components/framework/index.test.js', () => {
       const FrameworkComponent = proxyquire(
         '../../../../../lib/compose/components/framework/index.js',
         {
-          '../../utils/spawn': spawnStub,
+          '../../../utils/spawn': spawnStub,
         }
       );
 
@@ -379,7 +379,7 @@ describe('test/unit/components/framework/index.test.js', () => {
     const FrameworkComponent = proxyquire(
       '../../../../../lib/compose/components/framework/index.js',
       {
-        '../../utils/spawn': spawnStub,
+        '../../../utils/spawn': spawnStub,
       }
     );
 
@@ -407,7 +407,7 @@ describe('test/unit/components/framework/index.test.js', () => {
     const FrameworkComponent = proxyquire(
       '../../../../../lib/compose/components/framework/index.js',
       {
-        '../../utils/spawn': spawnStub,
+        '../../../utils/spawn': spawnStub,
       }
     );
 
@@ -442,7 +442,7 @@ describe('test/unit/components/framework/index.test.js', () => {
     const FrameworkComponent = proxyquire(
       '../../../../../lib/compose/components/framework/index.js',
       {
-        '../../utils/spawn': spawnStub,
+        '../../../utils/spawn': spawnStub,
       }
     );
 
@@ -538,7 +538,7 @@ describe('test/unit/components/framework/index.test.js', () => {
       const FrameworkComponent = proxyquire(
         '../../../../../lib/compose/components/framework/index.js',
         {
-          '../../utils/spawn': spawnStub,
+          '../../../utils/spawn': spawnStub,
         }
       );
 
@@ -567,7 +567,7 @@ describe('test/unit/components/framework/index.test.js', () => {
     const FrameworkComponent = proxyquire(
       '../../../../../lib/compose/components/framework/index.js',
       {
-        '../../utils/spawn': spawnStub,
+        '../../../utils/spawn': spawnStub,
       }
     );
 
@@ -653,7 +653,7 @@ describe('test/unit/components/framework/index.test.js', () => {
       const FrameworkComponent = proxyquire(
         '../../../../../lib/compose/components/framework/index.js',
         {
-          '../../utils/spawn': spawnStub,
+          '../../../utils/spawn': spawnStub,
         }
       );
 
@@ -683,7 +683,7 @@ describe('test/unit/components/framework/index.test.js', () => {
     const FrameworkComponent = proxyquire(
       '../../../../../lib/compose/components/framework/index.js',
       {
-        '../../utils/spawn': spawnStub,
+        '../../../utils/spawn': spawnStub,
       }
     );
 
@@ -713,7 +713,7 @@ describe('test/unit/components/framework/index.test.js', () => {
     const FrameworkComponent = proxyquire(
       '../../../../../lib/compose/components/framework/index.js',
       {
-        '../../utils/spawn': spawnStub,
+        '../../../utils/spawn': spawnStub,
       }
     );
 
@@ -741,7 +741,7 @@ describe('test/unit/components/framework/index.test.js', () => {
     const FrameworkComponent = proxyquire(
       '../../../../../lib/compose/components/framework/index.js',
       {
-        '../../utils/spawn': spawnExtStub,
+        '../../../utils/spawn': spawnExtStub,
       }
     );
 
@@ -769,7 +769,7 @@ describe('test/unit/components/framework/index.test.js', () => {
     const FrameworkComponent = proxyquire(
       '../../../../../lib/compose/components/framework/index.js',
       {
-        '../../utils/spawn': spawnStub,
+        '../../../utils/spawn': spawnStub,
       }
     );
 
@@ -815,7 +815,7 @@ describe('test/unit/components/framework/index.test.js', () => {
     const FrameworkComponent = proxyquire(
       '../../../../../lib/compose/components/framework/index.js',
       {
-        '../../utils/spawn': spawnStub,
+        '../../../utils/spawn': spawnStub,
       }
     );
 
@@ -845,7 +845,7 @@ describe('test/unit/components/framework/index.test.js', () => {
     const FrameworkComponent = proxyquire(
       '../../../../../lib/compose/components/framework/index.js',
       {
-        '../../utils/spawn': spawnStub,
+        '../../../utils/spawn': spawnStub,
       }
     );
 
@@ -902,7 +902,7 @@ describe('test/unit/components/framework/index.test.js', () => {
       const FrameworkComponent = proxyquire(
         '../../../../../lib/compose/components/framework/index.js',
         {
-          '../../utils/spawn': spawnStub,
+          '../../../utils/spawn': spawnStub,
         }
       );
 
@@ -942,7 +942,7 @@ describe('test/unit/components/framework/index.test.js', () => {
       const FrameworkComponent = proxyquire(
         '../../../../../lib/compose/components/framework/index.js',
         {
-          '../../utils/spawn': spawnStub,
+          '../../../utils/spawn': spawnStub,
         }
       );
 

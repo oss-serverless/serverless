@@ -6,7 +6,7 @@ const proxyquire = require('proxyquire');
 describe('test/unit/src/cli/colors.test.js', () => {
   it('exposes stream-specific CLI palettes', () => {
     const colors = proxyquire.noCallThru().load('../../../../../lib/compose/cli/colors', {
-      '../utils/colors': {
+      '../../utils/colors': {
         stdoutColors: {
           reset: (value) => `stdout-reset(${value})`,
           gray: (value) => `stdout-gray(${value})`,
