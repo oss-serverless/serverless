@@ -4,7 +4,7 @@ const expect = require('chai').expect;
 const { stripVTControlCharacters: stripAnsi } = require('node:util');
 
 const Context = require('../../../../lib/compose/Context');
-const { createRegistry } = require('../../../../lib/compose/utils/safe-object');
+const { createRegistry } = require('../../../../lib/utils/safe-object');
 const readStream = require('../read-stream');
 
 describe('test/unit/src/Context.test.js', () => {
