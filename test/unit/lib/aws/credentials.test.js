@@ -475,4 +475,95 @@ describe('test/unit/lib/aws/credentials.test.js', () => {
     expect(fromNodeProviderChain).to.not.have.been.called;
     expect(fallbackProvider).to.not.have.been.called;
   });
+
+  describe('getCredentialProvider({ profile, stage })', () => {
+    it('does not mutate AWS_PROFILE when AWS_DEFAULT_PROFILE is set', async () => {
+      process.env.AWS_DEFAULT_PROFILE = 'custom-default';
+      const profileProvider = sinon.stub().resolves({
+        accessKeyId: 'accessKeyId',
+        secretAccessKey: 'secretAccessKey',
+      });
+      const fromIni = sinon.stub().returns(profileProvider);
+      const fromNodeProviderChain = sinon.stub();
+      const { getCredentialProvider } = loadCredentials({ fromIni, fromNodeProviderChain });
+
+      getCredentialProvider();
+
+      expect(process.env.AWS_PROFILE).to.equal(undefined);
+      expect(fromIni.firstCall.args[0]).to.include({ profile: 'custom-default' });
+      expect(fromNodeProviderChain).to.not.have.been.called;
+    });
+
+    it('uses explicit state profile before stage profile', async () => {
+      process.env.AWS_DEV_PROFILE = 'stage-profile';
+      const fromIni = sinon.stub().callsFake(({ profile }) => `${profile}-provider`);
+      const fromNodeProviderChain = sinon.stub();
+      const { getCredentialProvider } = loadCredentials({ fromIni, fromNodeProviderChain });
+
+      expect(getCredentialProvider({ profile: 'state-profile', stage: 'dev' })).to.equal(
+        'state-profile-provider'
+      );
+      expect(fromIni.firstCall.args[0]).to.include({
+        profile: 'state-profile',
+        filepath: credentialsFilePath,
+        configFilepath: configFilePath,
+      });
+      expect(fromIni.firstCall.args[0].mfaCodeProvider).to.be.a('function');
+    });
+
+    it('uses stage profile before stage environment credentials', async () => {
+      process.env.AWS_DEV_PROFILE = 'stage-profile';
+      process.env.AWS_DEV_ACCESS_KEY_ID = 'stageAccessKeyId';
+      process.env.AWS_DEV_SECRET_ACCESS_KEY = 'stageSecretAccessKey';
+      const fromIni = sinon.stub().callsFake(({ profile }) => `${profile}-provider`);
+      const fromNodeProviderChain = sinon.stub();
+      const { getCredentialProvider } = loadCredentials({ fromIni, fromNodeProviderChain });
+
+      expect(getCredentialProvider({ stage: 'dev' })).to.equal('stage-profile-provider');
+    });
+
+    it('uses stage environment credentials before AWS_PROFILE', async () => {
+      process.env.AWS_DEV_ACCESS_KEY_ID = 'stageAccessKeyId';
+      process.env.AWS_DEV_SECRET_ACCESS_KEY = 'stageSecretAccessKey';
+      process.env.AWS_DEV_SESSION_TOKEN = 'stageSessionToken';
+      process.env.AWS_PROFILE = 'aws-profile';
+      const fromIni = sinon.stub();
+      const fromNodeProviderChain = sinon.stub();
+      const { getCredentialProvider } = loadCredentials({ fromIni, fromNodeProviderChain });
+
+      await expect(getCredentialProvider({ stage: 'dev' })()).to.eventually.deep.equal({
+        accessKeyId: 'stageAccessKeyId',
+        secretAccessKey: 'stageSecretAccessKey',
+        sessionToken: 'stageSessionToken',
+      });
+      expect(fromIni).to.not.have.been.called;
+    });
+
+    it('uses AWS_PROFILE before standard environment credentials', async () => {
+      process.env.AWS_PROFILE = 'aws-profile';
+      process.env.AWS_ACCESS_KEY_ID = 'accessKeyId';
+      process.env.AWS_SECRET_ACCESS_KEY = 'secretAccessKey';
+      const fromIni = sinon.stub().callsFake(({ profile }) => `${profile}-provider`);
+      const fromNodeProviderChain = sinon.stub();
+      const { getCredentialProvider } = loadCredentials({ fromIni, fromNodeProviderChain });
+
+      expect(getCredentialProvider()).to.equal('aws-profile-provider');
+    });
+
+    it('uses standard environment credentials before AWS_DEFAULT_PROFILE', async () => {
+      process.env.AWS_ACCESS_KEY_ID = 'accessKeyId';
+      process.env.AWS_SECRET_ACCESS_KEY = 'secretAccessKey';
+      process.env.AWS_DEFAULT_PROFILE = 'custom-default';
+      const fromIni = sinon.stub();
+      const fromNodeProviderChain = sinon.stub();
+      const { getCredentialProvider } = loadCredentials({ fromIni, fromNodeProviderChain });
+
+      await expect(getCredentialProvider()()).to.eventually.deep.equal({
+        accessKeyId: 'accessKeyId',
+        secretAccessKey: 'secretAccessKey',
+        sessionToken: undefined,
+      });
+      expect(fromIni).to.not.have.been.called;
+    });
+  });
 });

@@ -17,7 +17,7 @@ describe('test/unit/src/utils/aws/get-credential-provider.test.js', () => {
     const getCredentialProvider = proxyquire
       .noCallThru()
       .load('../../../../../../lib/compose/utils/aws/get-credential-provider', {
-        './credentials': { getCredentialProvider: credentialProvider },
+        '../../../aws/credentials': { getCredentialProvider: credentialProvider },
       });
 
     expect(getCredentialProvider({ profile: 'custom-profile', stage: 'prod' })).to.equal(
