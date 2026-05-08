@@ -102,7 +102,7 @@ describe('test/unit/src/state/utils/get-state-bucket-region.test.js', () => {
       .noCallThru()
       .load('../../../../../../lib/compose/state/utils/get-state-bucket-region', {
         '@aws-sdk/client-s3': { S3 },
-        '../../utils/aws': { getAwsClientConfig },
+        '../../utils/aws/get-client-config': getAwsClientConfig,
       });
 
     expect(

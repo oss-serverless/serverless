@@ -27,7 +27,7 @@ describe('test/unit/src/state/get-s3-state-storage-from-config.test.js', () => {
     const getS3StateStorageFromConfig = proxyquire
       .noCallThru()
       .load('../../../../../lib/compose/state/get-s3-state-storage-from-config', {
-        '../utils/aws': { getAwsClientConfig },
+        '../utils/aws/get-client-config': getAwsClientConfig,
         './S3StateStorage': S3StateStorage,
         './utils/get-configured-state-bucket-name': getConfiguredStateBucketName,
         './utils/get-state-bucket-name': getStateBucketName,
@@ -76,7 +76,7 @@ describe('test/unit/src/state/get-s3-state-storage-from-config.test.js', () => {
     const getS3StateStorageFromConfig = proxyquire
       .noCallThru()
       .load('../../../../../lib/compose/state/get-s3-state-storage-from-config', {
-        '../utils/aws': { getAwsClientConfig },
+        '../utils/aws/get-client-config': getAwsClientConfig,
         './S3StateStorage': S3StateStorage,
         './utils/get-configured-state-bucket-name': getConfiguredStateBucketName,
         './utils/get-state-bucket-name': getStateBucketName,
@@ -124,7 +124,7 @@ describe('test/unit/src/state/get-s3-state-storage-from-config.test.js', () => {
     const getS3StateStorageFromConfig = proxyquire
       .noCallThru()
       .load('../../../../../lib/compose/state/get-s3-state-storage-from-config', {
-        '../utils/aws': { getAwsClientConfig },
+        '../utils/aws/get-client-config': getAwsClientConfig,
         './S3StateStorage': S3StateStorage,
         './utils/get-configured-state-bucket-name': getConfiguredStateBucketName,
         './utils/get-state-bucket-name': getStateBucketName,
@@ -166,7 +166,7 @@ describe('test/unit/src/state/get-s3-state-storage-from-config.test.js', () => {
     const getS3StateStorageFromConfig = proxyquire
       .noCallThru()
       .load('../../../../../lib/compose/state/get-s3-state-storage-from-config', {
-        '../utils/aws': { getAwsClientConfig },
+        '../utils/aws/get-client-config': getAwsClientConfig,
         './S3StateStorage': S3StateStorage,
         './utils/get-configured-state-bucket-name': getConfiguredStateBucketName,
         './utils/get-state-bucket-name': getStateBucketName,

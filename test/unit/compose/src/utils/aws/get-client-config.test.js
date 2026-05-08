@@ -17,7 +17,7 @@ describe('test/unit/src/utils/aws/get-client-config.test.js', () => {
     const getClientConfig = proxyquire
       .noCallThru()
       .load('../../../../../../lib/compose/utils/aws/get-client-config', {
-        './get-credential-provider': getCredentialProvider,
+        '../../../aws/credentials': { getCredentialProvider },
         '../../../aws/config': { buildClientConfig },
       });
 
@@ -46,7 +46,7 @@ describe('test/unit/src/utils/aws/get-client-config.test.js', () => {
     const getClientConfig = proxyquire
       .noCallThru()
       .load('../../../../../../lib/compose/utils/aws/get-client-config', {
-        './get-credential-provider': getCredentialProvider,
+        '../../../aws/credentials': { getCredentialProvider },
         '../../../aws/config': { buildClientConfig },
       });
 

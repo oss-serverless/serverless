@@ -137,7 +137,7 @@ describe('test/unit/src/state/utils/get-state-bucket-name.test.js', () => {
       .noCallThru()
       .load('../../../../../../lib/compose/state/utils/get-state-bucket-name', {
         '@aws-sdk/client-cloudformation': { CloudFormation },
-        '../../utils/aws': { getAwsClientConfig },
+        '../../utils/aws/get-client-config': getAwsClientConfig,
       });
 
     expect(await getStateBucketNameWithStubs({ backend: 's3', profile: 'team' }, context)).to.equal(
