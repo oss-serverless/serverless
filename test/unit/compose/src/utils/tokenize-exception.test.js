@@ -2,7 +2,7 @@
 
 const expect = require('chai').expect;
 
-const ServerlessError = require('../../../../../lib/compose/serverless-error');
+const ServerlessError = require('../../../../../lib/serverless-error');
 const tokenizeError = require('../../../../../lib/compose/utils/tokenize-exception');
 
 describe('test/unit/lib/utils/tokenize-exception.test.js', () => {
