@@ -18,7 +18,7 @@ describe('test/unit/src/utils/aws/get-client-config.test.js', () => {
       .noCallThru()
       .load('../../../../../../lib/compose/utils/aws/get-client-config', {
         './get-credential-provider': getCredentialProvider,
-        './config': { buildClientConfig },
+        '../../../aws/config': { buildClientConfig },
       });
 
     expect(
@@ -47,7 +47,7 @@ describe('test/unit/src/utils/aws/get-client-config.test.js', () => {
       .noCallThru()
       .load('../../../../../../lib/compose/utils/aws/get-client-config', {
         './get-credential-provider': getCredentialProvider,
-        './config': { buildClientConfig },
+        '../../../aws/config': { buildClientConfig },
       });
 
     expect(getClientConfig({ credentials: 'explicit-creds', region: 'us-east-1' })).to.equal(

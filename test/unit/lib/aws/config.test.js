@@ -65,6 +65,20 @@ describe('test/unit/lib/aws/config.test.js', () => {
     });
   });
 
+  it('uses AWS_DEFAULT_REGION before hardcoded us-east-1 fallback', async () => {
+    await overrideEnv(async () => {
+      const { buildClientConfig } = loadConfig();
+
+      expect(buildClientConfig().region).to.equal('us-east-1');
+
+      process.env.AWS_DEFAULT_REGION = 'ap-south-1';
+      expect(buildClientConfig().region).to.equal('ap-south-1');
+
+      process.env.AWS_REGION = 'eu-west-1';
+      expect(buildClientConfig().region).to.equal('eu-west-1');
+    });
+  });
+
   it('uses NodeHttpHandler for timeout config', async () => {
     await overrideEnv(async () => {
       process.env.AWS_CLIENT_TIMEOUT = '1234';
