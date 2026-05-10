@@ -2,7 +2,7 @@
 
 ## Package CLI Command
 
-Using OSLS Framework CLI tool, you can package your project without deploying it to AWS. This is best used with CI / CD workflows to ensure consistent deployable artifacts.
+Using osls CLI tool, you can package your project without deploying it to AWS. This is best used with CI / CD workflows to ensure consistent deployable artifacts.
 
 Running the following command will build and save all of the deployment artifacts in the service's .serverless directory:
 
@@ -10,7 +10,7 @@ Running the following command will build and save all of the deployment artifact
 serverless package
 ```
 
-However, you can also use the --package option to add a destination path and OSLS Framework will store your deployment artifacts there (./my-artifacts in the following case):
+However, you can also use the --package option to add a destination path and osls will store your deployment artifacts there (./my-artifacts in the following case):
 
 ```bash
 serverless package --package my-artifacts
@@ -25,7 +25,7 @@ You can use the `package` and `patterns` configuration for more control over the
 ### Patterns
 
 Patterns allows you to define globs that will be excluded / included from the resulting artifact. If you wish to exclude files you can use a glob pattern prefixed with `!` such as `!exclude-me/**`.
-OSLS Framework will run the glob patterns in order so you can always re-include previously excluded files and directories.
+osls will run the glob patterns in order so you can always re-include previously excluded files and directories.
 
 By default, serverless will exclude the following patterns:
 
@@ -71,7 +71,7 @@ package:
 ### Artifact
 
 For complete control over the packaging process you can specify your own artifact zip file.
-OSLS Framework won't zip your service if this is configured and therefore `patterns` will be ignored. Either you use artifact or patterns.
+osls won't zip your service if this is configured and therefore `patterns` will be ignored. Either you use artifact or patterns.
 
 The artifact option is especially useful in case your development environment allows you to generate a deployable artifact like Maven does for Java.
 
@@ -108,7 +108,7 @@ functions:
 
 Artifacts can also be fetched from a remote S3 bucket. In this case you just need to provide the S3 object URI (old style or new) as the artifact value. This applies to both, service-wide and function-level artifact setups.
 
-**Note:** At this time, only S3 URIs are supported. OSLS Framework does not yet support fetching artifacts from non-S3 remote locations.
+**Note:** At this time, only S3 URIs are supported. osls does not yet support fetching artifacts from non-S3 remote locations.
 
 ##### Service package
 
@@ -175,7 +175,7 @@ functions:
 
 ### Development dependencies
 
-OSLS Framework will auto-detect and exclude development dependencies based on the runtime your service is using.
+osls will auto-detect and exclude development dependencies based on the runtime your service is using.
 
 This ensures that only the production relevant packages and modules are included in your zip file. Doing this drastically reduces the overall size of the deployment package which will be uploaded to the cloud provider.
 

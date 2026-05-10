@@ -72,7 +72,7 @@ This will fetch the logs that happened starting at epoch `1469694264`.
 serverless logs -f hello -t
 ```
 
-OSLS Framework will tail the CloudWatch log output and print new log messages coming in starting from 10 seconds ago.
+osls will tail the CloudWatch log output and print new log messages coming in starting from 10 seconds ago.
 
 ```bash
 serverless logs -f hello --filter serverless

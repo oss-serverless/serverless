@@ -420,7 +420,7 @@ process.once('uncaughtException', (error) => {
           if (isHelpRequest || commands[0] === 'plugin') {
             processLog.debug('resolve variables in "plugins"');
             // We do not need full config resolved, we just need to know what
-            // provider is service setup with, and with what eventual plugins Framework is extended
+            // provider is service setup with, and with what eventual plugins osls is extended
             // as that influences what CLI commands and options could be used,
             resolverConfiguration.propertyPathsToResolve.add('plugins');
           } else {

@@ -143,13 +143,13 @@ The removal process will only remove the service on your provider's infrastructu
 
 ## Version Pinning
 
-OSLS Framework is usually installed globally via `npm install -g osls`. This way you have the OSLS Framework CLI available for all your services.
+osls is usually installed globally via `npm install -g osls`. This way you have the osls CLI available for all your services.
 
-Installing tools globally has the downside that the version can't be pinned inside package.json. This can lead to issues if you upgrade OSLS Framework, but your colleagues or CI system don't. You can now use a new feature in your `serverless.yml` which is available only in the latest version without worrying that your CI system will deploy with an old OSLS Framework version.
+Installing tools globally has the downside that the version can't be pinned inside package.json. This can lead to issues if you upgrade osls, but your colleagues or CI system don't. You can now use a new feature in your `serverless.yml` which is available only in the latest version without worrying that your CI system will deploy with an old osls version.
 
 ### Pinning a Version
 
-To configure version pinning define a `frameworkVersion` property in your `serverless.yml`. Whenever you run an OSLS Framework command, the CLI checks if your current OSLS Framework version matches the `frameworkVersion` range. The CLI uses [Semantic Versioning](http://semver.org/) so you can pin it to an exact version or provide a range. In general we recommend to pin to an exact version to ensure everybody in your team has the exact same setup and no unexpected problems happen.
+To configure version pinning define a `frameworkVersion` property in your `serverless.yml`. Whenever you run an osls command, the CLI checks if your current osls version matches the `frameworkVersion` range. The CLI uses [Semantic Versioning](http://semver.org/) so you can pin it to an exact version or provide a range. In general we recommend to pin to an exact version to ensure everybody in your team has the exact same setup and no unexpected problems happen.
 
 ### Examples
 

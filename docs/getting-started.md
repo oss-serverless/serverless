@@ -1,6 +1,6 @@
-# Setting Up OSLS Framework With AWS
+# Setting Up osls With AWS
 
-Get started with OSLS Framework’s open-source CLI and Amazon Web Services in minutes.
+Get started with osls’s open-source CLI and Amazon Web Services in minutes.
 
 ## Installation
 
@@ -37,7 +37,7 @@ If you want to start from an example project, check out the [project examples fr
 serverless create --template-url=https://github.com/serverless/examples/tree/v3/...
 ```
 
-Please note that you can use `serverless` or `sls` to run OSLS Framework commands.
+Please note that you can use `serverless` or `sls` to run osls commands.
 
 ## Deploying
 
@@ -53,7 +53,7 @@ More details on deploying can be found [here](./guides/deploying.md).
 
 ## Developing On The Cloud
 
-Many OSLS Framework users choose to develop on the cloud, since it matches reality and emulating Lambda locally can be complex. To develop on the cloud quickly, without sacrificing speed, we recommend the following workflow...
+Many osls users choose to develop on the cloud, since it matches reality and emulating Lambda locally can be complex. To develop on the cloud quickly, without sacrificing speed, we recommend the following workflow...
 
 To deploy code changes quickly, skip the `serverless deploy` command which is much slower since it triggers a full AWS CloudFormation update. Instead, deploy code and configuration changes to individual AWS Lambda functions in seconds via the `deploy function` command, with `-f [function name in serverless.yml]` set to the function you want to deploy.
 
@@ -76,7 +76,7 @@ More details on the `invoke` command can be found [here](./cli-reference/invoke.
 
 ## Developing Locally
 
-Many OSLS Framework users rely on local emulation to develop more quickly. Please note, emulating AWS Lambda and other cloud services is never accurate and the process can be complex. We recommend the following workflow to develop locally...
+Many osls users rely on local emulation to develop more quickly. Please note, emulating AWS Lambda and other cloud services is never accurate and the process can be complex. We recommend the following workflow to develop locally...
 
 Use the `invoke local` command to invoke your function locally:
 
@@ -92,7 +92,7 @@ serverless invoke local --function functionName --data '{"a":"bar"}'
 
 More details on the `invoke local` command can be found [here](./cli-reference/invoke-local.md)
 
-OSLS Framework also has a great plugin that allows you to run a server locally and emulate AWS API Gateway. This is the `serverless-offline` command.
+osls also has a great plugin that allows you to run a server locally and emulate AWS API Gateway. This is the `serverless-offline` command.
 
 More details on the **serverless-offline** plugins command can be found [here](https://github.com/dherault/serverless-offline)
 

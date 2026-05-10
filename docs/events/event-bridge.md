@@ -96,7 +96,7 @@ functions:
 
 The `eventBridge` event source will use the `default` event bus (the one AWS uses internally) when none is explicitly specified.
 
-OSLS Framework will create the `eventBus` for your if you provide a name for it. Otherwise, if literal `arn` or reference to an existing event bus name via CF intrinsic function is provided, OSLS Framework will attach to it.
+osls will create the `eventBus` for your if you provide a name for it. Otherwise, if literal `arn` or reference to an existing event bus name via CF intrinsic function is provided, osls will attach to it.
 
 ### Creating an event bus
 
@@ -150,7 +150,7 @@ Using reference to event bus' name via `GetAtt` CF intrinsic function:
       inputTemplate: '{"time": <eventTime>, "key1": "value1"}'
 ```
 
-_Note_: It is not possible to reference event bus ARN with CF intrinsic function as it makes it impossible for OSLS Framework to construct valid `SourceArn` for `AWS::Lambda::Permission` resource.
+_Note_: It is not possible to reference event bus ARN with CF intrinsic function as it makes it impossible for osls to construct valid `SourceArn` for `AWS::Lambda::Permission` resource.
 
 Using reference to event bus' name via `Ref` CF intrinsic functions:
 

@@ -1,6 +1,6 @@
 # Plugin Install
 
-Install an OSLS Framework plugin and add it to the services `plugins` array. By default, a latest version is installed.
+Install an osls plugin and add it to the services `plugins` array. By default, a latest version is installed.
 If you want a specific version, you can specify `<pluginname>@<version>` as name option.
 
 **Note:** You might want to change the order of the plugin in the services `plugins` array.

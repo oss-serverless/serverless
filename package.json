@@ -1,12 +1,12 @@
 {
   "name": "osls",
   "version": "3.40.1",
-  "description": "OSLS Framework CLI for deploying serverless applications",
+  "description": "osls CLI for deploying serverless applications",
   "preferGlobal": true,
-  "homepage": "https://github.com/oss-serverless/framework",
+  "homepage": "https://github.com/oss-serverless/osls",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/oss-serverless/framework.git"
+    "url": "git+https://github.com/oss-serverless/osls.git"
   },
   "keywords": [
     "serverless",

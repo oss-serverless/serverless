@@ -10,7 +10,7 @@ Here is a list of all available properties in `serverless.yml` when the provider
 # Service name
 service: myservice
 
-# Framework version constraint (semver constraint): '3', '^2.33'
+# osls version constraint (semver constraint): '3', '^2.33'
 frameworkVersion: '3'
 
 # Configuration validation: 'error' (fatal error), 'warn' (logged to the output) or 'off' (default: warn)
@@ -121,7 +121,7 @@ provider:
     Name: data-protection-policy
   # KMS key ARN to use for encryption for all functions
   kmsKeyArn: arn:aws:kms:us-east-1:XXXXXX:key/some-hash
-  # Version of hashing algorithm used by OSLS Framework for function packaging
+  # Version of hashing algorithm used by osls for function packaging
   lambdaHashingVersion: 20201221
   # Use function versioning (enabled by default)
   versionFunctions: false
@@ -129,19 +129,19 @@ provider:
   architecture: x86_64
 ```
 
-If `provider.runtime` is omitted for AWS services, OSLS Framework defaults to the latest supported Node.js Lambda runtime. Today that is `nodejs24.x`.
+If `provider.runtime` is omitted for AWS services, osls defaults to the latest supported Node.js Lambda runtime. Today that is `nodejs24.x`.
 
 Even so, we recommend explicitly setting the runtime you want to deploy so your service does not change runtimes when that default advances.
 
 ### Deployment bucket
 
-OSLS Framework needs a S3 bucket to store artifacts for deploying. That bucket is automatically created and managed by OSLS Framework, but you can configure it explicitly if needed:
+osls needs a S3 bucket to store artifacts for deploying. That bucket is automatically created and managed by osls, but you can configure it explicitly if needed:
 
 ```yaml
 provider:
   # The S3 prefix under which deployed artifacts are stored (default: serverless)
   deploymentPrefix: serverless
-  # Configure the S3 bucket used by OSLS Framework to deploy code packages to Lambda
+  # Configure the S3 bucket used by osls to deploy code packages to Lambda
   deploymentBucket:
     # Name of an existing bucket to use (default: created by serverless)
     name: com.serverless.${self:provider.region}.deploys
@@ -452,7 +452,7 @@ provider:
   iam:
     # Instruct Serverless to use an existing IAM role for all Lambda functions
     role: arn:aws:iam::XXXXXX:role/role
-    # OR configure the role that will be created by OSLS Framework (simplest):
+    # OR configure the role that will be created by osls (simplest):
     role:
       # Add statements to the IAM role to give permissions to Lambda functions
       statements:
@@ -535,13 +535,13 @@ provider:
 
     # Enable HTTP API logs
     # This can either be set to `httpApi: true` to use defaults, or configured via subproperties
-    # Can only be configured if the API is created by OSLS Framework
+    # Can only be configured if the API is created by osls
     httpApi:
       format: '{ "requestId":"$context.requestId", "ip": "$context.identity.sourceIp", "requestTime":"$context.requestTime", "httpMethod":"$context.httpMethod","routeKey":"$context.routeKey", "status":"$context.status","protocol":"$context.protocol", "responseLength":"$context.responseLength" }'
 
     # Enable REST API logs
     # This can either be set to `restApi: true` to use defaults, or configured via subproperties
-    # Can only be configured if the API is created by OSLS Framework
+    # Can only be configured if the API is created by osls
     restApi:
       # Enables HTTP access logs (default: true)
       accessLogging: true
@@ -555,7 +555,7 @@ provider:
       fullExecutionData: true
       # Existing IAM role to use for API Gateway when writing CloudWatch Logs (default: automatically created)
       role: arn:aws:iam::123456:role
-      # Whether the API Gateway CloudWatch Logs role setting is not managed by OSLS Framework (default: false)
+      # Whether the API Gateway CloudWatch Logs role setting is not managed by osls (default: false)
       roleManagedExternally: false
 
     # Enable Websocket API logs
@@ -572,7 +572,7 @@ provider:
       # Log full requests/responses for execution logging (default: true)
       fullExecutionData: true
 
-    # Optional, whether to write CloudWatch logs for custom resource lambdas as added by OSLS Framework
+    # Optional, whether to write CloudWatch logs for custom resource lambdas as added by osls
     frameworkLambda: true
 ```
 
@@ -1403,7 +1403,7 @@ resources:
           WriteCapacityUnits: 1
 
   extensions:
-    # override Properties or other attributes of Framework-created resources.
+    # override Properties or other attributes of osls-created resources.
     # See ./resources.md#override-aws-cloudformation-resource for more details
     UsersCreateLogGroup:
       Properties:

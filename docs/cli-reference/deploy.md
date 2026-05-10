@@ -31,7 +31,7 @@ After the `serverless deploy` command runs, the framework runs `serverless packa
 serverless deploy
 ```
 
-This is the simplest deployment usage possible. With this command OSLS Framework will deploy your service to the defined
+This is the simplest deployment usage possible. With this command osls will deploy your service to the defined
 provider in the default stage (`dev`) to the default region (`us-east-1`).
 
 ### Deployment with stage and region options

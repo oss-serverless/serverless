@@ -1,6 +1,6 @@
 # Composing services
 
-Deploying multiple services in a monorepository is a very common pattern across larger teams. OSLS Compose is meant to simplify deploying and orchestrating multiple services:
+Deploying multiple services in a monorepository is a very common pattern across larger teams. osls compose is meant to simplify deploying and orchestrating multiple services:
 
 - Deploy multiple services in parallel
 - Deploy services in a specific order
@@ -39,7 +39,7 @@ services:
     # config: serverless.api.yml
 ```
 
-_Note: JS/TS configuration files are also supported (`serverless-compose.{yml,ts,js,json}`). JavaScript and TypeScript Compose configuration files are executed by Node.js when loaded, so use them only from trusted projects._
+_Note: JS/TS configuration files are also supported (`serverless-compose.{yml,ts,js,json}`). JavaScript and TypeScript osls compose configuration files are executed by Node.js when loaded, so use them only from trusted projects._
 
 ## Usage
 
@@ -103,7 +103,7 @@ Let's break down the example above into 3 steps:
 
 2. Because of the dependency introduced by the variable, `serverless deploy` will automatically **deploy `service-a` first, and then `service-b`.**
 
-3. The value will be passed to `service-b` [as a parameter](./parameters.md) named `queueUrl`. Parameters can be referenced in OSLS Framework configuration via the `${param:xxx}` syntax:
+3. The value will be passed to `service-b` [as a parameter](./parameters.md) named `queueUrl`. Parameters can be referenced in osls configuration via the `${param:xxx}` syntax:
 
    ```yaml
    # service-b/serverless.yml
@@ -188,7 +188,7 @@ serverless logs --service=service-a --function=index
 serverless service-a:logs --function=index
 ```
 
-All OSLS Framework commands are supported **only via service-specific commands**, including custom commands from plugins, for example:
+All osls commands are supported **only via service-specific commands**, including custom commands from plugins, for example:
 
 ```bash
 serverless service-a:offline
@@ -198,7 +198,7 @@ serverless service-a:offline
 
 The `serverless service-a:deploy` command is the equivalent of running `serverless deploy` in service-a's directory. Both can be used.
 
-However, if "service-a" uses `${param:xxx}` to reference parameters injected by `serverless-compose.yml`, then `serverless service-a:deploy` must be used. Indeed, `${param:xxx}` cannot be resolved outside of OSLS Compose.
+However, if "service-a" uses `${param:xxx}` to reference parameters injected by `serverless-compose.yml`, then `serverless service-a:deploy` must be used. Indeed, `${param:xxx}` cannot be resolved outside of osls compose.
 
 In these cases, you must run all commands from the root: `serverless service-a:deploy`.
 
@@ -206,7 +206,7 @@ In these cases, you must run all commands from the root: `serverless service-a:d
 
 The following variables are supported in `serverless-compose.yml`:
 
-- [`${sls:stage}`](./variables.md#referencing-osls-framework-core-variables)
+- [`${sls:stage}`](./variables.md#referencing-osls-core-variables)
 - [`${env:xxx}`](./variables.md#referencing-environment-variables)
 
 ### Differences with `serverless.yml`
@@ -243,8 +243,8 @@ Remember to do this for every stage you may have previously deployed.
 
 ### Multi-region deployments
 
-> Is multi-region deployment possible via Compose?
+> Is multi-region deployment possible via osls compose?
 
 It is possible to deploy different services to different regions. For example, deploy service `frontend` to us-east-1 and service `backend` to eu-west-3.
 
-However, Compose currently does not support deploying _the same service_ to multiple regions. The reason is that each service is packaged in the `.serverless/` directory. If the same service was to be deployed in parallel to different regions, package artifacts would conflict and overwrite each others.
+However, osls compose currently does not support deploying _the same service_ to multiple regions. The reason is that each service is packaged in the `.serverless/` directory. If the same service was to be deployed in parallel to different regions, package artifacts would conflict and overwrite each others.

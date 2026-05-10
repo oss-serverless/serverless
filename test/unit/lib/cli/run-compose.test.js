@@ -155,7 +155,7 @@ describe('test/unit/lib/cli/run-compose.test.js', () => {
 
     await runCompose();
 
-    expect(stdout).to.include('OSLS Compose needs to be installed first.');
+    expect(stdout).to.include('osls compose needs to be installed first.');
     expect(stdout).to.include(
       'Please install it manually with "npm i --save-dev @osls/compose" and run this command again.'
     );
@@ -259,7 +259,7 @@ describe('test/unit/lib/cli/run-compose.test.js', () => {
 
     await runCompose();
 
-    expect(stdout).to.include('Could not install OSLS Compose CLI locally.');
+    expect(stdout).to.include('Could not install osls compose CLI locally.');
     expect(global.__runComposeCalls).to.equal(undefined);
   });
 
@@ -297,7 +297,7 @@ describe('test/unit/lib/cli/run-compose.test.js', () => {
 
     await runCompose();
 
-    expect(stdout).to.include('Installing OSLS Compose CLI via NPM');
+    expect(stdout).to.include('Installing osls compose CLI via NPM');
     expect(global.__runComposeCalls).to.have.length(1);
     expect(process.exitCode).to.equal(undefined);
   });
@@ -323,7 +323,7 @@ describe('test/unit/lib/cli/run-compose.test.js', () => {
 
     await runCompose();
 
-    expect(stdout).to.include('Installing OSLS Compose CLI via NPM');
+    expect(stdout).to.include('Installing osls compose CLI via NPM');
     expect(stdout).to.include('Installation failed.');
     expect(process.exitCode).to.equal(1);
     expect(global.__runComposeCalls).to.equal(undefined);

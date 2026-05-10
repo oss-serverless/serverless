@@ -4,7 +4,7 @@ In the following example, we specify that the `compute` function should be trigg
 
 The ARN for the queue can be specified as a string, the reference to the ARN of a resource by logical ID, or the import of an ARN that was exported by a different service or CloudFormation stack.
 
-**Note:** The `sqs` event will hook up your existing SQS Queue to a Lambda function. OSLS Framework won't create a new queue for you.
+**Note:** The `sqs` event will hook up your existing SQS Queue to a Lambda function. osls won't create a new queue for you.
 
 ```yml
 functions:
@@ -61,7 +61,7 @@ This configuration allows customers to filter event before lambda invocation. It
 
 For more details and examples of filter patterns, please see the [AWS event filtering documentation](https://docs.aws.amazon.com/lambda/latest/dg/invocation-eventfiltering.html)
 
-Note: OSLS Framework only sets this property if you explicitly add it to the `sqs` configuration (see an example below). The following example will only process records where field `a` is equal to 1 or 2.
+Note: osls only sets this property if you explicitly add it to the `sqs` configuration (see an example below). The following example will only process records where field `a` is equal to 1 or 2.
 
 ```yml
 functions:
@@ -92,13 +92,13 @@ functions:
 
 ## IAM Permissions
 
-OSLS Framework will automatically configure the most minimal set of IAM permissions for you. However you can still add additional permissions if you need to. Read the official [AWS documentation](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-configure-lambda-function-trigger.html) for more information about IAM Permissions for SQS events.
+osls will automatically configure the most minimal set of IAM permissions for you. However you can still add additional permissions if you need to. Read the official [AWS documentation](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-configure-lambda-function-trigger.html) for more information about IAM Permissions for SQS events.
 
 ## Deploying SQS queues
 
 The examples above show how to consume messages from an existing SQS queue. To create an SQS queue in `serverless.yml`, you can either write custom CloudFormation, or you can use Lift.
 
-[Lift](https://github.com/getlift/lift) is an OSLS Framework plugin that simplifies deploying pieces of applications via "[constructs](https://github.com/getlift/lift#constructs)". Lift can be installed via:
+[Lift](https://github.com/getlift/lift) is an osls plugin that simplifies deploying pieces of applications via "[constructs](https://github.com/getlift/lift#constructs)". Lift can be installed via:
 
 ```
 serverless plugin install -n serverless-lift

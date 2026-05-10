@@ -60,7 +60,7 @@ describe('Serverless', () => {
       expect(serverless.providers).to.deep.equal({});
     });
 
-    it('should set the OSLS Framework version', () => {
+    it('should set the osls version', () => {
       expect(serverless.version.length).to.be.at.least(1);
     });
 
@@ -205,7 +205,7 @@ describe('Serverless', () => {
   });
 
   describe('#getVersion()', () => {
-    it('should get the correct OSLS Framework version', () => {
+    it('should get the correct osls version', () => {
       expect(serverless.getVersion()).to.equal(version);
       expect(semver.valid(serverless.getVersion())).to.equal(serverless.getVersion());
     });

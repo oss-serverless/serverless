@@ -1,8 +1,8 @@
-# OSLS Framework Concepts
+# osls Concepts
 
-OSLS Framework helps you develop and deploy AWS Lambda functions, along with the AWS infrastructure resources they require. It's a CLI that offers structure, automation and best practices out-of-the-box, allowing you to focus on building sophisticated, event-driven, serverless architectures, comprised of [Functions](#functions) and [Events](#events).
+osls helps you develop and deploy AWS Lambda functions, along with the AWS infrastructure resources they require. It's a CLI that offers structure, automation and best practices out-of-the-box, allowing you to focus on building sophisticated, event-driven, serverless architectures, comprised of [Functions](#functions) and [Events](#events).
 
-OSLS Framework is different from other application frameworks because:
+osls is different from other application frameworks because:
 
 - It manages your code as well as your infrastructure
 - It supports multiple languages (Node.js, Python, Java, and more)
@@ -32,7 +32,7 @@ Functions are triggered by events. Events come from other AWS resources, for exa
 - A CloudWatch alert
 - And more...
 
-When you configure an event on a Lambda function, OSLS Framework will automatically create the infrastructure needed for that event (e.g. an API Gateway endpoint) and configure your functions to listen to it.
+When you configure an event on a Lambda function, osls will automatically create the infrastructure needed for that event (e.g. an API Gateway endpoint) and configure your functions to listen to it.
 
 [Learn more on defining function events](./events.md)
 
@@ -43,9 +43,9 @@ Resources are AWS infrastructure components which your functions use such as:
 - A DynamoDB table (e.g. for saving users/posts/comments data)
 - An S3 bucket (e.g. for saving images or files)
 - An SNS topic (e.g. for sending messages asynchronously)
-- Anything that can be defined in CloudFormation is supported by OSLS Framework
+- Anything that can be defined in CloudFormation is supported by osls
 
-OSLS Framework can deploy functions and their events, but also AWS resources.
+osls can deploy functions and their events, but also AWS resources.
 
 [Learn more on defining AWS resources](./resources.md)
 
@@ -77,9 +77,9 @@ When deploying with the CLI via `serverless deploy`, everything in the configura
 
 In case you need more flexibility, you can also define the service configuration in JSON (`serverless.json`), JavaScript (`serverless.js`) or TypeScript (`serverless.ts`).
 
-> **Security note:** JavaScript and TypeScript service configuration files are executed by Node.js when the CLI loads the service. Treat `serverless.js`, `serverless.cjs`, `serverless.mjs`, `serverless.ts`, and `serverless.mts` as trusted code. Do not run OSLS Framework commands against untrusted projects, templates, or pull requests that include executable service configuration files.
+> **Security note:** JavaScript and TypeScript service configuration files are executed by Node.js when the CLI loads the service. Treat `serverless.js`, `serverless.cjs`, `serverless.mjs`, `serverless.ts`, and `serverless.mts` as trusted code. Do not run osls commands against untrusted projects, templates, or pull requests that include executable service configuration files.
 
-While OSLS Framework is language-agnostic, projects written in Node.js can benefit from using the same language all around. When using JavaScript or TypeScript, the file must export the configuration as a JS object, for example:
+While osls is language-agnostic, projects written in Node.js can benefit from using the same language all around. When using JavaScript or TypeScript, the file must export the configuration as a JS object, for example:
 
 ```js
 'use strict';

@@ -1,8 +1,8 @@
-**OSLS Framework** – Build applications on AWS Lambda and other next-gen cloud services, that auto-scale and only charge you when they run. This lowers the total cost of running and operating your apps, enabling you to build more and manage less.
+**osls** – Build applications on AWS Lambda and other next-gen cloud services, that auto-scale and only charge you when they run. This lowers the total cost of running and operating your apps, enabling you to build more and manage less.
 
-OSLS Framework is a command-line tool with an easy and approachable YAML syntax to deploy both your code and cloud infrastructure needed to make tons of serverless application use-cases. It's a multi-language framework that supports Node.js, Typescript, Python, Go, Java, and more.
+osls is a command-line tool with an easy and approachable YAML syntax to deploy both your code and cloud infrastructure needed to make tons of serverless application use-cases. It's a multi-language framework that supports Node.js, Typescript, Python, Go, Java, and more.
 
-OSLS abbreviates Open Serverless.
+osls is short for Open Serverless.
 
 ---
 
@@ -28,7 +28,7 @@ Requires Node.js `^20.19.0 || ^22.13.0 || >=24`.
 npm remove -g serverless
 npm install -g osls
 
-serverless --version
+osls --version
 ```
 
 The repository has been created and is maintained by [Bref](https://bref.sh) maintainers and contributors. The main goal of this repository is to provide continuity for Bref users, so that these Bref projects keep working for the next 5 years. No major new features are planned. However, community contributions to keep the project running (even for languages other than PHP), like adding support to new runtime versions, adapting to AWS changes, bugfixes, and other small improvements are welcome.

@@ -1,4 +1,4 @@
-# OSLS Framework Deprecations
+# osls Deprecations
 
 ## How to disable a specific deprecation
 
@@ -36,7 +36,7 @@ Note:
 
 Deprecation code: `CONSOLE_CONFIGURATION`
 
-Starting with v3.24.0, OSLS Framework will no longer recognize inner `console` configuration. All Serverless Console related configuration is expected to be maintained at https://console.serverless.com
+Starting with v3.24.0, osls will no longer recognize inner `console` configuration. All Serverless Console related configuration is expected to be maintained at https://console.serverless.com
 
 Learn more about configuration validation here: ./configuration-validation.md
 

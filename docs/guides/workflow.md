@@ -25,7 +25,7 @@ Quick recommendations and tips for various processes.
 
 ## Cheat Sheet
 
-A handy list of commands to use when developing with OSLS Framework.
+A handy list of commands to use when developing with osls.
 
 ##### Create A Service:
 
