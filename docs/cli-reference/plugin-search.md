@@ -1,6 +1,6 @@
 # Plugin Search
 
-Search for a specific plugin based on a search query. Connected to the [osls plugin registry](https://github.com/serverless/plugins).
+Search for a specific plugin based on a search query. Connected to the [Serverless plugin registry](https://github.com/serverless/plugins).
 
 ```bash
 serverless plugin search --query query

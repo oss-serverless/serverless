@@ -2,7 +2,7 @@
 
 ## Package CLI Command
 
-Using osls CLI tool, you can package your project without deploying it to AWS. This is best used with CI / CD workflows to ensure consistent deployable artifacts.
+Using the osls CLI tool, you can package your project without deploying it to AWS. This is best used with CI / CD workflows to ensure consistent deployable artifacts.
 
 Running the following command will build and save all of the deployment artifacts in the service's .serverless directory:
 

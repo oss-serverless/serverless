@@ -37,7 +37,7 @@ serverless create -p [TARGET DIRECTORY] --template-url [TEMPLATE URL]
 
 ##### Install A Service
 
-This is a convenience method to install a pre-made service locally by downloading the Github repo and unzipping it.
+This is a convenience method to install a pre-made service locally by downloading the GitHub repository and unzipping it.
 
 ```bash
 serverless install -u [GITHUB URL OF SERVICE]

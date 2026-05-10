@@ -66,7 +66,7 @@ This configuration allows customers to filter event before lambda invocation. It
 
 For more details and examples of filter patterns, please see the [AWS event filtering documentation](https://docs.aws.amazon.com/lambda/latest/dg/invocation-eventfiltering.html)
 
-Note: osls only sets this property if you explicitly add it to the `rabbitmq` configuration (see an example below). The following example will only process records that are published in to Amazon MQ for RabbitMQ where field `a` is equal to 1 or 2.
+Note: osls only sets this property if you explicitly add it to the `rabbitmq` configuration (see an example below). The following example will only process records that are published to Amazon MQ for RabbitMQ where field `a` is equal to 1 or 2.
 
 ```yml
 functions:
@@ -84,4 +84,4 @@ functions:
 
 ## IAM Permissions
 
-osls will automatically configure the most minimal set of IAM permissions for you. However you can still add additional permissions if you need to. Read the official [AWS documentation](https://docs.aws.amazon.com/lambda/latest/dg/with-mq.html#events-mq-permissions) for more information about IAM Permissions for Amazon MQ events.
+osls will automatically configure the minimum set of IAM permissions for you. However, you can still add additional permissions if you need to. Read the official [AWS documentation](https://docs.aws.amazon.com/lambda/latest/dg/with-mq.html#events-mq-permissions) for more information about IAM permissions for Amazon MQ events.

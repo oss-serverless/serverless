@@ -97,7 +97,7 @@ In the above example you're setting a global schedule for all functions by refer
 
 ## Referencing osls Core Variables
 
-osls initializes core variables which are used internally by the CLI itself. Those values are exposed via the osls variables system and can be reused with the `{sls:}` variable prefix.
+osls initializes core variables which are used internally by the CLI itself. Those values are exposed via the osls variable system and can be reused with the `{sls:}` variable prefix.
 
 The following variables are available:
 
@@ -300,7 +300,7 @@ functions:
 
 ## Referencing AWS-specific variables
 
-You can reference AWS-specific values as the source of your variables. Those values are exposed via the osls variables system through the `{aws:}` variable prefix.
+You can reference AWS-specific values as the source of your variables. Those values are exposed via the osls variable system through the `{aws:}` variable prefix.
 
 The following variables are available:
 

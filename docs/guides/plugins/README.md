@@ -54,7 +54,7 @@ osls-resolved client configuration with `provider.getAwsSdkV3Config()`.
 See [AWS SDK v3 clients](creating-plugins.md#aws-sdk-v3-clients) for details.
 
 Only helpers documented in the plugin guides are considered supported for
-plugin authors. Avoid importing files from the internal osls `lib/**`
+plugin authors. Avoid importing osls internal files under `lib/**`
 tree.
 
 ## Service local plugin

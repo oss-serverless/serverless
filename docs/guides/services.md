@@ -189,7 +189,7 @@ provider:
 
 ## Installing the CLI in an existing service
 
-If you already have a service, and would prefer to lock down the framework version using `package.json`, then you can install the CLI as follows:
+If you already have a service, and would prefer to lock down the osls version using `package.json`, then you can install the CLI as follows:
 
 ```bash
 # from within a service

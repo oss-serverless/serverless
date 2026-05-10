@@ -1,6 +1,6 @@
 # Setting Up osls With AWS
 
-Get started with osls’s open-source CLI and Amazon Web Services in minutes.
+Get started with the osls open-source CLI and Amazon Web Services in minutes.
 
 ## Installation
 
@@ -92,9 +92,9 @@ serverless invoke local --function functionName --data '{"a":"bar"}'
 
 More details on the `invoke local` command can be found [here](./cli-reference/invoke-local.md)
 
-osls also has a great plugin that allows you to run a server locally and emulate AWS API Gateway. This is the `serverless-offline` command.
+A popular plugin, `serverless-offline`, allows you to run a server locally and emulate AWS API Gateway.
 
-More details on the **serverless-offline** plugins command can be found [here](https://github.com/dherault/serverless-offline)
+More details on the **serverless-offline** plugin command can be found [here](https://github.com/dherault/serverless-offline)
 
 ## Remove Your Service
 

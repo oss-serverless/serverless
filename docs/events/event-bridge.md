@@ -2,7 +2,7 @@
 
 The [EventBridge](https://aws.amazon.com/eventbridge/) makes it possible to connect applications using data from external sources (e.g. own applications, SaaS) or AWS services. The `eventBridge` event types helps setting up AWS Lambda functions to react to events coming in via the EventBridge.
 
-_Note_: Prior to `2.27.0` version of the CLI, `eventBridge` resources were provisioned with Custom Resources. With `2.27.0` an optional support for native CloudFormation was introduced and can be turned on by setting `provider.eventBridge.useCloudFormation: true`. It is recommended to migrate to native CloudFormation as it's by default with v3. It also adds the ability to define `eventBus` with CF intrinsic functions as values.
+_Note_: Prior to CLI version `2.27.0`, `eventBridge` resources were provisioned with Custom Resources. With `2.27.0` an optional support for native CloudFormation was introduced and can be turned on by setting `provider.eventBridge.useCloudFormation: true`. It is recommended to migrate to native CloudFormation as it's by default with v3. It also adds the ability to define `eventBus` with CF intrinsic functions as values.
 
 ## Setting up a scheduled event
 
@@ -96,7 +96,7 @@ functions:
 
 The `eventBridge` event source will use the `default` event bus (the one AWS uses internally) when none is explicitly specified.
 
-osls will create the `eventBus` for your if you provide a name for it. Otherwise, if literal `arn` or reference to an existing event bus name via CF intrinsic function is provided, osls will attach to it.
+osls will create the `eventBus` for you if you provide a name for it. Otherwise, if literal `arn` or reference to an existing event bus name via CF intrinsic function is provided, osls will attach to it.
 
 ### Creating an event bus
 

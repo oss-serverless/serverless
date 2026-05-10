@@ -1,6 +1,6 @@
 # IAM Permissions For Functions
 
-AWS Lambda functions need permissions to interact with other AWS services and resources in your account. These permissions are set via an AWS IAM Role, which osls automatically creates for each service, and is shared by all functions in the service. The CLI allows you to modify this Role or create Function-specific Roles, easily.
+AWS Lambda functions need permissions to interact with other AWS services and resources in your account. These permissions are set via an AWS IAM role, which osls automatically creates for each service and shares across all functions in the service. The CLI allows you to modify this role or create function-specific roles.
 
 You can customize that role to add permissions to the code running in your functions.
 
@@ -129,7 +129,7 @@ osls empowers you to define custom roles and apply them to your functions on a p
 
 Defining it on the provider will make the role referenced by the `role` value the default role for any Lambda without its own `role` declared. This is to say that defining a `role` attribute on individual functions will override any provider level declared role. If every function within your service has a role assigned to it (either via provider level `role` declaration, individual declarations, or a mix of the two) then the default role and policy will not be generated and added to your Cloud Formation Template.
 
-The `role` attribute can have a value of the logical name of the role, the ARN of the role, or an object that will resolve in the ARN of the role. The declaration `{ function: { role: 'myRole' } }` will result in `{ 'Fn::GetAtt': ['myRole', 'Arn'] }`. You can of course just declare an ARN like so `{ function: { role: 'an:aws:arn:xxx:*:*' } }`. This use case is primarily for those who must create their roles and / or policies via a means outside osls.
+The `role` attribute can have a value of the logical name of the role, the ARN of the role, or an object that will resolve in the ARN of the role. The declaration `{ function: { role: 'myRole' } }` will result in `{ 'Fn::GetAtt': ['myRole', 'Arn'] }`. You can of course just declare an ARN like so `{ function: { role: 'an:aws:arn:xxx:*:*' } }`. This use case is primarily for those who must create their roles and / or policies via a means outside of osls.
 
 Here are some examples of using these capabilities to specify Lambda roles.
 

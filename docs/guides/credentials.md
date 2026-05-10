@@ -41,7 +41,7 @@ Follow these steps to create new AWS access keys:
 
 Note that the above steps grant osls administrative access to your account. While this makes things simple when starting out, we recommend that you create and use more fine-grained permissions once you determine the scope of your serverless applications and move them into production.
 
-To limit osls’s access your AWS account, follow these steps to **create an IAM User** and attach a custom JSON file policy to your new IAM User. This IAM User will have its own set of AWS Access Keys.
+To limit the access osls has to your AWS account, follow these steps to **create an IAM User** and attach a custom JSON file policy to your new IAM User. This IAM User will have its own set of AWS Access Keys.
 
 1. Login to your AWS Account and go to the Identity & Access Management (IAM) page.
 

@@ -391,7 +391,7 @@ functions:
         - flag
 ```
 
-During the first deployment when locally built images are used, The CLI will automatically create a dedicated ECR repository to store these images, with name `serverless-<service>-<stage>`. By default, older versions of images uploaded to ECR are not removed as they still might be in use by versioned functions. To automatically expire old images, set `provider.ecr.maxImageCount` to limit the number of images retained in the repository. During `sls remove`, the created ECR repository will be removed. During deployment, The CLI will attempt to `docker login` to ECR if needed. Depending on your local configuration, docker authorization token might be stored unencrypted. Please refer to documentation for more details: https://docs.docker.com/engine/reference/commandline/login/#credentials-store
+During the first deployment when locally built images are used, the CLI will automatically create a dedicated ECR repository to store these images, with name `serverless-<service>-<stage>`. By default, older versions of images uploaded to ECR are not removed as they still might be in use by versioned functions. To automatically expire old images, set `provider.ecr.maxImageCount` to limit the number of images retained in the repository. During `sls remove`, the created ECR repository will be removed. During deployment, the CLI will attempt to `docker login` to ECR if needed. Depending on your local configuration, docker authorization token might be stored unencrypted. Please refer to documentation for more details: https://docs.docker.com/engine/reference/commandline/login/#credentials-store
 
 ## Instruction set architecture
 

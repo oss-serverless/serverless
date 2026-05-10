@@ -146,4 +146,4 @@ functions:
 
 ## IAM Permissions
 
-osls will automatically configure the most minimal set of IAM permissions for you. However you can still add additional permissions if you need to. Read the official [AWS documentation](https://docs.aws.amazon.com/lambda/latest/dg/with-msk.html) for more information about IAM Permissions for MSK events.
+osls will automatically configure the minimum set of IAM permissions for you. However, you can still add additional permissions if you need to. Read the official [AWS documentation](https://docs.aws.amazon.com/lambda/latest/dg/with-msk.html) for more information about IAM permissions for MSK events.

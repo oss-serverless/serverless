@@ -18,7 +18,7 @@ With that option enabled, `.env` files will also be excluded from the package in
 
 osls loads `.env.{stage}` from the service directory when present; otherwise it falls back to `.env`. If stage is not explicitly defined, it defaults to `dev`. Invalid stage names are rejected before `.env.{stage}` is read.
 
-osls loads `.env` files quietly by default. Avoid `DOTENV_CONFIG_DEBUG=true` or `DOTENV_CONFIG_QUIET=false` when using machine-readable commands such as `serverless print`, or when osls is invoked through osls compose, because those dotenv options can write runtime loading messages to stdout.
+osls loads `.env` files quietly by default. Avoid `DOTENV_CONFIG_DEBUG=true` or `DOTENV_CONFIG_QUIET=false` when using machine-readable commands such as `serverless print`, or when using osls compose, because those dotenv options can write runtime loading messages to stdout.
 
 ### Variable expansion
 
@@ -37,7 +37,7 @@ URL=$PROTOCOL/$BASE_URL
 
 There are a few differences between above functionality and [serverless-dotenv-plugin](https://github.com/colynb/serverless-dotenv-plugin):
 
-- osls only loads environments variables locally and does not pass them to your function's environment
+- osls only loads environment variables locally and does not pass them to your function's environment
 - osls loads variables from only one `.env` file (if stage-specific `.env` is found, default `.env` is not loaded)
 - osls does not support `.env.local`, `.env.{stage}.local`, and `.env.development` files in a similar way to the plugin
 - osls does not use `NODE_ENV` variable and `--env` flag when determining stage
