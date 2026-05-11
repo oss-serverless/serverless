@@ -48,9 +48,11 @@ Learn more about configuration validation here: ./configuration-validation.md
 
 Deprecation code: `VARIABLES_RESOLUTION_MODE`
 
-Removal target: osls v5.0.0
+Removal targets: `20210219` mode in osls v4.0.0; property in osls v5.0.0
 
-Starting with v3.0.0, `variablesResolutionMode` is no longer effective because the new variables resolver is used by default. Drop it to avoid future validation errors. The `variablesResolutionMode` property is scheduled for removal from accepted configuration in osls v5.0.0.
+Starting with v3.0.0, `variablesResolutionMode` is no longer effective because the new variables resolver is used by default. Drop it to avoid future validation errors.
+
+The old `variablesResolutionMode: 20210219` mode is scheduled to be rejected in osls v4.0.0. The `variablesResolutionMode` property itself, including the no-op `20210326` value, is scheduled for removal from accepted configuration in osls v5.0.0.
 
 Learn more about configuration validation here: ./configuration-validation.md
 
