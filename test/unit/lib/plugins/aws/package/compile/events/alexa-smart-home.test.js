@@ -161,7 +161,7 @@ describe('AwsCompileAlexaSmartHomeEvents', () => {
     it('should not create corresponding resources when alexaSmartHome events are not given', () => {
       awsCompileAlexaSmartHomeEvents.serverless.service.functions = {
         first: {
-          events: ['alexaSkill'],
+          events: [],
         },
       };
 

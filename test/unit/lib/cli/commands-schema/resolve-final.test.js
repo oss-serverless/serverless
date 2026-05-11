@@ -142,4 +142,28 @@ describe('test/unit/lib/cli/commands-schema/resolve-final.test.js', () => {
     it('should expose service options on new service commands', () =>
       expect(commands.get('deploy apim').options).to.have.property('config'));
   });
+
+  it('should reject plugin options without type', () => {
+    expect(() =>
+      resolveFinal(
+        new Set([
+          {
+            constructor: { name: 'UntypedOptionsPlugin' },
+            commands: {
+              demo: {
+                usage: 'Demo command',
+                lifecycleEvents: ['run'],
+                options: {
+                  value: { usage: 'Untyped value' },
+                },
+              },
+            },
+          },
+        ]),
+        { providerName: 'aws' }
+      )
+    )
+      .to.throw()
+      .and.have.property('code', 'INVALID_CLI_OPTIONS_SCHEMA');
+  });
 });

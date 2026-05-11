@@ -123,11 +123,6 @@ describe('test/unit/lib/plugins/aws/package/compile/events/websockets/index.test
         command: 'package',
 
         configExt: {
-          provider: {
-            websocket: {
-              useProviderTags: true,
-            },
-          },
           functions: {
             basic: {
               events: [
@@ -181,9 +176,6 @@ describe('test/unit/lib/plugins/aws/package/compile/events/websockets/index.test
             },
             tags: {
               tag: 'bar',
-            },
-            websocket: {
-              useProviderTags: true,
             },
           },
           functions: {

@@ -509,27 +509,6 @@ describe('test/unit/lib/plugins/aws/customResources/index.test.js', () => {
     expect(properties.Runtime).to.equal('nodejs24.x');
   });
 
-  it('falls back to nodejs24 runtime for Event Bridge [LEGACY] custom resource if provider runtime is not nodejs ', async () => {
-    const { cfTemplate } = await runServerless({
-      fixture: 'event-bridge',
-      command: 'package',
-      options: { stage: 'testing' },
-      configExt: {
-        disabledDeprecations: ['AWS_EVENT_BRIDGE_CUSTOM_RESOURCE_LEGACY_OPT_IN'],
-        provider: {
-          runtime: 'python3.12',
-          eventBridge: {
-            useCloudFormation: false,
-          },
-        },
-      },
-    });
-
-    const properties =
-      cfTemplate.Resources.CustomDashresourceDasheventDashbridgeLambdaFunction.Properties;
-    expect(properties.Runtime).to.equal('nodejs24.x');
-  });
-
   it('falls back to nodejs24 runtime for S3 custom resource if provider runtime is not nodejs ', async () => {
     const { cfTemplate } = await runServerless({
       fixture: 's3',

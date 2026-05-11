@@ -185,9 +185,7 @@ describe('AwsCompileFunctions', () => {
       const { cfTemplate } = await runServerless({
         fixture: 'function',
         configExt: {
-          disabledDeprecations: ['PROVIDER_IAM_SETTINGS_V3'],
           provider: {
-            role: 'role-a',
             iam: { role: 'role-b' },
           },
         },
@@ -1694,7 +1692,7 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
     });
   });
 
-  describe('`provider.role` variants', () => {
+  describe('`provider.iam.role` variants', () => {
     it('should support resource name', async () => {
       const { awsNaming, cfTemplate, fixtureData } = await runServerless({
         fixture: 'function',
@@ -1735,49 +1733,6 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
       expect(funcResource.Properties.Role).to.deep.equal(
         fixtureData.serviceConfig.provider.iam.role
       );
-    });
-  });
-
-  describe('`provider.lambdaHashingVersion` support', () => {
-    it('CodeSha256 for functions should be the same for default hashing and for 20200924 version', async () => {
-      const { servicePath: serviceDir, updateConfig } = await fixtures.setup('function', {
-        configExt: {
-          provider: {
-            versionFunctions: true,
-          },
-        },
-      });
-
-      const { cfTemplate: originalTemplate, awsNaming } = await runServerless({
-        cwd: serviceDir,
-        command: 'package',
-      });
-
-      const functionCfLogicalId = awsNaming.getLambdaLogicalId('basic');
-
-      const originalVersionCfConfig = Object.values(originalTemplate.Resources).find(
-        (resource) =>
-          resource.Type === 'AWS::Lambda::Version' &&
-          resource.Properties.FunctionName.Ref === functionCfLogicalId
-      ).Properties;
-
-      await updateConfig({
-        disabledDeprecations: ['LAMBDA_HASHING_VERSION_PROPERTY'],
-        provider: {
-          lambdaHashingVersion: '20200924',
-        },
-      });
-      const { cfTemplate: updatedTemplate } = await runServerless({
-        cwd: serviceDir,
-        command: 'package',
-      });
-      const updatedVersionCfConfig = Object.values(updatedTemplate.Resources).find(
-        (resource) =>
-          resource.Type === 'AWS::Lambda::Version' &&
-          resource.Properties.FunctionName.Ref === functionCfLogicalId
-      ).Properties;
-
-      expect(originalVersionCfConfig.CodeSha256).to.deep.equal(updatedVersionCfConfig.CodeSha256);
     });
   });
 
@@ -2946,17 +2901,10 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
   });
 
   describe('Version hash resolution', () => {
-    const testLambdaHashingVersion = (lambdaHashingVersion) => {
-      const configExt = lambdaHashingVersion
-        ? {
-            provider: { lambdaHashingVersion },
-            disabledDeprecations: ['LAMBDA_HASHING_VERSION_PROPERTY'],
-          }
-        : {};
-
+    const testLambdaHashingVersion = () => {
       it('should create a different version if configuration changed', async () => {
         const { servicePath: serviceDir, updateConfig } = await fixtures.setup('function', {
-          configExt,
+          configExt: {},
         });
 
         const { cfTemplate: originalTemplate } = await runServerless({
@@ -2993,7 +2941,7 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
 
       it('should not create a different version if only function-wide configuration changed', async () => {
         const { servicePath: serviceDir, updateConfig } = await fixtures.setup('function', {
-          configExt,
+          configExt: {},
         });
 
         const { cfTemplate: originalTemplate } = await runServerless({
@@ -3037,7 +2985,7 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
         };
 
         beforeEach(async () => {
-          const serviceData = await fixtures.setup('function-layers', { configExt });
+          const serviceData = await fixtures.setup('function-layers', { configExt: {} });
           ({ servicePath: serviceDir, updateConfig } = serviceData);
           const data = await runServerless({
             cwd: serviceDir,
@@ -3213,45 +3161,6 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
     };
     describe('default hashing version', () => {
       testLambdaHashingVersion();
-    });
-
-    describe('lambdaHashingVersion: 20200924', () => {
-      testLambdaHashingVersion('20200924');
-    });
-
-    describe('lambdaHashingVersion migration', () => {
-      it('should enforce new description configuration and version with `--enforce-hash-update` flag', async () => {
-        const { servicePath: serviceDir } = await fixtures.setup('function', {
-          configExt: {
-            disabledDeprecations: ['LAMBDA_HASHING_VERSION_V2'],
-            provider: {
-              lambdaHashingVersion: null,
-            },
-          },
-        });
-
-        const { cfTemplate: originalTemplate, awsNaming } = await runServerless({
-          cwd: serviceDir,
-          command: 'package',
-        });
-        const originalVersionArn =
-          originalTemplate.Outputs.BasicLambdaFunctionQualifiedArn.Value.Ref;
-
-        const { cfTemplate: updatedTemplate } = await runServerless({
-          cwd: serviceDir,
-          command: 'deploy',
-          lastLifecycleHookName: 'before:deploy:deploy',
-          options: {
-            'enforce-hash-update': true,
-          },
-        });
-        const updatedVersionArn = updatedTemplate.Outputs.BasicLambdaFunctionQualifiedArn.Value.Ref;
-
-        expect(originalVersionArn).not.to.equal(updatedVersionArn);
-        expect(
-          updatedTemplate.Resources[awsNaming.getLambdaLogicalId('basic')].Properties.Description
-        ).to.equal('temporary-description-to-enforce-hash-update');
-      });
     });
   });
 

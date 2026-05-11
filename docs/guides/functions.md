@@ -919,25 +919,3 @@ functions:
       logGroup: helloLoggingLogGroup
       systemLogLevel: DEBUG
 ```
-
-## Lambda Hashing Algorithm migration
-
-**Note** Below migration guide is intended to be used if you have `provider.lambdaHashingVersion` property set to `20200924` in your configuration file.
-
-In `v3`, Lambda version hashes are generated using an improved algorithm that fixes determinism issues. If you are still using the old hashing algorithm, you can follow the guide below to migrate to new default version.
-
-The `provider.lambdaHashingVersion` property and old hashing algorithm compatibility path are scheduled for removal in osls v4.0.0.
-
-Please keep in mind that these changes require two deployments with manual configuration adjustment between them. It also creates two additional versions and temporarily overrides descriptions of your functions. Migration will need to be done separately for each of your environments/stages.
-
-1. Run `sls deploy` with additional `--enforce-hash-update` flag: that flag will override the description for Lambda functions, which will force the creation of new versions.
-2. Remove `provider.lambdaHashingVersion` setting from your configuration: your service will now always deploy with the new Lambda version hashes (which is the new default in v3).
-3. Run `sls deploy`, this time without additional `--enforce-hash-update` flag: that will restore the original descriptions on all Lambda functions.
-
-Now your whole service is fully migrated to the new Lambda Hashing Algorithm.
-
-If you do not want to temporarily override descriptions of your functions or would like to avoid creating unnecessary versions of your functions, you might want to use one of the following approaches:
-
-- Ensure that code for all your functions will change during deployment, remove `provider.lambdaHashingVersion` from your configuration, and run `sls deploy`. Due to the fact that all functions have code changed, all your functions will be migrated to new hashing algorithm. Please note that the change can be caused by e.g. upgrading a dependency used by all your functions so you can pair it with regular chores.
-- Add a dummy file that will be included in deployment artifacts for all your functions, remove `provider.lambdaHashingVersion` from your configuration, and run `sls deploy`. Due to the fact that all functions have code changed, all your functions will be migrated to new hashing algorithm.
-- If it is safe in your case (e.g. it's only development sandbox), you can also tear down the whole service by `sls remove`, remove `provider.lambdaHashingVersion` from your configuration, and run `sls deploy`. Newly recreated environment will be using new hashing algorithm.

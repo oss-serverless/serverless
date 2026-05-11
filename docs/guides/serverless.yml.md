@@ -13,7 +13,7 @@ service: myservice
 # osls version constraint (semver constraint): '3', '^2.33'
 frameworkVersion: '3'
 
-# Configuration validation: 'error' (fatal error), 'warn' (logged to the output) or 'off' (default: warn)
+# Configuration validation: 'error' (fatal error), 'warn' (logged to the output) or 'off' (default: error)
 # See the docs
 configValidationMode: error
 # Load environment variables from .env files (default: false)
@@ -282,7 +282,7 @@ provider:
       - '*/*'
     # Optional detailed Cloud Watch Metrics
     metrics: false
-    # Use `${service}-${stage}` naming for API Gateway. Will be `true` by default in v3.
+    # Use `${service}-${stage}` naming for API Gateway.
     shouldStartNameWithService: false
     resourcePolicy:
       - Effect: Allow

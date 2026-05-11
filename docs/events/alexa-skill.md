@@ -32,13 +32,3 @@ functions:
           appId: amzn1.ask.skill.xx-xx-xx-xx
           enabled: false
 ```
-
-## Backwards compatibility
-
-The previous syntax of this event didn't require a skill ID as parameter, but according to [Amazon's documentation](https://developer.amazon.com/docs/custom-skills/host-a-custom-skill-as-an-aws-lambda-function.html#configuring-the-alexa-skills-kit-trigger) you should restrict your lambda function to be executed only by your skill.
-
-Omitting the skill id will make your Lambda function publicly available, which will allow any other skill developer to invoke it.
-
-The bare `alexaSkill` event form without a skill ID is scheduled for removal in osls v4.0.0. Use `alexaSkill: <appId>` or the object form with `appId` instead.
-
-(This is important, as [opposed to custom HTTPS endpoints](https://developer.amazon.com/docs/custom-skills/handle-requests-sent-by-alexa.html#request-verify), there's no way to validate the request was sent by your skill.)

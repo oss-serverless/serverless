@@ -499,7 +499,7 @@ functions:
 
 ### Exporting a function
 
-_Note: the method described below works by default in Serverless v3, but it requires the `variablesResolutionMode: 20210326` option in v2. In v3, `variablesResolutionMode` is obsolete; the old `20210219` mode is scheduled to be rejected in osls v4.0.0, and the property itself is scheduled for removal in osls v5.0.0._
+_Note: `variablesResolutionMode: 20210326` is accepted as a deprecated no-op in osls v4 and is scheduled for removal in osls v5.0.0._
 
 A variable resolver function receives an object with the following properties:
 

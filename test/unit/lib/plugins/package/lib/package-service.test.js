@@ -124,12 +124,12 @@ describe('test/unit/lib/plugins/package/lib/packageService.test.js', () => {
       expect(serviceZippedFiles).to.not.include('.serverless-plugins/index.js');
     });
 
-    it('should support `package.exclude`', () => {
+    it('should support exclusion via `package.patterns`', () => {
       expect(serviceZippedFiles, fnIndividualZippedFiles).to.not.include('dir1/subdir1/index.js');
       expect(serviceZippedFiles, fnIndividualZippedFiles).to.include('dir1/subdir3/index.js');
     });
 
-    it('should support `package.include`', () => {
+    it('should support inclusion via `package.patterns`', () => {
       expect(serviceZippedFiles, fnIndividualZippedFiles).to.include('dir1/subdir2/index.js');
       expect(serviceZippedFiles, fnIndividualZippedFiles).to.not.include(
         'dir1/subdir2/subsubdir1/index.js'
@@ -145,11 +145,11 @@ describe('test/unit/lib/plugins/package/lib/packageService.test.js', () => {
       );
     });
 
-    it('should support `functions[].package.exclude`', () => {
+    it('should support function-level exclusion via `functions[].package.patterns`', () => {
       expect(fnIndividualZippedFiles).to.not.include('dir3/index.js');
     });
 
-    it('should support `functions[].package.include`', () => {
+    it('should support function-level inclusion via `functions[].package.patterns`', () => {
       expect(fnIndividualZippedFiles).to.include('dir1/subdir4/index.js');
     });
 
@@ -285,13 +285,13 @@ describe('test/unit/lib/plugins/package/lib/packageService.test.js', () => {
       );
     });
 
-    it('should support `package.exclude`', () => {
+    it('should support exclusion via `package.patterns`', () => {
       expect(fnIndividualZippedFiles).to.not.include('dir1/subdir1/index.js');
       expect(fnIndividualZippedFiles).to.not.include('dir1/subdir1/index.js');
       expect(fnIndividualZippedFiles).to.include('dir1/subdir3/index.js');
     });
 
-    it('should support `package.include`', () => {
+    it('should support inclusion via `package.patterns`', () => {
       expect(fnIndividualZippedFiles).to.include('dir1/subdir2/index.js');
       expect(fnIndividualZippedFiles).to.not.include('dir1/subdir2/subsubdir1/index.js');
       expect(fnIndividualZippedFiles).to.include('dir1/subdir2/subsubdir2/index.js');

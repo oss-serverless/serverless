@@ -170,7 +170,9 @@ describe('AwsCompileStreamEvents', () => {
       awsCompileStreamEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources.IamRoleLambdaExecution =
         null;
 
-      awsCompileStreamEvents.serverless.service.provider.role = 'arn:aws:iam::account:role/foo';
+      awsCompileStreamEvents.serverless.service.provider.iam = {
+        role: 'arn:aws:iam::account:role/foo',
+      };
 
       expect(() => {
         awsCompileStreamEvents.compileStreamEvents();
@@ -266,8 +268,10 @@ describe('AwsCompileStreamEvents', () => {
       awsCompileStreamEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources.IamRoleLambdaExecution =
         null;
 
-      awsCompileStreamEvents.serverless.service.provider.role = {
-        'Fn::GetAtt': [roleLogicalId, 'Arn'],
+      awsCompileStreamEvents.serverless.service.provider.iam = {
+        role: {
+          'Fn::GetAtt': [roleLogicalId, 'Arn'],
+        },
       };
 
       expect(() => {
@@ -300,7 +304,7 @@ describe('AwsCompileStreamEvents', () => {
       awsCompileStreamEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources.IamRoleLambdaExecution =
         null;
 
-      awsCompileStreamEvents.serverless.service.provider.role = roleLogicalId;
+      awsCompileStreamEvents.serverless.service.provider.iam = { role: roleLogicalId };
 
       expect(() => {
         awsCompileStreamEvents.compileStreamEvents();

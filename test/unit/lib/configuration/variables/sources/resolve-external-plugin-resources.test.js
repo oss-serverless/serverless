@@ -87,4 +87,20 @@ describe('test/unit/lib/configuration/variables/sources/resolve-external-plugin-
       .to.throw(ServerlessError)
       .with.property('code', 'INVALID_VARIABLE_SOURCE_RESOLVER_CONFIGURATION');
   });
+
+  it('should reject old variable resolvers', () => {
+    expect(() =>
+      resolveExternalPluginSources(
+        {},
+        { sources: {}, fulfilledSources: new Set() },
+        new Set([
+          {
+            variableResolvers: { source: () => {} },
+          },
+        ])
+      )
+    )
+      .to.throw(ServerlessError)
+      .with.property('code', 'OLD_VARIABLE_RESOLVER_NOT_SUPPORTED');
+  });
 });

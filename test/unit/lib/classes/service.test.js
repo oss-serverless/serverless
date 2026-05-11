@@ -26,6 +26,33 @@ describe('Service', () => {
         })
       ).to.eventually.be.rejected.and.have.property('code', 'PROVIDER_NAME_MISSING'));
 
+    it('should reject old variables resolution mode even if validation is disabled', () =>
+      expect(
+        runServerless({
+          fixture: 'aws',
+          configExt: {
+            configValidationMode: 'off',
+            variablesResolutionMode: '20210219',
+          },
+          command: 'print',
+        })
+      ).to.eventually.be.rejected.and.have.property(
+        'code',
+        'VARIABLES_RESOLUTION_MODE_20210219_UNSUPPORTED'
+      ));
+
+    it('should reject removed console configuration', () =>
+      expect(
+        runServerless({
+          fixture: 'aws',
+          configExt: { console: true },
+          command: 'print',
+        })
+      ).to.eventually.be.rejected.and.have.property(
+        'code',
+        'INVALID_NON_SCHEMA_COMPLIANT_CONFIGURATION'
+      ));
+
     it('should reject if frameworkVersion is not satisfied', () =>
       expect(
         runServerless({

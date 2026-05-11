@@ -132,11 +132,6 @@ export type ServiceName = string;
 
 export interface AWS {
   configValidationMode?: 'error' | 'warn' | 'off';
-  console?:
-    | boolean
-    | {
-        [k: string]: unknown;
-      };
   custom?: {
     enterprise?: {
       collectApiGatewayLogs?: boolean;
@@ -718,8 +713,6 @@ export interface AWS {
       onError?: string | AwsCfFunction;
       package?: {
         artifact?: string;
-        exclude?: string[];
-        include?: string[];
         individually?: boolean;
         patterns?: string[];
       };
@@ -756,9 +749,7 @@ export interface AWS {
   };
   package?: {
     artifact?: string;
-    exclude?: string[];
     excludeDevDependencies?: boolean;
-    include?: string[];
     individually?: boolean;
     path?: string;
     patterns?: string[];
@@ -881,7 +872,6 @@ export interface AWS {
     };
     apiName?: string;
     architecture?: AwsLambdaArchitecture;
-    cfnRole?: AwsArn;
     cloudFront?: {
       cachePolicies?: {
         [k: string]: {
@@ -927,9 +917,6 @@ export interface AWS {
     disableRollback?: boolean;
     endpointType?: string;
     environment?: AwsLambdaEnvironment;
-    eventBridge?: {
-      useCloudFormation?: boolean;
-    };
     httpApi?: {
       authorizers?: {
         [k: string]:
@@ -979,14 +966,11 @@ export interface AWS {
             path?: string;
             managedPolicies?: AwsArn[];
             statements?: AwsIamPolicyStatements;
-            permissionBoundary?: AwsArn;
             permissionsBoundary?: AwsArn;
             tags?: AwsResourceTags;
           };
       deploymentRole?: AwsArn;
     };
-    iamManagedPolicies?: AwsArn[];
-    iamRoleStatements?: AwsIamPolicyStatements;
     ecr?: {
       scanOnPush?: boolean;
       images: {
@@ -1009,7 +993,6 @@ export interface AWS {
       };
     };
     kmsKeyArn?: AwsKmsArn;
-    lambdaHashingVersion?: '20200924' | '20201221';
     layers?: AwsLambdaLayers;
     logRetentionInDays?: AwsLogRetentionInDays;
     logDataProtectionPolicy?: AwsLogDataProtectionPolicy;
@@ -1082,8 +1065,6 @@ export interface AWS {
       | 'me-central-1'
       | 'me-south-1'
       | 'sa-east-1';
-    role?: AwsLambdaRole;
-    rolePermissionsBoundary?: AwsArnString;
     rollbackConfiguration?: {
       RollbackTriggers?: {
         Arn: AwsArnString;
@@ -1372,7 +1353,7 @@ export interface AWS {
   };
   service: ServiceName;
   useDotenv?: true;
-  variablesResolutionMode?: '20210219' | '20210326';
+  variablesResolutionMode?: '20210326';
   resources?: {
     AWSTemplateFormatVersion?: string;
     Conditions?: {
@@ -1461,8 +1442,6 @@ export interface AWS {
       name?: string;
       package?: {
         artifact?: string;
-        exclude?: string[];
-        include?: string[];
         patterns?: string[];
       };
       path?: string;
