@@ -10,7 +10,7 @@ If you were presented with configuration error (or a warning, depending on `conf
 
 **Note**: In a warning mode (with `configValidationMode: warn` set in configuration) osls commands are not blocked in any way, e.g. `sls deploy` will still attempt to deploy the service normally (still depending on the source of the warning, success of a deployment may vary)
 
-When the setting is not explicitly specified, osls defaults to `configValidationMode: warn`. If you find this functionality problematic, you may also turn it off with `configValidationMode: off` setting.
+When the setting is not explicitly specified, osls defaults to `configValidationMode: warn`. Starting with osls v4.0.0, the default will change to `configValidationMode: error`. If you find this functionality problematic, you may also turn it off with `configValidationMode: off` setting.
 
 ## Configuration
 

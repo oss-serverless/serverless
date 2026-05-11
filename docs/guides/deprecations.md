@@ -36,7 +36,9 @@ Note:
 
 Deprecation code: `CONSOLE_CONFIGURATION`
 
-Starting with v3.24.0, osls will no longer recognize inner `console` configuration. All Serverless Console related configuration is expected to be maintained at https://console.serverless.com
+Removal target: osls v5.0.0
+
+Starting with v3.24.0, osls no longer recognizes inner `console` configuration. All Serverless Console related configuration is expected to be maintained at https://console.serverless.com. The `console` property is scheduled for removal from accepted configuration in osls v5.0.0.
 
 Learn more about configuration validation here: ./configuration-validation.md
 
@@ -46,7 +48,9 @@ Learn more about configuration validation here: ./configuration-validation.md
 
 Deprecation code: `VARIABLES_RESOLUTION_MODE`
 
-Starting with Serverless Framework v4.0.0, `variablesResolutionMode` is no longer recognized as a supported configuration property. Drop it to avoid validation errors
+Removal target: osls v5.0.0
+
+Starting with v3.0.0, `variablesResolutionMode` is no longer effective because the new variables resolver is used by default. Drop it to avoid future validation errors. The `variablesResolutionMode` property is scheduled for removal from accepted configuration in osls v5.0.0.
 
 Learn more about configuration validation here: ./configuration-validation.md
 
@@ -56,7 +60,9 @@ Learn more about configuration validation here: ./configuration-validation.md
 
 Deprecation code: `PROJECT_DIR`
 
-Starting with Serverless Framework v4.0.0, `projectDir` is no longer recognized as a supported configuration property. Drop it to avoid validation errors
+Removal target: osls v5.0.0
+
+The `projectDir` option is no longer used and is ignored. Drop it to avoid future validation errors. The `projectDir` property is scheduled for removal from accepted configuration in osls v5.0.0.
 
 Learn more about configuration validation here: ./configuration-validation.md
 
@@ -66,19 +72,23 @@ Learn more about configuration validation here: ./configuration-validation.md
 
 Deprecation code: `CLI_OPTIONS_SCHEMA_V3`
 
+Removal target: osls v4.0.0
+
 Internal handling of CLI arguments was improved with type awareness for options. Now each option definition is expected have `type` defined in its settings.
 
 Possible values are `string`, `boolean` and `multiple`. Check [Defining options](./plugins#defining-options) documentation for more info.
 
 If you rely on a plugin which does not set types (yet) please report the issue at its issue tracker.
 
-Starting with v4.0.0 any option extensions which does not have `type` defined will be communicated with a thrown error
+Starting with osls v4.0.0, option extensions that do not have `type` defined will be communicated with a thrown error.
 
 <a name="PROVIDER_IAM_SETTINGS_V3"><div>&nbsp;</div></a>
 
 ## Grouping IAM settings under `provider.iam`
 
-Deprecation code: `PROVIDER_IAM_SETTINGS_v3`
+Deprecation code: `PROVIDER_IAM_SETTINGS_V3`
+
+Removal target: osls v4.0.0
 
 All IAM-related settings of _provider_ including `iamRoleStatements`, `iamManagedPolicies`, `role` and `cfnRole` are also now supported at `iam` property. Refer to the [IAM Guide](./iam.md).
 
@@ -90,7 +100,7 @@ All IAM-related settings of _provider_ including `iamRoleStatements`, `iamManage
 
 In addition `iam.role.permissionBoundary` can also be set at `iam.role.permissionsBoundary` (which matches CloudFormation property name).
 
-Starting with v4.0.0 old versions of settings will no longer be supported
+Starting with osls v4.0.0, the old settings will no longer be supported.
 
 <a name="CONFIG_VALIDATION_MODE_DEFAULT_V3"><div>&nbsp;</div></a>
 
@@ -98,7 +108,9 @@ Starting with v4.0.0 old versions of settings will no longer be supported
 
 Deprecation code: `CONFIG_VALIDATION_MODE_DEFAULT_V3`
 
-Starting with Serverless Framework v4.0.0, configuration errors are thrown by default. This is changing from the previous default, `configValidationMode: warn`
+Removal target: osls v4.0.0
+
+Starting with osls v4.0.0, configuration errors are thrown by default. This is changing from the previous default, `configValidationMode: warn`.
 
 Learn more about configuration validation here: ./configuration-validation.md
 
@@ -108,7 +120,9 @@ Learn more about configuration validation here: ./configuration-validation.md
 
 Deprecation code: `PACKAGE_PATTERNS`
 
-Support for `package.include` and `package.exclude` will be removed with v4.0.0. Instead please use `package.patterns` with which both _include_ and _exclude_ (prefixed with `!`) rules can be configured.
+Removal target: osls v4.0.0
+
+Support for `package.include` and `package.exclude` is scheduled for removal in osls v4.0.0. Instead please use `package.patterns` with which both _include_ and _exclude_ (prefixed with `!`) rules can be configured.
 
 Check [Packaging Patterns](./packaging.md#patterns) documentation for more info.
 
@@ -118,7 +132,9 @@ Check [Packaging Patterns](./packaging.md#patterns) documentation for more info.
 
 Deprecation code: `AWS_WEBSOCKET_API_USE_PROVIDER_TAGS`
 
-Starting with v4.0.0, `provider.tags` will be applied to Websocket Api Gateway by default
+Removal target: osls v5.0.0
+
+Starting with osls v5.0.0, `provider.tags` will be applied to Websocket Api Gateway by default.
 Set `provider.websocket.useProviderTags` to `true` to adapt to the new behavior now.
 
 <a name="LAMBDA_HASHING_VERSION_PROPERTY"><div>&nbsp;</div></a>
@@ -127,17 +143,23 @@ Set `provider.websocket.useProviderTags` to `true` to adapt to the new behavior 
 
 Deprecation code: `LAMBDA_HASHING_VERSION_PROPERTY`
 
+Removal target: osls v4.0.0
+
 Lambda version hashes were improved with a better algorithm (that fixed determinism issues). It is used by default starting with v3.0.0.
 
-If you previously opted-in to use new algorithm by setting `provider.lambdaHashingVersion: 20201221`, you can safely remove that property from your configuration in v3.
+If you previously opted-in to use the new algorithm by setting `provider.lambdaHashingVersion: 20201221`, you can safely remove that property from your configuration in v3. The `provider.lambdaHashingVersion` property and old `20200924` hashing path are scheduled for removal in osls v4.0.0.
 
-<a name="AwS_EVENT_BRIDGE_CUSTOM_RESOURCE_LEGACY_OPT_IN"><div>&nbsp;</div></a>
+<a name="AWS_EVENT_BRIDGE_CUSTOM_RESOURCE_LEGACY_OPT_IN"><div>&nbsp;</div></a>
 
 ## AWS EventBridge lambda event triggers based on Custom Resources
 
 Deprecation code: `AWS_EVENT_BRIDGE_CUSTOM_RESOURCE_LEGACY_OPT_IN`
 
-Support for provisioning AWS EventBridge resources without native CloudFormation resources is deprecated and will no longer be maintained. If you want to upgrade to native CloudFormation, remove "eventBridge.useCloudFormation" setting from your configuration. If you are currently using "eventBridge.useCloudFormation" set to `true` to enable native CloudFormation, you can safely remove this setting from your configuration.
+Removal target: osls v4.0.0
+
+Support for provisioning AWS EventBridge resources without native CloudFormation resources is deprecated and will no longer be maintained. The custom resource path and `provider.eventBridge.useCloudFormation` compatibility setting are scheduled for removal in osls v4.0.0.
+
+If you want to upgrade to native CloudFormation, remove `provider.eventBridge.useCloudFormation` from your configuration. If you are currently using `provider.eventBridge.useCloudFormation` set to `true` to enable native CloudFormation, you can safely remove this setting from your configuration.
 
 Note that to migrate away from the legacy behavior, you will need to remove (or comment) EventBridge triggers, deploy, re-add them and re-deploy in order to migrate from the legacy behavior.
 
@@ -147,13 +169,17 @@ Note that to migrate away from the legacy behavior, you will need to remove (or 
 
 Deprecation code: `AWS_HTTP_API_USE_PROVIDER_TAGS_PROPERTY`
 
-Starting with "v3.0.0", property `provider.httpApi.useProviderTags` is no longer effective as provider tags are applied to Http Api Gateway by default. You can safely remove this property from your configuration.
+Removal target: osls v4.0.0
+
+Starting with v3.0.0, property `provider.httpApi.useProviderTags` is no longer effective as provider tags are applied to Http Api Gateway by default. You can safely remove this property from your configuration. The property is scheduled for removal in osls v4.0.0.
 
 <a name="NEW_VARIABLES_RESOLVER"><div>&nbsp;</div></a>
 
 ## New variables resolver
 
 Deprecation code: `NEW_VARIABLES_RESOLVER`
+
+Removal target: osls v4.0.0
 
 A more robust and powerful variable resolver engine was introduced (disabled by default) in Serverless Framework v2. It is used by default in v3.
 
@@ -172,13 +198,17 @@ variablesResolutionMode: 20210326
 
 In v3, the `variablesResolutionMode` option can be removed as the new engine becomes the default.
 
+Plugins that extend variables resolution must use `configurationVariablesSources`. The old `variableResolvers` extension path is scheduled for removal in osls v4.0.0.
+
 <a name="KINESIS_CONSUMER_NAME_CONTAINING_SERVICE"><div>&nbsp;</div></a>
 
 ## Kinesis consumer name will be changed to ensure more uniqueness
 
 Deprecation code: `KINESIS_CONSUMER_NAME_CONTAINING_SERVICE`
 
-Starting with v4.0.0, Kinesis consumer name will be changed. This will lead to downtime during re-deployment. Specifically, the naming pattern will be changed from `${functionName}${streamName}Consumer` to `${functionName}${streamName}${serviceName}${stage}Consumer`.
+Removal target: osls v5.0.0
+
+Starting with osls v5.0.0, Kinesis consumer name will be changed. This will lead to downtime during re-deployment. Specifically, the naming pattern will be changed from `${functionName}${streamName}Consumer` to `${functionName}${streamName}${serviceName}${stage}Consumer`.
 
 Adapt to this convention now by setting `provider.kinesis.consumerNamingMode` to `serviceSpecific` in your serverless.yml file.
 
@@ -190,4 +220,6 @@ The consequence for consumer name change is there will be some downtime during d
 
 Deprecation code: `ALEXA_SKILL_EVENT_WITHOUT_APP_ID`
 
-Starting with v3.0.0, support for `alexaSkill` event without `appId` provided will be removed.
+Removal target: osls v4.0.0
+
+Starting with osls v4.0.0, support for the bare `alexaSkill` event form without `appId` provided will be removed. Use `alexaSkill: <appId>` or the object form with `appId` instead.

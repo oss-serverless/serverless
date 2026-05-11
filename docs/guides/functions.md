@@ -926,6 +926,8 @@ functions:
 
 In `v3`, Lambda version hashes are generated using an improved algorithm that fixes determinism issues. If you are still using the old hashing algorithm, you can follow the guide below to migrate to new default version.
 
+The `provider.lambdaHashingVersion` property and old hashing algorithm compatibility path are scheduled for removal in osls v4.0.0.
+
 Please keep in mind that these changes require two deployments with manual configuration adjustment between them. It also creates two additional versions and temporarily overrides descriptions of your functions. Migration will need to be done separately for each of your environments/stages.
 
 1. Run `sls deploy` with additional `--enforce-hash-update` flag: that flag will override the description for Lambda functions, which will force the creation of new versions.

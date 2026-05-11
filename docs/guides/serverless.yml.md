@@ -121,8 +121,6 @@ provider:
     Name: data-protection-policy
   # KMS key ARN to use for encryption for all functions
   kmsKeyArn: arn:aws:kms:us-east-1:XXXXXX:key/some-hash
-  # Version of hashing algorithm used by osls for function packaging
-  lambdaHashingVersion: 20201221
   # Use function versioning (enabled by default)
   versionFunctions: false
   # Processor architecture: 'x86_64' or 'arm64' via Graviton2 (default: x86_64)

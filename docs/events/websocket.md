@@ -282,6 +282,8 @@ provider:
 
 When using Websocket API, it is possible to tag the corresponding API Gateway resources. By setting `provider.websocket.useProviderTags` to `true`, all tags defined on `provider.tags` will be applied to API Gateway and API Gateway Stage.
 
+This opt-in exists to prepare for osls v5.0.0, where provider tags will be applied to Websocket API Gateway by default.
+
 ```yaml
 provider:
   tags:

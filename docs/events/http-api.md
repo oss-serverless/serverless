@@ -419,17 +419,17 @@ provider:
 
 ## Tags
 
-When using HTTP API, it is possible to tag the corresponding API Gateway resources. By setting `provider.httpApi.useProviderTags` to `true`, all tags defined on `provider.tags` will be applied to API Gateway and API Gateway Stage.
+When using HTTP API, all tags defined on `provider.tags` are applied to API Gateway and API Gateway Stage by default.
 
 ```yaml
 provider:
   tags:
     project: myProject
-  httpApi:
-    useProviderTags: true
 ```
 
 In the above example, the tag project: myProject will be applied to API Gateway and API Gateway Stage.
+
+The `provider.httpApi.useProviderTags` property is no longer effective and is scheduled for removal in osls v4.0.0.
 
 _Note: If the API Gateway has any existing tags applied outside of osls, they will be removed during deployment._
 
