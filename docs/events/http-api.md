@@ -429,7 +429,7 @@ provider:
 
 In the above example, the tag project: myProject will be applied to API Gateway and API Gateway Stage.
 
-The `provider.httpApi.useProviderTags` property is no longer effective and is scheduled for removal in osls v4.0.0.
+The `provider.httpApi.useProviderTags` property is no longer effective and is scheduled for removal in osls v5.0.0.
 
 _Note: If the API Gateway has any existing tags applied outside of osls, they will be removed during deployment._
 

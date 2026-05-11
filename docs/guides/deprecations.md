@@ -36,9 +36,9 @@ Note:
 
 Deprecation code: `CONSOLE_CONFIGURATION`
 
-Removal target: osls v5.0.0
+Removal target: osls v4.0.0
 
-Starting with v3.24.0, osls no longer recognizes inner `console` configuration. All Serverless Console related configuration is expected to be maintained at https://console.serverless.com. The `console` property is scheduled for removal from accepted configuration in osls v5.0.0.
+Starting with v3.24.0, osls no longer recognizes inner `console` configuration. All Serverless Console related configuration is expected to be maintained at https://console.serverless.com. The `console` property is scheduled for removal from accepted configuration in osls v4.0.0.
 
 Learn more about configuration validation here: ./configuration-validation.md
 
@@ -134,10 +134,10 @@ Check [Packaging Patterns](./packaging.md#patterns) documentation for more info.
 
 Deprecation code: `AWS_WEBSOCKET_API_USE_PROVIDER_TAGS`
 
-Removal target: osls v5.0.0
+Behavior change target: osls v4.0.0; field removal target: osls v5.0.0
 
-Starting with osls v5.0.0, `provider.tags` will be applied to Websocket Api Gateway by default.
-Set `provider.websocket.useProviderTags` to `true` to adapt to the new behavior now.
+Starting with osls v4.0.0, `provider.tags` will be applied to Websocket Api Gateway by default.
+Set `provider.websocket.useProviderTags` to `true` in v3 to adapt to the new behavior now. Starting with osls v4.0.0, this field will be deprecated and scheduled for removal in osls v5.0.0.
 
 <a name="LAMBDA_HASHING_VERSION_PROPERTY"><div>&nbsp;</div></a>
 
@@ -171,9 +171,9 @@ Note that to migrate away from the legacy behavior, you will need to remove (or 
 
 Deprecation code: `AWS_HTTP_API_USE_PROVIDER_TAGS_PROPERTY`
 
-Removal target: osls v4.0.0
+Removal target: osls v5.0.0
 
-Starting with v3.0.0, property `provider.httpApi.useProviderTags` is no longer effective as provider tags are applied to Http Api Gateway by default. You can safely remove this property from your configuration. The property is scheduled for removal in osls v4.0.0.
+Starting with v3.0.0, property `provider.httpApi.useProviderTags` is no longer effective as provider tags are applied to Http Api Gateway by default. You can safely remove this property from your configuration. The property is scheduled for removal in osls v5.0.0.
 
 <a name="NEW_VARIABLES_RESOLVER"><div>&nbsp;</div></a>
 
