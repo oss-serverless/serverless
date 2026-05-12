@@ -10,28 +10,14 @@ const { expect } = require('chai');
 
 const { remove } = require('../../../../lib/utils/fs/remove');
 
-const binaryTmpPath = path.resolve(os.tmpdir(), 'serverless-binary-tmp');
-
-const createFetchResponse = (contents) => ({
-  ok: true,
-  body: new ReadableStream({
-    start(controller) {
-      controller.enqueue(new TextEncoder().encode(contents));
-      controller.close();
-    },
-  }),
-});
-
-const loadStandalone = ({ binaryPath, removeStub, safeMoveFile } = {}) =>
+const loadStandalone = ({ binaryPath, removeStub } = {}) =>
   proxyquire('../../../../lib/plugins/standalone', {
     '../utils/standalone': {
       path: binaryPath,
-      resolveLatestTag: sinon.stub().resolves('v999.0.0'),
-      resolveUrl: sinon.stub().returns('https://example.com/serverless'),
+      resolveLatestTag: sinon.stub().throws(new Error('Unexpected latest tag lookup')),
+      resolveUrl: sinon.stub().throws(new Error('Unexpected download URL lookup')),
     },
     '../utils/fs/remove': { remove: removeStub || remove },
-    '../utils/fs/safe-move-file':
-      safeMoveFile || require('../../../../lib/utils/fs/safe-move-file'),
   });
 
 describe('test/unit/lib/plugins/standalone.test.js', () => {
@@ -46,29 +32,27 @@ describe('test/unit/lib/plugins/standalone.test.js', () => {
   afterEach(async () => {
     globalThis.fetch = originalFetch;
     await remove(tmpDir);
-    await remove(binaryTmpPath);
   });
 
-  it('removes a stale temporary binary before upgrade download', async () => {
+  it('rejects upgrade because the command is deprecated', async () => {
     const binaryPath = path.join(tmpDir, 'install', 'serverless');
-    const removedPaths = [];
-    const removeStub = async (targetPath) => {
-      removedPaths.push(targetPath);
-      await remove(targetPath);
-    };
-    await fsp.writeFile(binaryTmpPath, 'stale');
-    await fsp.mkdir(path.dirname(binaryPath), { recursive: true });
-    globalThis.fetch = sinon.stub().resolves(createFetchResponse('new binary'));
-    const Standalone = loadStandalone({ binaryPath, removeStub });
+    globalThis.fetch = sinon.stub().throws(new Error('Unexpected download'));
+    const Standalone = loadStandalone({ binaryPath });
     const standalone = new Standalone(
       { pluginManager: { commandRunStartTime: Date.now() } },
       { major: true }
     );
 
-    await standalone.upgrade();
+    let error;
+    try {
+      await standalone.upgrade();
+    } catch (caughtError) {
+      error = caughtError;
+    }
 
-    expect(removedPaths).to.include(binaryTmpPath);
-    expect(await fsp.readFile(binaryPath, 'utf8')).to.equal('new binary');
+    expect(error).to.have.property('code', 'STANDALONE_UPGRADE_COMMAND_DEPRECATED');
+    expect(error.message).to.include('npm install -g osls@latest');
+    expect(globalThis.fetch).to.not.have.been.called;
   });
 
   it('recursively removes the standalone install directory on uninstall', async () => {

@@ -30,6 +30,20 @@ Note:
 - The `serverless.yml` setting is ineffective for deprecations reported before the configuration is read.
 - `SLS_DEPRECATION_DISABLE` and `disabledDeprecations` remain respected, and no errors will be thrown for mentioned deprecation codes.
 
+<a name="STANDALONE_UPGRADE_COMMAND_DEPRECATED"><div>&nbsp;</div></a>
+
+## Command `sls upgrade`
+
+Deprecation code: `STANDALONE_UPGRADE_COMMAND_DEPRECATED`
+
+Removal target: osls v4.0.0
+
+The standalone `sls upgrade` command no longer updates osls and is scheduled for removal in osls v4.0.0. Use npm to upgrade osls instead:
+
+```sh
+npm install -g osls@latest
+```
+
 <a name="CONSOLE_CONFIGURATION"><div>&nbsp;</div></a>
 
 ## Property `console`
