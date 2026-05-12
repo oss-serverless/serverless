@@ -10,13 +10,14 @@ const { expect } = require('chai');
 
 const { remove } = require('../../../../lib/utils/fs/remove');
 
-const loadStandalone = ({ binaryPath, removeStub } = {}) =>
+const loadStandalone = ({ binaryPath, logDeprecationStub, removeStub } = {}) =>
   proxyquire('../../../../lib/plugins/standalone', {
     '../utils/standalone': {
       path: binaryPath,
       resolveLatestTag: sinon.stub().throws(new Error('Unexpected latest tag lookup')),
       resolveUrl: sinon.stub().throws(new Error('Unexpected download URL lookup')),
     },
+    '../utils/log-deprecation': logDeprecationStub || sinon.stub(),
     '../utils/fs/remove': { remove: removeStub || remove },
   });
 
@@ -57,14 +58,20 @@ describe('test/unit/lib/plugins/standalone.test.js', () => {
 
   it('recursively removes the standalone install directory on uninstall', async () => {
     const binaryPath = path.join(tmpDir, 'install', 'bin', 'serverless');
+    const logDeprecationStub = sinon.stub();
     await fsp.mkdir(path.dirname(binaryPath), { recursive: true });
     await fsp.writeFile(binaryPath, 'binary');
     await fsp.writeFile(path.join(tmpDir, 'install', 'config.json'), '{}');
-    const Standalone = loadStandalone({ binaryPath });
+    const Standalone = loadStandalone({ binaryPath, logDeprecationStub });
     const standalone = new Standalone({ pluginManager: { commandRunStartTime: Date.now() } }, {});
 
     await standalone.uninstall();
 
+    expect(logDeprecationStub).to.have.been.calledOnce;
+    expect(logDeprecationStub.firstCall.args[0]).to.equal(
+      'STANDALONE_UNINSTALL_COMMAND_DEPRECATED'
+    );
+    expect(logDeprecationStub.firstCall.args[1]).to.include('npm-installed osls');
     expect(fs.existsSync(path.dirname(binaryPath))).to.equal(false);
   });
 });

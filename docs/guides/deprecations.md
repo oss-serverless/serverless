@@ -44,6 +44,24 @@ The standalone `sls upgrade` command no longer updates osls and is scheduled for
 npm install -g osls@latest
 ```
 
+<a name="STANDALONE_UNINSTALL_COMMAND_DEPRECATED"><div>&nbsp;</div></a>
+
+## Command `sls uninstall`
+
+Deprecation code: `STANDALONE_UNINSTALL_COMMAND_DEPRECATED`
+
+Removal target: osls v4.0.0
+
+The top-level standalone `sls uninstall` command is deprecated and scheduled for removal in osls v4.0.0. It only removes the legacy standalone binary directory and does not uninstall npm-installed osls.
+
+Use your package manager to uninstall npm-installed osls instead:
+
+```sh
+npm uninstall -g osls
+```
+
+This does not affect `serverless plugin uninstall`.
+
 <a name="CONSOLE_CONFIGURATION"><div>&nbsp;</div></a>
 
 ## Property `console`
