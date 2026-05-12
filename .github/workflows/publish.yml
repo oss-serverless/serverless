@@ -82,5 +82,19 @@ jobs:
           package-manager-cache: false
           registry-url: https://registry.npmjs.org
 
+      - name: Resolve npm dist-tag
+        run: |
+          RELEASE_VERSION=${GITHUB_REF#refs/*/}
+          PACKAGE_VERSION=${RELEASE_VERSION#v}
+
+          case "$PACKAGE_VERSION" in
+            *-alpha.*) NPM_TAG=alpha ;;
+            *-beta.*) NPM_TAG=beta ;;
+            *-rc.*) NPM_TAG=rc ;;
+            *) NPM_TAG=latest ;;
+          esac
+
+          echo "NPM_TAG=$NPM_TAG" >> "$GITHUB_ENV"
+
       - name: Publish new version
-        run: npm publish ./*.tgz --access public --tag=latest
+        run: npm publish ./*.tgz --access public --tag="$NPM_TAG"
