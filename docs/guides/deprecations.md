@@ -30,24 +30,6 @@ Note:
 - The `serverless.yml` setting is ineffective for deprecations reported before the configuration is read.
 - `SLS_DEPRECATION_DISABLE` and `disabledDeprecations` remain respected, and no errors will be thrown for mentioned deprecation codes.
 
-<a name="STANDALONE_UNINSTALL_COMMAND_DEPRECATED"><div>&nbsp;</div></a>
-
-## Command `sls uninstall`
-
-Deprecation code: `STANDALONE_UNINSTALL_COMMAND_DEPRECATED`
-
-Removal target: osls v4.0.0
-
-The top-level standalone `sls uninstall` command is deprecated and scheduled for removal in osls v4.0.0. It only removes the legacy standalone binary directory and does not uninstall npm-installed osls.
-
-Use your package manager to uninstall npm-installed osls instead:
-
-```sh
-npm uninstall -g osls
-```
-
-This does not affect `serverless plugin uninstall`.
-
 <a name="VARIABLES_RESOLUTION_MODE"><div>&nbsp;</div></a>
 
 ## Property `variablesResolutionMode`
