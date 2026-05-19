@@ -1,16 +1,9 @@
 # Upgrading from osls v3 to v4
 
-osls 4.x is a major release focused on **modernizing the CLI**: a leaner dependency tree, AWS SDK for JavaScript v3 across the board, and stricter configuration validation.
+osls v4 is a major release focused on internal upgrades and cleanup:
 
-This guide covers what's new, how to install 4.x, and the breaking changes to plan for when you upgrade from 3.x.
-
-## What's in osls v4
-
-- **AWS SDK v3**: osls uses the AWS SDK under the hood to interact with AWS. v4 upgrades from the deprecated AWS SDK v2 to v3.
-- **IAM Identity Center (AWS SSO) support**: Thanks to the upgrade to the AWS SDK v3, the `osls` CLI now supports AWS IAM Identity Center (formerly AWS SSO) credentials.
-- **Leaner dependencies**: the AWS SDK is upgraded and multiple dependencies are removed to minimize supply chain risks.
-
-Several 3.x options and commands were deprecated for a long time; 4.x removes them in favor of these foundations. The [breaking changes](#breaking-changes) section is your migration checklist.
+- **AWS SDK v3**: osls uses the AWS SDK under the hood to interact with AWS. osls v4 upgrades from the deprecated AWS SDK v2 to v3.
+- **IAM Identity Center (AWS SSO) support**: Thanks to the upgrade to the AWS SDK v3, the `osls` CLI now supports AWS IAM Identity Center (aka SSO) credentials.
 
 ## osls vs Serverless Framework
 
@@ -24,15 +17,14 @@ If you are coming from Serverless Framework v3, you can upgrade to osls 4.x dire
 
 ## Install osls 4.x
 
-osls is distributed on npm only (there is no standalone binary).
-
 ```bash
 npm install -g osls@4
 ```
 
-Verify the installed version:
+If you are migrating from Serverless Framework, you can either use the `osls` command explicitly or use osls as a stand-in for `serverless`:
 
 ```bash
+npm remove -g serverless
 serverless --version
 ```
 
