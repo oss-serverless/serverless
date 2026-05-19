@@ -33,7 +33,7 @@ serverless --version
 These commands were deprecated (and broken) in 3.x and are removed in 4.x:
 
 | Removed command | Replacement                                        |
-|-----------------|----------------------------------------------------|
+| --------------- | -------------------------------------------------- |
 | `sls upgrade`   | `npm install -g osls@4` (or the dist-tag you need) |
 | `sls uninstall` | `npm uninstall -g osls`                            |
 
@@ -56,7 +56,7 @@ See [Configuration validation](./configuration-validation.md).
 Top-level provider IAM properties were deprecated in 3.x and are **removed** in 4.x. Move them under `provider.iam`:
 
 | 3.x (removed)                      | 4.x                                     |
-|------------------------------------|-----------------------------------------|
+| ---------------------------------- | --------------------------------------- |
 | `provider.role`                    | `provider.iam.role`                     |
 | `provider.rolePermissionsBoundary` | `provider.iam.role.permissionsBoundary` |
 | `provider.iamRoleStatements`       | `provider.iam.role.statements`          |
@@ -168,7 +168,7 @@ If your plugin uses osls AWS client helpers, verify behavior against 4.x: reques
 These items still work in 4.x but emit deprecation warnings. Clean them up when you can:
 
 | Item                                 | Action                                                                  |
-|--------------------------------------|-------------------------------------------------------------------------|
+| ------------------------------------ | ----------------------------------------------------------------------- |
 | `projectDir`                         | Remove, ignored                                                         |
 | `variablesResolutionMode: 20210326`  | Remove, no-op                                                           |
 | `provider.websocket.useProviderTags` | Remove, provider tags are applied by default                            |
