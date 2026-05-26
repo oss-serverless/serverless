@@ -91,6 +91,7 @@ The default method is `eventBus`, which configures an `AWS::Event::Rule`.
 By default, `scheduler` uses the function execution role as the target role and the `default` schedule group.
 
 You can provide:
+
 - roleArn to use a dedicated role for EventBridge Scheduler.
 - groupName to use another EventBridge Scheduler schedule group.
 
