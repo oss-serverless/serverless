@@ -1007,14 +1007,14 @@ describe('zipService', () => {
       const originalOpen = fs.promises.open.bind(fs.promises);
       const openStub = sinon.stub(fs.promises, 'open').callsFake(async (...args) => {
         const fileHandle = await originalOpen(...args);
-        const stat = await fileHandle.stat();
+        const stat = await fileHandle.stat({ bigint: true });
 
         return {
           stat: sinon.stub().resolves({
             dev: stat.dev,
             ino: stat.ino,
-            size: stat.size + 1,
-            mtimeMs: stat.mtimeMs,
+            size: stat.size + 1n,
+            mtimeNs: stat.mtimeNs,
           }),
           createReadStream: fileHandle.createReadStream.bind(fileHandle),
           close: fileHandle.close.bind(fileHandle),
@@ -1024,6 +1024,64 @@ describe('zipService', () => {
       try {
         await expect(
           packagePlugin.zipFiles(['handler.js'], getTestArtifactFileName('changed-file'))
+        ).to.be.rejectedWith('file changed between metadata collection and stream open');
+      } finally {
+        openStub.restore();
+      }
+    });
+
+    it('packages files when only stat.dev differs (Windows path-stat vs handle-stat, #280)', async () => {
+      const originalOpen = fs.promises.open.bind(fs.promises);
+      const openStub = sinon.stub(fs.promises, 'open').callsFake(async (...args) => {
+        const fileHandle = await originalOpen(...args);
+        const stat = await fileHandle.stat({ bigint: true });
+
+        return {
+          stat: sinon.stub().resolves({
+            dev: stat.dev === 0n ? 1n : 0n,
+            ino: stat.ino,
+            size: stat.size,
+            mtimeNs: stat.mtimeNs,
+          }),
+          createReadStream: fileHandle.createReadStream.bind(fileHandle),
+          close: fileHandle.close.bind(fileHandle),
+        };
+      });
+
+      try {
+        const artifact = await packagePlugin.zipFiles(
+          ['handler.js'],
+          getTestArtifactFileName('windows-dev-mismatch')
+        );
+        const unzipped = await new JsZip().loadAsync(fs.readFileSync(artifact));
+        const content = await unzipped.files['handler.js'].async('nodebuffer');
+        expect(content.toString()).to.equal('some content');
+      } finally {
+        openStub.restore();
+      }
+    });
+
+    it('still rejects when the inode changes between metadata collection and stream open', async () => {
+      const originalOpen = fs.promises.open.bind(fs.promises);
+      const openStub = sinon.stub(fs.promises, 'open').callsFake(async (...args) => {
+        const fileHandle = await originalOpen(...args);
+        const stat = await fileHandle.stat({ bigint: true });
+
+        return {
+          stat: sinon.stub().resolves({
+            dev: stat.dev,
+            ino: stat.ino + 1n,
+            size: stat.size,
+            mtimeNs: stat.mtimeNs,
+          }),
+          createReadStream: fileHandle.createReadStream.bind(fileHandle),
+          close: fileHandle.close.bind(fileHandle),
+        };
+      });
+
+      try {
+        await expect(
+          packagePlugin.zipFiles(['handler.js'], getTestArtifactFileName('changed-inode'))
         ).to.be.rejectedWith('file changed between metadata collection and stream open');
       } finally {
         openStub.restore();
