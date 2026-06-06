@@ -518,5 +518,39 @@ describe('#request', () => {
         return expect(promiseStub.callCount).to.equal(2);
       });
     });
+
+    it('does not throw when credentials transitively reference a live proxy agent', async () => {
+      const promiseStub = sinon.stub().resolves({ ok: true });
+      class FakeCF {
+        describeStacks() {
+          return { promise: promiseStub };
+        }
+      }
+      const { HttpsProxyAgent } = require('https-proxy-agent');
+      const agent = new HttpsProxyAgent('http://proxy.example.com:3128');
+      const socket = { _httpMessage: {} };
+      socket._httpMessage.agent = agent;
+      agent.sockets = { 'host:443:': [socket] };
+      class Credentials {}
+      const credentials = Object.assign(new Credentials(), {
+        client: { config: { httpOptions: { agent } } },
+      });
+
+      const awsRequest = proxyquire('../../../../lib/aws/request', {
+        './sdk-v2': { CloudFormation: FakeCF },
+      });
+      const service = {
+        name: 'CloudFormation',
+        params: { region: 'us-east-1', credentials, useCache: true },
+      };
+
+      const [first, second] = await Promise.all([
+        awsRequest.memoized(service, 'describeStacks', { StackName: 's' }),
+        awsRequest.memoized(service, 'describeStacks', { StackName: 's' }),
+      ]);
+      expect(first).to.deep.equal({ ok: true });
+      expect(second).to.deep.equal({ ok: true });
+      return expect(promiseStub).to.have.been.calledOnce;
+    });
   });
 });
