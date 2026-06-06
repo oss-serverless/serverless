@@ -122,7 +122,7 @@ Starting with osls v4.0.0, option extensions that do not have `type` defined wil
 
 Deprecation code: `PROVIDER_IAM_SETTINGS_V3`
 
-Removal target: osls v4.0.0
+Removal target: osls v5.0.0
 
 All IAM-related settings of _provider_ including `iamRoleStatements`, `iamManagedPolicies`, `role` and `cfnRole` are also now supported at `iam` property. Refer to the [IAM Guide](./iam.md).
 
@@ -134,7 +134,7 @@ All IAM-related settings of _provider_ including `iamRoleStatements`, `iamManage
 
 In addition `iam.role.permissionBoundary` can also be set at `iam.role.permissionsBoundary` (which matches CloudFormation property name).
 
-Starting with osls v4.0.0, the old settings will no longer be supported.
+Starting with osls v5.0.0, the old settings will no longer be supported.
 
 <a name="CONFIG_VALIDATION_MODE_DEFAULT_V3"><div>&nbsp;</div></a>
 
