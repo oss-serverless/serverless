@@ -561,7 +561,7 @@ describe('monitorStack', () => {
       });
     });
 
-    it('should preserve first-page-only DescribeStackEvents behavior', async () => {
+    it('should not fetch more pages when the operation boundary is on the first page', async () => {
       const describeStackEventsStub = stubDescribeStackEvents();
       const cfDataMock = {
         StackId: 'new-service-dev',
@@ -570,12 +570,20 @@ describe('monitorStack', () => {
       describeStackEventsStub.resolves({
         StackEvents: [
           {
-            EventId: '1e2f3g4h',
+            EventId: 'done',
             StackName: 'new-service-dev',
             LogicalResourceId: 'new-service-dev',
             ResourceType: 'AWS::CloudFormation::Stack',
             Timestamp: new Date(),
             ResourceStatus: 'CREATE_COMPLETE',
+          },
+          {
+            EventId: 'start',
+            StackName: 'new-service-dev',
+            LogicalResourceId: 'new-service-dev',
+            ResourceType: 'AWS::CloudFormation::Stack',
+            Timestamp: new Date(),
+            ResourceStatus: 'CREATE_IN_PROGRESS',
           },
         ],
         NextToken: 'next-page',
@@ -588,11 +596,172 @@ describe('monitorStack', () => {
       expect(describeStackEventsStub.sendStub.firstCall.args[0].input).to.deep.equal({
         StackName: cfDataMock.StackId,
       });
-      expect(describeStackEventsStub).to.have.been.calledOnceWithExactly(
+    });
+
+    it('should page through events until the operation boundary on a later page', async () => {
+      const describeStackEventsStub = stubDescribeStackEvents();
+      const cfDataMock = {
+        StackId: 'new-service-dev',
+      };
+
+      describeStackEventsStub.onCall(0).resolves({
+        StackEvents: [
+          {
+            EventId: 'resource-b',
+            StackName: 'new-service-dev',
+            LogicalResourceId: 'mochaResourceB',
+            ResourceType: 'AWS::S3::Bucket',
+            Timestamp: new Date(),
+            ResourceStatus: 'CREATE_COMPLETE',
+          },
+        ],
+        NextToken: 'page-2',
+      });
+      describeStackEventsStub.onCall(1).resolves({
+        StackEvents: [
+          {
+            EventId: 'resource-a',
+            StackName: 'new-service-dev',
+            LogicalResourceId: 'mochaResourceA',
+            ResourceType: 'AWS::S3::Bucket',
+            Timestamp: new Date(),
+            ResourceStatus: 'CREATE_COMPLETE',
+          },
+          {
+            EventId: 'start',
+            StackName: 'new-service-dev',
+            LogicalResourceId: 'new-service-dev',
+            ResourceType: 'AWS::CloudFormation::Stack',
+            Timestamp: new Date(),
+            ResourceStatus: 'CREATE_IN_PROGRESS',
+          },
+        ],
+      });
+      describeStackEventsStub.onCall(2).resolves({
+        StackEvents: [
+          {
+            EventId: 'done',
+            StackName: 'new-service-dev',
+            LogicalResourceId: 'new-service-dev',
+            ResourceType: 'AWS::CloudFormation::Stack',
+            Timestamp: new Date(),
+            ResourceStatus: 'CREATE_COMPLETE',
+          },
+        ],
+      });
+
+      const stackStatus = await awsPlugin.monitorStack('create', cfDataMock, { frequency: 10 });
+
+      expect(stackStatus).to.equal('CREATE_COMPLETE');
+      expect(describeStackEventsStub.callCount).to.equal(3);
+      expect(describeStackEventsStub.secondCall.args).to.deep.equal([
         'CloudFormation',
         'describeStackEvents',
-        { StackName: cfDataMock.StackId }
+        { StackName: cfDataMock.StackId, NextToken: 'page-2' },
+      ]);
+    });
+
+    it('should select a failure event found on a later page', async () => {
+      const describeStackEventsStub = stubDescribeStackEvents();
+      const cfDataMock = {
+        StackId: 'new-service-dev',
+      };
+
+      describeStackEventsStub.onCall(0).resolves({
+        StackEvents: [
+          {
+            EventId: 'resource-ok',
+            StackName: 'new-service-dev',
+            LogicalResourceId: 'mochaResourceOk',
+            ResourceType: 'AWS::S3::Bucket',
+            Timestamp: new Date(),
+            ResourceStatus: 'CREATE_COMPLETE',
+          },
+        ],
+        NextToken: 'page-2',
+      });
+      describeStackEventsStub.onCall(1).resolves({
+        StackEvents: [
+          {
+            EventId: 'resource-failed',
+            StackName: 'new-service-dev',
+            LogicalResourceId: 'mochaLambda',
+            ResourceType: 'AWS::Lambda::Function',
+            Timestamp: new Date(),
+            ResourceStatus: 'CREATE_FAILED',
+            ResourceStatusReason: 'Resource creation cancelled',
+          },
+          {
+            EventId: 'start',
+            StackName: 'new-service-dev',
+            LogicalResourceId: 'new-service-dev',
+            ResourceType: 'AWS::CloudFormation::Stack',
+            Timestamp: new Date(),
+            ResourceStatus: 'CREATE_IN_PROGRESS',
+          },
+        ],
+      });
+
+      await expect(
+        awsPlugin.monitorStack('create', cfDataMock, { frequency: 10 })
+      ).to.eventually.be.rejectedWith(
+        'An error occurred: mochaLambda - Resource creation cancelled.'
       );
+      expect(describeStackEventsStub.callCount).to.equal(2);
+    });
+
+    it('should log each event once across pages and subsequent polls', async () => {
+      const logInfo = sinon.spy();
+      const pagedMonitorStack = proxyquire('../../../../../../lib/plugins/aws/lib/monitor-stack', {
+        '../../../utils/sleep': sinon.stub().resolves(),
+        '../../../utils/serverless-utils/log': {
+          log: { info: logInfo },
+          style: { aside: (msg) => msg, link: (msg) => msg },
+          progress: { get: () => ({ notice: () => {} }) },
+        },
+      });
+      const plugin = { provider: awsPlugin.provider, options: {}, ...pagedMonitorStack };
+      const describeStackEventsStub = stubDescribeStackEvents();
+      const cfDataMock = {
+        StackId: 'new-service-dev',
+      };
+      const resourceA = {
+        EventId: 'resource-a',
+        StackName: 'new-service-dev',
+        LogicalResourceId: 'mochaResourceA',
+        ResourceType: 'AWS::S3::Bucket',
+        Timestamp: new Date(),
+        ResourceStatus: 'CREATE_COMPLETE',
+      };
+      const start = {
+        EventId: 'start',
+        StackName: 'new-service-dev',
+        LogicalResourceId: 'new-service-dev',
+        ResourceType: 'AWS::CloudFormation::Stack',
+        Timestamp: new Date(),
+        ResourceStatus: 'CREATE_IN_PROGRESS',
+      };
+      const done = {
+        EventId: 'done',
+        StackName: 'new-service-dev',
+        LogicalResourceId: 'new-service-dev',
+        ResourceType: 'AWS::CloudFormation::Stack',
+        Timestamp: new Date(),
+        ResourceStatus: 'CREATE_COMPLETE',
+      };
+
+      describeStackEventsStub.onCall(0).resolves({ StackEvents: [resourceA], NextToken: 'page-2' });
+      describeStackEventsStub.onCall(1).resolves({ StackEvents: [start] });
+      describeStackEventsStub.onCall(2).resolves({ StackEvents: [done, resourceA, start] });
+
+      const stackStatus = await plugin.monitorStack('create', cfDataMock, { frequency: 10 });
+
+      expect(stackStatus).to.equal('CREATE_COMPLETE');
+      expect(describeStackEventsStub.callCount).to.equal(3);
+      const resourceALogs = logInfo
+        .getCalls()
+        .filter((call) => String(call.args[0]).includes('mochaResourceA'));
+      expect(resourceALogs).to.have.length(1);
     });
 
     it('should not treat message-only stack-not-found errors as delete complete', async () => {
