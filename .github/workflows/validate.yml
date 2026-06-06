@@ -21,11 +21,11 @@ jobs:
         with:
           fetch-depth: 30
 
-      - name: Retrieve last 3.x commit (for `git diff` purposes)
+      - name: Retrieve last 4.x commit (for `git diff` purposes)
         run: |
           git checkout -b pr
-          git fetch --prune --depth=30 origin +refs/heads/3.x:refs/remotes/origin/3.x
-          git checkout 3.x
+          git fetch --prune --depth=30 origin +refs/heads/4.x:refs/remotes/origin/4.x
+          git checkout 4.x
           git checkout pr
 
       - name: Restore npm cache

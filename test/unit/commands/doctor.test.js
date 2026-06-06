@@ -30,7 +30,7 @@ describe('test/unit/commands/doctor.test.js', async () => {
 
     expect(output).to.include('deprecation triggered in the last command');
     expect(output).to.include(
-      'More info: https://github.com/oss-serverless/osls/blob/3.x/docs/guides/deprecations.md#AWS_HTTP_API_USE_PROVIDER_TAGS_PROPERTY'
+      'More info: https://github.com/oss-serverless/osls/blob/4.x/docs/guides/deprecations.md#AWS_HTTP_API_USE_PROVIDER_TAGS_PROPERTY'
     );
   });
 
