@@ -100,11 +100,11 @@
   "scripts": {
     "integration-test-run-package": "mocha --config test/mocha/package.cjs \"test/integration-package/**/*.tests.js\"",
     "lint": "eslint .",
-    "lint:updated": "pipe-git-updated --ext=cjs --ext=js --ext=mjs --base=main -- eslint",
+    "lint:updated": "pipe-git-updated --ext=cjs --ext=js --ext=mjs --base=3.x -- eslint",
     "prettier-check": "prettier -c \"**/*.{cjs,css,html,js,json,md,mjs,yaml,yml}\"",
-    "prettier-check:updated": "pipe-git-updated --ext=cjs --ext=css --ext=html --ext=js --ext=json --ext=md --ext=mjs --ext=yaml --ext=yml --base=main -- prettier -c",
+    "prettier-check:updated": "pipe-git-updated --ext=cjs --ext=css --ext=html --ext=js --ext=json --ext=md --ext=mjs --ext=yaml --ext=yml --base=3.x -- prettier -c",
     "prettify": "prettier --write \"**/*.{cjs,css,html,js,json,md,mjs,yaml,yml}\"",
-    "prettify:updated": "pipe-git-updated --ext=cjs --ext=css --ext=html --ext=js --ext=json --ext=md --ext=mjs --ext=yaml --ext=yml --base=main -- prettier --write",
+    "prettify:updated": "pipe-git-updated --ext=cjs --ext=css --ext=html --ext=js --ext=json --ext=md --ext=mjs --ext=yaml --ext=yml --base=3.x -- prettier --write",
     "test": "mocha --config test/mocha/unit.cjs --parallel \"test/unit/**/*.test.js\"",
     "test:ci": "npm run prettier-check:updated && npm run lint:updated && npm run test:isolated",
     "test:isolated": "mocha --config test/mocha/unit.cjs --parallel \"test/unit/**/*.test.js\""
