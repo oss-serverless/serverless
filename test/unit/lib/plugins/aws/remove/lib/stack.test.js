@@ -62,9 +62,7 @@ describe('removeStack', () => {
     });
 
     it('should use CloudFormation service role if it is specified', async () => {
-      awsRemove.serverless.service.provider.iam = {
-        deploymentRole: 'arn:aws:iam::123456789012:role/myrole',
-      };
+      awsRemove.serverless.service.provider.cfnRole = 'arn:aws:iam::123456789012:role/myrole';
 
       return awsRemove.remove().then(() => {
         expect(removeStackStub.firstCall.args[0]).to.be.instanceOf(DeleteStackCommand);

@@ -54,6 +54,26 @@ The `projectDir` option is no longer used and is ignored. Drop it to avoid futur
 
 Learn more about configuration validation here: ./configuration-validation.md
 
+<a name="PROVIDER_IAM_SETTINGS_V3"><div>&nbsp;</div></a>
+
+## Grouping IAM settings under `provider.iam`
+
+Deprecation code: `PROVIDER_IAM_SETTINGS_V3`
+
+Removal target: osls v5.0.0
+
+All IAM-related settings of _provider_ including `iamRoleStatements`, `iamManagedPolicies`, `role` and `cfnRole` are also now supported at `iam` property. Refer to the [IAM Guide](./iam.md).
+
+- `provider.role` -> `provider.iam.role`
+- `provider.rolePermissionsBoundary` -> `provider.iam.role.permissionsBoundary`
+- `provider.iamRoleStatements` -> `provider.iam.role.statements`
+- `provider.iamManagedPolicies` -> `provider.iam.role.managedPolicies`
+- `provider.cfnRole` -> `provider.iam.deploymentRole`
+
+In addition `iam.role.permissionBoundary` can also be set at `iam.role.permissionsBoundary` (which matches CloudFormation property name).
+
+Starting with osls v5.0.0, the old settings will no longer be supported.
+
 <a name="AWS_WEBSOCKET_API_USE_PROVIDER_TAGS"><div>&nbsp;</div></a>
 
 ## Property `provider.websocket.useProviderTags`
