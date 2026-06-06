@@ -873,6 +873,7 @@ export interface AWS {
     };
     apiName?: string;
     architecture?: AwsLambdaArchitecture;
+    cfnRole?: AwsArn;
     cloudFront?: {
       cachePolicies?: {
         [k: string]: {
@@ -967,11 +968,14 @@ export interface AWS {
             path?: string;
             managedPolicies?: AwsArn[];
             statements?: AwsIamPolicyStatements;
+            permissionBoundary?: AwsArn;
             permissionsBoundary?: AwsArn;
             tags?: AwsResourceTags;
           };
       deploymentRole?: AwsArn;
     };
+    iamManagedPolicies?: AwsArn[];
+    iamRoleStatements?: AwsIamPolicyStatements;
     ecr?: {
       scanOnPush?: boolean;
       images: {
@@ -1071,6 +1075,8 @@ export interface AWS {
       | 'me-south-1'
       | 'mx-central-1'
       | 'sa-east-1';
+    role?: AwsLambdaRole;
+    rolePermissionsBoundary?: AwsArnString;
     rollbackConfiguration?: {
       RollbackTriggers?: {
         Arn: AwsArnString;

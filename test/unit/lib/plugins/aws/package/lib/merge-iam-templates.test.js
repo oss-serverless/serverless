@@ -16,22 +16,22 @@ describe('lib/plugins/aws/package/lib/mergeIamTemplates.test.js', () => {
       expect(cfTemplate.Resources).to.not.have.property(iamRoleLambdaExecution);
     });
 
-    it('should reject removed `provider.role`', () =>
-      expect(
-        runServerless({
-          fixture: 'function',
-          command: 'package',
-          configExt: {
-            provider: {
-              name: 'aws',
-              role: 'arn:aws:iam::YourAccountNumber:role/YourIamRole',
-            },
+    it('should not create role resource with deprecated `provider.role`', async () => {
+      const { cfTemplate, awsNaming } = await runServerless({
+        fixture: 'function',
+        command: 'package',
+        configExt: {
+          disabledDeprecations: ['PROVIDER_IAM_SETTINGS_V3'],
+          provider: {
+            name: 'aws',
+            role: 'arn:aws:iam::YourAccountNumber:role/YourIamRole',
           },
-        })
-      ).to.eventually.be.rejected.and.have.property(
-        'code',
-        'INVALID_NON_SCHEMA_COMPLIANT_CONFIGURATION'
-      ));
+        },
+      });
+
+      const IamRoleLambdaExecution = awsNaming.getRoleLogicalId();
+      expect(cfTemplate.Resources).to.not.have.property(IamRoleLambdaExecution);
+    });
 
     it('should not create role resource with `provider.iam.role`', async () => {
       const { cfTemplate, awsNaming } = await runServerless({
@@ -171,7 +171,7 @@ describe('lib/plugins/aws/package/lib/mergeIamTemplates.test.js', () => {
       });
     });
 
-    describe('Provider IAM properties', () => {
+    describe('Provider properties - deprecated properties', () => {
       let cfResources;
       let naming;
 
@@ -180,29 +180,26 @@ describe('lib/plugins/aws/package/lib/mergeIamTemplates.test.js', () => {
           fixture: 'function',
           command: 'package',
           configExt: {
+            disabledDeprecations: ['PROVIDER_IAM_SETTINGS_V3'],
             provider: {
-              iam: {
-                role: {
-                  statements: [
-                    {
-                      Effect: 'Allow',
-                      Resource: '*',
-                      NotAction: 'iam:DeleteUser',
-                    },
-                  ],
-                  managedPolicies: [
-                    'arn:aws:iam::123456789012:user/*',
-                    'arn:aws:s3:::my_corporate_bucket/Development/*',
-                    'arn:aws:iam::123456789012:u*',
-                  ],
-                  permissionsBoundary: ['arn:aws:iam::123456789012:policy/XCompanyBoundaries'],
+              iamRoleStatements: [
+                {
+                  Effect: 'Allow',
+                  Resource: '*',
+                  NotAction: 'iam:DeleteUser',
                 },
-              },
+              ],
               vpc: {
                 securityGroupIds: ['xxx'],
                 subnetIds: ['xxx'],
               },
               logRetentionInDays: 5,
+              iamManagedPolicies: [
+                'arn:aws:iam::123456789012:user/*',
+                'arn:aws:s3:::my_corporate_bucket/Development/*',
+                'arn:aws:iam::123456789012:u*',
+              ],
+              rolePermissionsBoundary: ['arn:aws:iam::123456789012:policy/XCompanyBoundaries'],
             },
           },
         });
@@ -211,7 +208,7 @@ describe('lib/plugins/aws/package/lib/mergeIamTemplates.test.js', () => {
         naming = awsNaming;
       });
 
-      it('should support `provider.iam.role.statements`', async () => {
+      it('should support `provider.iamRoleStatements`', async () => {
         const IamRoleLambdaExecution = naming.getRoleLogicalId();
         const iamResource = cfResources[IamRoleLambdaExecution];
         const { Statement } = iamResource.Properties.Policies[0].PolicyDocument;
@@ -222,7 +219,7 @@ describe('lib/plugins/aws/package/lib/mergeIamTemplates.test.js', () => {
           NotAction: ['iam:DeleteUser'],
         });
       });
-      it('should support `provider.iam.role.managedPolicies`', () => {
+      it('should support `provider.iamManagedPolicies`', () => {
         const IamRoleLambdaExecution = naming.getRoleLogicalId();
         const {
           Properties: { ManagedPolicyArns },
@@ -235,7 +232,7 @@ describe('lib/plugins/aws/package/lib/mergeIamTemplates.test.js', () => {
         expect(ManagedPolicyArns).to.deep.includes('arn:aws:iam::123456789012:u*');
       });
 
-      it('should support `provider.iam.role.permissionsBoundary`', () => {
+      it('should support `provider.rolePermissionsBoundary`', () => {
         const IamRoleLambdaExecution = naming.getRoleLogicalId();
         const {
           Properties: { PermissionsBoundary },
@@ -245,15 +242,16 @@ describe('lib/plugins/aws/package/lib/mergeIamTemplates.test.js', () => {
         );
       });
 
-      it('should support `provider.iam.role.permissionsBoundary`', async () => {
+      it('should support `provider.iam.role.permissionBoundary`', async () => {
         const { cfTemplate, awsNaming } = await runServerless({
           fixture: 'function',
           command: 'package',
           configExt: {
+            disabledDeprecations: ['PROVIDER_IAM_SETTINGS_V3'],
             provider: {
               iam: {
                 role: {
-                  permissionsBoundary: ['arn:aws:iam::123456789012:policy/XCompanyBoundaries'],
+                  permissionBoundary: ['arn:aws:iam::123456789012:policy/XCompanyBoundaries'],
                 },
               },
             },

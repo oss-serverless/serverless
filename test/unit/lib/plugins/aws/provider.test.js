@@ -78,7 +78,8 @@ describe('AwsProvider', () => {
   });
 
   describe('#getCustomDeploymentRole()', () => {
-    it('should use provider.iam.deploymentRole', () => {
+    it('should prefer provider.iam.deploymentRole over cfnRole', () => {
+      serverless.service.provider.cfnRole = 'arn:aws:iam::123:role/cfn';
       serverless.service.provider.iam = {
         deploymentRole: 'arn:aws:iam::123:role/deploy',
       };
@@ -86,13 +87,15 @@ describe('AwsProvider', () => {
       expect(awsProvider.getCustomDeploymentRole()).to.equal('arn:aws:iam::123:role/deploy');
     });
 
-    it('should not fall back to removed cfnRole', () => {
+    it('should fall back to cfnRole when iam.deploymentRole is undefined', () => {
+      serverless.service.provider.cfnRole = 'arn:aws:iam::123:role/cfn';
       serverless.service.provider.iam = {};
 
-      expect(awsProvider.getCustomDeploymentRole()).to.equal(undefined);
+      expect(awsProvider.getCustomDeploymentRole()).to.equal('arn:aws:iam::123:role/cfn');
     });
 
     it('should preserve an explicit null deployment role', () => {
+      serverless.service.provider.cfnRole = 'arn:aws:iam::123:role/cfn';
       serverless.service.provider.iam = {
         deploymentRole: null,
       };
@@ -103,15 +106,17 @@ describe('AwsProvider', () => {
 
   describe('#getCustomExecutionRole()', () => {
     it('ignores inherited function roles', () => {
+      serverless.service.provider.role = 'OwnProviderRole';
       const functionObj = Object.create({ role: 'InheritedFunctionRole' });
 
-      expect(awsProvider.getCustomExecutionRole(functionObj)).to.equal(undefined);
+      expect(awsProvider.getCustomExecutionRole(functionObj)).to.equal('OwnProviderRole');
     });
 
     it('ignores inherited provider iam roles', () => {
       serverless.service.provider.iam = Object.create({ role: 'InheritedIamRole' });
+      serverless.service.provider.role = 'OwnProviderRole';
 
-      expect(awsProvider.getCustomExecutionRole({})).to.equal(undefined);
+      expect(awsProvider.getCustomExecutionRole({})).to.equal('OwnProviderRole');
     });
   });
 
