@@ -1082,7 +1082,8 @@ export interface AWS {
       | 'il-central-1'
       | 'me-central-1'
       | 'me-south-1'
-      | 'sa-east-1';
+      | 'sa-east-1'
+      | 'mx-central-1';
     role?: AwsLambdaRole;
     rolePermissionsBoundary?: AwsArnString;
     rollbackConfiguration?: {
