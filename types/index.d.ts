@@ -190,6 +190,7 @@ export interface AWS {
                   };
                   method?: 'eventBus' | 'scheduler';
                   roleArn?: AwsCfFunction | string;
+                  groupName?: AwsCfFunction | string;
                   timezone?: string;
                 };
           }

@@ -380,6 +380,37 @@ describe('test/unit/lib/plugins/aws/package/compile/events/schedule.test.js', ()
       .and.have.property('code', 'SCHEDULE_PARAMETER_NOT_SUPPORTED');
   });
 
+  it('should throw when passing "groupName" to method:eventBus resources', async () => {
+    const events = [
+      {
+        schedule: {
+          rate: 'rate(15 minutes)',
+          method: METHOD_EVENT_BUS,
+          groupName: 'custom-scheduler-group',
+        },
+      },
+    ];
+
+    await expect(run(events))
+      .to.be.eventually.rejectedWith(ServerlessError)
+      .and.have.property('code', 'SCHEDULE_PARAMETER_NOT_SUPPORTED');
+  });
+
+  it('should throw when passing "groupName" without method:scheduler specified', async () => {
+    const events = [
+      {
+        schedule: {
+          rate: 'rate(15 minutes)',
+          groupName: 'custom-scheduler-group',
+        },
+      },
+    ];
+
+    await expect(run(events))
+      .to.be.eventually.rejectedWith(ServerlessError)
+      .and.have.property('code', 'SCHEDULE_PARAMETER_NOT_SUPPORTED');
+  });
+
   it('should have not scheduler policies when there are no scheduler schedules', async () => {
     const events = [
       {
@@ -452,5 +483,21 @@ describe('test/unit/lib/plugins/aws/package/compile/events/schedule.test.js', ()
     expect(scheduleCfResources[0].Properties.Target.RoleArn).to.equal(
       'arn:aws:iam::123456789012:role/scheduler-execution-role'
     );
+  });
+
+  it('should pass explicit schedule groupName to method:scheduler resources', async () => {
+    const events = [
+      {
+        schedule: {
+          rate: 'rate(15 minutes)',
+          method: METHOD_SCHEDULER,
+          groupName: 'custom-scheduler-group',
+        },
+      },
+    ];
+
+    const { scheduleCfResources } = await run(events);
+
+    expect(scheduleCfResources[0].Properties.GroupName).to.equal('custom-scheduler-group');
   });
 });
