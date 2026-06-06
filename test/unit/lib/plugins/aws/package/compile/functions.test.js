@@ -90,6 +90,7 @@ describe('AwsCompileFunctions', () => {
     afterEach(() => {
       S3Client.prototype.send.restore();
       if (fs.createWriteStream.restore) fs.createWriteStream.restore();
+      if (fsp.unlink.restore) fsp.unlink.restore();
     });
 
     function createAwsCompileFunctionsWithS3ClientStub({ onSend } = {}) {
@@ -310,6 +311,58 @@ describe('AwsCompileFunctions', () => {
       expect(
         awsCompileFunctions.serverless.service.functions[functionName].package.artifact
       ).to.equal(originalArtifact);
+    });
+
+    it('should remove the partial temp file when a remote artifact download fails', async () => {
+      const streamError = new Error('stream failed');
+      sendStub.resolves({
+        Body: new Readable({
+          read() {
+            this.destroy(streamError);
+          },
+        }),
+      });
+      const unlinkSpy = sinon.spy(fsp, 'unlink');
+      setRemoteFunctionArtifact();
+
+      await expect(awsCompileFunctions.downloadPackageArtifacts()).to.be.rejectedWith(streamError);
+
+      expect(unlinkSpy).to.have.been.calledOnce;
+      const removedPath = unlinkSpy.firstCall.args[0];
+      expect(path.basename(removedPath)).to.equal(s3ArtifactName);
+      expect(fs.existsSync(removedPath)).to.equal(false);
+    });
+
+    it('should ignore a missing temp file during cleanup and reject with the original error', async () => {
+      const streamError = new Error('stream failed');
+      sendStub.resolves({
+        Body: new Readable({
+          read() {
+            this.destroy(streamError);
+          },
+        }),
+      });
+      const enoent = Object.assign(new Error('not found'), { code: 'ENOENT' });
+      sinon.stub(fsp, 'unlink').rejects(enoent);
+      setRemoteFunctionArtifact();
+
+      await expect(awsCompileFunctions.downloadPackageArtifacts()).to.be.rejectedWith(streamError);
+    });
+
+    it('should reject with the original error even when temp file cleanup fails', async () => {
+      const streamError = new Error('stream failed');
+      sendStub.resolves({
+        Body: new Readable({
+          read() {
+            this.destroy(streamError);
+          },
+        }),
+      });
+      const cleanupError = Object.assign(new Error('permission denied'), { code: 'EACCES' });
+      sinon.stub(fsp, 'unlink').rejects(cleanupError);
+      setRemoteFunctionArtifact();
+
+      await expect(awsCompileFunctions.downloadPackageArtifacts()).to.be.rejectedWith(streamError);
     });
   });
 
