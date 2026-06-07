@@ -1,6 +1,7 @@
 'use strict';
 
 const sinon = require('sinon');
+const proxyquire = require('proxyquire');
 const provisionTempDir = require('../../../../lib/provision-tmp-dir');
 const { join } = require('path');
 const { expect } = require('chai');
@@ -29,6 +30,12 @@ const createFakeExDevError = () => {
   fakeCrossDeviceError.path = '/foo/bar';
   fakeCrossDeviceError.dest = '/bar/baz';
   return fakeCrossDeviceError;
+};
+
+const createFakeEpermError = () => {
+  const error = new Error('EPERM: operation not permitted, rename');
+  error.code = 'EPERM';
+  return error;
 };
 
 /**
@@ -138,6 +145,73 @@ describe('test/unit/lib/utils/fs/safeMoveFile.test.js', () => {
       const temporaryDestinationPath = renameStub.secondCall.args[0];
       expect(fs.existsSync(temporaryDestinationPath)).to.equal(false);
       expect(fs.existsSync(destinationFile)).to.equal(true);
+    });
+  });
+
+  describe('when rename fails with a transient Windows EPERM lock', () => {
+    let originalPlatformDescriptor;
+    let sleepStub;
+    let safeMoveFileWithStubbedSleep;
+
+    const setPlatform = (platform) => {
+      Object.defineProperty(process, 'platform', {
+        configurable: true,
+        value: platform,
+      });
+    };
+
+    const loadSafeMoveFileWithStubbedSleep = () => {
+      safeMoveFileWithStubbedSleep = proxyquire('../../../../../lib/utils/fs/safe-move-file', {
+        '../sleep': sleepStub,
+      });
+    };
+
+    beforeEach(() => {
+      originalPlatformDescriptor = Object.getOwnPropertyDescriptor(process, 'platform');
+      sleepStub = sinon.stub().resolves();
+    });
+
+    afterEach(() => {
+      Object.defineProperty(process, 'platform', originalPlatformDescriptor);
+    });
+
+    it('retries on Windows and succeeds once the lock clears', async () => {
+      setPlatform('win32');
+      loadSafeMoveFileWithStubbedSleep();
+      renameStub.onFirstCall().rejects(createFakeEpermError());
+
+      await safeMoveFileWithStubbedSleep(sourceFile, destinationFile);
+
+      expect(renameStub).to.have.been.calledTwice;
+      expect(sleepStub).to.have.been.calledOnceWithExactly(100);
+      expect(fs.existsSync(sourceFile)).to.be.false;
+      expect(fs.existsSync(destinationFile)).to.be.true;
+    });
+
+    it('rethrows the EPERM once the retries are exhausted', async () => {
+      setPlatform('win32');
+      loadSafeMoveFileWithStubbedSleep();
+      renameStub.rejects(createFakeEpermError());
+
+      await expect(safeMoveFileWithStubbedSleep(sourceFile, destinationFile)).to.be.rejectedWith(
+        'EPERM'
+      );
+
+      expect(renameStub.callCount).to.equal(4);
+      expect(sleepStub.args.map(([ms]) => ms)).to.deep.equal([100, 200, 400]);
+    });
+
+    it('does not retry EPERM on non-Windows platforms', async () => {
+      setPlatform('linux');
+      loadSafeMoveFileWithStubbedSleep();
+      renameStub.rejects(createFakeEpermError());
+
+      await expect(safeMoveFileWithStubbedSleep(sourceFile, destinationFile)).to.be.rejectedWith(
+        'EPERM'
+      );
+
+      expect(renameStub).to.have.been.calledOnce;
+      expect(sleepStub).to.have.not.been.called;
     });
   });
 });
