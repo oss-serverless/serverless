@@ -1,31 +1,15 @@
 'use strict';
 
 const expect = require('chai').expect;
-const AwsCompileApigEvents = require('../../../../../../../../../../lib/plugins/aws/package/compile/events/api-gateway/index');
-const Serverless = require('../../../../../../../../../../lib/serverless');
-const AwsProvider = require('../../../../../../../../../../lib/plugins/aws/provider');
+const { createApiGatewayCompilerContext } = require('../test-utils');
 
 describe('#compileDeployment()', () => {
-  let serverless;
-  let provider;
   let awsCompileApigEvents;
 
   beforeEach(() => {
-    const options = {
-      stage: 'dev',
-      region: 'us-east-1',
-    };
-    serverless = new Serverless({ commands: [], options: {} });
-    provider = new AwsProvider(serverless, options);
-    serverless.setProvider('aws', provider);
-    serverless.service.provider.compiledCloudFormationTemplate = {
-      Resources: {},
-      Outputs: {},
-    };
-    awsCompileApigEvents = new AwsCompileApigEvents(serverless, options);
+    ({ awsCompileApigEvents } = createApiGatewayCompilerContext());
     awsCompileApigEvents.apiGatewayRestApiLogicalId = 'ApiGatewayRestApi';
     awsCompileApigEvents.apiGatewayMethodLogicalIds = ['method-dependency1', 'method-dependency2'];
-    awsCompileApigEvents.provider = provider;
   });
 
   it('should create a deployment resource', () => {
