@@ -123,7 +123,7 @@ provider:
   kmsKeyArn: arn:aws:kms:us-east-1:XXXXXX:key/some-hash
   # Use function versioning (enabled by default)
   versionFunctions: false
-  # After deploy, delete older Lambda function and layer versions (disabled by default)
+  # After a full service deploy, delete older Lambda function and layer versions (disabled by default)
   pruneFunctionVersions: true # keeps 10 versions
   # pruneFunctionVersions:
   #   number: 20 # explicit number of versions to keep

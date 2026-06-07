@@ -722,7 +722,7 @@ functions:
 
 By default, osls creates function versions for every deploy. This behavior is optional, and can be turned off in cases where you don't invoke past versions by their qualifier. If you would like to do this, you can invoke your functions as `arn:aws:lambda:....:function/myFunc:3` to invoke version 3 for example.
 
-Older versions are not removed automatically unless you enable `provider.pruneFunctionVersions`. When enabled, osls deletes function and layer versions beyond the configured limit after each deploy, while keeping versions referenced by aliases. Aliased versions are never deleted.
+Older versions are not removed automatically unless you enable `provider.pruneFunctionVersions`. When enabled, osls deletes function and layer versions beyond the configured limit after a full service deploy (`serverless deploy`), keeping the newest versions. Function versions referenced by an alias are never deleted; layer versions are pruned purely by recency. `serverless deploy function` does not publish new versions and does not prune.
 
 To turn off function versioning, set the provider-level option `versionFunctions`. `pruneFunctionVersions` cannot be used when `versionFunctions` is `false`.
 
@@ -739,6 +739,8 @@ provider:
   # pruneFunctionVersions:
   #   number: 20
 ```
+
+`number` is how many of the newest versions to keep; the currently-deployed version is always retained. Replicated Lambda@Edge versions that AWS will not delete are skipped with a warning rather than failing the deploy.
 
 ## Dead Letter Queue (DLQ)
 
