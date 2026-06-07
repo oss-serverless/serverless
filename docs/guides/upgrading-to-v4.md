@@ -162,18 +162,18 @@ const result = await client.send(new ListBucketsCommand({}));
 
 Declare any `@aws-sdk/client-*` packages your plugin imports in its own dependencies.
 
-## Still deprecated in v4 (removed in 5.0.0)
+## Deprecated in v4 (clean up before v5)
 
-These items still work in v4 but emit deprecation warnings. Clean them up when you can:
+These still work in v4 but emit deprecation warnings. Most were deprecated back in v3, with removal deferred to v5. `provider.websocket.useProviderTags` is the exception, as it became redundant only in v4 once provider tags became the default. All are removed in v5 except the Kinesis consumer name, which changes rather than being removed.
 
-| Item                                 | Action                                                                                  |
-| ------------------------------------ | --------------------------------------------------------------------------------------- |
-| `projectDir`                         | Remove, ignored                                                                         |
-| `variablesResolutionMode: 20210326`  | Remove, no-op                                                                           |
-| Top-level provider IAM settings      | Move under `provider.iam`, see below (still accepted, emits `PROVIDER_IAM_SETTINGS_V3`) |
-| `provider.websocket.useProviderTags` | Remove, provider tags are applied by default                                            |
-| `provider.httpApi.useProviderTags`   | Remove, provider tags are applied by default                                            |
-| Kinesis consumer naming              | Set `provider.kinesis.consumerNamingMode: serviceSpecific` before 5.0.0                 |
+| Item                                 | Deprecated since | Action                                                                                             |
+| ------------------------------------ | ---------------- | -------------------------------------------------------------------------------------------------- |
+| `projectDir`                         | v3               | Remove, ignored                                                                                    |
+| `variablesResolutionMode: 20210326`  | v3               | Remove, no-op (`20210219` is rejected in v4)                                                       |
+| Top-level provider IAM settings      | v3               | Move under `provider.iam`, see below (still accepted, emits `PROVIDER_IAM_SETTINGS_V3`)            |
+| `provider.websocket.useProviderTags` | v4               | Remove, now redundant as provider tags are applied by default                                      |
+| `provider.httpApi.useProviderTags`   | v3               | Remove, ineffective since v3 as provider tags are applied by default                               |
+| Kinesis consumer naming              | v3               | Set `provider.kinesis.consumerNamingMode: serviceSpecific` now to prepare for the v5 naming change |
 
 ### Group IAM settings under `provider.iam`
 
