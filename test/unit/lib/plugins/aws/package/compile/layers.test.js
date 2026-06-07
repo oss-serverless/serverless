@@ -13,7 +13,7 @@ const { CloudFormationClient, DescribeStacksCommand } = require('@aws-sdk/client
 
 const expect = chai.expect;
 
-const awsRequestStubMap = {
+const awsSdkV3StubMap = {
   CloudFormation: {
     describeStacks: {
       Stacks: [
@@ -65,7 +65,7 @@ describe('lib/plugins/aws/package/compile/layers/index.test.js', () => {
           },
         },
       },
-      awsRequestStubMap,
+      awsSdkV3StubMap,
     });
     cfResources = cfTemplate.Resources;
     cfOutputs = cfTemplate.Outputs;
@@ -203,7 +203,7 @@ describe('lib/plugins/aws/package/compile/layers/index.test.js', () => {
       } = await runServerless({
         cwd: serviceDir,
         command: 'package',
-        awsRequestStubMap,
+        awsSdkV3StubMap,
       });
       expect(secondCfResources).to.not.have.property(firstLayerResourceName);
 
@@ -213,7 +213,7 @@ describe('lib/plugins/aws/package/compile/layers/index.test.js', () => {
       } = await runServerless({
         cwd: serviceDir,
         command: 'package',
-        awsRequestStubMap,
+        awsSdkV3StubMap,
       });
       expect(firstCfResources).to.have.property(firstLayerResourceName);
     });
@@ -275,7 +275,7 @@ describe('lib/plugins/aws/package/compile/layers/index.test.js', () => {
           },
         },
       },
-      awsRequestStubMap,
+      awsSdkV3StubMap,
     });
 
     expect(
@@ -297,7 +297,7 @@ describe('lib/plugins/aws/package/compile/layers/index.test.js', () => {
           },
         },
       },
-      awsRequestStubMap,
+      awsSdkV3StubMap,
     });
 
     expect(
@@ -317,7 +317,7 @@ describe('lib/plugins/aws/package/compile/layers/index.test.js', () => {
             },
           },
         },
-        awsRequestStubMap,
+        awsSdkV3StubMap,
       })
     ).to.eventually.be.rejected.and.have.property(
       'code',
@@ -344,7 +344,7 @@ describe('lib/plugins/aws/package/compile/layers/index.test.js', () => {
     const { awsNaming, awsSdkV3Stub, serverless } = await runServerless({
       fixture: 'layer',
       command: 'package',
-      awsRequestStubMap,
+      awsSdkV3StubMap,
     });
     const describeStacksSends = awsSdkV3Stub.sends.filter(
       ({ service, method }) => service === 'CloudFormation' && method === 'describeStacks'
@@ -364,7 +364,7 @@ describe('lib/plugins/aws/package/compile/layers/index.test.js', () => {
     await runServerless({
       fixture: 'layer',
       command: 'package',
-      awsRequestStubMap: {
+      awsSdkV3StubMap: {
         CloudFormation: {
           describeStacks: () => {
             throw Object.assign(new Error('Stack with id service-dev does not exist'), {
@@ -381,7 +381,7 @@ describe('lib/plugins/aws/package/compile/layers/index.test.js', () => {
       runServerless({
         fixture: 'layer',
         command: 'package',
-        awsRequestStubMap: {
+        awsSdkV3StubMap: {
           CloudFormation: {
             describeStacks: () => {
               throw new Error('Stack with id service-dev does not exist');
