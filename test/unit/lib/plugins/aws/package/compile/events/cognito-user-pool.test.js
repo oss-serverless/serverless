@@ -201,6 +201,8 @@ const preTokenGenerationConfigurationExtension = {
   },
 };
 
+const customUserPoolDependency = 'CustomCognitoUserPoolDependency';
+
 describe('AwsCompileCognitoUserPoolEvents', () => {
   let serverless;
   let awsCompileCognitoUserPoolEvents;
@@ -1018,15 +1020,132 @@ describe('AwsCompileCognitoUserPoolEvents', () => {
 
 describe('lib/plugins/aws/package/compile/events/cognito-user-pool.test.js', () => {
   let cfResources;
+  let naming;
+  let serverlessInstance;
 
   before(async () => {
-    const { cfTemplate } = await runServerless({
-      fixture: 'function',
-      configExt: serverlessConfigurationExtension,
+    const { awsNaming, cfTemplate, serverless } = await runServerless({
+      fixture: 'cognito-user-pool',
+      configExt: {
+        ...serverlessConfigurationExtension,
+        resources: {
+          Resources: {
+            CognitoUserPoolCUPCustomEmailSender: {
+              DependsOn: [customUserPoolDependency],
+            },
+          },
+        },
+      },
       command: 'package',
     });
 
     ({ Resources: cfResources } = cfTemplate);
+    naming = awsNaming;
+    serverlessInstance = serverless;
+  });
+
+  describe('Fixture final templates', () => {
+    it('should generate expected resources for new Cognito user pools', () => {
+      const serviceName = serverlessInstance.service.service;
+      const poolName = `${serviceName} CUP Basic`;
+      const poolResource = cfResources[naming.getCognitoUserPoolLogicalId(poolName)];
+      const permissionResource =
+        cfResources[
+          naming.getLambdaCognitoUserPoolPermissionLogicalId('basic', poolName, 'PreSignUp')
+        ];
+
+      expect(poolResource).to.deep.equal({
+        Type: 'AWS::Cognito::UserPool',
+        Properties: {
+          UserPoolName: poolName,
+          LambdaConfig: {
+            PreSignUp: { 'Fn::GetAtt': [naming.getLambdaLogicalId('basic'), 'Arn'] },
+          },
+        },
+        DependsOn: [naming.getLambdaLogicalId('basic')],
+      });
+      expect(permissionResource).to.deep.equal({
+        Type: 'AWS::Lambda::Permission',
+        DependsOn: undefined,
+        Properties: {
+          FunctionName: { 'Fn::GetAtt': [naming.getLambdaLogicalId('basic'), 'Arn'] },
+          Action: 'lambda:InvokeFunction',
+          Principal: 'cognito-idp.amazonaws.com',
+          SourceArn: { 'Fn::GetAtt': [naming.getCognitoUserPoolLogicalId(poolName), 'Arn'] },
+        },
+      });
+    });
+
+    it('should merge generated Cognito user pool resources with custom resources', () => {
+      const serviceName = serverlessInstance.service.service;
+      const poolResource = cfResources[naming.getCognitoUserPoolLogicalId('CUP CustomEmailSender')];
+
+      expect(poolResource.Type).to.equal('AWS::Cognito::UserPool');
+      expect(poolResource.Properties).to.deep.include({
+        UserPoolName: `${serviceName} CUP CustomEmailSender`,
+        UsernameAttributes: ['email'],
+        AutoVerifiedAttributes: ['email'],
+        EmailVerificationMessage: 'email message: {####}',
+        EmailVerificationSubject: 'email subject: {####}',
+      });
+      expect(poolResource.Properties.LambdaConfig).to.deep.equal({
+        KMSKeyID: { 'Fn::GetAtt': ['kmsKey', 'Arn'] },
+        CustomEmailSender: {
+          LambdaArn: { 'Fn::GetAtt': [naming.getLambdaLogicalId('customEmailSender'), 'Arn'] },
+          LambdaVersion: 'V1_0',
+        },
+      });
+      expect(poolResource.DependsOn).to.deep.equal([
+        naming.getLambdaLogicalId('customEmailSender'),
+        customUserPoolDependency,
+      ]);
+    });
+
+    it('should generate expected custom resources for existing Cognito user pools', () => {
+      const serviceName = serverlessInstance.service.service;
+      const simpleResource =
+        cfResources[naming.getCustomResourceCognitoUserPoolResourceLogicalId('existingSimple')];
+      const multiResource =
+        cfResources[naming.getCustomResourceCognitoUserPoolResourceLogicalId('existingMulti')];
+      const customSenderResource =
+        cfResources[
+          naming.getCustomResourceCognitoUserPoolResourceLogicalId('existingCustomEmailSender')
+        ];
+
+      expect(simpleResource).to.deep.equal({
+        Type: 'Custom::CognitoUserPool',
+        Version: 1,
+        DependsOn: [
+          naming.getLambdaLogicalId('existingSimple'),
+          naming.getCustomResourceCognitoUserPoolHandlerFunctionLogicalId(),
+        ],
+        Properties: {
+          ServiceToken: {
+            'Fn::GetAtt': [
+              naming.getCustomResourceCognitoUserPoolHandlerFunctionLogicalId(),
+              'Arn',
+            ],
+          },
+          FunctionName: serverlessInstance.service.getFunction('existingSimple').name,
+          UserPoolName: `${serviceName} CUP Existing Simple`,
+          UserPoolConfigs: [{ Trigger: 'PreSignUp' }],
+          ForceDeploy: undefined,
+        },
+      });
+      expect(multiResource.Properties).to.deep.include({
+        FunctionName: serverlessInstance.service.getFunction('existingMulti').name,
+        UserPoolName: `${serviceName} CUP Existing Multi`,
+        UserPoolConfigs: [{ Trigger: 'PreSignUp' }, { Trigger: 'PreAuthentication' }],
+        ForceDeploy: undefined,
+      });
+      expect(customSenderResource.Properties.UserPoolConfigs).to.deep.equal([
+        {
+          Trigger: 'CustomEmailSender',
+          KMSKeyID: { 'Fn::GetAtt': ['kmsKey', 'Arn'] },
+          LambdaVersion: 'V1_0',
+        },
+      ]);
+    });
   });
 
   describe('Custom Sender Sources', () => {
