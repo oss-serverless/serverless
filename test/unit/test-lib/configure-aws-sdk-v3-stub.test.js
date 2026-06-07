@@ -3,6 +3,7 @@
 const { PassThrough } = require('node:stream');
 const { expect } = require('chai');
 const configureAwsSdkV3Stub = require('../../lib/configure-aws-sdk-v3-stub');
+const { createDeployAwsStubMap } = require('../../utils/aws-stub-maps');
 
 describe('test/unit/test-lib/configure-aws-sdk-v3-stub.test.js', () => {
   it('stubs client commands and records send context', async () => {
@@ -27,6 +28,40 @@ describe('test/unit/test-lib/configure-aws-sdk-v3-stub.test.js', () => {
       client,
     });
     expect(awsSdkV3Stub.sends[0].input).to.deep.equal({ Bucket: 'bucket' });
+  });
+
+  it('uses fresh deploy stub-map factory objects with strict callback context', async () => {
+    const firstStubMap = createDeployAwsStubMap();
+    const secondStubMap = createDeployAwsStubMap({
+      CloudFormation: {
+        describeStacks: { Stacks: [] },
+      },
+      S3: {
+        headBucket: (input, context) => {
+          expect(context.service).to.equal('S3');
+          expect(context.method).to.equal('headBucket');
+          expect(context.commandName).to.equal('HeadBucketCommand');
+          expect(input).to.deep.equal({ Bucket: 'deployment-bucket' });
+          return { BucketRegion: 'us-east-1' };
+        },
+      },
+    });
+
+    firstStubMap.S3.listObjectsV2.Contents.push({ Key: 'first' });
+
+    expect(secondStubMap.S3.listObjectsV2.Contents).to.deep.equal([]);
+    expect(secondStubMap.CloudFormation.describeStacks.Stacks).to.deep.equal([]);
+
+    const awsSdkV3Stub = configureAwsSdkV3Stub(secondStubMap);
+    const { S3Client, HeadBucketCommand } = awsSdkV3Stub.modulesCacheStub['@aws-sdk/client-s3'];
+    const client = new S3Client({ region: 'us-east-1' });
+
+    const result = await client.send(new HeadBucketCommand({ Bucket: 'deployment-bucket' }));
+
+    expect(result).to.deep.equal({ BucketRegion: 'us-east-1' });
+    expect(awsSdkV3Stub.sends.map(({ service, method }) => `${service}.${method}`)).to.deep.equal([
+      'S3.headBucket',
+    ]);
   });
 
   it('routes paginator pages through client send with continuation tokens', async () => {

@@ -13,7 +13,7 @@ Tests are configured with [Mocha](https://mochajs.org/) test framework, and can 
 npm test
 ```
 
-All new tests should be configured with help of [runServerless](./utils/run-serverless.js) util - it's the only way to test functionality against completely initialized `serverless` instance, and it's the only scenario that reflects real world usage.
+New tests that need a completely initialized `serverless` instance should use the [runServerless](./utils/run-serverless.js) util. It is the preferred way to test behavior that reflects real world command, lifecycle, plugin-loading, and compiled-template usage.
 
 The `runServerless` util (inlined from @serverless/test) is configured at `./utils/run-serverless.js` and supports two additional options (`fixture` and `configExt`), which provides out of a box setup to run _Serverless_ instance against prepared fixture with eventually extended service configuration
 
@@ -35,6 +35,20 @@ Example of test files fully backed by `runServerless`:
 If we're about to add new tests to an existing test file with tests written old way, then best is to create another `describe` block for new tests at the bottom (as it's done [here](./unit/lib/plugins/aws/package/compile/functions.test.js))
 
 _Note: PR's which rewrite existing tests into new method are very welcome! (but, ideally each PR should cover single test file rewrite)_
+
+### Test style decision rule
+
+Use `runServerless` when the behavior under test depends on a fully initialized framework instance: command execution, configuration resolution, plugin loading, lifecycle behavior, or final compiled CloudFormation output.
+
+Prefer a small fake or direct collaborator when the subject is a pure helper, formatter, path/fs utility, deterministic template builder, or narrow SDK wrapper.
+
+Direct `new Serverless(...)` is allowed only when constructor/class wiring is the subject, or when a smaller fake would hide the behavior being asserted. Label remaining direct construction as `constructor-under-test`, `pure-unit-fake-not-possible`, or `temporary-migration-seam`.
+
+Do not import `test/fixtures/programmatic/index.js` directly in new tests. Use `runServerless({ fixture })` for command/lifecycle tests or [`setupProgrammaticFixture(...)`](./utils/setup-programmatic-fixture.js) for mutable copied services.
+
+Run `node scripts/test-migration-inventory.js` when reviewing migration work. Use `node scripts/test-migration-inventory.js --json` for automation and `node scripts/test-migration-inventory.js --ratchet --base-ref <ref>` to reject new unapproved direct construction, direct fixture wrapper files, or `awsRequestStubMap` files.
+
+For new AWS lifecycle tests, prefer `awsSdkV3StubMap` over `awsRequestStubMap`. Shared data factories for common deploy stubs live in [`test/utils/aws-stub-maps.js`](./utils/aws-stub-maps.js); tests should still assert the relevant `awsSdkV3Stub.sends` entries.
 
 ## Package integration tests
 
