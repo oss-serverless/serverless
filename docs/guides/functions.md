@@ -722,13 +722,22 @@ functions:
 
 By default, osls creates function versions for every deploy. This behavior is optional, and can be turned off in cases where you don't invoke past versions by their qualifier. If you would like to do this, you can invoke your functions as `arn:aws:lambda:....:function/myFunc:3` to invoke version 3 for example.
 
-Versions are not cleaned up by osls, so make sure you use a plugin or other tool to prune sufficiently old versions. osls can't clean up versions because it doesn't have information about whether older versions are invoked or not. This feature adds to the number of total stack outputs and resources because a function version is a separate resource from the function it refers to.
+Older versions are not removed automatically unless you enable `provider.pruneFunctionVersions`. When enabled, osls deletes function and layer versions beyond the configured limit after each deploy, while keeping versions referenced by aliases. Aliased versions are never deleted.
 
-To turn off function versioning, set the provider-level option `versionFunctions`.
+To turn off function versioning, set the provider-level option `versionFunctions`. `pruneFunctionVersions` cannot be used when `versionFunctions` is `false`.
 
 ```yml
 provider:
   versionFunctions: false
+```
+
+Enable automatic pruning after deploy:
+
+```yml
+provider:
+  pruneFunctionVersions: true # keeps 10 versions (default)
+  # pruneFunctionVersions:
+  #   number: 20
 ```
 
 ## Dead Letter Queue (DLQ)
