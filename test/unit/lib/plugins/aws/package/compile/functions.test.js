@@ -12,7 +12,7 @@ const AwsProvider = require('../../../../../../../lib/plugins/aws/provider');
 const AwsCompileFunctions = require('../../../../../../../lib/plugins/aws/package/compile/functions');
 const Serverless = require('../../../../../../../lib/serverless');
 const runServerless = require('../../../../../../utils/run-serverless');
-const fixtures = require('../../../../../../fixtures/programmatic');
+const setupProgrammaticFixture = require('../../../../../../utils/setup-programmatic-fixture');
 
 const { getTmpDirPath, createTmpFile } = require('../../../../../../utils/fs');
 
@@ -25,6 +25,8 @@ describe('AwsCompileFunctions', () => {
   const functionName = 'test';
   const compiledFunctionName = 'TestLambdaFunction';
 
+  // Test migration whitelist: pure-unit-fake-not-possible.
+  // These sections exercise AwsCompileFunctions internals directly.
   beforeEach(() => {
     const options = {
       stage: 'dev',
@@ -1975,6 +1977,18 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
     let iamRolePolicyStatements;
     const imageSha = '6bb600b4d6e1d7cf521097177dd0c4e9ea373edb91984a505333be8ac9455d38';
     const imageWithSha = `000000000000.dkr.ecr.sa-east-1.amazonaws.com/test-lambda-docker@sha256:${imageSha}`;
+    const getFunctionResource = (functionName) =>
+      cfResources[naming.getLambdaLogicalId(functionName)];
+    const getVersionResourceEntry = (functionName) => {
+      const functionLogicalId = naming.getLambdaLogicalId(functionName);
+      const entry = Object.entries(cfResources).find(
+        ([, resource]) =>
+          resource.Type === 'AWS::Lambda::Version' &&
+          resource.Properties.FunctionName.Ref === functionLogicalId
+      );
+      expect(entry).to.not.equal(undefined);
+      return entry;
+    };
 
     before(async () => {
       const {
@@ -1989,6 +2003,101 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
           functions: {
             target: {
               handler: 'target.handler',
+            },
+            fnNamed: {
+              handler: 'target.handler',
+              name: 'custom-function-name',
+            },
+            fnSized: {
+              handler: 'target.handler',
+              memorySize: 512,
+            },
+            fnTimeout: {
+              handler: 'target.handler',
+              timeout: 30,
+            },
+            fnDescription: {
+              handler: 'target.handler',
+              description: 'Function description',
+            },
+            fnRoleArn: {
+              handler: 'target.handler',
+              role: 'arn:aws:iam::123456789012:role/functionRole',
+            },
+            fnRoleName: {
+              handler: 'target.handler',
+              role: 'LogicalNameRole',
+            },
+            fnRoleGetAtt: {
+              handler: 'target.handler',
+              role: { 'Fn::GetAtt': ['LogicalNameRole', 'Arn'] },
+            },
+            fnRoleImportValue: {
+              handler: 'target.handler',
+              role: { 'Fn::ImportValue': 'SharedRoleArn' },
+            },
+            fnVpc: {
+              handler: 'target.handler',
+              vpc: {
+                subnetIds: ['subnet-01010101'],
+                securityGroupIds: ['sg-0a0a0a0a'],
+              },
+            },
+            fnTags: {
+              handler: 'target.handler',
+              tags: {
+                functionTag: 'function-value',
+              },
+            },
+            fnOnErrorArn: {
+              handler: 'target.handler',
+              onError: 'arn:aws:sns:us-east-1:123456789012:failures',
+            },
+            fnOnErrorRef: {
+              handler: 'target.handler',
+              onError: { Ref: 'FailureTopic' },
+            },
+            fnOnErrorImportValue: {
+              handler: 'target.handler',
+              onError: { 'Fn::ImportValue': 'FailureTopicArn' },
+            },
+            fnOnErrorGetAtt: {
+              handler: 'target.handler',
+              onError: { 'Fn::GetAtt': ['FailureTopic', 'Arn'] },
+            },
+            fnKmsGetAtt: {
+              handler: 'target.handler',
+              kmsKeyArn: { 'Fn::GetAtt': ['FunctionKey', 'Arn'] },
+            },
+            fnKmsRef: {
+              handler: 'target.handler',
+              kmsKeyArn: { Ref: 'FunctionKeyArn' },
+            },
+            fnKmsImportValue: {
+              handler: 'target.handler',
+              kmsKeyArn: { 'Fn::ImportValue': 'FunctionKeyArn' },
+            },
+            fnEnvironmentIntrinsic: {
+              handler: 'target.handler',
+              environment: {
+                EXTERNAL_VALUE: { Ref: 'ExternalEnvValue' },
+              },
+            },
+            fnReserved: {
+              handler: 'target.handler',
+              reservedConcurrency: 5,
+            },
+            fnReservedZero: {
+              handler: 'target.handler',
+              reservedConcurrency: 0,
+            },
+            fnCondition: {
+              handler: 'target.handler',
+              condition: 'CreateFunctionCondition',
+            },
+            fnDependsOn: {
+              handler: 'target.handler',
+              dependsOn: ['SharedDependency'],
             },
             trigger: {
               handler: 'trigger.handler',
@@ -2124,6 +2233,11 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
             },
           },
           resources: {
+            Conditions: {
+              CreateFunctionCondition: {
+                'Fn::Equals': ['true', 'true'],
+              },
+            },
             Resources: {
               ExternalLambdaLayer: {
                 Type: 'AWS::Lambda::LayerVersion',
@@ -2149,112 +2263,167 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
         cfResources.IamRoleLambdaExecution.Properties.Policies[0].PolicyDocument.Statement;
     });
 
-    it.skip('TODO: should support `functions[].package.artifact`, referencing local file', () => {
-      // Replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L170-L188
+    it('should generate expected function resource', () => {
+      const funcResource = getFunctionResource('target');
+      const functionObject = serverless.service.getFunction('target');
+
+      expect(funcResource.Type).to.equal('AWS::Lambda::Function');
+      expect(funcResource.DependsOn).to.deep.equal([naming.getLogGroupLogicalId('target')]);
+      expect(funcResource.Properties.Code.S3Bucket).to.deep.equal({
+        Ref: 'ServerlessDeploymentBucket',
+      });
+      expect(funcResource.Properties.Code.S3Key)
+        .to.be.a('string')
+        .and.match(/\.zip$/);
+      expect(funcResource.Properties.FunctionName).to.equal(functionObject.name);
+      expect(funcResource.Properties.Handler).to.equal('target.handler');
+      expect(funcResource.Properties.MemorySize).to.equal(functionObject.memory);
+      expect(funcResource.Properties.Role).to.deep.equal({
+        'Fn::GetAtt': ['IamRoleLambdaExecution', 'Arn'],
+      });
+      expect(funcResource.Properties.Runtime).to.equal('nodejs20.x');
+      expect(funcResource.Properties.Timeout).to.equal(functionObject.timeout);
+      expect(funcResource.Properties).to.not.have.property('DeadLetterConfig');
+      expect(funcResource.Properties).to.not.have.property('Description');
+      expect(funcResource.Properties).to.not.have.property('Environment');
+      expect(funcResource.Properties).to.not.have.property('KmsKeyArn');
+      expect(funcResource.Properties).to.not.have.property('Layers');
+      expect(funcResource.Properties).to.not.have.property('ReservedConcurrentExecutions');
+      expect(funcResource.Properties).to.not.have.property('Tags');
+      expect(funcResource.Properties).to.not.have.property('TracingConfig');
+      expect(funcResource.Properties).to.not.have.property('VpcConfig');
     });
 
-    it.skip('TODO: should generate expected function resource', () => {
-      // Replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L482-L516
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L2288-L2323
-      //
-      // With basic configuration confirm on generated function resource properties:
-      // Code, FunctionName, Handler, MemorySize, Role, Runtime, Timeout
-      // Confirm also that all optional properties are not set on resource
+    it('should support `functions[].role`, expressed via arn', () => {
+      const funcResource = getFunctionResource('fnRoleArn');
+
+      expect(funcResource.DependsOn).to.deep.equal([naming.getLogGroupLogicalId('fnRoleArn')]);
+      expect(funcResource.Properties.Role).to.equal(serviceConfig.functions.fnRoleArn.role);
     });
 
-    it.skip('TODO: should support `functions[].role`, expressed via arn', () => {
-      // Replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L283-L303
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L400-L434
+    it('should support `functions[].role`, expressed via resource name', () => {
+      const funcResource = getFunctionResource('fnRoleName');
+
+      expect(funcResource.DependsOn).to.deep.equal([
+        naming.getLogGroupLogicalId('fnRoleName'),
+        serviceConfig.functions.fnRoleName.role,
+      ]);
+      expect(funcResource.Properties.Role).to.deep.equal({
+        'Fn::GetAtt': [serviceConfig.functions.fnRoleName.role, 'Arn'],
+      });
     });
 
-    it.skip('TODO: should support `functions[].role`, expressed via resource name', () => {
-      // Replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L305-L327
+    it('should support `functions[].role`, expressed via Fn::GetAtt', () => {
+      const funcResource = getFunctionResource('fnRoleGetAtt');
+
+      expect(funcResource.DependsOn).to.deep.equal([
+        naming.getLogGroupLogicalId('fnRoleGetAtt'),
+        'LogicalNameRole',
+      ]);
+      expect(funcResource.Properties.Role).to.deep.equal(serviceConfig.functions.fnRoleGetAtt.role);
     });
 
-    it.skip('TODO: should support `functions[].role`, expressed via Fn::GetAtt', () => {
-      // Replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L329-L351
+    it('should support `functions[].role`, expressed via Fn::ImportValue', () => {
+      const funcResource = getFunctionResource('fnRoleImportValue');
+
+      expect(funcResource.DependsOn).to.deep.equal([
+        naming.getLogGroupLogicalId('fnRoleImportValue'),
+      ]);
+      expect(funcResource.Properties.Role).to.deep.equal(
+        serviceConfig.functions.fnRoleImportValue.role
+      );
     });
 
-    it.skip('TODO: should support `functions[].role`, expressed via Fn::ImportValue', () => {
-      // Replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L353-L375
+    it('should support `functions[].vpc`', () => {
+      const { VpcConfig } = getFunctionResource('fnVpc').Properties;
+
+      expect(VpcConfig.SecurityGroupIds).to.deep.equal(
+        serviceConfig.functions.fnVpc.vpc.securityGroupIds
+      );
+      expect(VpcConfig.SubnetIds).to.deep.equal(serviceConfig.functions.fnVpc.vpc.subnetIds);
     });
 
-    it.skip('TODO: should support `functions[].vpc`', () => {
-      // Replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L563-L605
+    it('should support `function[].tags`', () => {
+      expect(getFunctionResource('fnTags').Properties.Tags).to.deep.include({
+        Key: 'functionTag',
+        Value: serviceConfig.functions.fnTags.tags.functionTag,
+      });
     });
 
-    it.skip('TODO: should support `function[].tags`', () => {
-      // Replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L653-L696
+    it('should support `functions[].onError` as arn', () => {
+      const arn = serviceConfig.functions.fnOnErrorArn.onError;
+
+      expect(getFunctionResource('fnOnErrorArn').Properties.DeadLetterConfig).to.deep.equal({
+        TargetArn: arn,
+      });
+      expect(iamRolePolicyStatements).to.deep.include({
+        Effect: 'Allow',
+        Action: ['sns:Publish'],
+        Resource: [arn],
+      });
     });
 
-    it.skip('TODO: should support `functions[].tracing`', () => {
-      // Replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L1457-L1504
-      //
-      // Confirm on TracingConfig property
-      // Confirm also on needed IAM policies
+    it('should support `functions[].onError` as Ref', () => {
+      expect(getFunctionResource('fnOnErrorRef').Properties.DeadLetterConfig).to.deep.equal({
+        TargetArn: serviceConfig.functions.fnOnErrorRef.onError,
+      });
     });
 
-    it.skip('TODO: should support `functions[].onError` as arn', () => {
-      // Replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L774-L821
-      //
-      // Confirm on Function `DeadLetterConfig` property and on IAM policy statement being added
+    it('should support `functions[].onError` as Fn::ImportValue', () => {
+      expect(getFunctionResource('fnOnErrorImportValue').Properties.DeadLetterConfig).to.deep.equal(
+        {
+          TargetArn: serviceConfig.functions.fnOnErrorImportValue.onError,
+        }
+      );
     });
 
-    it.skip('TODO: should support `functions[].onError` as Ref', () => {
-      // Replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L823-L863
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L951-L988
-      //
-      // Also rely on custom IAM role (simply to confirm that logic doesn't stumble)
+    it('should support `functions[].onError` as Fn::GetAtt', () => {
+      expect(getFunctionResource('fnOnErrorGetAtt').Properties.DeadLetterConfig).to.deep.equal({
+        TargetArn: serviceConfig.functions.fnOnErrorGetAtt.onError,
+      });
     });
 
-    it.skip('TODO: should support `functions[].onError` as Fn::ImportValue', () => {
-      // Replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L865-L905
+    it('should support `functions[].kmsKeyArn` as Fn::GetAtt', () => {
+      expect(getFunctionResource('fnKmsGetAtt').Properties.KmsKeyArn).to.deep.equal(
+        serviceConfig.functions.fnKmsGetAtt.kmsKeyArn
+      );
     });
 
-    it.skip('TODO: should support `functions[].onError` as Fn::GetAtt', () => {
-      // Replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L907-L948
+    it('should support `functions[].kmsKeyArn` as Ref', () => {
+      expect(getFunctionResource('fnKmsRef').Properties.KmsKeyArn).to.deep.equal(
+        serviceConfig.functions.fnKmsRef.kmsKeyArn
+      );
     });
 
-    it.skip('TODO: should support `functions[].kmsKeyArn` as Fn::GetAtt', () => {});
-
-    it.skip('TODO: should support `functions[].kmsKeyArn` as Ref', () => {});
-
-    it.skip('TODO: should support `functions[].kmsKeyArn` as Fn::ImportValue', () => {});
-
-    it.skip('TODO: should support `functions[].environment`', () => {
-      // Replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L1601-L1644
+    it('should support `functions[].kmsKeyArn` as Fn::ImportValue', () => {
+      expect(getFunctionResource('fnKmsImportValue').Properties.KmsKeyArn).to.deep.equal(
+        serviceConfig.functions.fnKmsImportValue.kmsKeyArn
+      );
     });
 
-    it.skip('TODO: should support `functions[].environment` as CF intrinsic function', () => {
-      // Replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L1760-L1782
+    it('should support `functions[].environment` as CF intrinsic function', () => {
+      expect(
+        getFunctionResource('fnEnvironmentIntrinsic').Properties.Environment.Variables
+          .EXTERNAL_VALUE
+      ).to.deep.equal(serviceConfig.functions.fnEnvironmentIntrinsic.environment.EXTERNAL_VALUE);
     });
 
-    it.skip('TODO: should support `functions[].name`', () => {
-      // Partial replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L1784-L1820
+    it('should support `functions[].name`', () => {
+      expect(getFunctionResource('fnNamed').Properties.FunctionName).to.equal(
+        serviceConfig.functions.fnNamed.name
+      );
     });
-    it.skip('TODO: should support `functions[].memorySize`', () => {
-      // Partial replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L1784-L1820
+
+    it('should support `functions[].memorySize`', () => {
+      expect(getFunctionResource('fnSized').Properties.MemorySize).to.equal(
+        serviceConfig.functions.fnSized.memorySize
+      );
     });
-    it.skip('TODO: should support `functions[].timeout`', () => {
-      // Partial replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L1784-L1820
+
+    it('should support `functions[].timeout`', () => {
+      expect(getFunctionResource('fnTimeout').Properties.Timeout).to.equal(
+        serviceConfig.functions.fnTimeout.timeout
+      );
     });
 
     it('should default to the fixture provider runtime', () => {
@@ -2262,48 +2431,51 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
       expect(funcResource.Properties.Runtime).to.equal('nodejs20.x');
     });
 
-    it.skip('TODO: should support `functions[].runtime`', () => {
-      // Partial replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L1784-L1820
+    it('should support `functions[].description`', () => {
+      const [, versionResource] = getVersionResourceEntry('fnDescription');
+
+      expect(getFunctionResource('fnDescription').Properties.Description).to.equal(
+        serviceConfig.functions.fnDescription.description
+      );
+      expect(versionResource.Properties.Description).to.equal(
+        serviceConfig.functions.fnDescription.description
+      );
     });
 
-    it.skip('TODO: should support `functions[].description`', () => {
-      // Replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L1984-L1998
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L2059-L2080
-      //
-      // Ensure it's also at version resource
+    it('should create lambda version resource and the output', () => {
+      const [versionLogicalId, versionResource] = getVersionResourceEntry('target');
+
+      expect(versionResource.Properties.FunctionName).to.deep.equal({
+        Ref: naming.getLambdaLogicalId('target'),
+      });
+      expect(cfOutputs[naming.getLambdaVersionOutputLogicalId('target')].Value).to.deep.equal({
+        Ref: versionLogicalId,
+      });
     });
 
-    it.skip('TODO: should create lambda version resource and the output', () => {
-      // Replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L2000-L2020
+    it('should support `functions[].reservedConcurrency`', () => {
+      expect(getFunctionResource('fnReserved').Properties.ReservedConcurrentExecutions).to.equal(
+        serviceConfig.functions.fnReserved.reservedConcurrency
+      );
+      expect(
+        getFunctionResource('fnReservedZero').Properties.ReservedConcurrentExecutions
+      ).to.equal(0);
     });
 
-    it.skip('TODO: should support `functions[].versionFunction`', () => {
-      // Replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L2196-L2218
-      //
-      // Confirm that "functions[].versionFunction: true" makes function versioned if
-      // `provider.versionFunctions: false`
-    });
+    it('should support `functions[].provisionedConcurrency`', () => {
+      const aliasResource =
+        cfResources[naming.getLambdaProvisionedConcurrencyAliasLogicalId('fnProvisioned')];
 
-    it.skip('TODO: should support `functions[].reservedConcurrency`', () => {
-      // Replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L2102-L2138
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L2158-L2194
-      //
-      // Confirm also that `0` is supported
-    });
-
-    it.skip('TODO: should support `functions[].provisionedConcurrency`', () => {
-      // Replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L2140-L2156
-    });
-
-    it.skip('TODO: should support `functions[].layers`', () => {
-      // Replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L2325-L2362
+      expect(aliasResource.Type).to.equal('AWS::Lambda::Alias');
+      expect(aliasResource.DependsOn).to.equal(naming.getLambdaLogicalId('fnProvisioned'));
+      expect(aliasResource.Properties.FunctionName).to.deep.equal({
+        Ref: naming.getLambdaLogicalId('fnProvisioned'),
+      });
+      expect(aliasResource.Properties.Name).to.equal('provisioned');
+      expect(aliasResource.Properties.ProvisionedConcurrencyConfig).to.deep.equal({
+        ProvisionedConcurrentExecutions:
+          serviceConfig.functions.fnProvisioned.provisionedConcurrency,
+      });
     });
 
     it('should support `Ref` references to external layers (not defined as a part of `layers` top-level property in configuration)', async () => {
@@ -2312,14 +2484,17 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
       ).to.deep.equal([{ Ref: 'ExternalLambdaLayer' }]);
     });
 
-    it.skip('TODO: should support `functions[].conditions`', () => {
-      // Replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L2364-L2379
+    it('should support `functions[].conditions`', () => {
+      expect(getFunctionResource('fnCondition').Condition).to.equal(
+        serviceConfig.functions.fnCondition.condition
+      );
     });
 
-    it.skip('TODO: should support `functions[].dependsOn`', () => {
-      // Replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L2381-L2397
+    it('should support `functions[].dependsOn`', () => {
+      expect(getFunctionResource('fnDependsOn').DependsOn).to.deep.equal([
+        naming.getLogGroupLogicalId('fnDependsOn'),
+        ...serviceConfig.functions.fnDependsOn.dependsOn,
+      ]);
     });
 
     it('should support `functions[].url` set to `true`', () => {
@@ -3133,9 +3308,12 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
   describe('Version hash resolution', () => {
     const testLambdaHashingVersion = () => {
       it('should create a different version if configuration changed', async () => {
-        const { servicePath: serviceDir, updateConfig } = await fixtures.setup('function', {
-          configExt: {},
-        });
+        const { servicePath: serviceDir, updateConfig } = await setupProgrammaticFixture(
+          'function',
+          {
+            configExt: {},
+          }
+        );
 
         const { cfTemplate: originalTemplate } = await runServerless({
           cwd: serviceDir,
@@ -3170,9 +3348,12 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
       });
 
       it('should not create a different version if only function-wide configuration changed', async () => {
-        const { servicePath: serviceDir, updateConfig } = await fixtures.setup('function', {
-          configExt: {},
-        });
+        const { servicePath: serviceDir, updateConfig } = await setupProgrammaticFixture(
+          'function',
+          {
+            configExt: {},
+          }
+        );
 
         const { cfTemplate: originalTemplate } = await runServerless({
           cwd: serviceDir,
@@ -3215,12 +3396,12 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
         };
 
         beforeEach(async () => {
-          const serviceData = await fixtures.setup('function-layers', { configExt: {} });
+          const serviceData = await setupProgrammaticFixture('function-layers', { configExt: {} });
           ({ servicePath: serviceDir, updateConfig } = serviceData);
           const data = await runServerless({
             cwd: serviceDir,
             command: 'package',
-            awsRequestStubMap: mockDescribeStackResponse,
+            awsSdkV3StubMap: mockDescribeStackResponse,
           });
           firstCfTemplate = data.cfTemplate;
         });
@@ -3242,7 +3423,7 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
           const data = await runServerless({
             cwd: serviceDir,
             command: 'package',
-            awsRequestStubMap: mockDescribeStackResponse,
+            awsSdkV3StubMap: mockDescribeStackResponse,
           });
 
           expect(firstVersionId).to.not.equal(
@@ -3261,7 +3442,7 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
           const data = await runServerless({
             cwd: serviceDir,
             command: 'package',
-            awsRequestStubMap: mockDescribeStackResponse,
+            awsSdkV3StubMap: mockDescribeStackResponse,
           });
 
           expect(firstS3Key).to.not.equal(
@@ -3285,7 +3466,7 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
           const data = await runServerless({
             cwd: serviceDir,
             command: 'package',
-            awsRequestStubMap: mockDescribeStackResponse,
+            awsSdkV3StubMap: mockDescribeStackResponse,
           });
 
           expect(firstVersionId).to.equal(
@@ -3306,7 +3487,7 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
           const data = await runServerless({
             cwd: serviceDir,
             command: 'package',
-            awsRequestStubMap: mockDescribeStackResponse,
+            awsSdkV3StubMap: mockDescribeStackResponse,
           });
 
           expect(firstVersionId).to.not.equal(
@@ -3321,7 +3502,7 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
           const data = await runServerless({
             cwd: serviceDir,
             command: 'package',
-            awsRequestStubMap: mockDescribeStackResponse,
+            awsSdkV3StubMap: mockDescribeStackResponse,
           });
 
           expect(firstVersionId).to.equal(
@@ -3345,7 +3526,7 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
           const data = await runServerless({
             cwd: serviceDir,
             command: 'package',
-            awsRequestStubMap: mockDescribeStackResponse,
+            awsSdkV3StubMap: mockDescribeStackResponse,
           });
 
           expect(firstVersionId).to.not.equal(
@@ -3379,7 +3560,7 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
             const data = await runServerless({
               cwd: serviceDir,
               command: 'package',
-              awsRequestStubMap: mockDescribeStackResponse,
+              awsSdkV3StubMap: mockDescribeStackResponse,
             });
 
             expect(firstVersionId).to.not.equal(
@@ -3410,7 +3591,7 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
       // Replacement for:
       // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L118-L131
       //
-      // Through `awsRequestStubMap` mock:
+      // Through `awsSdkV3StubMap` mock:
       // 1. S3.getObject to return some string stream here:
       //    https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.js#L95-L98
       // 2. S3.upload with a spy here:
@@ -3418,7 +3599,7 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
       //    On which we would confirm that
       //    - It's generated string that's being send
       //    - Corresponding url is configured in CF template
-      // Test with "deploy" command, and configure `lastLifecycleHookName` to 'aws:deploy:deploy:uploadArtifact'
+      // Test with "deploy" command, and configure `lastLifecycleHookName` to 'aws:deploy:deploy:uploadArtifacts'
       // It'll demand stubbing few other AWS calls for that follow this stub:
       // https://github.com/serverless/dashboard-plugin/blob/cdd53df45dfad18d8bdd79969194a61cb8178671/lib/deployment/parse.test.js#L1585-L1627
       // Confirm same artifact is used for all functions
