@@ -13,6 +13,7 @@ const AwsCompileFunctions = require('../../../../../../../lib/plugins/aws/packag
 const Serverless = require('../../../../../../../lib/serverless');
 const runServerless = require('../../../../../../utils/run-serverless');
 const setupProgrammaticFixture = require('../../../../../../utils/setup-programmatic-fixture');
+const { createDeployAwsStubMap } = require('../../../../../../utils/aws-stub-maps');
 
 const { getTmpDirPath, createTmpFile } = require('../../../../../../utils/fs');
 
@@ -3575,41 +3576,126 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
     });
   });
 
-  describe.skip('TODO: Download package artifact from S3 bucket', () => {
+  describe('Remote package artifacts', () => {
+    const sourceBucketName = 'source-bucket';
+    const serviceArtifactKey = 'service.zip';
+    const functionArtifactKey = 'function.zip';
+    const serviceArtifactUrl = `https://s3.amazonaws.com/${sourceBucketName}/${serviceArtifactKey}`;
+    const functionArtifactUrl = `https://s3.amazonaws.com/${sourceBucketName}/${functionArtifactKey}`;
+    let awsSdkV3Stub;
+    let naming;
+    let uploadedCfTemplate;
+    let uploadedBodies;
+    let serviceArtifactS3Key;
+    let functionArtifactS3Key;
+
+    const getS3Sends = (method) =>
+      awsSdkV3Stub.sends.filter(
+        ({ service, method: sendMethod }) => service === 'S3' && sendMethod === method
+      );
+
+    const getFunctionCode = (functionName) =>
+      uploadedCfTemplate.Resources[naming.getLambdaLogicalId(functionName)].Properties.Code;
+
+    const expectFunctionCodeS3Location = (functionName, s3Key) => {
+      expect(getFunctionCode(functionName)).to.deep.equal({
+        S3Bucket: { Ref: 'ServerlessDeploymentBucket' },
+        S3Key: s3Key,
+      });
+    };
+
+    const getUploadInput = (key) => {
+      const uploadSend = getS3Sends('upload').find(({ input }) => input.Key === key);
+      expect(uploadSend).to.exist;
+      return uploadSend.input;
+    };
+
+    const captureUploadBody = async ({ Key, Body }) => {
+      if (!Body || typeof Body.on !== 'function') {
+        uploadedBodies.set(Key, Body);
+        return {};
+      }
+      const chunks = [];
+      await new Promise((resolve, reject) => {
+        Body.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+        Body.on('end', resolve);
+        Body.on('error', reject);
+      });
+      uploadedBodies.set(Key, Buffer.concat(chunks).toString('utf8'));
+      return {};
+    };
+
     before(async () => {
-      await runServerless({
+      uploadedBodies = new Map();
+      const data = await runServerless({
         fixture: 'package-artifact',
         command: 'deploy',
+        lastLifecycleHookName: 'aws:deploy:deploy:uploadArtifacts',
         configExt: {
-          package: { artifact: 'some s3 url' },
-          functions: { basic: { package: { individually: true, artifact: 'other s3 url' } } },
+          package: { artifact: serviceArtifactUrl },
+          functions: {
+            bar: { handler: 'index.handler' },
+            other: { package: { artifact: functionArtifactUrl } },
+          },
         },
+        awsSdkV3StubMap: createDeployAwsStubMap({
+          Lambda: {
+            getFunction: {
+              Configuration: { LastModified: '2020-05-20T15:34:16.494+0000' },
+            },
+          },
+          S3: {
+            headObject: {},
+            getObject: ({ Key }) => ({ Body: Readable.from([`${Key} content`]) }),
+            upload: captureUploadBody,
+          },
+        }),
       });
+      ({ awsNaming: naming, awsSdkV3Stub } = data);
+      const artifactDirectoryName = data.serverless.service.package.artifactDirectoryName;
+      const compiledTemplateS3Key = `${artifactDirectoryName}/${naming.getCompiledTemplateS3Suffix()}`;
+      serviceArtifactS3Key = `${artifactDirectoryName}/${serviceArtifactKey}`;
+      functionArtifactS3Key = `${artifactDirectoryName}/${functionArtifactKey}`;
+      uploadedCfTemplate = JSON.parse(getUploadInput(compiledTemplateS3Key).Body);
     });
 
-    it('should support `package.artifact`', () => {
-      // Replacement for:
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L118-L131
-      //
-      // Through `awsSdkV3StubMap` mock:
-      // 1. S3.getObject to return some string stream here:
-      //    https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.js#L95-L98
-      // 2. S3.upload with a spy here:
-      //    https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/deploy/lib/uploadArtifacts.js#L78
-      //    On which we would confirm that
-      //    - It's generated string that's being send
-      //    - Corresponding url is configured in CF template
-      // Test with "deploy" command, and configure `lastLifecycleHookName` to 'aws:deploy:deploy:uploadArtifacts'
-      // It'll demand stubbing few other AWS calls for that follow this stub:
-      // https://github.com/serverless/dashboard-plugin/blob/cdd53df45dfad18d8bdd79969194a61cb8178671/lib/deployment/parse.test.js#L1585-L1627
-      // Confirm same artifact is used for all functions
+    it('should support `package.artifact`', async () => {
+      const getObjectInputs = getS3Sends('getObject').map(({ input }) => input);
+      expect(getObjectInputs).to.deep.include({
+        Bucket: sourceBucketName,
+        Key: serviceArtifactKey,
+      });
+
+      expectFunctionCodeS3Location('foo', serviceArtifactS3Key);
+      expectFunctionCodeS3Location('bar', serviceArtifactS3Key);
+
+      const uploadInput = getUploadInput(serviceArtifactS3Key);
+      expect(uploadInput).to.include({
+        Bucket: 'deployment-bucket',
+        ContentType: 'application/zip',
+      });
+      expect(path.basename(uploadInput.Body.path)).to.equal(serviceArtifactKey);
+      expect(uploadedBodies.get(serviceArtifactS3Key)).to.equal(`${serviceArtifactKey} content`);
     });
 
-    it('should support `functions[].package.artifact', () => {
-      // Replacement for
-      // https://github.com/serverless/serverless/blob/d8527d8b57e7e5f0b94ba704d9f53adb34298d99/lib/plugins/aws/package/compile/functions/index.test.js#L100-L116
-      //
-      // Same as above just confirm on individual function (and confirm it's the only function that gets that)
+    it('should support `functions[].package.artifact`', async () => {
+      const getObjectInputs = getS3Sends('getObject').map(({ input }) => input);
+      expect(getObjectInputs).to.deep.include({
+        Bucket: sourceBucketName,
+        Key: functionArtifactKey,
+      });
+
+      expectFunctionCodeS3Location('other', functionArtifactS3Key);
+      expectFunctionCodeS3Location('foo', serviceArtifactS3Key);
+      expectFunctionCodeS3Location('bar', serviceArtifactS3Key);
+
+      const uploadInput = getUploadInput(functionArtifactS3Key);
+      expect(uploadInput).to.include({
+        Bucket: 'deployment-bucket',
+        ContentType: 'application/zip',
+      });
+      expect(path.basename(uploadInput.Body.path)).to.equal(functionArtifactKey);
+      expect(uploadedBodies.get(functionArtifactS3Key)).to.equal(`${functionArtifactKey} content`);
     });
   });
 });
