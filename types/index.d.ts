@@ -81,6 +81,11 @@ export type AwsLambdaRuntimeManagement =
 export type AwsLambdaTimeout = number;
 export type AwsLambdaTracing = ('Active' | 'PassThrough') | boolean;
 export type AwsLambdaVersioning = boolean;
+export type AwsPruneFunctionVersions =
+  | boolean
+  | {
+      number: number;
+    };
 export type AwsHttpApiPayload = '1.0' | '2.0';
 export type AwsApiGatewayApiKeys = (
   | string
@@ -1353,6 +1358,7 @@ export interface AWS {
     vpc?: AwsLambdaVpcConfig;
     vpcEndpointIds?: AwsCfArrayInstruction;
     versionFunctions?: AwsLambdaVersioning;
+    pruneFunctionVersions?: AwsPruneFunctionVersions;
     websocket?: {
       useProviderTags?: boolean;
     };
