@@ -3661,7 +3661,10 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
 
     it('should support `package.artifact`', async () => {
       const getObjectInputs = getS3Sends('getObject').map(({ input }) => input);
-      expect(getObjectInputs).to.deep.include({ Bucket: sourceBucketName, Key: serviceArtifactKey });
+      expect(getObjectInputs).to.deep.include({
+        Bucket: sourceBucketName,
+        Key: serviceArtifactKey,
+      });
 
       expectFunctionCodeS3Location('foo', serviceArtifactS3Key);
       expectFunctionCodeS3Location('bar', serviceArtifactS3Key);
