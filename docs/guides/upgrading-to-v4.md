@@ -164,7 +164,7 @@ Declare any `@aws-sdk/client-*` packages your plugin imports in its own dependen
 
 ## Deprecated in v4 (clean up before v5)
 
-These still work in v4 but emit deprecation warnings. Most were deprecated back in v3, with removal deferred to v5. `provider.websocket.useProviderTags` is the exception, as it became redundant only in v4 once provider tags became the default. All are removed in v5 except the Kinesis consumer name, which changes rather than being removed.
+These still work in v4 but emit deprecation warnings. Most were deprecated back in v3, with removal deferred to v5. `provider.websocket.useProviderTags` is the exception, as it became redundant only in v4 once provider tags became the default. All will be removed in v5 except the Kinesis consumer name, which will change rather than being removed.
 
 | Item                                 | Deprecated since | Action                                                                                             |
 | ------------------------------------ | ---------------- | -------------------------------------------------------------------------------------------------- |
