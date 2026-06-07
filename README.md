@@ -1,66 +1,30 @@
-**osls** – Build applications on AWS Lambda and other next-gen cloud services, that auto-scale and only charge you when they run. This lowers the total cost of running and operating your apps, enabling you to build more and manage less.
+# osls
 
-osls is a command-line tool with an easy and approachable YAML syntax to deploy both your code and cloud infrastructure needed to make tons of serverless application use-cases. It's a multi-language framework that supports Node.js, Typescript, Python, Go, Java, and more.
+osls, short for Open Serverless, is an open-source command-line tool for deploying serverless applications on AWS. It uses familiar YAML in `serverless.yml` to define Lambda functions, event sources, IAM permissions, and supporting CloudFormation resources.
 
-osls is short for Open Serverless.
+osls v4 continues the osls project that began as a maintained fork of [Serverless Framework](https://github.com/serverless/serverless) v3. It is independent from upstream Serverless Framework v4 and does not use Serverless Dashboard, Console, or licensing services. It remains compatible with most Serverless Framework v3 service configurations, with the v4 breaking changes documented in the [upgrade guide](./docs/guides/upgrading-to-v4.md).
 
----
-
-This repository is a maintained alternative to [Serverless Framework](https://github.com/serverless/serverless) v3. It exists for those that cannot upgrade to Serverless Framework v4 and is a drop-in replacement for v3.
-
-## Open-source sponsors
-
-<p align="center">
-<a href="https://www.voxie.com/"><img src="docs/sponsors/voxie.svg" width="150px" /></a>
-&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
-<a href="https://www.flagsmith.com/"><img src="docs/sponsors/flagsmith.png" height="50px" /></a>
-</p>
-
-<p align="center">
-<a href="https://www.mybuilder.com/"><img src="docs/sponsors/mybuilder.svg" height="40px" /></a>
-&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
-<a href="https://optionmetrics.com/"><img src="docs/sponsors/optionmetrics.png" height="50px" /></a>
-</p>
-
-This project is open-source and free to use. However, maintaining it requires time and effort. If you want to support the project, you can become a sponsor on GitHub Sponsors.
+If you are coming from osls v3 or Serverless Framework v3, start with [Upgrading to v4](./docs/guides/upgrading-to-v4.md).
 
 ## Installation
 
 Requires Node.js `^20.19.0 || ^22.13.0 || >=24`.
 
+If you are replacing a global Serverless Framework installation, remove it first so the `serverless` command resolves to osls.
+
 ```sh
-npm remove -g serverless
-npm install -g osls
+npm uninstall -g serverless
+npm install -g osls@4
 
 osls --version
 ```
 
-The repository has been created and is maintained by [Bref](https://bref.sh) maintainers and contributors. The main goal of this repository is to provide continuity for Bref users, so that these Bref projects keep working for the next 5 years. No major new features are planned. However, community contributions to keep the project running (even for languages other than PHP), like adding support to new runtime versions, adapting to AWS changes, bugfixes, and other small improvements are welcome.
-
-## Changes
-
-This repository contains the following differences with the original Serverless Framework v3:
-
-- [Up-to-date documentation for v3](./docs) (all documentation for non-AWS providers has been removed).
-- Up-to-date support for new AWS Lambda runtimes.
-- There is no standalone binary version, the package is only available via NPM.
-- Fixed vulnerabilities in dependencies:
-  - [micromatch](https://github.com/serverless/serverless/issues/12482)
-  - [braces](https://github.com/serverless/serverless/issues/12481)
-  - [tar](https://github.com/serverless/serverless/issues/12422)
-- Lighter and faster CLI
-  - Serverless Dashboard/Enterprise features are removed (because there is no guarantee to keep them working with v3), if you are using them you should upgrade to v4.
-  - Serverless Components support have been removed: these are old and unmaintained projects, it's very unlikely you are using them. That improves the boot time of the CLI.
-  - Serverless' integration for Tencent Cloud (China version of the `serverless` CLI) has been removed.
-  - Removed unused dependencies.
-  - Removed auto-updating (because it's not working anymore).
-  - Removed automatic use of local `serverless` installation (in `node_modules`): this avoids surprises running the local `serverless` version instead of this fork.
-  - Removed post-install messages.
-- Fixed a node warning ("The `punycode` module is deprecated").
+The package provides the `osls`, `sls`, and `serverless` commands.
 
 ## Get Started
 
 - [Setup](./docs/getting-started.md)
+- [Upgrading to v4](./docs/guides/upgrading-to-v4.md)
 - [Concepts](./docs/guides/intro.md)
 - [AWS Credentials](./docs/guides/credentials.md)
 
@@ -80,7 +44,7 @@ This repository contains the following differences with the original Serverless 
 - [Workflow Tips](./docs/guides/workflow.md)
 - [Serverless.yml Reference](./docs/guides/serverless.yml.md)
 
-# Function events
+## Function events
 
 - [Overview](./docs/guides/events.md)
 - [HTTP (API Gateway v2)](./docs/events/http-api.md)
@@ -133,7 +97,6 @@ This repository contains the following differences with the original Serverless 
 
 ## Learn More
 
-- [Upgrading to v4](./docs/guides/upgrading-to-v4.md)
 - [Configuration Validation](./docs/guides/configuration-validation.md)
 - [Resolution of Environment Variables](./docs/guides/environment-variables.md)
 - [Deprecations](./docs/guides/deprecations.md)
@@ -147,3 +110,36 @@ This repository contains the following differences with the original Serverless 
   - [Custom Variables](./docs/guides/plugins/custom-variables.md)
   - [Extending the Configuration schema](./docs/guides/plugins/custom-configuration.md)
   - [Extending and overriding configuration](./docs/guides/plugins/extending-configuration.md)
+
+## Project status
+
+This repository was created and is maintained by [Bref](https://bref.sh) maintainers and contributors. The main goal is continuity for existing serverless projects, including Bref projects, so they keep working over the long term. No major new feature areas are planned, but community contributions are welcome for maintenance work such as supporting new AWS Lambda runtimes, adapting to AWS changes, fixing bugs, and making small improvements.
+
+## Open-source sponsors
+
+This project is open-source and free to use. However, maintaining it requires time and effort. If you want to support the project, you can become a sponsor on GitHub Sponsors.
+
+<p align="center">
+<a href="https://www.voxie.com/"><img src="docs/sponsors/voxie.svg" width="150px" /></a>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+<a href="https://www.flagsmith.com/"><img src="docs/sponsors/flagsmith.png" height="50px" /></a>
+</p>
+
+<p align="center">
+<a href="https://www.mybuilder.com/"><img src="docs/sponsors/mybuilder.svg" height="40px" /></a>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+<a href="https://optionmetrics.com/"><img src="docs/sponsors/optionmetrics.png" height="50px" /></a>
+</p>
+
+## How osls differs from upstream Serverless Framework
+
+- The documentation is focused on the current osls release and AWS usage. Documentation for non-AWS providers has been removed.
+- New AWS Lambda runtimes are kept up to date.
+- osls is published as an npm package only. There is no standalone binary distribution.
+- Internal AWS calls use AWS SDK for JavaScript v3 in osls v4, including support for IAM Identity Center credentials.
+- Known inherited dependency vulnerabilities have been fixed.
+- Serverless Dashboard, Enterprise, and Console features have been removed. If you rely on those hosted upstream services, use upstream Serverless Framework instead.
+- Serverless Components support has been removed because those projects are old and unmaintained.
+- The Tencent Cloud integration from the upstream `serverless` CLI has been removed.
+- Unused dependencies, broken auto-updating, post-install messages, and automatic use of a local `serverless` installation from `node_modules` have been removed.
+- A Node.js warning for the deprecated `punycode` module has been fixed.
