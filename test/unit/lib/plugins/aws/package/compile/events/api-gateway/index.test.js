@@ -3,8 +3,7 @@
 const expect = require('chai').expect;
 const sinon = require('sinon');
 const AwsProvider = require('../../../../../../../../../lib/plugins/aws/provider');
-const AwsCompileApigEvents = require('../../../../../../../../../lib/plugins/aws/package/compile/events/api-gateway/index');
-const Serverless = require('../../../../../../../../../lib/serverless');
+const { createApiGatewayCompilerContext } = require('./test-utils');
 const validate = require('../../../../../../../../../lib/plugins/aws/lib/validate');
 const getServiceState = require('../../../../../../../../../lib/plugins/aws/lib/get-service-state');
 const updateStage = require('../../../../../../../../../lib/plugins/aws/package/compile/events/api-gateway/lib/hack/update-stage');
@@ -14,26 +13,7 @@ describe('AwsCompileApigEvents', () => {
   let awsCompileApigEvents;
 
   beforeEach(() => {
-    const serverless = new Serverless({ commands: [], options: {} });
-    serverless.service.environment = {
-      vars: {},
-      stages: {
-        dev: {
-          vars: {},
-          regions: {
-            'us-east-1': {
-              vars: {},
-            },
-          },
-        },
-      },
-    };
-    const options = {
-      stage: 'dev',
-      region: 'us-east-1',
-    };
-    serverless.setProvider('aws', new AwsProvider(serverless, options));
-    awsCompileApigEvents = new AwsCompileApigEvents(serverless, options);
+    ({ awsCompileApigEvents } = createApiGatewayCompilerContext());
   });
 
   describe('#constructor()', () => {

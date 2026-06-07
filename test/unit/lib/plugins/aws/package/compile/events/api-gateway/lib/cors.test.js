@@ -1,38 +1,29 @@
 'use strict';
 
 const expect = require('chai').expect;
-const AwsCompileApigEvents = require('../../../../../../../../../../lib/plugins/aws/package/compile/events/api-gateway/index');
-const Serverless = require('../../../../../../../../../../lib/serverless');
-const AwsProvider = require('../../../../../../../../../../lib/plugins/aws/provider');
+const { createApiGatewayCompilerContext } = require('../test-utils');
 
 describe('#compileCors()', () => {
-  let serverless;
   let awsCompileApigEvents;
 
   beforeEach(() => {
-    const options = {
-      stage: 'dev',
-      region: 'us-east-1',
-    };
-    serverless = new Serverless({ commands: [], options: {} });
-    serverless.setProvider('aws', new AwsProvider(serverless, options));
-    serverless.service.service = 'first-service';
-    serverless.service.provider.compiledCloudFormationTemplate = { Resources: {} };
-    serverless.service.environment = {
-      stages: {
-        dev: {
-          regions: {
-            'us-east-1': {
-              vars: {
-                IamRoleLambdaExecution:
-                  'arn:aws:iam::12345678:role/service-dev-IamRoleLambdaExecution-FOO12345678',
+    ({ awsCompileApigEvents } = createApiGatewayCompilerContext({
+      provider: { compiledCloudFormationTemplate: { Resources: {} } },
+      environment: {
+        stages: {
+          dev: {
+            regions: {
+              'us-east-1': {
+                vars: {
+                  IamRoleLambdaExecution:
+                    'arn:aws:iam::12345678:role/service-dev-IamRoleLambdaExecution-FOO12345678',
+                },
               },
             },
           },
         },
       },
-    };
-    awsCompileApigEvents = new AwsCompileApigEvents(serverless, options);
+    }));
     awsCompileApigEvents.apiGatewayMethodLogicalIds = [];
     awsCompileApigEvents.apiGatewayRestApiLogicalId = 'ApiGatewayRestApi';
     awsCompileApigEvents.apiGatewayResources = {

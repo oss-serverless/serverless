@@ -3,9 +3,7 @@
 const chai = require('chai');
 const sinon = require('sinon');
 const runServerless = require('../../../../../../../../../utils/run-serverless');
-const AwsCompileApigEvents = require('../../../../../../../../../../lib/plugins/aws/package/compile/events/api-gateway/index');
-const Serverless = require('../../../../../../../../../../lib/serverless');
-const AwsProvider = require('../../../../../../../../../../lib/plugins/aws/provider');
+const { createApiGatewayCompilerContext } = require('../test-utils');
 const ServerlessError = require('../../../../../../../../../../lib/serverless-error');
 
 const expect = chai.expect;
@@ -25,13 +23,7 @@ describe('#validate()', () => {
   });
 
   beforeEach(() => {
-    const options = {
-      stage: 'dev',
-      region: 'us-east-1',
-    };
-    serverless = new Serverless({ commands: ['print'], options: {}, serviceDir: null });
-    serverless.setProvider('aws', new AwsProvider(serverless, options));
-    awsCompileApigEvents = new AwsCompileApigEvents(serverless, options);
+    ({ serverless, awsCompileApigEvents } = createApiGatewayCompilerContext());
   });
 
   it('should ignore non-http events', () => {
@@ -1519,8 +1511,9 @@ describe('#validate()', () => {
       stage: 'my@stage',
       region: 'us-east-1',
     };
-    serverless.setProvider('aws', new AwsProvider(serverless, invalidOptions));
-    awsCompileApigEvents = new AwsCompileApigEvents(serverless, invalidOptions);
+    ({ serverless, awsCompileApigEvents } = createApiGatewayCompilerContext({
+      options: invalidOptions,
+    }));
     awsCompileApigEvents.serverless.service.functions = {
       first: {
         events: [

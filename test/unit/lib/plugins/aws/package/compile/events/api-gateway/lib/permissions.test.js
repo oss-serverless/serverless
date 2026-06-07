@@ -1,19 +1,15 @@
 'use strict';
 
 const expect = require('chai').expect;
-const AwsCompileApigEvents = require('../../../../../../../../../../lib/plugins/aws/package/compile/events/api-gateway/index');
-const Serverless = require('../../../../../../../../../../lib/serverless');
-const AwsProvider = require('../../../../../../../../../../lib/plugins/aws/provider');
+const { createApiGatewayCompilerContext } = require('../test-utils');
 
 describe('#awsCompilePermissions()', () => {
   let awsCompileApigEvents;
 
   beforeEach(() => {
-    const serverless = new Serverless({ commands: [], options: {} });
-    serverless.setProvider('aws', new AwsProvider(serverless));
-    serverless.service.provider.compiledCloudFormationTemplate = { Resources: {} };
-
-    awsCompileApigEvents = new AwsCompileApigEvents(serverless);
+    ({ awsCompileApigEvents } = createApiGatewayCompilerContext({
+      provider: { compiledCloudFormationTemplate: { Resources: {} } },
+    }));
     awsCompileApigEvents.apiGatewayRestApiLogicalId = 'ApiGatewayRestApi';
     awsCompileApigEvents.validated = {};
   });
