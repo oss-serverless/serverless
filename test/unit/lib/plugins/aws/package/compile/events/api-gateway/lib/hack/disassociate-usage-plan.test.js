@@ -16,6 +16,7 @@ const Serverless = require('../../../../../../../../../../../lib/serverless');
 const AwsProvider = require('../../../../../../../../../../../lib/plugins/aws/provider');
 const disassociateUsagePlan = require('../../../../../../../../../../../lib/plugins/aws/package/compile/events/api-gateway/lib/hack/disassociate-usage-plan');
 const releasePendingRequestsUntilSettled = require('../../../../../../../../../../utils/release-pending-requests-until-settled');
+const runServerless = require('../../../../../../../../../../utils/run-serverless');
 
 function getApiGatewayMethod(command) {
   if (command instanceof GetUsagePlansCommand) return 'getUsagePlans';
@@ -466,6 +467,53 @@ describe('#disassociateUsagePlan()', () => {
     } finally {
       getAwsSdkV3ConfigStub.restore();
     }
+  });
+
+  it('runs usage plan cleanup during the remove lifecycle', async () => {
+    const { awsSdkV3Stub } = await runServerless({
+      fixture: 'api-gateway',
+      command: 'remove',
+      lastLifecycleHookName: 'before:remove:remove',
+      configExt: {
+        provider: {
+          apiGateway: { apiKeys: ['apiKey1'] },
+        },
+      },
+      awsSdkV3StubMap: {
+        CloudFormation: {
+          describeStackResource: {
+            StackResourceDetail: { PhysicalResourceId: 'api-id' },
+          },
+        },
+        APIGateway: {
+          getUsagePlans: {
+            items: [{ id: 'plan-id', apiStages: [{ apiId: 'api-id', stage: 'dev' }] }],
+          },
+          updateUsagePlan: {},
+        },
+        STS: {
+          getCallerIdentity: { Account: '999999999999' },
+        },
+      },
+    });
+
+    expect(awsSdkV3Stub.sends.map(({ commandName }) => commandName)).to.include.members([
+      'DescribeStackResourceCommand',
+      'GetUsagePlansCommand',
+      'UpdateUsagePlanCommand',
+    ]);
+    expect(
+      awsSdkV3Stub.sends.find(({ method }) => method === 'updateUsagePlan').input
+    ).to.deep.equal({
+      usagePlanId: 'plan-id',
+      patchOperations: [
+        {
+          op: 'remove',
+          path: '/apiStages',
+          value: 'api-id:dev',
+        },
+      ],
+    });
   });
 
   it('should resolve if no api keys are given', async () => {
