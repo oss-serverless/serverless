@@ -73,6 +73,7 @@
 
 ## Learn More
 
+- [Upgrading to v4](./guides/upgrading-to-v4.md)
 - [Configuration Validation](./guides/configuration-validation.md)
 - [Resolution of Environment Variables](./guides/environment-variables.md)
 - [Deprecations](./guides/deprecations.md)
