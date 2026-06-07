@@ -21,7 +21,6 @@ const {
   defaultApiGatewayLogLevel,
 } = require('../../../../../../../../../../../lib/plugins/aws/package/compile/events/api-gateway/lib/hack/update-stage');
 const runServerless = require('../../../../../../../../../../utils/run-serverless');
-const fixtures = require('../../../../../../../../../../fixtures/programmatic');
 
 const { expect } = chai;
 
@@ -1104,12 +1103,37 @@ describe('test/unit/lib/plugins/aws/package/compile/events/apiGateway/lib/hack/u
           },
         },
       },
-      lastLifecycleHookName: 'aws:deploy:deploy:checkForChanges',
-      awsRequestStubMap: {
+      lastLifecycleHookName: 'after:deploy:deploy',
+      awsSdkV3StubMap: {
         CloudFormation: {
           describeStacks: { Stacks: [{}] },
+          describeStackEvents: {
+            StackEvents: [
+              {
+                EventId: 'stack-event-id',
+                LogicalResourceId: 'new-service-dev',
+                ResourceStatus: 'UPDATE_COMPLETE',
+                ResourceType: 'AWS::CloudFormation::Stack',
+                StackId:
+                  'arn:aws:cloudformation:us-east-1:999999999999:stack/new-service-dev/stack-id',
+                StackName: 'new-service-dev',
+              },
+            ],
+          },
           describeStackResource: {
             StackResourceDetail: { PhysicalResourceId: 'deployment-bucket' },
+          },
+          listStackResources: {},
+          validateTemplate: {},
+          deleteChangeSet: {},
+          createChangeSet: {},
+          executeChangeSet: {},
+          describeChangeSet: {
+            ChangeSetName: 'new-service-dev-change-set',
+            ChangeSetId: 'some-change-set-id',
+            StackId: 'arn:aws:cloudformation:us-east-1:999999999999:stack/new-service-dev/stack-id',
+            StackName: 'new-service-dev',
+            Status: 'CREATE_COMPLETE',
           },
         },
         STS: {
@@ -1125,6 +1149,7 @@ describe('test/unit/lib/plugins/aws/package/compile/events/apiGateway/lib/hack/u
         },
         S3: {
           listObjectsV2: { Contents: [] },
+          upload: {},
           headObject: {},
           headBucket: {},
         },
@@ -1159,30 +1184,29 @@ describe('test/unit/lib/plugins/aws/package/compile/events/apiGateway/lib/hack/u
   });
 
   it('should correctly resolve `apiId` during deployment', async () => {
-    const { serviceConfig, servicePath, updateConfig } = await fixtures.setup('api-gateway');
     const getDeploymentsStub = sinon.stub().returns({ items: [{ id: 'deployment-id' }] });
     const stage = 'dev';
 
-    await updateConfig({
-      provider: {
-        apiGateway: {
-          shouldStartNameWithService: true,
-        },
-        stackTags: { key: 'value' },
-      },
-    });
-
     await runServerless({
+      fixture: 'api-gateway',
       command: 'deploy',
-      cwd: servicePath,
       options: { stage },
+      configExt: {
+        service: 'new-service',
+        provider: {
+          apiGateway: {
+            shouldStartNameWithService: true,
+          },
+          stackTags: { key: 'value' },
+        },
+      },
       lastLifecycleHookName: 'after:deploy:deploy',
-      awsRequestStubMap: {
+      awsSdkV3StubMap: {
         APIGateway: {
           createStage: {},
           getDeployments: getDeploymentsStub,
           getStage: {},
-          getRestApis: { items: [{ id: 'api-id', name: `${serviceConfig.service}-${stage}` }] },
+          getRestApis: { items: [{ id: 'api-id', name: `new-service-${stage}` }] },
           tagResource: {},
         },
         CloudFormation: {
@@ -1190,8 +1214,13 @@ describe('test/unit/lib/plugins/aws/package/compile/events/apiGateway/lib/hack/u
           describeStackEvents: {
             StackEvents: [
               {
+                EventId: 'stack-event-id',
+                LogicalResourceId: 'new-service-dev',
                 ResourceStatus: 'UPDATE_COMPLETE',
                 ResourceType: 'AWS::CloudFormation::Stack',
+                StackId:
+                  'arn:aws:cloudformation:us-east-1:999999999999:stack/new-service-dev/stack-id',
+                StackName: 'new-service-dev',
               },
             ],
           },
@@ -1206,6 +1235,7 @@ describe('test/unit/lib/plugins/aws/package/compile/events/apiGateway/lib/hack/u
           describeChangeSet: {
             ChangeSetName: 'new-service-dev-change-set',
             ChangeSetId: 'some-change-set-id',
+            StackId: 'arn:aws:cloudformation:us-east-1:999999999999:stack/new-service-dev/stack-id',
             StackName: 'new-service-dev',
             Status: 'CREATE_COMPLETE',
           },
@@ -1234,7 +1264,6 @@ describe('test/unit/lib/plugins/aws/package/compile/events/apiGateway/lib/hack/u
   });
 
   it('should use stage defined under apiGateway config if passed', async () => {
-    const { serviceConfig, servicePath, updateConfig } = await fixtures.setup('api-gateway');
     const getDeploymentsStub = sinon.stub().returns({ items: [{ id: 'deployment-id' }] });
     const getStageStub = sinon.stub().resolves({});
     const createStageStub = sinon.stub();
@@ -1242,29 +1271,29 @@ describe('test/unit/lib/plugins/aws/package/compile/events/apiGateway/lib/hack/u
     const tagResourceStub = sinon.stub();
     const stage = 'dev';
 
-    await updateConfig({
-      provider: {
-        stage,
-        apiGateway: {
-          shouldStartNameWithService: true,
-          stage: 'customStage',
-        },
-        stackTags: { key: 'value' },
-        logs: { restApi: true },
-      },
-    });
-
     await runServerless({
+      fixture: 'api-gateway',
       command: 'deploy',
-      cwd: servicePath,
+      configExt: {
+        service: 'new-service',
+        provider: {
+          stage,
+          apiGateway: {
+            shouldStartNameWithService: true,
+            stage: 'customStage',
+          },
+          stackTags: { key: 'value' },
+          logs: { restApi: true },
+        },
+      },
       lastLifecycleHookName: 'after:deploy:deploy',
-      awsRequestStubMap: {
+      awsSdkV3StubMap: {
         APIGateway: {
           createStage: createStageStub,
           getStage: getStageStub,
           updateStage: updateStageStub,
           getDeployments: getDeploymentsStub,
-          getRestApis: { items: [{ id: 'api-id', name: `${serviceConfig.service}-${stage}` }] },
+          getRestApis: { items: [{ id: 'api-id', name: `new-service-${stage}` }] },
           tagResource: tagResourceStub,
         },
         CloudFormation: {
@@ -1272,8 +1301,13 @@ describe('test/unit/lib/plugins/aws/package/compile/events/apiGateway/lib/hack/u
           describeStackEvents: {
             StackEvents: [
               {
+                EventId: 'stack-event-id',
+                LogicalResourceId: 'new-service-dev',
                 ResourceStatus: 'UPDATE_COMPLETE',
                 ResourceType: 'AWS::CloudFormation::Stack',
+                StackId:
+                  'arn:aws:cloudformation:us-east-1:999999999999:stack/new-service-dev/stack-id',
+                StackName: 'new-service-dev',
               },
             ],
           },
@@ -1288,6 +1322,7 @@ describe('test/unit/lib/plugins/aws/package/compile/events/apiGateway/lib/hack/u
           describeChangeSet: {
             ChangeSetName: 'new-service-dev-change-set',
             ChangeSetId: 'some-change-set-id',
+            StackId: 'arn:aws:cloudformation:us-east-1:999999999999:stack/new-service-dev/stack-id',
             StackName: 'new-service-dev',
             Status: 'CREATE_COMPLETE',
           },
@@ -1323,34 +1358,33 @@ describe('test/unit/lib/plugins/aws/package/compile/events/apiGateway/lib/hack/u
   });
 
   it('should update stage, and remove log group using stage defined under apiGateway config if configured such', async () => {
-    const { serviceConfig, servicePath, updateConfig } = await fixtures.setup('api-gateway');
     const getDeploymentsStub = sinon.stub().returns({ items: [{ id: 'deployment-id' }] });
     const updateStageStub = sinon.stub();
     const deleteLogGroupStub = sinon.stub();
     const stage = 'dev';
 
-    await updateConfig({
-      provider: {
-        stage,
-        apiGateway: {
-          shouldStartNameWithService: true,
-          stage: 'customStage',
-        },
-        stackTags: { key: 'value' },
-        tracing: { apiGateway: true },
-      },
-    });
-
     await runServerless({
+      fixture: 'api-gateway',
       command: 'deploy',
-      cwd: servicePath,
+      configExt: {
+        service: 'new-service',
+        provider: {
+          stage,
+          apiGateway: {
+            shouldStartNameWithService: true,
+            stage: 'customStage',
+          },
+          stackTags: { key: 'value' },
+          tracing: { apiGateway: true },
+        },
+      },
       lastLifecycleHookName: 'after:deploy:deploy',
-      awsRequestStubMap: {
+      awsSdkV3StubMap: {
         APIGateway: {
           updateStage: updateStageStub,
           getStage: { id: 'stage-id' },
           getDeployments: getDeploymentsStub,
-          getRestApis: { items: [{ id: 'api-id', name: `${serviceConfig.service}-${stage}` }] },
+          getRestApis: { items: [{ id: 'api-id', name: `new-service-${stage}` }] },
           tagResource: {},
         },
         CloudFormation: {
@@ -1358,8 +1392,13 @@ describe('test/unit/lib/plugins/aws/package/compile/events/apiGateway/lib/hack/u
           describeStackEvents: {
             StackEvents: [
               {
+                EventId: 'stack-event-id',
+                LogicalResourceId: 'new-service-dev',
                 ResourceStatus: 'UPDATE_COMPLETE',
                 ResourceType: 'AWS::CloudFormation::Stack',
+                StackId:
+                  'arn:aws:cloudformation:us-east-1:999999999999:stack/new-service-dev/stack-id',
+                StackName: 'new-service-dev',
               },
             ],
           },
@@ -1374,6 +1413,7 @@ describe('test/unit/lib/plugins/aws/package/compile/events/apiGateway/lib/hack/u
           describeChangeSet: {
             ChangeSetName: 'new-service-dev-change-set',
             ChangeSetId: 'some-change-set-id',
+            StackId: 'arn:aws:cloudformation:us-east-1:999999999999:stack/new-service-dev/stack-id',
             StackName: 'new-service-dev',
             Status: 'CREATE_COMPLETE',
           },
