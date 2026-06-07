@@ -28,12 +28,22 @@ This project is open-source and free to use. However, maintaining it requires ti
 
 Requires Node.js `^20.19.0 || ^22.13.0 || >=24`.
 
+Install the 3.x release line explicitly:
+
 ```sh
-npm remove -g serverless
-npm install -g osls
+npm install -g osls@3
 
 osls --version
 ```
+
+If you are replacing a global Serverless Framework installation, remove it first so the `serverless` command resolves to osls:
+
+```sh
+npm uninstall -g serverless
+npm install -g osls@3
+```
+
+The package provides the `osls`, `sls`, and `serverless` commands.
 
 The repository has been created and is maintained by [Bref](https://bref.sh) maintainers and contributors. The main goal of this repository is to provide continuity for Bref users, so that these Bref projects keep working for the next 5 years. No major new features are planned. However, community contributions to keep the project running (even for languages other than PHP), like adding support to new runtime versions, adapting to AWS changes, bugfixes, and other small improvements are welcome.
 
