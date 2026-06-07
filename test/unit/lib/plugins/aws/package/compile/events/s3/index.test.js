@@ -617,10 +617,11 @@ describe('AwsCompileS3Events', () => {
 
     it('should support `forceDeploy` setting', async () => {
       const result = await runServerless({
-        fixture: 'function',
+        fixture: 's3',
         configExt: {
           functions: {
             basic: {
+              handler: 'core.existing',
               events: [
                 {
                   s3: {
@@ -956,10 +957,11 @@ describe('test/unit/lib/plugins/aws/package/compile/events/s3/index.test.js', ()
 
   before(async () => {
     const { cfTemplate, awsNaming, serverless } = await runServerless({
-      fixture: 'function',
+      fixture: 's3',
       configExt: {
         functions: {
           basic: {
+            handler: 'core.existing',
             events: [
               {
                 s3: {
@@ -971,6 +973,7 @@ describe('test/unit/lib/plugins/aws/package/compile/events/s3/index.test.js', ()
             ],
           },
           other: {
+            handler: 'core.existingCreated',
             events: [
               {
                 s3: {
@@ -982,7 +985,7 @@ describe('test/unit/lib/plugins/aws/package/compile/events/s3/index.test.js', ()
             ],
           },
           withIf: {
-            handler: 'basic.handler',
+            handler: 'core.existingRemoved',
             events: [
               {
                 s3: {
@@ -1000,7 +1003,7 @@ describe('test/unit/lib/plugins/aws/package/compile/events/s3/index.test.js', ()
             ],
           },
           prefixSuffixWithCfFunction: {
-            handler: 'basic.handler',
+            handler: 'core.custom',
             events: [
               {
                 s3: {
@@ -1030,6 +1033,114 @@ describe('test/unit/lib/plugins/aws/package/compile/events/s3/index.test.js', ()
     cfResources = cfTemplate.Resources;
     naming = awsNaming;
     serverlessInstance = serverless;
+  });
+
+  it('should generate expected resources for new S3 buckets', () => {
+    const serviceName = serverlessInstance.service.service;
+    const minimalBucketName = `${serviceName}-s3-minimal`;
+    const extendedBucketName = `${serviceName}-s3-extended`;
+    const minimalBucket = cfResources[naming.getBucketLogicalId(minimalBucketName)];
+    const extendedBucket = cfResources[naming.getBucketLogicalId(extendedBucketName)];
+    const customBucket = cfResources[naming.getBucketLogicalId('customBucket')];
+
+    expect(minimalBucket).to.deep.equal({
+      Type: 'AWS::S3::Bucket',
+      Properties: {
+        BucketName: minimalBucketName,
+        NotificationConfiguration: {
+          LambdaConfigurations: [
+            {
+              Event: 's3:ObjectCreated:*',
+              Function: { 'Fn::GetAtt': [naming.getLambdaLogicalId('minimal'), 'Arn'] },
+            },
+          ],
+        },
+      },
+      DependsOn: [naming.getLambdaS3PermissionLogicalId('minimal', minimalBucketName)],
+    });
+    expect(extendedBucket.Properties.NotificationConfiguration.LambdaConfigurations).to.deep.equal([
+      {
+        Event: 's3:ObjectRemoved:*',
+        Function: { 'Fn::GetAtt': [naming.getLambdaLogicalId('extended'), 'Arn'] },
+        Filter: {
+          S3Key: {
+            Rules: [
+              { Name: 'prefix', Value: 'photos/' },
+              { Name: 'suffix', Value: '.jpg' },
+            ],
+          },
+        },
+      },
+    ]);
+    expect(extendedBucket.DependsOn).to.deep.equal([
+      naming.getLambdaS3PermissionLogicalId('extended', extendedBucketName),
+    ]);
+    expect(customBucket.Properties).to.deep.include({
+      BucketName: `${serviceName}-custom-bucket-dev`,
+      PublicAccessBlockConfiguration: {
+        BlockPublicAcls: true,
+        BlockPublicPolicy: true,
+        IgnorePublicAcls: true,
+        RestrictPublicBuckets: true,
+      },
+    });
+  });
+
+  it('should generate expected custom resources for existing S3 buckets', () => {
+    const serviceName = serverlessInstance.service.service;
+    const existingResource = cfResources[naming.getCustomResourceS3ResourceLogicalId('existing')];
+    const createdResource =
+      cfResources[naming.getCustomResourceS3ResourceLogicalId('existingCreated')];
+    const removedResource =
+      cfResources[naming.getCustomResourceS3ResourceLogicalId('existingRemoved')];
+
+    expect(existingResource).to.deep.equal({
+      Type: 'Custom::S3',
+      Version: 1,
+      DependsOn: [
+        naming.getLambdaLogicalId('existing'),
+        naming.getCustomResourceS3HandlerFunctionLogicalId(),
+      ],
+      Properties: {
+        ServiceToken: {
+          'Fn::GetAtt': [naming.getCustomResourceS3HandlerFunctionLogicalId(), 'Arn'],
+        },
+        FunctionName: serverlessInstance.service.getFunction('existing').name,
+        BucketName: `${serviceName}-s3-existing-simple`,
+        BucketConfigs: [
+          {
+            Event: 's3:ObjectCreated:*',
+            Rules: [{ Prefix: 'Files/' }, { Suffix: '.TXT' }],
+          },
+        ],
+      },
+    });
+    expect(createdResource.Properties.BucketName).to.equal(`${serviceName}-s3-existing-complex`);
+    expect(createdResource.Properties.BucketConfigs).to.deep.equal([
+      {
+        Event: 's3:ObjectCreated:*',
+        Rules: [{ Prefix: 'photos' }, { Suffix: '.jpg' }],
+      },
+      {
+        Event: 's3:ObjectCreated:*',
+        Rules: [{ Prefix: 'photos' }, { Suffix: '.png' }],
+      },
+    ]);
+    expect(removedResource.DependsOn).to.deep.equal([
+      naming.getLambdaLogicalId('existingRemoved'),
+      naming.getCustomResourceS3HandlerFunctionLogicalId(),
+      naming.getCustomResourceS3ResourceLogicalId('existingCreated'),
+    ]);
+    expect(removedResource.Properties.BucketConfigs).to.deep.equal([
+      {
+        Event: 's3:ObjectRemoved:*',
+        Rules: [{ Prefix: 'photos' }, { Suffix: '.jpg' }],
+      },
+      {
+        Event: 's3:ObjectRemoved:*',
+        Rules: [{ Prefix: 'photos' }, { Suffix: '.png' }],
+      },
+    ]);
   });
 
   it('should create lambda permissions policy with wild card', async () => {
