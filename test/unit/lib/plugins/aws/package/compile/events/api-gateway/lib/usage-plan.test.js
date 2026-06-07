@@ -291,6 +291,16 @@ describe('#compileUsagePlan()', () => {
 });
 
 describe('UsagePlan', () => {
+  const getApiGatewayDeploymentLogicalId = (cfTemplate) => {
+    const deploymentLogicalId = Object.keys(cfTemplate.Resources).find((key) =>
+      key.startsWith('ApiGatewayDeployment')
+    );
+    expect(deploymentLogicalId).to.be.a('string');
+    expect(cfTemplate.Resources[deploymentLogicalId].Type).to.equal('AWS::ApiGateway::Deployment');
+
+    return deploymentLogicalId;
+  };
+
   const burstLimit = 98;
   const rateLimit = 99;
 
@@ -326,6 +336,68 @@ describe('UsagePlan', () => {
       },
     },
   };
+
+  it('Should package a default usage plan resource', async () => {
+    const { awsNaming, cfTemplate, serverless } = await runServerless({
+      fixture: 'api-gateway',
+      command: 'package',
+      configExt: {
+        provider: {
+          apiGateway: {
+            apiKeys: ['1234567890'],
+          },
+        },
+      },
+    });
+    const usagePlan = cfTemplate.Resources[awsNaming.getUsagePlanLogicalId()];
+
+    expect(usagePlan.Type).to.equal('AWS::ApiGateway::UsagePlan');
+    expect(usagePlan.DependsOn).to.equal(getApiGatewayDeploymentLogicalId(cfTemplate));
+    expect(usagePlan.Properties.ApiStages).to.deep.equal([
+      {
+        ApiId: { Ref: 'ApiGatewayRestApi' },
+        Stage: 'dev',
+      },
+    ]);
+    expect(usagePlan.Properties.Description).to.equal(
+      `Usage plan for ${serverless.service.service} dev stage`
+    );
+    expect(usagePlan.Properties.UsagePlanName).to.equal(`${serverless.service.service}-dev`);
+  });
+
+  it('Should package named usage plan resources', async () => {
+    const { awsNaming, cfTemplate, serverless } = await runServerless({
+      fixture: 'api-gateway',
+      command: 'package',
+      configExt: {
+        provider: {
+          apiGateway: {
+            usagePlan: [{ free: {} }, { paid: {} }],
+          },
+        },
+      },
+    });
+    const deploymentLogicalId = getApiGatewayDeploymentLogicalId(cfTemplate);
+
+    for (const planName of ['free', 'paid']) {
+      const usagePlan = cfTemplate.Resources[awsNaming.getUsagePlanLogicalId(planName)];
+
+      expect(usagePlan.Type).to.equal('AWS::ApiGateway::UsagePlan');
+      expect(usagePlan.DependsOn).to.equal(deploymentLogicalId);
+      expect(usagePlan.Properties.ApiStages).to.deep.equal([
+        {
+          ApiId: { Ref: 'ApiGatewayRestApi' },
+          Stage: 'dev',
+        },
+      ]);
+      expect(usagePlan.Properties.Description).to.equal(
+        `Usage plan "${planName}" for ${serverless.service.service} dev stage`
+      );
+      expect(usagePlan.Properties.UsagePlanName).to.equal(
+        `${serverless.service.service}-${planName}-dev`
+      );
+    }
+  });
 
   it('Should have values for throttle', async () => {
     serverlessConfigurationExtension.provider.apiGateway = { usagePlan: { throttle } };
@@ -371,7 +443,7 @@ describe('UsagePlan', () => {
       rateLimit
     );
 
-    expect(cfTemplate.Resources.ApiGatewayUsagePlan.Properties).to.not.have.property('quota');
+    expect(cfTemplate.Resources.ApiGatewayUsagePlan.Properties).to.not.have.property('Quota');
   });
 
   it('Should have values for quota and throttle', async () => {

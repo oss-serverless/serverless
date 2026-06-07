@@ -221,6 +221,58 @@ describe('#compileAuthorizers()', () => {
 });
 
 describe('#compileAuthorizers() #2', () => {
+  it('should package a local Lambda authorizer with method references', async () => {
+    const { awsNaming, cfTemplate } = await runServerless({
+      fixture: 'api-gateway',
+      command: 'package',
+      configExt: {
+        functions: {
+          auth: {
+            handler: 'index.handler',
+          },
+          foo: {
+            events: [
+              {
+                http: {
+                  method: 'get',
+                  path: '/foo',
+                  authorizer: {
+                    name: 'auth',
+                    type: 'request',
+                    identitySource: 'method.request.header.Authorization',
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
+    const authorizerLogicalId = awsNaming.getAuthorizerLogicalId('auth');
+    const authorizer = cfTemplate.Resources[authorizerLogicalId];
+    const authorizerPermission =
+      cfTemplate.Resources[awsNaming.getLambdaApiGatewayPermissionLogicalId('auth')];
+    const method = cfTemplate.Resources[awsNaming.getMethodLogicalId('Foo', 'GET')];
+
+    expect(authorizer.Type).to.equal('AWS::ApiGateway::Authorizer');
+    expect(authorizer.Properties.Name).to.equal('auth');
+    expect(authorizer.Properties.Type).to.equal('REQUEST');
+    expect(authorizer.Properties.IdentitySource).to.equal('method.request.header.Authorization');
+    expect(authorizer.Properties.RestApiId).to.deep.equal({ Ref: 'ApiGatewayRestApi' });
+    expect(authorizer.Properties.AuthorizerUri['Fn::Join'][1]).to.deep.include({
+      'Fn::GetAtt': ['AuthLambdaFunction', 'Arn'],
+    });
+    expect(authorizerPermission.Type).to.equal('AWS::Lambda::Permission');
+    expect(authorizerPermission.Properties.FunctionName).to.deep.equal({
+      'Fn::GetAtt': ['AuthLambdaFunction', 'Arn'],
+    });
+    expect(authorizerPermission.Properties.Action).to.equal('lambda:InvokeFunction');
+    expect(authorizerPermission.Properties.Principal).to.equal('apigateway.amazonaws.com');
+    expect(method.Properties.AuthorizationType).to.equal('CUSTOM');
+    expect(method.Properties.AuthorizerId).to.deep.equal({ Ref: authorizerLogicalId });
+    expect(method.DependsOn).to.include(authorizerLogicalId);
+  });
+
   it('Should reference provisioned alias when pointing local lambda authorizer', async () =>
     runServerless({
       fixture: 'function',

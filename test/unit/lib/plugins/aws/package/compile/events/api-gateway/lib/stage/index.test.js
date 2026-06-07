@@ -62,31 +62,6 @@ describe('#compileStage()', () => {
       };
     });
 
-    it.skip('should create a dedicated stage resource if tracing is configured', async () =>
-      awsCompileApigEvents.compileStage().then(() => {
-        const resources =
-          awsCompileApigEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources;
-
-        expect(resources[stageLogicalId]).to.deep.equal({
-          Type: 'AWS::ApiGateway::Stage',
-          Properties: {
-            RestApiId: {
-              Ref: awsCompileApigEvents.apiGatewayRestApiLogicalId,
-            },
-            DeploymentId: {
-              Ref: awsCompileApigEvents.apiGatewayDeploymentLogicalId,
-            },
-            StageName: 'dev',
-            Tags: [],
-            TracingEnabled: true,
-          },
-        });
-
-        expect(resources[awsCompileApigEvents.apiGatewayDeploymentLogicalId]).to.deep.equal({
-          Properties: {},
-        });
-      }));
-
     it('should NOT create a dedicated stage resource if tracing is not enabled', async () => {
       awsCompileApigEvents.serverless.service.provider.tracing = {};
 
@@ -105,101 +80,6 @@ describe('#compileStage()', () => {
     });
   });
 
-  describe('tags', () => {
-    it.skip('should create a dedicated stage resource if provider.stackTags is configured', async () => {
-      awsCompileApigEvents.serverless.service.provider.stackTags = {
-        foo: '1',
-      };
-
-      awsCompileApigEvents.compileStage().then(() => {
-        const resources =
-          awsCompileApigEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources;
-        expect(resources[awsCompileApigEvents.apiGatewayDeploymentLogicalId]).to.deep.equal({
-          Properties: {},
-        });
-
-        expect(resources[stageLogicalId]).to.deep.equal({
-          Type: 'AWS::ApiGateway::Stage',
-          Properties: {
-            RestApiId: {
-              Ref: awsCompileApigEvents.apiGatewayRestApiLogicalId,
-            },
-            DeploymentId: {
-              Ref: awsCompileApigEvents.apiGatewayDeploymentLogicalId,
-            },
-            StageName: stage,
-            TracingEnabled: false,
-            Tags: [{ Key: 'foo', Value: '1' }],
-          },
-        });
-      });
-    });
-
-    it.skip('should create a dedicated stage resource if provider.tags is configured', async () => {
-      awsCompileApigEvents.serverless.service.provider.tags = {
-        foo: '1',
-      };
-
-      awsCompileApigEvents.compileStage().then(() => {
-        const resources =
-          awsCompileApigEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources;
-        expect(resources[awsCompileApigEvents.apiGatewayDeploymentLogicalId]).to.deep.equal({
-          Properties: {},
-        });
-
-        expect(resources[stageLogicalId]).to.deep.equal({
-          Type: 'AWS::ApiGateway::Stage',
-          Properties: {
-            RestApiId: {
-              Ref: awsCompileApigEvents.apiGatewayRestApiLogicalId,
-            },
-            DeploymentId: {
-              Ref: awsCompileApigEvents.apiGatewayDeploymentLogicalId,
-            },
-            StageName: stage,
-            TracingEnabled: false,
-            Tags: [{ Key: 'foo', Value: '1' }],
-          },
-        });
-      });
-    });
-
-    it.skip('should override provider.stackTags by provider.tags', async () => {
-      awsCompileApigEvents.serverless.service.provider.stackTags = {
-        foo: 'from-stackTags',
-        bar: 'from-stackTags',
-      };
-      awsCompileApigEvents.serverless.service.provider.tags = {
-        foo: 'from-tags',
-        buz: 'from-tags',
-      };
-
-      awsCompileApigEvents.compileStage().then(() => {
-        const resources =
-          awsCompileApigEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources;
-
-        expect(resources[stageLogicalId]).to.deep.equal({
-          Type: 'AWS::ApiGateway::Stage',
-          Properties: {
-            RestApiId: {
-              Ref: awsCompileApigEvents.apiGatewayRestApiLogicalId,
-            },
-            DeploymentId: {
-              Ref: awsCompileApigEvents.apiGatewayDeploymentLogicalId,
-            },
-            StageName: stage,
-            TracingEnabled: false,
-            Tags: [
-              { Key: 'foo', Value: 'from-tags' },
-              { Key: 'bar', Value: 'from-stackTags' },
-              { Key: 'buz', Value: 'from-tags' },
-            ],
-          },
-        });
-      });
-    });
-  });
-
   describe('logs', () => {
     beforeEach(() => {
       sinon.stub(childProcess, 'execAsync');
@@ -208,46 +88,6 @@ describe('#compileStage()', () => {
         restApi: true,
       };
     });
-
-    it.skip('should create a dedicated stage resource if logs are configured', async () =>
-      awsCompileApigEvents.compileStage().then(() => {
-        const resources =
-          awsCompileApigEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources;
-
-        expect(resources[stageLogicalId]).to.deep.equal({
-          Type: 'AWS::ApiGateway::Stage',
-          Properties: {
-            RestApiId: {
-              Ref: awsCompileApigEvents.apiGatewayRestApiLogicalId,
-            },
-            DeploymentId: {
-              Ref: awsCompileApigEvents.apiGatewayDeploymentLogicalId,
-            },
-            StageName: 'dev',
-            Tags: [],
-            TracingEnabled: false,
-            MethodSettings: [
-              {
-                DataTraceEnabled: true,
-                HttpMethod: '*',
-                LoggingLevel: 'INFO',
-                ResourcePath: '/*',
-              },
-            ],
-            AccessLogSetting: {
-              DestinationArn: {
-                'Fn::GetAtt': [logGroupLogicalId, 'Arn'],
-              },
-              Format:
-                'requestId: $context.requestId, ip: $context.identity.sourceIp, caller: $context.identity.caller, user: $context.identity.user, requestTime: $context.requestTime, httpMethod: $context.httpMethod, resourcePath: $context.resourcePath, status: $context.status, protocol: $context.protocol, responseLength: $context.responseLength',
-            },
-          },
-        });
-
-        expect(resources[awsCompileApigEvents.apiGatewayDeploymentLogicalId]).to.deep.equal({
-          Properties: {},
-        });
-      }));
 
     it('should create a Log Group resource', async () => {
       return awsCompileApigEvents.compileStage().then(() => {
@@ -317,6 +157,108 @@ describe('#compileStage()', () => {
 });
 
 describe('test/unit/lib/plugins/aws/package/compile/events/apiGateway/lib/stage/index.test.js', () => {
+  const getApiGatewayDeploymentResource = (cfTemplate) => {
+    const deploymentLogicalId = Object.keys(cfTemplate.Resources).find((key) =>
+      key.startsWith('ApiGatewayDeployment')
+    );
+    expect(deploymentLogicalId).to.be.a('string');
+
+    const deployment = cfTemplate.Resources[deploymentLogicalId];
+    expect(deployment.Type).to.equal('AWS::ApiGateway::Deployment');
+
+    return deployment;
+  };
+
+  const expectDeploymentStageName = (cfTemplate, stageName) => {
+    expect(getApiGatewayDeploymentResource(cfTemplate).Properties).to.deep.include({
+      RestApiId: { Ref: 'ApiGatewayRestApi' },
+      StageName: stageName,
+    });
+  };
+
+  // Tracing, stage tags, and stage log settings are applied by the deploy-time
+  // update-stage hook; package only emits Deployment and log helper resources.
+  it('should not package tracing as a dedicated Stage resource', async () => {
+    const { cfTemplate, awsNaming } = await runServerless({
+      fixture: 'api-gateway',
+      command: 'package',
+      configExt: {
+        provider: {
+          tracing: {
+            apiGateway: true,
+          },
+        },
+      },
+    });
+
+    expect(cfTemplate.Resources[awsNaming.getStageLogicalId()]).to.be.undefined;
+    expectDeploymentStageName(cfTemplate, 'dev');
+  });
+
+  it('should not package provider.stackTags as API Gateway resource tags', async () => {
+    const { cfTemplate, awsNaming } = await runServerless({
+      fixture: 'api-gateway',
+      command: 'package',
+      configExt: {
+        provider: {
+          stackTags: {
+            foo: '1',
+          },
+        },
+      },
+    });
+
+    expect(cfTemplate.Resources[awsNaming.getStageLogicalId()]).to.be.undefined;
+    expectDeploymentStageName(cfTemplate, 'dev');
+    expect(cfTemplate.Resources.ApiGatewayRestApi.Properties.Tags).to.be.undefined;
+  });
+
+  it('should package provider.tags as API Gateway RestApi tags', async () => {
+    const { cfTemplate, awsNaming } = await runServerless({
+      fixture: 'api-gateway',
+      command: 'package',
+      configExt: {
+        provider: {
+          tags: {
+            foo: '1',
+          },
+        },
+      },
+    });
+
+    expect(cfTemplate.Resources[awsNaming.getStageLogicalId()]).to.be.undefined;
+    expectDeploymentStageName(cfTemplate, 'dev');
+    expect(cfTemplate.Resources.ApiGatewayRestApi.Properties.Tags).to.deep.equal([
+      { Key: 'foo', Value: '1' },
+    ]);
+  });
+
+  it('should only package provider.tags as API Gateway RestApi tags when stackTags are also configured', async () => {
+    const { cfTemplate, awsNaming } = await runServerless({
+      fixture: 'api-gateway',
+      command: 'package',
+      configExt: {
+        provider: {
+          stackTags: {
+            foo: 'from-stackTags',
+            bar: 'from-stackTags',
+          },
+          tags: {
+            foo: 'from-tags',
+            buz: 'from-tags',
+          },
+        },
+      },
+    });
+
+    expect(cfTemplate.Resources[awsNaming.getStageLogicalId()]).to.be.undefined;
+    expectDeploymentStageName(cfTemplate, 'dev');
+    expect(cfTemplate.Resources.ApiGatewayRestApi.Properties.Tags).to.deep.equal([
+      { Key: 'foo', Value: 'from-tags' },
+      { Key: 'buz', Value: 'from-tags' },
+    ]);
+  });
+
   it('should not create LogGroup if `accessLogging` set to false', async () => {
     const { cfTemplate, awsNaming } = await runServerless({
       fixture: 'api-gateway',
@@ -335,7 +277,7 @@ describe('test/unit/lib/plugins/aws/package/compile/events/apiGateway/lib/stage/
     expect(cfTemplate.Resources[awsNaming.getApiGatewayLogGroupLogicalId()]).to.be.undefined;
   });
 
-  it('should create LogGroup with `logs.restApi` set to `true`', async () => {
+  it('should package LogGroup and CloudWatch role with `logs.restApi` set to `true`', async () => {
     const { cfTemplate, awsNaming, serverless } = await runServerless({
       fixture: 'api-gateway',
       command: 'package',
@@ -348,11 +290,23 @@ describe('test/unit/lib/plugins/aws/package/compile/events/apiGateway/lib/stage/
       },
     });
 
+    expect(cfTemplate.Resources[awsNaming.getStageLogicalId()]).to.be.undefined;
+    expectDeploymentStageName(cfTemplate, 'dev');
     expect(cfTemplate.Resources[awsNaming.getApiGatewayLogGroupLogicalId()]).to.deep.equal({
       Type: 'AWS::Logs::LogGroup',
       Properties: {
         LogGroupName: `/aws/api-gateway/${serverless.service.service}-dev`,
       },
+    });
+    expect(
+      cfTemplate.Resources[
+        awsNaming.getCustomResourceApiGatewayAccountCloudWatchRoleResourceLogicalId()
+      ].Properties.ServiceToken
+    ).to.deep.equal({
+      'Fn::GetAtt': [
+        awsNaming.getCustomResourceApiGatewayAccountCloudWatchRoleHandlerFunctionLogicalId(),
+        'Arn',
+      ],
     });
   });
 
