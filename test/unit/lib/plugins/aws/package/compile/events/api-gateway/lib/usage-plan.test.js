@@ -296,9 +296,7 @@ describe('UsagePlan', () => {
       key.startsWith('ApiGatewayDeployment')
     );
     expect(deploymentLogicalId).to.be.a('string');
-    expect(cfTemplate.Resources[deploymentLogicalId].Type).to.equal(
-      'AWS::ApiGateway::Deployment'
-    );
+    expect(cfTemplate.Resources[deploymentLogicalId].Type).to.equal('AWS::ApiGateway::Deployment');
 
     return deploymentLogicalId;
   };
@@ -364,9 +362,7 @@ describe('UsagePlan', () => {
     expect(usagePlan.Properties.Description).to.equal(
       `Usage plan for ${serverless.service.service} dev stage`
     );
-    expect(usagePlan.Properties.UsagePlanName).to.equal(
-      `${serverless.service.service}-dev`
-    );
+    expect(usagePlan.Properties.UsagePlanName).to.equal(`${serverless.service.service}-dev`);
   });
 
   it('Should package named usage plan resources', async () => {
