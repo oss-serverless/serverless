@@ -4,6 +4,17 @@ const runServerless = require('../../../../../../utils/run-serverless');
 const expect = require('chai').expect;
 
 describe('#generateCoreTemplate()', () => {
+  const awsSdkV3StubMap = {
+    STS: {
+      getCallerIdentity: {
+        ResponseMetadata: { RequestId: 'ffffffff-ffff-ffff-ffff-ffffffffffff' },
+        UserId: 'XXXXXXXXXXXXXXXXXXXXX',
+        Account: '1234567890',
+        Arn: 'arn:aws:iam::1234567890:user/test',
+      },
+    },
+  };
+
   it('should reject non-HTTPS requests to the deployment bucket', async () =>
     runServerless({
       config: { service: 'irrelevant', provider: 'aws' },
@@ -144,17 +155,7 @@ describe('#generateCoreTemplate()', () => {
             deploymentBucket: bucketName,
           },
         },
-        awsRequestStubMap: {
-          S3: { getBucketLocation: { LocationConstraint: '' } },
-          STS: {
-            getCallerIdentity: {
-              ResponseMetadata: { RequestId: 'ffffffff-ffff-ffff-ffff-ffffffffffff' },
-              UserId: 'XXXXXXXXXXXXXXXXXXXXX',
-              Account: '1234567890',
-              Arn: 'arn:aws:iam::1234567890:user/test',
-            },
-          },
-        },
+        awsSdkV3StubMap,
         command: 'deploy',
         options: { 'aws-s3-accelerate': true },
         lastLifecycleHookName: 'before:deploy:deploy',
@@ -192,16 +193,7 @@ describe('#generateCoreTemplate()', () => {
       command: 'deploy',
       options: { 'aws-s3-accelerate': true },
       lastLifecycleHookName: 'before:deploy:deploy',
-      awsRequestStubMap: {
-        STS: {
-          getCallerIdentity: {
-            ResponseMetadata: { RequestId: 'ffffffff-ffff-ffff-ffff-ffffffffffff' },
-            UserId: 'XXXXXXXXXXXXXXXXXXXXX',
-            Account: '1234567890',
-            Arn: 'arn:aws:iam::1234567890:user/test',
-          },
-        },
-      },
+      awsSdkV3StubMap,
     }).then(({ cfTemplate: template }) => {
       expect(template.Outputs.ServerlessDeploymentBucketAccelerated).to.not.equal(null);
       expect(template.Outputs.ServerlessDeploymentBucketAccelerated.Value).to.equal(true);
@@ -213,16 +205,7 @@ describe('#generateCoreTemplate()', () => {
       command: 'deploy',
       options: { 'aws-s3-accelerate': false },
       lastLifecycleHookName: 'before:deploy:deploy',
-      awsRequestStubMap: {
-        STS: {
-          getCallerIdentity: {
-            ResponseMetadata: { RequestId: 'ffffffff-ffff-ffff-ffff-ffffffffffff' },
-            UserId: 'XXXXXXXXXXXXXXXXXXXXX',
-            Account: '1234567890',
-            Arn: 'arn:aws:iam::1234567890:user/test',
-          },
-        },
-      },
+      awsSdkV3StubMap,
     }).then(({ cfTemplate: template }) => {
       expect(template.Resources.ServerlessDeploymentBucket).to.be.deep.equal({
         Type: 'AWS::S3::Bucket',
@@ -247,16 +230,7 @@ describe('#generateCoreTemplate()', () => {
     runServerless({
       config: { service: 'irrelevant', provider: { name: 'aws', region: 'us-gov-west-1' } },
       command: 'deploy',
-      awsRequestStubMap: {
-        STS: {
-          getCallerIdentity: {
-            ResponseMetadata: { RequestId: 'ffffffff-ffff-ffff-ffff-ffffffffffff' },
-            UserId: 'XXXXXXXXXXXXXXXXXXXXX',
-            Account: '1234567890',
-            Arn: 'arn:aws:iam::1234567890:user/test',
-          },
-        },
-      },
+      awsSdkV3StubMap,
       options: { 'aws-s3-accelerate': false },
       lastLifecycleHookName: 'before:deploy:deploy',
     }).then(({ cfTemplate: template }) => {

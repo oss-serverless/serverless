@@ -14,7 +14,7 @@ const packageService = require('../../../../../../lib/plugins/package/lib/packag
 const { expect } = require('chai');
 
 describe('test/unit/lib/plugins/package/lib/packageService.test.js', () => {
-  const awsRequestStubMap = {
+  const awsSdkV3StubMap = {
     S3: {
       headBucket: {},
     },
@@ -78,7 +78,7 @@ describe('test/unit/lib/plugins/package/lib/packageService.test.js', () => {
       } = await runServerless({
         fixture: 'packaging',
         command: 'package',
-        awsRequestStubMap,
+        awsSdkV3StubMap,
         configExt: {
           package: {
             patterns: [
@@ -178,7 +178,7 @@ describe('test/unit/lib/plugins/package/lib/packageService.test.js', () => {
       } = await runServerless({
         fixture: 'packaging',
         command: 'package',
-        awsRequestStubMap,
+        awsSdkV3StubMap,
         configExt: {
           useDotenv: true,
         },
@@ -243,7 +243,7 @@ describe('test/unit/lib/plugins/package/lib/packageService.test.js', () => {
       } = await runServerless({
         fixture: 'packaging',
         command: 'package',
-        awsRequestStubMap,
+        awsSdkV3StubMap,
         configExt: {
           package: {
             individually: true,
@@ -305,7 +305,7 @@ describe('test/unit/lib/plugins/package/lib/packageService.test.js', () => {
       const { serverless: serverlessInstance } = await runServerless({
         fixture: 'packaging',
         command: 'package',
-        awsRequestStubMap,
+        awsSdkV3StubMap,
         configExt: {
           package: {
             artifact: 'artifact.zip',
@@ -345,7 +345,7 @@ describe('test/unit/lib/plugins/package/lib/packageService.test.js', () => {
   describe('pre-prepared artifact with absolute artifact path', () => {
     describe('while deploying whole service', () => {
       const s3UploadStub = sinon.stub();
-      const innerAwsRequestStubMap = {
+      const innerAwsSdkV3StubMap = {
         Lambda: {
           getFunction: {
             Configuration: {
@@ -394,7 +394,7 @@ describe('test/unit/lib/plugins/package/lib/packageService.test.js', () => {
           cwd: serviceDir,
           command: 'deploy',
           lastLifecycleHookName: 'aws:deploy:deploy:uploadArtifacts',
-          awsRequestStubMap: innerAwsRequestStubMap,
+          awsSdkV3StubMap: innerAwsSdkV3StubMap,
         });
 
         const callArgs = s3UploadStub.args.find((item) =>
@@ -416,7 +416,7 @@ describe('test/unit/lib/plugins/package/lib/packageService.test.js', () => {
           cwd: serviceDir,
           command: 'deploy',
           lastLifecycleHookName: 'aws:deploy:deploy:uploadArtifacts',
-          awsRequestStubMap: innerAwsRequestStubMap,
+          awsSdkV3StubMap: innerAwsSdkV3StubMap,
         });
 
         const callArgs = s3UploadStub.args.find((item) =>
@@ -428,7 +428,7 @@ describe('test/unit/lib/plugins/package/lib/packageService.test.js', () => {
 
     describe('while deploying specific function', () => {
       const updateFunctionCodeStub = sinon.stub();
-      const innerAwsRequestStubMap = {
+      const innerAwsSdkV3StubMap = {
         Lambda: {
           getFunction: {
             Configuration: {
@@ -464,7 +464,7 @@ describe('test/unit/lib/plugins/package/lib/packageService.test.js', () => {
           cwd: serviceDir,
           command: 'deploy function',
           options: { function: 'other' },
-          awsRequestStubMap: innerAwsRequestStubMap,
+          awsSdkV3StubMap: innerAwsSdkV3StubMap,
         });
         expect(updateFunctionCodeStub).to.have.been.calledOnce;
         expect(updateFunctionCodeStub.args[0][0].ZipFile).to.deep.equal(Buffer.from(zipContent));
@@ -484,7 +484,7 @@ describe('test/unit/lib/plugins/package/lib/packageService.test.js', () => {
           cwd: serviceDir,
           command: 'deploy function',
           options: { function: 'foo' },
-          awsRequestStubMap: innerAwsRequestStubMap,
+          awsSdkV3StubMap: innerAwsSdkV3StubMap,
         });
         expect(updateFunctionCodeStub).to.have.been.calledOnce;
         expect(updateFunctionCodeStub.args[0][0].ZipFile).to.deep.equal(Buffer.from(zipContent));
