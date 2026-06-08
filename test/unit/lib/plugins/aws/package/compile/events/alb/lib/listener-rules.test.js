@@ -2,19 +2,16 @@
 
 const expect = require('chai').expect;
 const AwsCompileAlbEvents = require('../../../../../../../../../../lib/plugins/aws/package/compile/events/alb/index');
-const Serverless = require('../../../../../../../../../../lib/serverless');
-const AwsProvider = require('../../../../../../../../../../lib/plugins/aws/provider');
+const { createAwsEventCompilerContext } = require('../../test-utils');
 
 describe('#compileListenerRules()', () => {
   let awsCompileAlbEvents;
 
   beforeEach(() => {
-    const serverless = new Serverless({ commands: [], options: {} });
-    serverless.setProvider('aws', new AwsProvider(serverless));
-    serverless.service.service = 'some-service';
-    serverless.service.provider.compiledCloudFormationTemplate = { Resources: {} };
-
-    awsCompileAlbEvents = new AwsCompileAlbEvents(serverless);
+    ({ awsCompileEvents: awsCompileAlbEvents } = createAwsEventCompilerContext(
+      AwsCompileAlbEvents,
+      { service: 'some-service' }
+    ));
   });
 
   it('should create ELB listener rule resources', () => {

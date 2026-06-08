@@ -3,20 +3,16 @@
 const expect = require('chai').expect;
 const AwsProvider = require('../../../../../../../../lib/plugins/aws/provider');
 const AwsCompileSNSEvents = require('../../../../../../../../lib/plugins/aws/package/compile/events/sns');
-const Serverless = require('../../../../../../../../lib/serverless');
+const { createAwsEventCompilerContext } = require('./test-utils');
 
 describe('AwsCompileSNSEvents', () => {
-  let serverless;
   let awsCompileSNSEvents;
 
   beforeEach(() => {
-    serverless = new Serverless({ commands: [], options: {} });
-    const options = {
-      region: 'some-region',
-    };
-    serverless.service.provider.compiledCloudFormationTemplate = { Resources: {} };
-    serverless.setProvider('aws', new AwsProvider(serverless));
-    awsCompileSNSEvents = new AwsCompileSNSEvents(serverless, options);
+    ({ awsCompileEvents: awsCompileSNSEvents } = createAwsEventCompilerContext(
+      AwsCompileSNSEvents,
+      { options: { region: 'some-region' } }
+    ));
   });
 
   describe('#constructor()', () => {

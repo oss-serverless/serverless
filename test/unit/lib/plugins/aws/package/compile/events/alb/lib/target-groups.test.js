@@ -2,21 +2,16 @@
 
 const expect = require('chai').expect;
 const AwsCompileAlbEvents = require('../../../../../../../../../../lib/plugins/aws/package/compile/events/alb/index');
-const Serverless = require('../../../../../../../../../../lib/serverless');
-const AwsProvider = require('../../../../../../../../../../lib/plugins/aws/provider');
+const { createAwsEventCompilerContext } = require('../../test-utils');
 
 describe('#compileTargetGroups()', () => {
   let awsCompileAlbEvents;
 
   beforeEach(() => {
-    const serverless = new Serverless({ commands: [], options: {} });
-    serverless.setProvider('aws', new AwsProvider(serverless));
-    serverless.service.service = 'some-service';
-    serverless.service.provider.compiledCloudFormationTemplate = { Resources: {} };
-    serverless.service.functions.first = {};
-    serverless.service.functions.second = {};
-
-    awsCompileAlbEvents = new AwsCompileAlbEvents(serverless);
+    ({ awsCompileEvents: awsCompileAlbEvents } = createAwsEventCompilerContext(
+      AwsCompileAlbEvents,
+      { service: 'some-service', functions: { first: {}, second: {} } }
+    ));
   });
 
   it('should create ELB target group resources', () => {

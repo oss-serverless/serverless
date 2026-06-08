@@ -3,18 +3,15 @@
 const expect = require('chai').expect;
 const AwsProvider = require('../../../../../../../../lib/plugins/aws/provider');
 const AwsCompileCloudWatchEventEvents = require('../../../../../../../../lib/plugins/aws/package/compile/events/cloud-watch-event');
-const Serverless = require('../../../../../../../../lib/serverless');
+const { createAwsEventCompilerContext } = require('./test-utils');
 
 describe('awsCompileCloudWatchEventEvents', () => {
-  let serverless;
   let awsCompileCloudWatchEventEvents;
 
   beforeEach(() => {
-    serverless = new Serverless({ commands: [], options: {} });
-    serverless.service.provider.compiledCloudFormationTemplate = { Resources: {} };
-    serverless.setProvider('aws', new AwsProvider(serverless));
-    awsCompileCloudWatchEventEvents = new AwsCompileCloudWatchEventEvents(serverless);
-    awsCompileCloudWatchEventEvents.serverless.service.service = 'new-service';
+    ({ awsCompileEvents: awsCompileCloudWatchEventEvents } = createAwsEventCompilerContext(
+      AwsCompileCloudWatchEventEvents
+    ));
   });
 
   describe('#constructor()', () => {
