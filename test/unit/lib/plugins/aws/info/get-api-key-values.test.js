@@ -3,14 +3,34 @@
 const expect = require('chai').expect;
 const sinon = require('sinon');
 const AwsInfo = require('../../../../../../lib/plugins/aws/info/index');
-const AwsProvider = require('../../../../../../lib/plugins/aws/provider');
-const Serverless = require('../../../../../../lib/serverless');
 const {
   CloudFormationClient,
   DescribeStackResourcesCommand,
 } = require('@aws-sdk/client-cloudformation');
 const { APIGatewayClient, GetApiKeyCommand } = require('@aws-sdk/client-api-gateway');
 const releasePendingRequestsUntilSettled = require('../../../../../utils/release-pending-requests-until-settled');
+
+function createServerlessContext(options) {
+  const provider = {
+    getStage: () => options.stage,
+    getRegion: () => options.region,
+    getAwsSdkV3Config: async () => ({ region: options.region }),
+    naming: {
+      getStackName: () => 'my-service-dev',
+    },
+  };
+
+  return {
+    provider,
+    serverless: {
+      service: {
+        service: 'my-service',
+        provider: {},
+      },
+      getProvider: sinon.stub().withArgs('aws').returns(provider),
+    },
+  };
+}
 
 describe('#getApiKeyValues()', () => {
   let serverless;
@@ -23,9 +43,7 @@ describe('#getApiKeyValues()', () => {
       stage: 'dev',
       region: 'us-east-1',
     };
-    serverless = new Serverless({ commands: [], options: {} });
-    serverless.setProvider('aws', new AwsProvider(serverless, options));
-    serverless.service.service = 'my-service';
+    ({ serverless } = createServerlessContext(options));
     awsInfo = new AwsInfo(serverless, options);
     cloudFormationSendStub = sinon.stub(CloudFormationClient.prototype, 'send');
     apiGatewaySendStub = sinon.stub(APIGatewayClient.prototype, 'send');

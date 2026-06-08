@@ -3,12 +3,32 @@
 const expect = require('chai').expect;
 const sinon = require('sinon');
 const AwsInfo = require('../../../../../../lib/plugins/aws/info/index');
-const AwsProvider = require('../../../../../../lib/plugins/aws/provider');
-const Serverless = require('../../../../../../lib/serverless');
 const {
   CloudFormationClient,
   ListStackResourcesCommand,
 } = require('@aws-sdk/client-cloudformation');
+
+function createServerlessContext(options) {
+  const provider = {
+    getStage: () => options.stage,
+    getRegion: () => options.region,
+    getAwsSdkV3Config: async () => ({ region: options.region }),
+    naming: {
+      getStackName: () => 'my-service-dev',
+    },
+  };
+
+  return {
+    provider,
+    serverless: {
+      service: {
+        service: 'my-service',
+        functions: {},
+      },
+      getProvider: sinon.stub().withArgs('aws').returns(provider),
+    },
+  };
+}
 
 describe('#getResourceCount()', () => {
   let serverless;
@@ -20,9 +40,7 @@ describe('#getResourceCount()', () => {
       stage: 'dev',
       region: 'us-east-1',
     };
-    serverless = new Serverless({ commands: [], options: {} });
-    serverless.setProvider('aws', new AwsProvider(serverless, options));
-    serverless.service.service = 'my-service';
+    ({ serverless } = createServerlessContext(options));
     serverless.service.functions = {
       hello: {},
       world: {},

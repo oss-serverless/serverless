@@ -16,7 +16,7 @@ describe('test/unit/lib/plugins/aws/info/display.test.js', () => {
     } = await runServerless({
       fixture: 'api-gateway',
       command: 'info',
-      awsRequestStubMap: {
+      awsSdkV3StubMap: {
         APIGateway: {
           getApiKey: {
             value: 'test-key-value',

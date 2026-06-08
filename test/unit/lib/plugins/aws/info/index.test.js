@@ -3,8 +3,40 @@
 const expect = require('chai').expect;
 const sinon = require('sinon');
 const AwsInfo = require('../../../../../../lib/plugins/aws/info/index');
-const AwsProvider = require('../../../../../../lib/plugins/aws/provider');
-const Serverless = require('../../../../../../lib/serverless');
+
+function createServerlessContext(options, getAwsInfo) {
+  const provider = {
+    getStage: () => options.stage,
+    getRegion: () => options.region,
+    getAwsSdkV3Config: async () => ({ region: options.region }),
+  };
+
+  return {
+    provider,
+    serverless: {
+      processedInput: { commands: ['info'] },
+      serviceOutputs: new Map(),
+      servicePluginOutputs: new Map(),
+      getProvider: sinon.stub().withArgs('aws').returns(provider),
+      pluginManager: {
+        spawn: sinon.stub().callsFake(async (command) => {
+          if (command !== 'aws:info') throw new Error(`Unexpected command ${command}`);
+          const awsInfo = getAwsInfo();
+          const lifecycleEvents = awsInfo.commands.aws.commands.info.lifecycleEvents;
+          for (const event of lifecycleEvents) {
+            for (const hookName of [
+              `before:${command}:${event}`,
+              `${command}:${event}`,
+              `after:${command}:${event}`,
+            ]) {
+              if (awsInfo.hooks[hookName]) await awsInfo.hooks[hookName]();
+            }
+          }
+        }),
+      },
+    },
+  };
+}
 
 describe('AwsInfo', () => {
   let serverless;
@@ -25,15 +57,8 @@ describe('AwsInfo', () => {
       stage: 'dev',
       region: 'us-east-1',
     };
-    serverless = new Serverless({ commands: [], options: {} });
-    serverless.setProvider('aws', new AwsProvider(serverless, options));
-    serverless.cli = {
-      log: sinon.stub().returns(),
-    };
+    ({ serverless } = createServerlessContext(options, () => awsInfo));
     awsInfo = new AwsInfo(serverless, options);
-    // Load commands and hooks into pluginManager
-    serverless.pluginManager.loadCommands(awsInfo);
-    serverless.pluginManager.loadHooks(awsInfo);
     validateStub = sinon.stub(awsInfo, 'validate').resolves();
     getStackInfoStub = sinon.stub(awsInfo, 'getStackInfo').resolves();
     getResourceCountStub = sinon.stub(awsInfo, 'getResourceCount').resolves();
@@ -55,14 +80,15 @@ describe('AwsInfo', () => {
     awsInfo.displayApiKeys.restore();
     awsInfo.displayEndpoints.restore();
     awsInfo.displayFunctions.restore();
+    awsInfo.displayLayers.restore();
     awsInfo.displayStackOutputs.restore();
   });
 
   describe('#constructor()', () => {
     it('should have hooks', () => expect(awsInfo.hooks).to.be.not.empty);
 
-    it('should set the provider variable to the AwsProvider instance', () =>
-      expect(awsInfo.provider).to.be.instanceof(AwsProvider));
+    it('should set the provider variable to the aws provider', () =>
+      expect(awsInfo.provider).to.equal(serverless.getProvider('aws')));
 
     it('should set an empty options object if no options are given', () => {
       const awsInfoWithEmptyOptions = new AwsInfo(serverless);

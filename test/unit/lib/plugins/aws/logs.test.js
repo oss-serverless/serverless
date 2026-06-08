@@ -2,9 +2,8 @@
 
 const sinon = require('sinon');
 const proxyquire = require('proxyquire');
-const AwsProvider = require('../../../../../lib/plugins/aws/provider');
 const AwsLogs = require('../../../../../lib/plugins/aws/logs');
-const Serverless = require('../../../../../lib/serverless');
+const ServerlessError = require('../../../../../lib/serverless-error');
 const {
   CloudWatchLogsClient,
   DescribeLogStreamsCommand,
@@ -13,6 +12,40 @@ const {
 
 // Configure chai
 const expect = require('chai').expect;
+
+function createServerlessContext(options) {
+  const provider = {
+    getStage: () => options.stage,
+    getRegion: () => options.region,
+    getAwsSdkV3Config: async () => ({ region: options.region }),
+    naming: {
+      getLogGroupName: (lambdaName) => `/aws/lambda/${lambdaName}`,
+    },
+  };
+  const service = {
+    service: 'new-service',
+    functions: {},
+    getFunction(functionName) {
+      if (!this.functions || !Object.hasOwn(this.functions, functionName)) {
+        throw new ServerlessError(
+          `Function "${functionName}" doesn't exist in this Service`,
+          'FUNCTION_MISSING_IN_SERVICE'
+        );
+      }
+      return this.functions[functionName];
+    },
+  };
+
+  return {
+    provider,
+    serverless: {
+      service,
+      serviceDir: false,
+      processedInput: { commands: ['logs'] },
+      getProvider: sinon.stub().withArgs('aws').returns(provider),
+    },
+  };
+}
 
 describe('AwsLogs', () => {
   let serverless;
@@ -24,10 +57,7 @@ describe('AwsLogs', () => {
       region: 'us-east-1',
       function: 'first',
     };
-    serverless = new Serverless({ commands: [], options: {} });
-    const provider = new AwsProvider(serverless, options);
-    serverless.setProvider('aws', provider);
-    serverless.processedInput = { commands: ['logs'] };
+    ({ serverless } = createServerlessContext(options));
     awsLogs = new AwsLogs(serverless, options);
   });
 
@@ -46,8 +76,8 @@ describe('AwsLogs', () => {
       expect(awsLogsWithEmptyOptions.options).to.deep.equal({});
     });
 
-    it('should set the provider variable to an instance of AwsProvider', () =>
-      expect(awsLogs.provider).to.be.instanceof(AwsProvider));
+    it('should set the provider variable to the aws provider', () =>
+      expect(awsLogs.provider).to.equal(serverless.getProvider('aws')));
 
     it('should run promise chain in order', async () => {
       const validateStub = sinon.stub(awsLogs, 'extendedValidate').resolves();
@@ -336,11 +366,8 @@ describe('AwsLogs', () => {
         region: 'us-east-1',
         function: 'first',
       };
-      serverless = new Serverless({ commands: [], options: {} });
-      const provider = new AwsProvider(serverless, options);
-      serverless.setProvider('aws', provider);
-      serverless.processedInput = { commands: ['logs'] };
-      const mockedAwsLogs = new MockedAwsLogs(serverless, options);
+      const { serverless: mockedServerless } = createServerlessContext(options);
+      const mockedAwsLogs = new MockedAwsLogs(mockedServerless, options);
 
       const filterLogEventsStub = sinon
         .stub(CloudWatchLogsClient.prototype, 'send')
