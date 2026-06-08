@@ -3,7 +3,6 @@
 const chai = require('chai');
 const proxyquire = require('proxyquire').noCallThru();
 const sinon = require('sinon');
-const Serverless = require('../../../../lib/serverless');
 
 const runServerless = require('../../../utils/run-serverless');
 
@@ -24,10 +23,11 @@ describe('test/unit/lib/plugins/print.test.js', () => {
     const Print = proxyquire('../../../../lib/plugins/print', {
       '../utils/serverless-utils/log': { writeText },
     });
-    const serverless = new Serverless({ commands: [], options: {} });
-    serverless.configurationInput = {
-      custom: {
-        enabled: false,
+    const serverless = {
+      configurationInput: {
+        custom: {
+          enabled: false,
+        },
       },
     };
     Object.defineProperty(serverless.configurationInput.custom, '__proto__', {
@@ -50,10 +50,11 @@ describe('test/unit/lib/plugins/print.test.js', () => {
     const Print = proxyquire('../../../../lib/plugins/print', {
       '../utils/serverless-utils/log': { writeText },
     });
-    const serverless = new Serverless({ commands: [], options: {} });
-    serverless.configurationInput = {
-      custom: {
-        items: ['one', 'two', 'three'],
+    const serverless = {
+      configurationInput: {
+        custom: {
+          items: ['one', 'two', 'three'],
+        },
       },
     };
 
@@ -67,8 +68,7 @@ describe('test/unit/lib/plugins/print.test.js', () => {
     const Print = proxyquire('../../../../lib/plugins/print', {
       '../utils/serverless-utils/log': { writeText },
     });
-    const serverless = new Serverless({ commands: [], options: {} });
-    serverless.configurationInput = { custom: {} };
+    const serverless = { configurationInput: { custom: {} } };
 
     try {
       await new Print(serverless, { path: 'custom.constructor.name', format: 'text' }).print();
