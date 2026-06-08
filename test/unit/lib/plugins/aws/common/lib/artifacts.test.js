@@ -2,180 +2,280 @@
 
 const expect = require('chai').expect;
 const path = require('path');
-const AWSCommon = require('../../../../../../../lib/plugins/aws/common/index');
-const Serverless = require('../../../../../../../lib/serverless');
-const { getTmpDirPath, removeSync } = require('../../../../../../utils/fs');
+const proxyquire = require('proxyquire');
+const sinon = require('sinon');
 
 describe('#moveArtifactsToPackage()', () => {
-  let serverless;
-  let awsCommon;
-  const moveBasePath = path.join(getTmpDirPath(), 'move');
-  const moveServerlessPath = path.join(moveBasePath, '.serverless');
+  let artifacts;
+  let removeSync;
+
+  const serviceDir = 'service';
+  const serverlessTmpDirPath = path.join(serviceDir, '.serverless');
+  const targetPath = path.join(serviceDir, 'target');
+
+  const createContext = ({
+    options = {},
+    servicePackage = {},
+    serviceDirValue = serviceDir,
+  } = {}) => {
+    const utils = {
+      dirExistsSync: sinon.stub(),
+      writeFileDir: sinon.stub(),
+      copyDirContentsSync: sinon.stub(),
+    };
+
+    return {
+      options,
+      serverless: {
+        serviceDir: serviceDirValue,
+        service: { package: servicePackage },
+        utils,
+      },
+      ...artifacts,
+    };
+  };
 
   beforeEach(() => {
-    serverless = new Serverless({ commands: [], options: {} });
-    awsCommon = new AWSCommon(serverless, {});
-
-    serverless.serviceDir = moveBasePath;
-    if (!serverless.utils.dirExistsSync(moveServerlessPath)) {
-      serverless.utils.writeFileDir(moveServerlessPath);
-    }
+    removeSync = sinon.stub();
+    artifacts = proxyquire
+      .noCallThru()
+      .load('../../../../../../../lib/plugins/aws/common/lib/artifacts', {
+        '../../../../utils/fs/remove': { removeSync },
+      });
   });
 
-  afterEach(() => {
-    if (serverless.utils.dirExistsSync(moveBasePath)) {
-      removeSync(moveBasePath);
-    }
+  it('should resolve if servicePath is not present', async () => {
+    const context = createContext({ serviceDirValue: undefined });
+
+    await context.moveArtifactsToPackage();
+
+    expect(context.serverless.utils.dirExistsSync).to.not.have.been.called;
+    expect(removeSync).to.not.have.been.called;
   });
 
-  it('should resolve if servicePath is not present', () => {
-    delete serverless.serviceDir;
-    return awsCommon.moveArtifactsToPackage();
-  });
+  it('should resolve if no package is set', async () => {
+    const context = createContext();
 
-  it('should resolve if no package is set', () => awsCommon.moveArtifactsToPackage());
+    await context.moveArtifactsToPackage();
+
+    expect(context.serverless.utils.dirExistsSync).to.not.have.been.called;
+    expect(removeSync).to.not.have.been.called;
+  });
 
   it('should use package option as target', async () => {
-    const testFileSource = path.join(moveServerlessPath, 'moveTestFile.tmp');
-    const targetPath = path.join(moveBasePath, 'target');
+    const context = createContext({ options: { package: targetPath } });
+    context.serverless.utils.dirExistsSync.withArgs(serverlessTmpDirPath).returns(true);
+    context.serverless.utils.dirExistsSync.withArgs(targetPath).returns(false);
 
-    awsCommon.options.package = targetPath;
-    serverless.utils.writeFileSync(testFileSource, '!!!MOVE TEST FILE!!!');
-    return awsCommon.moveArtifactsToPackage().then(() => {
-      const testFileTarget = path.join(targetPath, 'moveTestFile.tmp');
+    await context.moveArtifactsToPackage();
 
-      expect(serverless.utils.dirExistsSync(targetPath)).to.be.equal(true);
-      expect(serverless.utils.fileExistsSync(testFileTarget)).to.be.equal(true);
-    });
+    expect(context.serverless.utils.writeFileDir).to.have.been.calledOnceWithExactly(targetPath);
+    expect(context.serverless.utils.copyDirContentsSync).to.have.been.calledOnceWithExactly(
+      serverlessTmpDirPath,
+      targetPath
+    );
+    expect(removeSync).to.have.been.calledOnceWithExactly(serverlessTmpDirPath);
+    expect(
+      context.serverless.utils.writeFileDir.calledBefore(
+        context.serverless.utils.copyDirContentsSync
+      )
+    ).to.equal(true);
+    expect(context.serverless.utils.copyDirContentsSync.calledBefore(removeSync)).to.equal(true);
   });
 
   it('should use service package path as target', async () => {
-    const testFileSource = path.join(moveServerlessPath, 'moveTestFile.tmp');
-    const targetPath = path.join(moveBasePath, 'target');
+    const context = createContext({ servicePackage: { path: targetPath } });
+    context.serverless.utils.dirExistsSync.withArgs(serverlessTmpDirPath).returns(true);
+    context.serverless.utils.dirExistsSync.withArgs(targetPath).returns(false);
 
-    serverless.service.package.path = targetPath;
-    serverless.utils.writeFileSync(testFileSource, '!!!MOVE TEST FILE!!!');
-    return awsCommon.moveArtifactsToPackage().then(() => {
-      const testFileTarget = path.join(targetPath, 'moveTestFile.tmp');
+    await context.moveArtifactsToPackage();
 
-      expect(serverless.utils.dirExistsSync(targetPath)).to.be.equal(true);
-      expect(serverless.utils.fileExistsSync(testFileTarget)).to.be.equal(true);
-    });
+    expect(context.serverless.utils.writeFileDir).to.have.been.calledOnceWithExactly(targetPath);
+    expect(context.serverless.utils.copyDirContentsSync).to.have.been.calledOnceWithExactly(
+      serverlessTmpDirPath,
+      targetPath
+    );
+    expect(removeSync).to.have.been.calledOnceWithExactly(serverlessTmpDirPath);
+    expect(
+      context.serverless.utils.writeFileDir.calledBefore(
+        context.serverless.utils.copyDirContentsSync
+      )
+    ).to.equal(true);
+    expect(context.serverless.utils.copyDirContentsSync.calledBefore(removeSync)).to.equal(true);
   });
 
   it('should not fail with non existing temp dir', async () => {
-    const targetPath = path.join(moveBasePath, 'target');
+    const context = createContext({ options: { package: targetPath } });
+    context.serverless.utils.dirExistsSync.withArgs(serverlessTmpDirPath).returns(false);
 
-    if (serverless.utils.dirExistsSync(moveServerlessPath)) {
-      removeSync(moveServerlessPath);
-    }
+    await context.moveArtifactsToPackage();
 
-    awsCommon.options.package = targetPath;
-    return awsCommon.moveArtifactsToPackage().then(() => {
-      expect(serverless.utils.dirExistsSync(targetPath)).to.be.equal(false);
-    });
+    expect(context.serverless.utils.writeFileDir).to.not.have.been.called;
+    expect(context.serverless.utils.copyDirContentsSync).to.not.have.been.called;
+    expect(removeSync).to.not.have.been.called;
   });
 
   it('should not fail with existing package dir', async () => {
-    const testFileSource = path.join(moveServerlessPath, 'moveTestFile.tmp');
-    const targetPath = path.join(moveBasePath, 'target');
-    const testFileTarget = path.join(targetPath, 'moveTestFile.tmp');
+    const context = createContext({ servicePackage: { path: targetPath } });
+    context.serverless.utils.dirExistsSync.withArgs(serverlessTmpDirPath).returns(true);
+    context.serverless.utils.dirExistsSync.withArgs(targetPath).returns(true);
 
-    if (!serverless.utils.dirExistsSync(targetPath)) {
-      serverless.utils.writeFileDir(targetPath);
-      serverless.utils.writeFileSync(testFileTarget, '!!!MOVE TEST FILE!!!');
-    }
+    await context.moveArtifactsToPackage();
 
-    serverless.service.package.path = targetPath;
-    serverless.utils.writeFileSync(testFileSource, '!!!MOVE TEST FILE!!!');
-    return awsCommon.moveArtifactsToPackage().then(() => {
-      expect(serverless.utils.dirExistsSync(targetPath)).to.be.equal(true);
-      expect(serverless.utils.fileExistsSync(testFileTarget)).to.be.equal(true);
-    });
+    expect(removeSync).to.have.been.calledTwice;
+    expect(removeSync.firstCall.args).to.deep.equal([targetPath]);
+    expect(removeSync.secondCall.args).to.deep.equal([serverlessTmpDirPath]);
+    expect(context.serverless.utils.writeFileDir).to.have.been.calledOnceWithExactly(targetPath);
+    expect(context.serverless.utils.copyDirContentsSync).to.have.been.calledOnceWithExactly(
+      serverlessTmpDirPath,
+      targetPath
+    );
+    expect(
+      removeSync.firstCall.calledBefore(context.serverless.utils.writeFileDir.firstCall)
+    ).to.equal(true);
+    expect(
+      context.serverless.utils.writeFileDir.firstCall.calledBefore(
+        context.serverless.utils.copyDirContentsSync.firstCall
+      )
+    ).to.equal(true);
+    expect(
+      context.serverless.utils.copyDirContentsSync.firstCall.calledBefore(removeSync.secondCall)
+    ).to.equal(true);
   });
 });
 
 describe('#moveArtifactsToTemp()', () => {
-  let serverless;
-  let awsCommon;
-  const moveBasePath = path.join(getTmpDirPath(), 'move');
-  const moveServerlessPath = path.join(moveBasePath, '.serverless');
-  const moveTargetPath = path.join(moveBasePath, 'target');
+  let artifacts;
+  let removeSync;
+
+  const serviceDir = 'service';
+  const serverlessTmpDirPath = path.join(serviceDir, '.serverless');
+  const sourcePath = path.join(serviceDir, 'target');
+
+  const createContext = ({
+    options = {},
+    servicePackage = {},
+    serviceDirValue = serviceDir,
+  } = {}) => {
+    const utils = {
+      dirExistsSync: sinon.stub(),
+      writeFileDir: sinon.stub(),
+      copyDirContentsSync: sinon.stub(),
+    };
+
+    return {
+      options,
+      serverless: {
+        serviceDir: serviceDirValue,
+        service: { package: servicePackage },
+        utils,
+      },
+      ...artifacts,
+    };
+  };
 
   beforeEach(() => {
-    serverless = new Serverless({ commands: [], options: {} });
-    awsCommon = new AWSCommon(serverless, {});
-
-    serverless.serviceDir = moveBasePath;
-    if (!serverless.utils.dirExistsSync(moveTargetPath)) {
-      serverless.utils.writeFileDir(moveTargetPath);
-    }
+    removeSync = sinon.stub();
+    artifacts = proxyquire
+      .noCallThru()
+      .load('../../../../../../../lib/plugins/aws/common/lib/artifacts', {
+        '../../../../utils/fs/remove': { removeSync },
+      });
   });
 
-  afterEach(() => {
-    if (serverless.utils.dirExistsSync(moveBasePath)) {
-      removeSync(moveBasePath);
-    }
+  it('should resolve if servicePath is not present', async () => {
+    const context = createContext({ serviceDirValue: undefined });
+
+    await context.moveArtifactsToTemp();
+
+    expect(context.serverless.utils.dirExistsSync).to.not.have.been.called;
+    expect(removeSync).to.not.have.been.called;
   });
 
-  it('should resolve if servicePath is not present', () => {
-    delete serverless.serviceDir;
-    return awsCommon.moveArtifactsToTemp();
-  });
+  it('should resolve if no package is set', async () => {
+    const context = createContext();
 
-  it('should resolve if no package is set', () => awsCommon.moveArtifactsToTemp());
+    await context.moveArtifactsToTemp();
 
-  it('should use package option as source path', async () => {
-    const testFileSource = path.join(moveTargetPath, 'moveTestFile.tmp');
-
-    serverless.utils.writeFileSync(testFileSource, '!!!MOVE TEST FILE!!!');
-    awsCommon.options.package = moveTargetPath;
-    return awsCommon.moveArtifactsToTemp().then(() => {
-      const testFileTarget = path.join(moveServerlessPath, 'moveTestFile.tmp');
-
-      expect(serverless.utils.dirExistsSync(moveServerlessPath)).to.be.equal(true);
-      expect(serverless.utils.fileExistsSync(testFileTarget)).to.be.equal(true);
-    });
+    expect(context.serverless.utils.dirExistsSync).to.not.have.been.called;
+    expect(removeSync).to.not.have.been.called;
   });
 
   it('should use package option as source path', async () => {
-    const testFileSource = path.join(moveTargetPath, 'moveTestFile.tmp');
+    const context = createContext({ options: { package: sourcePath } });
+    context.serverless.utils.dirExistsSync.withArgs(sourcePath).returns(true);
+    context.serverless.utils.dirExistsSync.withArgs(serverlessTmpDirPath).returns(false);
 
-    serverless.utils.writeFileSync(testFileSource, '!!!MOVE TEST FILE!!!');
-    serverless.service.package.path = moveTargetPath;
-    return awsCommon.moveArtifactsToTemp().then(() => {
-      const testFileTarget = path.join(moveServerlessPath, 'moveTestFile.tmp');
+    await context.moveArtifactsToTemp();
 
-      expect(serverless.utils.dirExistsSync(moveServerlessPath)).to.be.equal(true);
-      expect(serverless.utils.fileExistsSync(testFileTarget)).to.be.equal(true);
-    });
+    expect(context.serverless.utils.writeFileDir).to.have.been.calledOnceWithExactly(
+      serverlessTmpDirPath
+    );
+    expect(context.serverless.utils.copyDirContentsSync).to.have.been.calledOnceWithExactly(
+      sourcePath,
+      serverlessTmpDirPath
+    );
+    expect(removeSync).to.not.have.been.called;
+    expect(
+      context.serverless.utils.writeFileDir.calledBefore(
+        context.serverless.utils.copyDirContentsSync
+      )
+    ).to.equal(true);
+  });
+
+  it('should use service package path as source path', async () => {
+    const context = createContext({ servicePackage: { path: sourcePath } });
+    context.serverless.utils.dirExistsSync.withArgs(sourcePath).returns(true);
+    context.serverless.utils.dirExistsSync.withArgs(serverlessTmpDirPath).returns(false);
+
+    await context.moveArtifactsToTemp();
+
+    expect(context.serverless.utils.writeFileDir).to.have.been.calledOnceWithExactly(
+      serverlessTmpDirPath
+    );
+    expect(context.serverless.utils.copyDirContentsSync).to.have.been.calledOnceWithExactly(
+      sourcePath,
+      serverlessTmpDirPath
+    );
+    expect(removeSync).to.not.have.been.called;
+    expect(
+      context.serverless.utils.writeFileDir.calledBefore(
+        context.serverless.utils.copyDirContentsSync
+      )
+    ).to.equal(true);
   });
 
   it('should not fail with non existing source path', async () => {
-    if (serverless.utils.dirExistsSync(moveTargetPath)) {
-      removeSync(moveTargetPath);
-    }
+    const context = createContext({ options: { package: sourcePath } });
+    context.serverless.utils.dirExistsSync.withArgs(sourcePath).returns(false);
 
-    awsCommon.options.package = moveTargetPath;
-    return awsCommon.moveArtifactsToTemp().then(() => {
-      expect(serverless.utils.dirExistsSync(moveTargetPath)).to.be.equal(false);
-    });
+    await context.moveArtifactsToTemp();
+
+    expect(context.serverless.utils.writeFileDir).to.not.have.been.called;
+    expect(context.serverless.utils.copyDirContentsSync).to.not.have.been.called;
+    expect(removeSync).to.not.have.been.called;
   });
 
   it('should not fail with existing temp dir', async () => {
-    const testFileSource = path.join(moveServerlessPath, 'moveTestFile.tmp');
-    const testFileTarget = path.join(moveTargetPath, 'moveTestFile.tmp');
+    const context = createContext({ servicePackage: { path: sourcePath } });
+    context.serverless.utils.dirExistsSync.withArgs(sourcePath).returns(true);
+    context.serverless.utils.dirExistsSync.withArgs(serverlessTmpDirPath).returns(true);
 
-    if (!serverless.utils.dirExistsSync(moveServerlessPath)) {
-      serverless.utils.writeFileDir(moveServerlessPath);
-      serverless.utils.writeFileSync(testFileSource, '!!!MOVE TEST FILE!!!');
-    }
+    await context.moveArtifactsToTemp();
 
-    serverless.service.package.path = moveTargetPath;
-    serverless.utils.writeFileSync(testFileTarget, '!!!MOVE TEST FILE!!!');
-    return awsCommon.moveArtifactsToTemp().then(() => {
-      expect(serverless.utils.dirExistsSync(moveServerlessPath)).to.be.equal(true);
-      expect(serverless.utils.fileExistsSync(testFileSource)).to.be.equal(true);
-    });
+    expect(removeSync).to.have.been.calledOnceWithExactly(serverlessTmpDirPath);
+    expect(context.serverless.utils.writeFileDir).to.have.been.calledOnceWithExactly(
+      serverlessTmpDirPath
+    );
+    expect(context.serverless.utils.copyDirContentsSync).to.have.been.calledOnceWithExactly(
+      sourcePath,
+      serverlessTmpDirPath
+    );
+    expect(removeSync.calledBefore(context.serverless.utils.writeFileDir)).to.equal(true);
+    expect(
+      context.serverless.utils.writeFileDir.calledBefore(
+        context.serverless.utils.copyDirContentsSync
+      )
+    ).to.equal(true);
   });
 });

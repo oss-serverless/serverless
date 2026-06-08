@@ -1,23 +1,25 @@
 'use strict';
 
-const AwsProvider = require('../../../../../../lib/plugins/aws/provider');
 const AwsCommon = require('../../../../../../lib/plugins/aws/common/index');
-const Serverless = require('../../../../../../lib/serverless');
 const expect = require('chai').expect;
 const sinon = require('sinon');
 
 describe('AwsCommon', () => {
   let awsCommon;
+  let provider;
+  let serverless;
+
   beforeEach(() => {
-    const serverless = new Serverless({ commands: [], options: {} });
+    provider = { name: 'aws' };
+    serverless = {
+      serviceDir: 'foo',
+      getProvider: sinon.stub().withArgs('aws').returns(provider),
+    };
     const options = {
       stage: 'dev',
       region: 'us-east-1',
     };
-    serverless.setProvider('aws', new AwsProvider(serverless, options));
-    serverless.serviceDir = 'foo';
     awsCommon = new AwsCommon(serverless, options);
-    awsCommon.serverless.cli = new serverless.classes.CLI();
   });
 
   describe('#constructor()', () => {
@@ -25,8 +27,10 @@ describe('AwsCommon', () => {
 
     it('should have commands', () => expect(awsCommon.commands).to.be.not.empty);
 
-    it('should set the provider variable to an instance of AwsProvider', () =>
-      expect(awsCommon.provider).to.be.instanceof(AwsProvider));
+    it('should set the provider variable from the aws provider lookup', () => {
+      expect(serverless.getProvider).to.have.been.calledOnceWithExactly('aws');
+      expect(awsCommon.provider).to.equal(provider);
+    });
   });
 
   describe('hooks', () => {
