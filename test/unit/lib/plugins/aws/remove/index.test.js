@@ -25,7 +25,7 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
   });
   const describeRepositoriesStub = sinon.stub();
   const deleteRepositoryStub = sinon.stub().resolves();
-  const awsRequestStubMap = {
+  const awsSdkV3StubMap = {
     ECR: {
       deleteRepository: deleteRepositoryStub,
       describeRepositories: describeRepositoriesStub,
@@ -89,6 +89,11 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
     describeRepositoriesStub.reset();
     deleteRepositoryStub.resetHistory();
   });
+
+  const expectAwsSdkV3StubInput = (stub, input) => {
+    expect(stub).to.be.calledOnce;
+    expect(stub.firstCall.args[0]).to.deep.equal(input);
+  };
 
   it('preserves deleteObjectBatches one-argument plugin method signature', async () => {
     const sendStub = sinon.stub(S3Client.prototype, 'send').resolves({});
@@ -214,7 +219,7 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
     const { awsNaming, awsSdkV3Stub, serverless } = await runServerless({
       fixture: 'function',
       command: 'remove',
-      awsRequestStubMap,
+      awsSdkV3StubMap,
     });
 
     expect(deleteObjectsStub).to.be.calledOnce;
@@ -224,8 +229,8 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
         Objects: [{ Key: 'first' }, { Key: 'second' }],
       },
     });
-    expect(deleteStackStub).to.be.calledWithExactly({ StackName: awsNaming.getStackName() });
-    expect(describeStackEventsStub).to.be.calledWithExactly({
+    expectAwsSdkV3StubInput(deleteStackStub, { StackName: awsNaming.getStackName() });
+    expectAwsSdkV3StubInput(describeStackEventsStub, {
       StackName: awsNaming.getStackName(),
     });
     expect(deleteStackStub.calledAfter(deleteObjectsStub)).to.be.true;
@@ -259,7 +264,7 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
     const { awsNaming } = await runServerless({
       fixture: 'function',
       command: 'remove',
-      awsRequestStubMap,
+      awsSdkV3StubMap,
     });
 
     expect(deleteObjectsStub).to.be.calledOnce;
@@ -269,8 +274,8 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
         Objects: [{ Key: 'first' }, { Key: 'second' }],
       },
     });
-    expect(deleteStackStub).to.be.calledWithExactly({ StackName: awsNaming.getStackName() });
-    expect(describeStackEventsStub).to.be.calledWithExactly({
+    expectAwsSdkV3StubInput(deleteStackStub, { StackName: awsNaming.getStackName() });
+    expectAwsSdkV3StubInput(describeStackEventsStub, {
       StackName: awsNaming.getStackName(),
     });
     expect(deleteStackStub.calledAfter(deleteObjectsStub)).to.be.true;
@@ -294,12 +299,12 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
       const { awsNaming, awsSdkV3Stub, serverless } = await runServerless({
         fixture: 'function',
         command: 'remove',
-        awsRequestStubMap,
+        awsSdkV3StubMap,
       });
 
       expect(deleteObjectsStub).to.be.calledOnce;
-      expect(deleteStackStub).to.be.calledWithExactly({ StackName: awsNaming.getStackName() });
-      expect(describeStackEventsStub).to.be.calledWithExactly({
+      expectAwsSdkV3StubInput(deleteStackStub, { StackName: awsNaming.getStackName() });
+      expectAwsSdkV3StubInput(describeStackEventsStub, {
         StackName: awsNaming.getStackName(),
       });
       expect(deleteRepositoryStub).not.to.be.called;
@@ -321,8 +326,8 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
     await runServerless({
       fixture: 'function',
       command: 'remove',
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         S3: {
           deleteObjects: deleteObjectsStub,
           listObjectsV2: { Contents: [] },
@@ -338,7 +343,7 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
     await runServerless({
       fixture: 'function',
       command: 'remove',
-      awsRequestStubMap,
+      awsSdkV3StubMap,
     });
 
     expect(deleteObjectsStub).to.be.calledOnce;
@@ -365,8 +370,8 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
     const { serverless } = await runServerless({
       fixture: 'function',
       command: 'remove',
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         S3: {
           deleteObjects: innerDeleteObjectsStub,
           listObjectsV2: listObjectsV2Stub,
@@ -410,8 +415,8 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
     await runServerless({
       fixture: 'function',
       command: 'remove',
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         S3: {
           deleteObjects: innerDeleteObjectsStub,
           listObjectsV2: { Contents: objects },
@@ -434,8 +439,8 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
     const { awsNaming } = await runServerless({
       fixture: 'function',
       command: 'remove',
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         S3: {
           deleteObjects: deleteObjectsStub,
           listObjectsV2: { Contents: [{ Key: 'first' }, { Key: 'second' }] },
@@ -449,8 +454,8 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
     });
 
     expect(deleteObjectsStub).not.to.be.called;
-    expect(deleteStackStub).to.be.calledWithExactly({ StackName: awsNaming.getStackName() });
-    expect(describeStackEventsStub).to.be.calledWithExactly({
+    expectAwsSdkV3StubInput(deleteStackStub, { StackName: awsNaming.getStackName() });
+    expectAwsSdkV3StubInput(describeStackEventsStub, {
       StackName: awsNaming.getStackName(),
     });
     expect(describeStackEventsStub.calledAfter(deleteStackStub)).to.be.true;
@@ -461,14 +466,14 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
     const { awsNaming } = await runServerless({
       fixture: 'function',
       command: 'remove',
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         S3: {
-          ...awsRequestStubMap.S3,
+          ...awsSdkV3StubMap.S3,
           headBucket: headBucketStub,
         },
         CloudFormation: {
-          ...awsRequestStubMap.CloudFormation,
+          ...awsSdkV3StubMap.CloudFormation,
           describeStackResource: () => {
             const err = new Error('does not exist for stack');
             err.providerError = {
@@ -482,8 +487,8 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
 
     expect(headBucketStub).not.to.be.called;
     expect(deleteObjectsStub).not.to.be.called;
-    expect(deleteStackStub).to.be.calledWithExactly({ StackName: awsNaming.getStackName() });
-    expect(describeStackEventsStub).to.be.calledWithExactly({
+    expectAwsSdkV3StubInput(deleteStackStub, { StackName: awsNaming.getStackName() });
+    expectAwsSdkV3StubInput(describeStackEventsStub, {
       StackName: awsNaming.getStackName(),
     });
     expect(describeStackEventsStub.calledAfter(deleteStackStub)).to.be.true;
@@ -494,14 +499,14 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
     const { awsNaming } = await runServerless({
       fixture: 'function',
       command: 'remove',
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         S3: {
-          ...awsRequestStubMap.S3,
+          ...awsSdkV3StubMap.S3,
           headBucket: headBucketStub,
         },
         CloudFormation: {
-          ...awsRequestStubMap.CloudFormation,
+          ...awsSdkV3StubMap.CloudFormation,
           describeStackResource: () => {
             const err = new Error('Resource does not exist for stack new-service-dev');
             err.name = 'ValidationError';
@@ -513,8 +518,8 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
 
     expect(headBucketStub).not.to.be.called;
     expect(deleteObjectsStub).not.to.be.called;
-    expect(deleteStackStub).to.be.calledWithExactly({ StackName: awsNaming.getStackName() });
-    expect(describeStackEventsStub).to.be.calledWithExactly({
+    expectAwsSdkV3StubInput(deleteStackStub, { StackName: awsNaming.getStackName() });
+    expectAwsSdkV3StubInput(describeStackEventsStub, {
       StackName: awsNaming.getStackName(),
     });
     expect(describeStackEventsStub.calledAfter(deleteStackStub)).to.be.true;
@@ -525,10 +530,10 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
       runServerless({
         fixture: 'function',
         command: 'remove',
-        awsRequestStubMap: {
-          ...awsRequestStubMap,
+        awsSdkV3StubMap: {
+          ...awsSdkV3StubMap,
           CloudFormation: {
-            ...awsRequestStubMap.CloudFormation,
+            ...awsSdkV3StubMap.CloudFormation,
             describeStackResource: () => {
               const err = new Error('Some other validation failure');
               err.name = 'ValidationError';
@@ -545,10 +550,10 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
       runServerless({
         fixture: 'function',
         command: 'remove',
-        awsRequestStubMap: {
-          ...awsRequestStubMap,
+        awsSdkV3StubMap: {
+          ...awsSdkV3StubMap,
           CloudFormation: {
-            ...awsRequestStubMap.CloudFormation,
+            ...awsSdkV3StubMap.CloudFormation,
             describeStackResource: () => {
               const err = Object.assign(Object.create({ message: 'does not exist for stack' }), {
                 name: 'ValidationError',
@@ -566,7 +571,7 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
     const { awsNaming, awsSdkV3Stub, serverless } = await runServerless({
       fixture: 'function',
       command: 'remove',
-      awsRequestStubMap,
+      awsSdkV3StubMap,
     });
     const ecrSends = awsSdkV3Stub.sends.filter(({ service }) => service === 'ECR');
 
@@ -590,7 +595,7 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
           clientConfig.region === 'us-east-1' && clientConfig.credentials === expectedCredentials
       )
     ).to.equal(true);
-    expect(deleteRepositoryStub).to.be.calledWithExactly({
+    expectAwsSdkV3StubInput(deleteRepositoryStub, {
       repositoryName: awsNaming.getEcrRepositoryName(),
       registryId: '999999999999',
       force: true,
@@ -622,8 +627,8 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
           },
         },
       },
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         S3: {
           listObjectVersions: listObjectVersionsStub,
           headBucket: {},
@@ -666,8 +671,8 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
           },
         },
       },
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         S3: {
           listObjectVersions: listObjectVersionsStub,
           deleteObjects: innerDeleteObjectsStub,
@@ -721,8 +726,8 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
           },
         },
       },
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         S3: {
           listObjectVersions: listObjectVersionsStub,
           deleteObjects: innerDeleteObjectsStub,
@@ -778,10 +783,10 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
             },
           },
         },
-        awsRequestStubMap: {
-          ...awsRequestStubMap,
+        awsSdkV3StubMap: {
+          ...awsSdkV3StubMap,
           S3: {
-            ...awsRequestStubMap.S3,
+            ...awsSdkV3StubMap.S3,
             listObjectVersions: () => {
               throw listError;
             },
@@ -810,10 +815,10 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
             },
           },
         },
-        awsRequestStubMap: {
-          ...awsRequestStubMap,
+        awsSdkV3StubMap: {
+          ...awsSdkV3StubMap,
           S3: {
-            ...awsRequestStubMap.S3,
+            ...awsSdkV3StubMap.S3,
             listObjectVersions: () => {
               throw listError;
             },
@@ -837,8 +842,8 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
             },
           },
         },
-        awsRequestStubMap: {
-          ...awsRequestStubMap,
+        awsSdkV3StubMap: {
+          ...awsSdkV3StubMap,
           S3: {
             listObjectVersions: () => {
               const err = new Error('ff');
@@ -866,10 +871,10 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
       runServerless({
         command: 'remove',
         fixture: 'function',
-        awsRequestStubMap: {
-          ...awsRequestStubMap,
+        awsSdkV3StubMap: {
+          ...awsSdkV3StubMap,
           S3: {
-            ...awsRequestStubMap.S3,
+            ...awsSdkV3StubMap.S3,
             deleteObjects: innerDeleteObjectsStub,
             headBucket: {},
           },
@@ -886,10 +891,10 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
       await runServerless({
         command: 'remove',
         fixture: 'function',
-        awsRequestStubMap: {
-          ...awsRequestStubMap,
+        awsSdkV3StubMap: {
+          ...awsSdkV3StubMap,
           S3: {
-            ...awsRequestStubMap.S3,
+            ...awsSdkV3StubMap.S3,
             listObjectsV2: { Contents: [{ Key: 'first' }] },
             deleteObjects: sinon.stub().rejects(deleteError),
             headBucket: {},
@@ -916,10 +921,10 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
       runServerless({
         command: 'remove',
         fixture: 'function',
-        awsRequestStubMap: {
-          ...awsRequestStubMap,
+        awsSdkV3StubMap: {
+          ...awsSdkV3StubMap,
           S3: {
-            ...awsRequestStubMap.S3,
+            ...awsSdkV3StubMap.S3,
             deleteObjects: innerDeleteObjectsStub,
             headBucket: {},
           },
@@ -938,10 +943,10 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
       runServerless({
         command: 'remove',
         fixture: 'function',
-        awsRequestStubMap: {
-          ...awsRequestStubMap,
+        awsSdkV3StubMap: {
+          ...awsSdkV3StubMap,
           S3: {
-            ...awsRequestStubMap.S3,
+            ...awsSdkV3StubMap.S3,
             deleteObjects: innerDeleteObjectsStub,
             headBucket: {},
           },
@@ -960,10 +965,10 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
       runServerless({
         command: 'remove',
         fixture: 'function',
-        awsRequestStubMap: {
-          ...awsRequestStubMap,
+        awsSdkV3StubMap: {
+          ...awsSdkV3StubMap,
           S3: {
-            ...awsRequestStubMap.S3,
+            ...awsSdkV3StubMap.S3,
             deleteObjects: innerDeleteObjectsStub,
             headBucket: {},
           },
@@ -982,10 +987,10 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
       runServerless({
         command: 'remove',
         fixture: 'function',
-        awsRequestStubMap: {
-          ...awsRequestStubMap,
+        awsSdkV3StubMap: {
+          ...awsSdkV3StubMap,
           S3: {
-            ...awsRequestStubMap.S3,
+            ...awsSdkV3StubMap.S3,
             deleteObjects: innerDeleteObjectsStub,
             headBucket: {},
           },
@@ -1001,10 +1006,10 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
       await runServerless({
         command: 'remove',
         fixture: 'function',
-        awsRequestStubMap: {
-          ...awsRequestStubMap,
+        awsSdkV3StubMap: {
+          ...awsSdkV3StubMap,
           S3: {
-            ...awsRequestStubMap.S3,
+            ...awsSdkV3StubMap.S3,
             listObjectsV2: () => {
               throw listError;
             },
@@ -1025,10 +1030,10 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
       runServerless({
         command: 'remove',
         fixture: 'function',
-        awsRequestStubMap: {
-          ...awsRequestStubMap,
+        awsSdkV3StubMap: {
+          ...awsSdkV3StubMap,
           S3: {
-            ...awsRequestStubMap.S3,
+            ...awsSdkV3StubMap.S3,
             listObjectsV2: () => {
               throw listError;
             },
@@ -1046,10 +1051,10 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
       runServerless({
         command: 'remove',
         fixture: 'function',
-        awsRequestStubMap: {
-          ...awsRequestStubMap,
+        awsSdkV3StubMap: {
+          ...awsSdkV3StubMap,
           S3: {
-            ...awsRequestStubMap.S3,
+            ...awsSdkV3StubMap.S3,
             listObjectsV2: () => {
               throw listError;
             },
@@ -1067,10 +1072,10 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
       runServerless({
         command: 'remove',
         fixture: 'function',
-        awsRequestStubMap: {
-          ...awsRequestStubMap,
+        awsSdkV3StubMap: {
+          ...awsSdkV3StubMap,
           S3: {
-            ...awsRequestStubMap.S3,
+            ...awsSdkV3StubMap.S3,
             listObjectsV2: () => {
               throw listError;
             },
@@ -1086,10 +1091,10 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
       runServerless({
         command: 'remove',
         fixture: 'function',
-        awsRequestStubMap: {
-          ...awsRequestStubMap,
+        awsSdkV3StubMap: {
+          ...awsSdkV3StubMap,
           S3: {
-            ...awsRequestStubMap.S3,
+            ...awsSdkV3StubMap.S3,
             listObjectsV2: () => {
               const err = new Error('ff');
               err.code = 'AWS_S3_LIST_OBJECTS_V2_ACCESS_DENIED';
