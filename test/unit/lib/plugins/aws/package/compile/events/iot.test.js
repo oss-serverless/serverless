@@ -3,18 +3,14 @@
 const expect = require('chai').expect;
 const AwsProvider = require('../../../../../../../../lib/plugins/aws/provider');
 const AwsCompileIoTEvents = require('../../../../../../../../lib/plugins/aws/package/compile/events/iot');
-const Serverless = require('../../../../../../../../lib/serverless');
+const { createAwsEventCompilerContext } = require('./test-utils');
 
 describe('AwsCompileIoTEvents', () => {
-  let serverless;
   let awsCompileIoTEvents;
 
   beforeEach(() => {
-    serverless = new Serverless({ commands: [], options: {} });
-    serverless.service.provider.compiledCloudFormationTemplate = { Resources: {} };
-    serverless.setProvider('aws', new AwsProvider(serverless));
-    awsCompileIoTEvents = new AwsCompileIoTEvents(serverless);
-    awsCompileIoTEvents.serverless.service.service = 'new-service';
+    ({ awsCompileEvents: awsCompileIoTEvents } =
+      createAwsEventCompilerContext(AwsCompileIoTEvents));
   });
 
   describe('#constructor()', () => {

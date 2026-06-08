@@ -3,17 +3,15 @@
 const expect = require('chai').expect;
 const AwsProvider = require('../../../../../../../../lib/plugins/aws/provider');
 const AwsCompileAlexaSkillEvents = require('../../../../../../../../lib/plugins/aws/package/compile/events/alexa-skill');
-const Serverless = require('../../../../../../../../lib/serverless');
+const { createAwsEventCompilerContext } = require('./test-utils');
 
 describe('AwsCompileAlexaSkillEvents', () => {
-  let serverless;
   let awsCompileAlexaSkillEvents;
 
   beforeEach(() => {
-    serverless = new Serverless({ commands: [], options: {} });
-    serverless.service.provider.compiledCloudFormationTemplate = { Resources: {} };
-    serverless.setProvider('aws', new AwsProvider(serverless));
-    awsCompileAlexaSkillEvents = new AwsCompileAlexaSkillEvents(serverless);
+    ({ awsCompileEvents: awsCompileAlexaSkillEvents } = createAwsEventCompilerContext(
+      AwsCompileAlexaSkillEvents
+    ));
   });
 
   describe('#constructor()', () => {
