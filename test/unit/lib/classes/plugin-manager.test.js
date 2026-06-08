@@ -3,7 +3,7 @@
 const chai = require('chai');
 const { overrideEnv, overrideArgv } = require('../../../utils/process');
 const runServerless = require('../../../utils/run-serverless');
-const fixtures = require('../../../fixtures/programmatic');
+const setupProgrammaticFixture = require('../../../utils/setup-programmatic-fixture');
 const Serverless = require('../../../../lib/serverless');
 const CLI = require('../../../../lib/classes/cli');
 const resolveInput = require('../../../../lib/cli/resolve-input');
@@ -1613,7 +1613,7 @@ describe('PluginManager', () => {
 
 describe('test/unit/lib/classes/PluginManager.test.js', () => {
   it('should load plugins relatively to the working directory', async () => {
-    const { servicePath: serviceDir } = await fixtures.setup('aws');
+    const { servicePath: serviceDir } = await setupProgrammaticFixture('aws');
     const localPluginDir = path.join(serviceDir, 'node_modules', 'local-plugin');
     const parentPluginDir = path.join(serviceDir, '..', 'node_modules', 'parent-plugin');
     installPlugin(localPluginDir, SynchronousPluginMock);

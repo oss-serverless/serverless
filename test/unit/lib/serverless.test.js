@@ -17,7 +17,7 @@ const CLI = require('../../../lib/classes/cli');
 const ServerlessError = require('../../../lib/serverless-error');
 const runServerless = require('../../utils/run-serverless');
 const spawn = require('../../../lib/utils/spawn');
-const programmaticFixturesEngine = require('../../fixtures/programmatic');
+const setupProgrammaticFixture = require('../../utils/setup-programmatic-fixture');
 const path = require('path');
 const yaml = require('js-yaml');
 
@@ -274,7 +274,7 @@ describe('test/unit/lib/serverless.test.js', () => {
       };
       setByPath(customExt, pluginConfig.overwriteValuePath, 'test_value');
 
-      const { servicePath: serviceDir } = await programmaticFixturesEngine.setup('plugin', {
+      const { servicePath: serviceDir } = await setupProgrammaticFixture('plugin', {
         configExt,
       });
       const serverlessProcess = await spawn('node', [serverlessPath, 'print'], {
