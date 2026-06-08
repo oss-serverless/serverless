@@ -2,46 +2,57 @@
 
 const chai = require('chai');
 const path = require('path');
-const Package = require('../../../../../../../lib/plugins/aws/common/index');
-const Serverless = require('../../../../../../../lib/serverless');
-const { getTmpDirPath } = require('../../../../../../utils/fs');
+const proxyquire = require('proxyquire');
+const sinon = require('sinon');
 
 const expect = chai.expect;
 
 describe('#cleanupTempDir()', () => {
-  let serverless;
-  let packageService;
+  let context;
+  let dirExistsSync;
+  let removeSync;
 
   beforeEach(() => {
-    serverless = new Serverless({ commands: [], options: {} });
-    packageService = new Package(serverless);
-
-    serverless.serviceDir = getTmpDirPath();
+    dirExistsSync = sinon.stub();
+    removeSync = sinon.stub();
+    const cleanupTempDir = proxyquire
+      .noCallThru()
+      .load('../../../../../../../lib/plugins/aws/common/lib/cleanup-temp-dir', {
+        '../../../../utils/fs/remove': { removeSync },
+      });
+    context = {
+      serverless: {
+        serviceDir: '/service',
+        utils: { dirExistsSync },
+      },
+      ...cleanupTempDir,
+    };
   });
 
   it('should remove .serverless in the service directory', async () => {
-    const serverlessTmpDirPath = path.join(
-      packageService.serverless.serviceDir,
-      '.serverless',
-      'README'
-    );
-    serverless.utils.writeFileSync(serverlessTmpDirPath, 'Some README content');
+    const serverlessTmpDirPath = path.join(context.serverless.serviceDir, '.serverless');
+    dirExistsSync.withArgs(serverlessTmpDirPath).returns(true);
 
-    return packageService.cleanupTempDir().then(() => {
-      expect(
-        serverless.utils.dirExistsSync(
-          path.join(packageService.serverless.serviceDir, '.serverless')
-        )
-      ).to.equal(false);
-    });
+    await context.cleanupTempDir();
+
+    expect(dirExistsSync).to.have.been.calledOnceWithExactly(serverlessTmpDirPath);
+    expect(removeSync).to.have.been.calledOnceWithExactly(serverlessTmpDirPath);
   });
 
   it('should resolve if servicePath is not present', async () => {
-    delete serverless.serviceDir;
-    return expect(packageService.cleanupTempDir()).to.eventually.be.fulfilled;
+    delete context.serverless.serviceDir;
+
+    await expect(context.cleanupTempDir()).to.eventually.be.fulfilled;
+
+    expect(dirExistsSync).to.not.have.been.called;
+    expect(removeSync).to.not.have.been.called;
   });
 
   it('should resolve if the .serverless directory is not present', async () => {
-    return expect(packageService.cleanupTempDir()).to.eventually.be.fulfilled;
+    dirExistsSync.returns(false);
+
+    await expect(context.cleanupTempDir()).to.eventually.be.fulfilled;
+
+    expect(removeSync).to.not.have.been.called;
   });
 });

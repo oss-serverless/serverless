@@ -2,8 +2,10 @@
 
 const expect = require('chai').expect;
 
-const SDK = require('../../../../../../lib/plugins/aws/provider');
-const Serverless = require('../../../../../../lib/serverless');
+const awsNaming = require('../../../../../../lib/plugins/aws/lib/naming');
+const validateStage = require('../../../../../../lib/utils/validate-stage');
+
+const hasOwn = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
 
 const setByPath = (source, path, value) => {
   let current = source;
@@ -21,19 +23,58 @@ const setByPath = (source, path, value) => {
 };
 
 describe('#naming()', () => {
-  let options;
   let serverless;
   let sdk;
 
-  beforeEach(() => {
-    options = {
+  const createNamingContext = () => {
+    const localOptions = {
       stage: 'dev',
       region: 'us-east-1',
-      commands: [],
-      options: {},
     };
-    serverless = new Serverless(options);
-    sdk = new SDK(serverless, options);
+    const localServerless = {
+      config: {},
+      service: {
+        service: undefined,
+        serviceObject: {},
+        provider: {},
+        getServiceName() {
+          return this.serviceObject.name;
+        },
+      },
+    };
+    const provider = {
+      options: localOptions,
+      serverless: localServerless,
+      getStageSourceValue() {
+        if (hasOwn(this.options, 'stage')) return { value: this.options.stage };
+        if (hasOwn(this.serverless.config, 'stage')) return { value: this.serverless.config.stage };
+        if (hasOwn(this.serverless.service.provider, 'stage')) {
+          return { value: this.serverless.service.provider.stage };
+        }
+        return {};
+      },
+      getStage() {
+        const stageSourceValue = this.getStageSourceValue();
+        return validateStage(hasOwn(stageSourceValue, 'value') ? stageSourceValue.value : 'dev');
+      },
+      getAlbTargetGroupPrefix() {
+        return this.serverless.service.provider.alb?.targetGroupPrefix || '';
+      },
+    };
+    const naming = Object.create(awsNaming);
+    naming.provider = provider;
+
+    return {
+      serverless: localServerless,
+      sdk: {
+        options: localOptions,
+        naming,
+      },
+    };
+  };
+
+  beforeEach(() => {
+    ({ serverless, sdk } = createNamingContext());
   });
 
   describe('#normalizeName()', () => {

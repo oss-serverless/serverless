@@ -3,9 +3,6 @@
 const chai = require('chai');
 const sinon = require('sinon');
 const proxyquire = require('proxyquire');
-const Serverless = require('../../../../../../lib/serverless');
-const AwsProvider = require('../../../../../../lib/plugins/aws/provider');
-const CLI = require('../../../../../../lib/classes/cli');
 const monitorStack = require('../../../../../../lib/plugins/aws/lib/monitor-stack');
 const {
   CloudFormationClient,
@@ -15,20 +12,27 @@ const {
 const { expect } = chai;
 
 describe('monitorStack', () => {
-  const serverless = new Serverless({ commands: [], options: {} });
-  const awsPlugin = {};
+  let awsPlugin;
+
+  const createAwsPlugin = ({ provider: providerOverrides = {}, options = {} } = {}) => {
+    const provider = {
+      getRegion: sinon.stub().returns('us-east-1'),
+      getAwsSdkV3Config: sinon.stub().resolves({
+        region: 'us-east-1',
+        credentials: async () => ({ accessKeyId: 'key', secretAccessKey: 'secret' }),
+      }),
+      ...providerOverrides,
+    };
+
+    return {
+      provider,
+      options: { ...options },
+      ...monitorStack,
+    };
+  };
 
   beforeEach(() => {
-    const options = {
-      stage: 'dev',
-      region: 'us-east-1',
-    };
-    awsPlugin.serverless = serverless;
-    awsPlugin.provider = new AwsProvider(serverless, options);
-    awsPlugin.serverless.cli = new CLI(serverless);
-    awsPlugin.options = options;
-
-    Object.assign(awsPlugin, monitorStack);
+    awsPlugin = createAwsPlugin();
   });
 
   afterEach(() => {
@@ -201,26 +205,22 @@ describe('monitorStack', () => {
           },
         ],
       });
-      const getAwsSdkV3ConfigStub = sinon
-        .stub(awsPlugin.provider, 'getAwsSdkV3Config')
-        .throws(new Error('Expected existing CloudFormation client to be reused'));
+      awsPlugin.provider.getAwsSdkV3Config.throws(
+        new Error('Expected existing CloudFormation client to be reused')
+      );
       awsPlugin.cloudFormationClientPromise = Promise.resolve({ send });
 
-      try {
-        const stackStatus = await awsPlugin.monitorStack(
-          'create',
-          { StackId: 'stack-id' },
-          { frequency: 10 }
-        );
+      const stackStatus = await awsPlugin.monitorStack(
+        'create',
+        { StackId: 'stack-id' },
+        { frequency: 10 }
+      );
 
-        expect(stackStatus).to.equal('CREATE_COMPLETE');
-        expect(getAwsSdkV3ConfigStub).to.not.have.been.called;
-        expect(send).to.have.been.calledOnce;
-        expect(send.firstCall.args[0]).to.be.instanceOf(DescribeStackEventsCommand);
-        expect(send.firstCall.args[0].input).to.deep.equal({ StackName: 'stack-id' });
-      } finally {
-        getAwsSdkV3ConfigStub.restore();
-      }
+      expect(stackStatus).to.equal('CREATE_COMPLETE');
+      expect(awsPlugin.provider.getAwsSdkV3Config).to.not.have.been.called;
+      expect(send).to.have.been.calledOnce;
+      expect(send.firstCall.args[0]).to.be.instanceOf(DescribeStackEventsCommand);
+      expect(send.firstCall.args[0].input).to.deep.equal({ StackName: 'stack-id' });
     });
 
     it('should keep monitoring until CREATE_COMPLETE stack status', async () => {
