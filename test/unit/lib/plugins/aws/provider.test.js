@@ -1425,7 +1425,7 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
       const describeImagesStub = sinon
         .stub()
         .resolves({ imageDetails: [{ imageDigest: imageDigestFromECR }] });
-      const awsRequestStubMap = {
+      const awsSdkV3StubMap = {
         ECR: {
           describeImages: describeImagesStub,
         },
@@ -1470,7 +1470,7 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
               },
             },
           },
-          awsRequestStubMap,
+          awsSdkV3StubMap,
         });
         cfResources = cfTemplate.Resources;
         naming = awsNaming;
@@ -1618,7 +1618,7 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
                 },
               },
             },
-            awsRequestStubMap: {
+            awsSdkV3StubMap: {
               ECR: {
                 describeImages: () => {
                   throw imageNotFoundError;
@@ -1659,7 +1659,7 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
           fixture: 'function',
           command: 'package',
           configExt: { functions },
-          awsRequestStubMap: {
+          awsSdkV3StubMap: {
             ECR: {
               describeImages: imageLookupStub,
             },
@@ -1720,7 +1720,7 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
       const createRepositoryStub = sinon.stub();
       const createRepositoryStubScanOnPush = sinon.stub();
       const putLifecyclePolicyStub = sinon.stub();
-      const baseAwsRequestStubMap = {
+      const baseAwsSdkV3StubMap = {
         STS: {
           getCallerIdentity: {
             ResponseMetadata: { RequestId: 'ffffffff-ffff-ffff-ffff-ffffffffffff' },
@@ -1768,10 +1768,10 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
       });
 
       it('should work correctly when repository exists beforehand', async () => {
-        const awsRequestStubMap = {
-          ...baseAwsRequestStubMap,
+        const awsSdkV3StubMap = {
+          ...baseAwsSdkV3StubMap,
           ECR: {
-            ...baseAwsRequestStubMap.ECR,
+            ...baseAwsSdkV3StubMap.ECR,
             describeRepositories: describeRepositoriesStub.resolves({
               repositories: [{ repositoryUri }],
             }),
@@ -1787,7 +1787,7 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
         } = await runServerless({
           fixture: 'ecr',
           command: 'package',
-          awsRequestStubMap,
+          awsSdkV3StubMap,
           modulesCacheStub,
         });
 
@@ -1838,10 +1838,10 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
       });
 
       it('should work correctly when repository does not exist beforehand and scanOnPush is set', async () => {
-        const awsRequestStubMap = {
-          ...baseAwsRequestStubMap,
+        const awsSdkV3StubMap = {
+          ...baseAwsSdkV3StubMap,
           ECR: {
-            ...baseAwsRequestStubMap.ECR,
+            ...baseAwsSdkV3StubMap.ECR,
             describeRepositories: describeRepositoriesStub.throws({
               providerError: { code: 'RepositoryNotFoundException' },
             }),
@@ -1854,7 +1854,7 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
         const { awsNaming, awsSdkV3Stub, cfTemplate, serverless } = await runServerless({
           fixture: 'ecr',
           command: 'package',
-          awsRequestStubMap,
+          awsSdkV3StubMap,
           modulesCacheStub,
           configExt: {
             provider: {
@@ -1889,10 +1889,10 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
       });
 
       it('should work correctly when repository does not exist beforehand', async () => {
-        const awsRequestStubMap = {
-          ...baseAwsRequestStubMap,
+        const awsSdkV3StubMap = {
+          ...baseAwsSdkV3StubMap,
           ECR: {
-            ...baseAwsRequestStubMap.ECR,
+            ...baseAwsSdkV3StubMap.ECR,
             describeRepositories: describeRepositoriesStub.throws({
               providerError: { code: 'RepositoryNotFoundException' },
             }),
@@ -1903,7 +1903,7 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
         const { awsNaming, awsSdkV3Stub, cfTemplate, serverless } = await runServerless({
           fixture: 'ecr',
           command: 'package',
-          awsRequestStubMap,
+          awsSdkV3StubMap,
           modulesCacheStub,
         });
 
@@ -1926,10 +1926,10 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
       });
 
       it('should create repository for native SDK v3 repository not found errors', async () => {
-        const awsRequestStubMap = {
-          ...baseAwsRequestStubMap,
+        const awsSdkV3StubMap = {
+          ...baseAwsSdkV3StubMap,
           ECR: {
-            ...baseAwsRequestStubMap.ECR,
+            ...baseAwsSdkV3StubMap.ECR,
             describeRepositories: describeRepositoriesStub.throws(
               Object.assign(new Error('Repository not found'), {
                 name: 'RepositoryNotFoundException',
@@ -1942,7 +1942,7 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
         const { awsNaming, awsSdkV3Stub, cfTemplate, serverless } = await runServerless({
           fixture: 'ecr',
           command: 'package',
-          awsRequestStubMap,
+          awsSdkV3StubMap,
           modulesCacheStub,
         });
 
@@ -1964,10 +1964,10 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
       });
 
       it('should set ECR lifecycle policy correctly', async () => {
-        const awsRequestStubMap = {
-          ...baseAwsRequestStubMap,
+        const awsSdkV3StubMap = {
+          ...baseAwsSdkV3StubMap,
           ECR: {
-            ...baseAwsRequestStubMap.ECR,
+            ...baseAwsSdkV3StubMap.ECR,
             describeRepositories: describeRepositoriesStub.throws({
               providerError: { code: 'RepositoryNotFoundException' },
             }),
@@ -1979,7 +1979,7 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
         const { awsNaming, awsSdkV3Stub, serverless } = await runServerless({
           fixture: 'ecr',
           command: 'package',
-          awsRequestStubMap,
+          awsSdkV3StubMap,
           modulesCacheStub,
           configExt: {
             provider: {
@@ -2017,10 +2017,10 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
       });
 
       it('should login and retry when docker push fails with no basic auth credentials error', async () => {
-        const awsRequestStubMap = {
-          ...baseAwsRequestStubMap,
+        const awsSdkV3StubMap = {
+          ...baseAwsSdkV3StubMap,
           ECR: {
-            ...baseAwsRequestStubMap.ECR,
+            ...baseAwsSdkV3StubMap.ECR,
             describeRepositories: describeRepositoriesStub.resolves({
               repositories: [{ repositoryUri }],
             }),
@@ -2043,7 +2043,7 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
         } = await runServerless({
           fixture: 'ecr',
           command: 'package',
-          awsRequestStubMap,
+          awsSdkV3StubMap,
           modulesCacheStub: {
             ...modulesCacheStub,
             [spawnModulePath]: innerSpawnExtStub,
@@ -2095,10 +2095,10 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
       });
 
       it('should login and retry when docker push fails with token has expired error', async () => {
-        const awsRequestStubMap = {
-          ...baseAwsRequestStubMap,
+        const awsSdkV3StubMap = {
+          ...baseAwsSdkV3StubMap,
           ECR: {
-            ...baseAwsRequestStubMap.ECR,
+            ...baseAwsSdkV3StubMap.ECR,
             describeRepositories: describeRepositoriesStub.resolves({
               repositories: [{ repositoryUri }],
             }),
@@ -2115,7 +2115,7 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
         const { awsSdkV3Stub, serverless } = await runServerless({
           fixture: 'ecr',
           command: 'package',
-          awsRequestStubMap,
+          awsSdkV3StubMap,
           modulesCacheStub: {
             ...modulesCacheStub,
             [spawnModulePath]: innerSpawnExtStub,
@@ -2145,10 +2145,10 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
       });
 
       it('should work correctly when image is defined with implicit path in provider', async () => {
-        const awsRequestStubMap = {
-          ...baseAwsRequestStubMap,
+        const awsSdkV3StubMap = {
+          ...baseAwsSdkV3StubMap,
           ECR: {
-            ...baseAwsRequestStubMap.ECR,
+            ...baseAwsSdkV3StubMap.ECR,
             describeRepositories: describeRepositoriesStub.resolves({
               repositories: [{ repositoryUri }],
             }),
@@ -2158,7 +2158,7 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
         const { awsNaming, cfTemplate } = await runServerless({
           fixture: 'ecr',
           command: 'package',
-          awsRequestStubMap,
+          awsSdkV3StubMap,
           modulesCacheStub,
           configExt: {
             provider: {
@@ -2186,10 +2186,10 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
       });
 
       it('should work correctly when image is defined with `file` set', async () => {
-        const awsRequestStubMap = {
-          ...baseAwsRequestStubMap,
+        const awsSdkV3StubMap = {
+          ...baseAwsSdkV3StubMap,
           ECR: {
-            ...baseAwsRequestStubMap.ECR,
+            ...baseAwsSdkV3StubMap.ECR,
             describeRepositories: describeRepositoriesStub.resolves({
               repositories: [{ repositoryUri }],
             }),
@@ -2203,7 +2203,7 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
         } = await runServerless({
           fixture: 'ecr',
           command: 'package',
-          awsRequestStubMap,
+          awsSdkV3StubMap,
           modulesCacheStub,
           configExt: {
             provider: {
@@ -2242,10 +2242,10 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
       });
 
       it('should work correctly when image is defined with `cacheFrom` set', async () => {
-        const awsRequestStubMap = {
-          ...baseAwsRequestStubMap,
+        const awsSdkV3StubMap = {
+          ...baseAwsSdkV3StubMap,
           ECR: {
-            ...baseAwsRequestStubMap.ECR,
+            ...baseAwsSdkV3StubMap.ECR,
             describeRepositories: describeRepositoriesStub.resolves({
               repositories: [{ repositoryUri }],
             }),
@@ -2259,7 +2259,7 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
         } = await runServerless({
           fixture: 'ecr',
           command: 'package',
-          awsRequestStubMap,
+          awsSdkV3StubMap,
           modulesCacheStub,
           configExt: {
             provider: {
@@ -2301,10 +2301,10 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
       });
 
       it('should work correctly when image is defined with `buildOptions` set', async () => {
-        const awsRequestStubMap = {
-          ...baseAwsRequestStubMap,
+        const awsSdkV3StubMap = {
+          ...baseAwsSdkV3StubMap,
           ECR: {
-            ...baseAwsRequestStubMap.ECR,
+            ...baseAwsSdkV3StubMap.ECR,
             describeRepositories: describeRepositoriesStub.resolves({
               repositories: [{ repositoryUri }],
             }),
@@ -2318,7 +2318,7 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
         } = await runServerless({
           fixture: 'ecr',
           command: 'package',
-          awsRequestStubMap,
+          awsSdkV3StubMap,
           modulesCacheStub,
           configExt: {
             provider: {
@@ -2360,10 +2360,10 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
       });
 
       it('should work correctly when image is defined with `buildArgs` set', async () => {
-        const awsRequestStubMap = {
-          ...baseAwsRequestStubMap,
+        const awsSdkV3StubMap = {
+          ...baseAwsSdkV3StubMap,
           ECR: {
-            ...baseAwsRequestStubMap.ECR,
+            ...baseAwsSdkV3StubMap.ECR,
             describeRepositories: describeRepositoriesStub.resolves({
               repositories: [{ repositoryUri }],
             }),
@@ -2377,7 +2377,7 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
         } = await runServerless({
           fixture: 'ecr',
           command: 'package',
-          awsRequestStubMap,
+          awsSdkV3StubMap,
           modulesCacheStub,
           configExt: {
             provider: {
@@ -2421,10 +2421,10 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
       });
 
       it('should work correctly when image is defined with `platform` set', async () => {
-        const awsRequestStubMap = {
-          ...baseAwsRequestStubMap,
+        const awsSdkV3StubMap = {
+          ...baseAwsSdkV3StubMap,
           ECR: {
-            ...baseAwsRequestStubMap.ECR,
+            ...baseAwsSdkV3StubMap.ECR,
             describeRepositories: describeRepositoriesStub.resolves({
               repositories: [{ repositoryUri }],
             }),
@@ -2438,7 +2438,7 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
         } = await runServerless({
           fixture: 'ecr',
           command: 'package',
-          awsRequestStubMap,
+          awsSdkV3StubMap,
           modulesCacheStub,
           configExt: {
             provider: {
@@ -2479,10 +2479,10 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
       });
 
       it('should work correctly when `functions[].image` is defined with explicit name', async () => {
-        const awsRequestStubMap = {
-          ...baseAwsRequestStubMap,
+        const awsSdkV3StubMap = {
+          ...baseAwsSdkV3StubMap,
           ECR: {
-            ...baseAwsRequestStubMap.ECR,
+            ...baseAwsSdkV3StubMap.ECR,
             describeRepositories: describeRepositoriesStub.resolves({
               repositories: [{ repositoryUri }],
             }),
@@ -2492,7 +2492,7 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
         const { awsNaming, cfTemplate } = await runServerless({
           fixture: 'ecr',
           command: 'package',
-          awsRequestStubMap,
+          awsSdkV3StubMap,
           modulesCacheStub,
           configExt: {
             provider: {
@@ -2524,7 +2524,7 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
           runServerless({
             fixture: 'ecr',
             command: 'package',
-            awsRequestStubMap: baseAwsRequestStubMap,
+            awsSdkV3StubMap: baseAwsSdkV3StubMap,
             modulesCacheStub: {
               [spawnModulePath]: sinon.stub().throws(),
             },
@@ -2537,7 +2537,7 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
           runServerless({
             fixture: 'ecr',
             command: 'package',
-            awsRequestStubMap: baseAwsRequestStubMap,
+            awsSdkV3StubMap: baseAwsSdkV3StubMap,
             modulesCacheStub: {
               ...modulesCacheStub,
               [spawnModulePath]: sinon.stub().returns({}).onSecondCall().throws(),
@@ -2551,7 +2551,7 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
           runServerless({
             fixture: 'ecr',
             command: 'package',
-            awsRequestStubMap: baseAwsRequestStubMap,
+            awsSdkV3StubMap: baseAwsSdkV3StubMap,
             modulesCacheStub: {
               ...modulesCacheStub,
               [spawnModulePath]: sinon.stub().returns({}).onCall(2).throws(),
@@ -2565,7 +2565,7 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
           runServerless({
             fixture: 'ecr',
             command: 'package',
-            awsRequestStubMap: baseAwsRequestStubMap,
+            awsSdkV3StubMap: baseAwsSdkV3StubMap,
             modulesCacheStub: {
               ...modulesCacheStub,
               [spawnModulePath]: sinon.stub().returns({}).onCall(3).throws(),
@@ -2579,7 +2579,7 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
           runServerless({
             fixture: 'ecr',
             command: 'package',
-            awsRequestStubMap: baseAwsRequestStubMap,
+            awsSdkV3StubMap: baseAwsSdkV3StubMap,
             modulesCacheStub: {
               ...modulesCacheStub,
               [spawnModulePath]: sinon
