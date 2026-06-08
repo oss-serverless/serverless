@@ -1,22 +1,13 @@
 'use strict';
 
 const expect = require('chai').expect;
-const AwsCompileWebsocketsEvents = require('../../../../../../../../../../lib/plugins/aws/package/compile/events/websockets/index');
-const Serverless = require('../../../../../../../../../../lib/serverless');
-const AwsProvider = require('../../../../../../../../../../lib/plugins/aws/provider');
+const { createWebsocketsCompilerContext } = require('../test-utils');
 
 describe('#compileRouteResponses()', () => {
   let awsCompileWebsocketsEvents;
 
   beforeEach(() => {
-    const serverless = new Serverless({ commands: [], options: {} });
-    serverless.setProvider('aws', new AwsProvider(serverless));
-    serverless.service.provider.compiledCloudFormationTemplate = { Resources: {} };
-
-    awsCompileWebsocketsEvents = new AwsCompileWebsocketsEvents(serverless);
-
-    awsCompileWebsocketsEvents.websocketsApiLogicalId =
-      awsCompileWebsocketsEvents.provider.naming.getWebsocketsApiLogicalId();
+    ({ awsCompileWebsocketsEvents } = createWebsocketsCompilerContext());
   });
 
   it('should create a RouteResponse resource for events with selection expression', () => {
