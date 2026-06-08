@@ -8,7 +8,6 @@ const fsp = require('fs').promises;
 const os = require('os');
 const path = require('path');
 const AwsConfigCredentials = require('../../../../../lib/plugins/aws/config-credentials');
-const Serverless = require('../../../../../lib/serverless');
 const runServerless = require('../../../../utils/run-serverless');
 const { outputFile, outputFileSync, remove } = require('../../../../utils/fs');
 
@@ -16,7 +15,6 @@ const { expect } = chai;
 
 describe('AwsConfigCredentials', () => {
   let awsConfigCredentials;
-  let serverless;
   const homeDirPath = os.homedir();
   const awsDirectoryPath = path.join(homeDirPath, '.aws');
   const credentialsFilePath = path.join(awsDirectoryPath, 'credentials');
@@ -40,16 +38,13 @@ describe('AwsConfigCredentials', () => {
     );
   });
 
-  beforeEach(async () => {
-    serverless = new Serverless({ commands: ['print'], options: {}, serviceDir: null });
-    return serverless.init().then(() => {
-      const options = {
-        provider: 'aws',
-        key: 'some-key',
-        secret: 'some-secret',
-      };
-      awsConfigCredentials = new AwsConfigCredentials(serverless, options);
-    });
+  beforeEach(() => {
+    const options = {
+      provider: 'aws',
+      key: 'some-key',
+      secret: 'some-secret',
+    };
+    awsConfigCredentials = new AwsConfigCredentials({}, options);
   });
 
   afterEach(() => remove(awsDirectoryPath));
@@ -99,7 +94,7 @@ describe('AwsConfigCredentials', () => {
     it('should throw an error if the home directory was not found', () => {
       sandbox.stub(os, 'homedir').returns(null);
       try {
-        expect(() => new AwsConfigCredentials(serverless, {})).to.throw(Error);
+        expect(() => new AwsConfigCredentials({}, {})).to.throw(Error);
       } finally {
         sandbox.restore();
       }

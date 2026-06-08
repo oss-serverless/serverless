@@ -2,9 +2,7 @@
 
 const chai = require('chai');
 const path = require('path');
-const AwsProvider = require('../../../../../../lib/plugins/aws/provider');
-const Serverless = require('../../../../../../lib/serverless');
-const CLI = require('../../../../../../lib/classes/cli');
+const awsNaming = require('../../../../../../lib/plugins/aws/lib/naming');
 const { createTmpDir, pathExists } = require('../../../../../utils/fs');
 const {
   addCustomResourceToService,
@@ -26,23 +24,35 @@ describe('#addCustomResourceToService()', () => {
     },
   ];
 
+  const createProviderContext = () => {
+    const serverless = {
+      serviceDir: tmpDirPath,
+      service: {
+        service: serviceName,
+        provider: {
+          compiledCloudFormationTemplate: { Resources: {} },
+        },
+        package: {
+          artifactDirectoryName: 'artifact-dir-name',
+        },
+      },
+    };
+    const provider = {
+      serverless,
+      naming: Object.create(awsNaming),
+      getStage: () => 'dev',
+      getRuntime: () => serverless.service.provider.runtime || 'nodejs24.x',
+      getCustomDeploymentRole: () => serverless.service.provider.iam?.deploymentRole,
+      getLogRetentionInDays: () => serverless.service.provider.logRetentionInDays,
+      getLogDataProtectionPolicy: () => serverless.service.provider.logDataProtectionPolicy,
+    };
+    provider.naming.provider = provider;
+    return { serverless, provider };
+  };
+
   beforeEach(() => {
-    const options = {
-      stage: 'dev',
-      region: 'us-east-1',
-    };
     tmpDirPath = createTmpDir();
-    serverless = new Serverless({ commands: [], options: {} });
-    serverless.cli = new CLI();
-    serverless.pluginManager.cliOptions = options;
-    provider = new AwsProvider(serverless, options);
-    serverless.setProvider('aws', provider);
-    serverless.service.service = serviceName;
-    serverless.service.provider.compiledCloudFormationTemplate = {
-      Resources: {},
-    };
-    serverless.serviceDir = tmpDirPath;
-    serverless.service.package.artifactDirectoryName = 'artifact-dir-name';
+    ({ serverless, provider } = createProviderContext());
   });
 
   it('should add one IAM role and the custom resources to the service', async () => {

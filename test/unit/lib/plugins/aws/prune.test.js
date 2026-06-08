@@ -4,30 +4,40 @@ const expect = require('chai').expect;
 const sinon = require('sinon');
 const { ListVersionsByFunctionCommand } = require('@aws-sdk/client-lambda');
 const AwsPrune = require('../../../../../lib/plugins/aws/prune');
-const AwsProvider = require('../../../../../lib/plugins/aws/provider');
-const Serverless = require('../../../../../lib/serverless');
 const ServerlessError = require('../../../../../lib/serverless-error');
-const CLI = require('../../../../../lib/classes/cli');
 
 describe('AwsPrune', () => {
   let serverless;
   let awsPrune;
 
   beforeEach(() => {
-    serverless = new Serverless({ commands: [], options: {} });
-    serverless.cli = new CLI(serverless);
-    serverless.service.provider = { name: 'aws', versionFunctions: true };
-    serverless.service.functions = {
-      FunctionA: { name: 'service-FunctionA' },
-      FunctionB: { name: 'service-FunctionB' },
-    };
-    serverless.service.layers = {
-      LayerA: { name: 'layer-LayerA' },
-    };
-    serverless.service.getAllLayers = () => Object.keys(serverless.service.layers);
-    serverless.service.getLayer = (key) => serverless.service.layers[key];
     const options = { stage: 'dev', region: 'us-east-1' };
-    serverless.setProvider('aws', new AwsProvider(serverless, options));
+    const provider = { getAwsSdkV3Config: sinon.stub().resolves({}) };
+    serverless = {
+      service: {
+        provider: { name: 'aws', versionFunctions: true },
+        functions: {
+          FunctionA: { name: 'service-FunctionA' },
+          FunctionB: { name: 'service-FunctionB' },
+        },
+        layers: {
+          LayerA: { name: 'layer-LayerA' },
+        },
+        getAllFunctions() {
+          return Object.keys(this.functions);
+        },
+        getFunction(key) {
+          return this.functions[key];
+        },
+        getAllLayers() {
+          return Object.keys(this.layers);
+        },
+        getLayer(key) {
+          return this.layers[key];
+        },
+      },
+      getProvider: sinon.stub().withArgs('aws').returns(provider),
+    };
     awsPrune = new AwsPrune(serverless, options);
   });
 
