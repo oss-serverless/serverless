@@ -2,20 +2,17 @@
 
 const chai = require('chai');
 const sinon = require('sinon');
-const path = require('path');
-const AwsProvider = require('../../../../../../../lib/plugins/aws/provider');
-const AwsDeploy = require('../../../../../../../lib/plugins/aws/deploy/index');
-const Serverless = require('../../../../../../../lib/serverless');
-const { getTmpDirPath } = require('../../../../../../utils/fs');
+const extendedValidate = require('../../../../../../../lib/plugins/aws/deploy/lib/extended-validate');
 
 const expect = chai.expect;
 
 describe('extendedValidate', () => {
   let awsDeploy;
-  const tmpDirPath = getTmpDirPath();
+  let fileExistsSyncStub;
+  let readFileSyncStub;
+  let stateFileMock;
 
-  const serverlessYmlPath = path.join(tmpDirPath, 'serverless.yml');
-  const serverlessYml = {
+  const createServiceConfig = () => ({
     service: 'first-service',
     provider: 'aws',
     functions: {
@@ -23,47 +20,66 @@ describe('extendedValidate', () => {
         handler: 'sample.handler',
       },
     },
-  };
-  const stateFileMock = {
-    service: serverlessYml,
+  });
+
+  const createStateFile = () => ({
+    service: createServiceConfig(),
     package: {
       individually: true,
       artifactDirectoryName: 'some/path',
       artifact: '',
     },
+  });
+
+  const createAwsDeploy = () => {
+    const service = {
+      service: 'first-service',
+      provider: {},
+      package: {
+        individually: false,
+      },
+      functions: {
+        first: {
+          handler: 'sample.handler',
+        },
+      },
+      getAllFunctions() {
+        return Object.keys(this.functions);
+      },
+      getFunction(functionName) {
+        return this.functions[functionName];
+      },
+    };
+
+    return {
+      ...extendedValidate,
+      packagePath: 'package-path',
+      provider: {
+        naming: {
+          getServiceStateFileName: () => 'service-state.json',
+          getServiceArtifactName: () => 'service.zip',
+          getFunctionArtifactName: (functionName) => `${functionName}.zip`,
+        },
+      },
+      serverless: {
+        serviceDir: 'service-dir',
+        service,
+        utils: {
+          fileExistsSync: sinon.stub(),
+          readFileSync: sinon.stub(),
+        },
+      },
+    };
   };
 
   beforeEach(() => {
-    const options = {
-      stage: 'dev',
-      region: 'us-east-1',
-    };
-    const serverless = new Serverless({ commands: [], options: {} });
-    serverless.setProvider('aws', new AwsProvider(serverless, options));
-    serverless.utils.writeFileSync(serverlessYmlPath, serverlessYml);
-    serverless.serviceDir = tmpDirPath;
-    awsDeploy = new AwsDeploy(serverless, options);
-    awsDeploy.serverless.service.service = `service-${new Date().getTime().toString()}`;
-    awsDeploy.serverless.cli = {
-      log: sinon.spy(),
-    };
+    awsDeploy = createAwsDeploy();
+    stateFileMock = createStateFile();
+    fileExistsSyncStub = awsDeploy.serverless.utils.fileExistsSync;
+    readFileSyncStub = awsDeploy.serverless.utils.readFileSync;
   });
 
   describe('extendedValidate()', () => {
-    let fileExistsSyncStub;
-    let readFileSyncStub;
-
-    beforeEach(() => {
-      fileExistsSyncStub = sinon.stub(awsDeploy.serverless.utils, 'fileExistsSync');
-      readFileSyncStub = sinon.stub(awsDeploy.serverless.utils, 'readFileSync');
-      awsDeploy.serverless.service.package.individually = false;
-    });
-
-    afterEach(() => {
-      fileExistsSyncStub.restore();
-      readFileSyncStub.restore();
-    });
-
     it('should throw error if state file does not exist', async () => {
       fileExistsSyncStub.returns(false);
 
@@ -142,27 +158,23 @@ describe('extendedValidate', () => {
     });
 
     it('should throw error if specified package artifact does not exist', async () => {
-      // const fileExistsSyncStub = sinon.stub(awsDeploy.serverless.utils, 'fileExistsSync');
       fileExistsSyncStub.onCall(0).returns(true);
       fileExistsSyncStub.onCall(1).returns(false);
       readFileSyncStub.returns(stateFileMock);
       awsDeploy.serverless.service.package.artifact = 'some/file.zip';
       await expect(awsDeploy.extendedValidate()).to.eventually.be.rejectedWith(Error);
-      delete awsDeploy.serverless.service.package.artifact;
     });
 
     it('should not throw error if specified package artifact exists', async () => {
-      // const fileExistsSyncStub = sinon.stub(awsDeploy.serverless.utils, 'fileExistsSync');
       fileExistsSyncStub.onCall(0).returns(true);
       fileExistsSyncStub.onCall(1).returns(true);
       readFileSyncStub.returns(stateFileMock);
       awsDeploy.serverless.service.package.artifact = 'some/file.zip';
       await awsDeploy.extendedValidate();
-      delete awsDeploy.serverless.service.package.artifact;
     });
 
     it('restores persisted service state without mutating the service prototype', async () => {
-      const restoredService = JSON.parse(JSON.stringify(serverlessYml));
+      const restoredService = createServiceConfig();
       restoredService.functions = {};
       Object.defineProperty(restoredService, '__proto__', {
         value: { polluted: true },

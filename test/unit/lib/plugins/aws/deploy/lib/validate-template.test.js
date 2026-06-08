@@ -1,9 +1,7 @@
 'use strict';
 
 const sinon = require('sinon');
-const AwsProvider = require('../../../../../../../lib/plugins/aws/provider');
-const AwsDeploy = require('../../../../../../../lib/plugins/aws/deploy/index');
-const Serverless = require('../../../../../../../lib/serverless');
+const validateTemplate = require('../../../../../../../lib/plugins/aws/deploy/lib/validate-template');
 const { CloudFormationClient, ValidateTemplateCommand } = require('@aws-sdk/client-cloudformation');
 
 // Configure chai
@@ -11,30 +9,34 @@ const expect = require('chai').expect;
 
 describe('validateTemplate', () => {
   let awsDeploy;
-  let serverless;
   let validateTemplateStub;
+  let sandbox;
 
   beforeEach(() => {
-    const options = {
-      stage: 'dev',
-      region: 'us-east-1',
-    };
-    serverless = new Serverless({ commands: [], options: {} });
-    serverless.serviceDir = 'foo';
-    serverless.setProvider('aws', new AwsProvider(serverless, options));
-    awsDeploy = new AwsDeploy(serverless, options);
-    awsDeploy.bucketName = 'deployment-bucket';
-    awsDeploy.serverless.service.package.artifactDirectoryName = 'somedir';
-    awsDeploy.serverless.service.functions = {
-      first: {
-        handler: 'foo',
+    sandbox = sinon.createSandbox();
+    awsDeploy = {
+      ...validateTemplate,
+      bucketName: 'deployment-bucket',
+      provider: {
+        getAwsSdkV3Config: async () => ({ region: 'us-east-1' }),
+        getRegion: () => 'us-east-1',
+        naming: {
+          getCompiledTemplateS3Suffix: () => 'compiled-cloudformation-template.json',
+        },
+      },
+      serverless: {
+        service: {
+          package: {
+            artifactDirectoryName: 'somedir',
+          },
+        },
       },
     };
-    validateTemplateStub = sinon.stub(CloudFormationClient.prototype, 'send');
+    validateTemplateStub = sandbox.stub(CloudFormationClient.prototype, 'send');
   });
 
   afterEach(() => {
-    CloudFormationClient.prototype.send.restore();
+    sandbox.restore();
   });
 
   describe('#validateTemplate()', () => {
@@ -52,24 +54,20 @@ describe('validateTemplate', () => {
 
     it('uses an existing CloudFormation client promise from the plugin context', async () => {
       const send = sinon.stub().resolves();
-      sinon
+      const getAwsSdkV3ConfigStub = sandbox
         .stub(awsDeploy.provider, 'getAwsSdkV3Config')
         .throws(new Error('Expected existing CloudFormation client to be reused'));
       awsDeploy.cloudFormationClientPromise = Promise.resolve({ send });
 
-      try {
-        await awsDeploy.validateTemplate();
+      await awsDeploy.validateTemplate();
 
-        expect(awsDeploy.provider.getAwsSdkV3Config).to.not.have.been.called;
-        expect(send).to.have.been.calledOnce;
-        expect(send.firstCall.args[0]).to.be.instanceOf(ValidateTemplateCommand);
-        expect(send.firstCall.args[0].input).to.deep.equal({
-          TemplateURL:
-            'https://s3.amazonaws.com/deployment-bucket/somedir/compiled-cloudformation-template.json',
-        });
-      } finally {
-        awsDeploy.provider.getAwsSdkV3Config.restore();
-      }
+      expect(getAwsSdkV3ConfigStub).to.not.have.been.called;
+      expect(send).to.have.been.calledOnce;
+      expect(send.firstCall.args[0]).to.be.instanceOf(ValidateTemplateCommand);
+      expect(send.firstCall.args[0].input).to.deep.equal({
+        TemplateURL:
+          'https://s3.amazonaws.com/deployment-bucket/somedir/compiled-cloudformation-template.json',
+      });
     });
 
     it('should throw an error if the CloudFormation template is invalid', async () => {
