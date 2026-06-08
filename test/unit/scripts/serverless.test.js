@@ -3,11 +3,10 @@
 const { expect } = require('chai');
 
 const path = require('path');
-const fsp = require('fs').promises;
 const spawn = require('../../../lib/utils/spawn');
 const { stripVTControlCharacters: stripAnsi } = require('node:util');
 const { version } = require('../../../package');
-const programmaticFixturesEngine = require('../../fixtures/programmatic');
+const setupProgrammaticFixture = require('../../utils/setup-programmatic-fixture');
 
 const serverlessPath = path.resolve(__dirname, '../../../scripts/serverless.js');
 const programmaticFixturesPath = path.resolve(__dirname, '../../fixtures/programmatic');
@@ -143,7 +142,7 @@ describe('test/unit/scripts/serverless.test.js', () => {
     try {
       await spawn('node', [serverlessPath, 'print'], {
         cwd: (
-          await programmaticFixturesEngine.setup('aws', {
+          await setupProgrammaticFixture('aws', {
             configExt: { provider: '${foo:bar}' },
           })
         ).servicePath,
@@ -159,7 +158,7 @@ describe('test/unit/scripts/serverless.test.js', () => {
     try {
       await spawn('node', [serverlessPath, 'print'], {
         cwd: (
-          await programmaticFixturesEngine.setup('aws', {
+          await setupProgrammaticFixture('aws', {
             configExt: { provider: { stage: '${foo:bar}' } },
           })
         ).servicePath,
@@ -172,15 +171,15 @@ describe('test/unit/scripts/serverless.test.js', () => {
   });
 
   it('should load env variables from dotenv files', async () => {
-    const { servicePath: serviceDir } = await programmaticFixturesEngine.setup('aws', {
+    const { servicePath: serviceDir } = await setupProgrammaticFixture('aws', {
       configExt: {
         useDotenv: true,
         custom: {
           fromDefaultEnv: '${env:DEFAULT_ENV_VARIABLE}',
         },
       },
+      files: [{ to: '.env', contents: 'DEFAULT_ENV_VARIABLE=valuefromdefault' }],
     });
-    await fsp.writeFile(path.resolve(serviceDir, '.env'), 'DEFAULT_ENV_VARIABLE=valuefromdefault');
     const printOut = String(
       (await spawn('node', [serverlessPath, 'print'], { cwd: serviceDir })).stdoutBuffer
     );
@@ -189,7 +188,7 @@ describe('test/unit/scripts/serverless.test.js', () => {
   });
 
   it('should allow not defined environment variables in provider.stage`', async () => {
-    const { servicePath: serviceDir } = await programmaticFixturesEngine.setup('aws', {
+    const { servicePath: serviceDir } = await setupProgrammaticFixture('aws', {
       configExt: {
         useDotenv: true,
         provider: {
@@ -199,8 +198,8 @@ describe('test/unit/scripts/serverless.test.js', () => {
           fromDefaultEnv: '${env:DEFAULT_ENV_VARIABLE}',
         },
       },
+      files: [{ to: '.env', contents: 'DEFAULT_ENV_VARIABLE=valuefromdefault' }],
     });
-    await fsp.writeFile(path.resolve(serviceDir, '.env'), 'DEFAULT_ENV_VARIABLE=valuefromdefault');
     const printOut = String(
       (await spawn('node', [serverlessPath, 'print'], { cwd: serviceDir })).stdoutBuffer
     );
@@ -209,15 +208,15 @@ describe('test/unit/scripts/serverless.test.js', () => {
   });
 
   it('should report "env" variables resolution conflicts with exception', async () => {
-    const { servicePath: serviceDir } = await programmaticFixturesEngine.setup('aws', {
+    const { servicePath: serviceDir } = await setupProgrammaticFixture('aws', {
       configExt: {
         useDotenv: true,
         provider: {
           stage: "${env:FOO, 'dev'}",
         },
       },
+      files: [{ to: '.env', contents: 'FOO=test' }],
     });
-    await fsp.writeFile(path.resolve(serviceDir, '.env'), 'FOO=test');
     try {
       await spawn('node', [serverlessPath, 'print'], { cwd: serviceDir });
       throw new Error('Unexpected');
@@ -228,7 +227,7 @@ describe('test/unit/scripts/serverless.test.js', () => {
   });
 
   it('should support custom variable soruces', async () => {
-    const { servicePath: serviceDir } = await programmaticFixturesEngine.setup('plugin', {
+    const { servicePath: serviceDir } = await setupProgrammaticFixture('plugin', {
       configExt: {
         custom: {
           otherVar: '${other:addressValue}',
@@ -245,7 +244,7 @@ describe('test/unit/scripts/serverless.test.js', () => {
     try {
       await spawn('node', [serverlessPath, 'print'], {
         cwd: (
-          await programmaticFixturesEngine.setup('aws', {
+          await setupProgrammaticFixture('aws', {
             configExt: { plugins: '${foo:bar}' },
           })
         ).servicePath,
@@ -260,7 +259,7 @@ describe('test/unit/scripts/serverless.test.js', () => {
   it('should throw meaningful error on unrecognized command for custom provider', async () => {
     try {
       await spawn('node', [serverlessPath, 'foo'], {
-        cwd: (await programmaticFixturesEngine.setup('custom-provider')).servicePath,
+        cwd: (await setupProgrammaticFixture('custom-provider')).servicePath,
       });
       throw new Error('Unexpected');
     } catch (error) {
@@ -293,7 +292,7 @@ describe('test/unit/scripts/serverless.test.js', () => {
   });
 
   it('should include plugin commands in service help output', async () => {
-    const { servicePath: serviceDir } = await programmaticFixturesEngine.setup('plugin');
+    const { servicePath: serviceDir } = await setupProgrammaticFixture('plugin');
 
     const output = stripAnsi(
       String(
@@ -311,7 +310,7 @@ describe('test/unit/scripts/serverless.test.js', () => {
   });
 
   it('should print plugin command help to stdout', async () => {
-    const { servicePath: serviceDir } = await programmaticFixturesEngine.setup('plugin');
+    const { servicePath: serviceDir } = await setupProgrammaticFixture('plugin');
 
     const output = stripAnsi(
       String(
@@ -329,7 +328,7 @@ describe('test/unit/scripts/serverless.test.js', () => {
   });
 
   it('should dispatch plugin command', async () => {
-    const { servicePath: serviceDir } = await programmaticFixturesEngine.setup('plugin');
+    const { servicePath: serviceDir } = await setupProgrammaticFixture('plugin');
 
     const output = stripAnsi(
       String(
@@ -345,7 +344,7 @@ describe('test/unit/scripts/serverless.test.js', () => {
   });
 
   it('should parse plugin command options from final plugin schema', async () => {
-    const { servicePath: serviceDir } = await programmaticFixturesEngine.setup('plugin');
+    const { servicePath: serviceDir } = await setupProgrammaticFixture('plugin');
 
     const output = stripAnsi(
       String(

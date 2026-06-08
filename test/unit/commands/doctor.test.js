@@ -3,7 +3,7 @@
 const path = require('path');
 const spawn = require('../../../lib/utils/spawn');
 const { expect } = require('chai');
-const fixturesEngine = require('../../fixtures/programmatic');
+const setupProgrammaticFixture = require('../../utils/setup-programmatic-fixture');
 
 const serverlessPath = path.resolve(__dirname, '../../../scripts/serverless.js');
 
@@ -13,7 +13,7 @@ describe('test/unit/commands/doctor.test.js', async () => {
   });
 
   it('should print health status after command which triggered deprecation', async () => {
-    const { servicePath: serviceDir } = await fixturesEngine.setup('http-api', {
+    const { servicePath: serviceDir } = await setupProgrammaticFixture('http-api', {
       configExt: {
         provider: {
           httpApi: {
