@@ -5,7 +5,7 @@ const fsp = require('fs').promises;
 const sinon = require('sinon');
 const yaml = require('js-yaml');
 const proxyquire = require('proxyquire');
-const fixturesEngine = require('../../fixtures/programmatic');
+const setupProgrammaticFixture = require('../../utils/setup-programmatic-fixture');
 const resolveConfigurationPath = require('../../../lib/cli/resolve-configuration-path');
 const cloudformationSchema = require('../../../lib/utils/serverless-utils/cloudformation-schema');
 const { expect } = require('chai');
@@ -57,7 +57,7 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
     let serviceDir;
     let configurationFilePath;
     before(async () => {
-      const fixture = await fixturesEngine.setup('function');
+      const fixture = await setupProgrammaticFixture('function');
       const configuration = fixture.serviceConfig;
       serviceDir = fixture.servicePath;
       configurationFilePath = await resolveConfigurationPath({
@@ -93,7 +93,7 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
 
   describe('with plugins in configuration', () => {
     it('should not add plugin to serverless file if it is already present in configuration but configured behind a variable', async () => {
-      const fixture = await fixturesEngine.setup('function', {
+      const fixture = await setupProgrammaticFixture('function', {
         configExt: {
           plugins: ['${self:custom.pluginName}'],
           custom: {
@@ -130,7 +130,7 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
 
   describe('with invalid plugin name', () => {
     it('rejects before installing or updating the configuration file', async () => {
-      const fixture = await fixturesEngine.setup('function');
+      const fixture = await setupProgrammaticFixture('function');
       const configuration = fixture.serviceConfig;
       const serviceDir = fixture.servicePath;
       const configurationFilePath = await resolveConfigurationPath({
@@ -157,7 +157,7 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
 
   describe('with JSON configuration', () => {
     it('adds a plugin to array-form plugins', async () => {
-      const fixture = await fixturesEngine.setup('function');
+      const fixture = await setupProgrammaticFixture('function');
       const { configurationFilePath, configuration, configurationFilename } =
         await writeJsonConfiguration(fixture.servicePath, {
           service: 'json-service',
@@ -177,7 +177,7 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
     });
 
     it('adds a plugin to object-form plugins.modules', async () => {
-      const fixture = await fixturesEngine.setup('function');
+      const fixture = await setupProgrammaticFixture('function');
       const { configurationFilePath, configuration, configurationFilename } =
         await writeJsonConfiguration(fixture.servicePath, {
           service: 'json-service',
@@ -197,7 +197,7 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
     });
 
     it('strips a UTF-8 BOM from JSON input', async () => {
-      const fixture = await fixturesEngine.setup('function');
+      const fixture = await setupProgrammaticFixture('function');
       const configuration = { service: 'json-service', plugins: [] };
       const { configurationFilePath, configurationFilename } = await writeJsonConfiguration(
         fixture.servicePath,
@@ -218,7 +218,7 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
     });
 
     it('includes the JSON filename in invalid JSON errors', async () => {
-      const fixture = await fixturesEngine.setup('function');
+      const fixture = await setupProgrammaticFixture('function');
       const { configurationFilePath, configuration, configurationFilename } =
         await writeJsonConfiguration(fixture.servicePath, { service: 'json-service' }, '{invalid');
 
@@ -233,7 +233,7 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
     });
 
     it('writes compact JSON with a final newline', async () => {
-      const fixture = await fixturesEngine.setup('function');
+      const fixture = await setupProgrammaticFixture('function');
       const { configurationFilePath, configuration, configurationFilename } =
         await writeJsonConfiguration(fixture.servicePath, {
           service: 'json-service',
@@ -255,7 +255,7 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
 
   describe('with intrinsic-tagged yaml', () => {
     it('preserves shorthand intrinsic tags when adding a plugin to array-form yaml', async () => {
-      const fixture = await fixturesEngine.setup('function');
+      const fixture = await setupProgrammaticFixture('function');
       const serviceDir = fixture.servicePath;
       const rawYaml = [
         'service: raw-plugin-yaml',
@@ -304,7 +304,7 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
     });
 
     it('preserves sibling shorthand tags when adding a plugin to object-form plugins.modules', async () => {
-      const fixture = await fixturesEngine.setup('function');
+      const fixture = await setupProgrammaticFixture('function');
       const serviceDir = fixture.servicePath;
       const rawYaml = [
         'service: raw-plugin-yaml',
@@ -351,7 +351,7 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
     });
 
     it('updates a quoted top level plugins array without duplicating the section', async () => {
-      const fixture = await fixturesEngine.setup('function');
+      const fixture = await setupProgrammaticFixture('function');
       const serviceDir = fixture.servicePath;
       const rawYaml = [
         'service: raw-plugin-yaml',

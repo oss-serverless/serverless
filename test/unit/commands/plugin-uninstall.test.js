@@ -5,7 +5,7 @@ const fsp = require('fs').promises;
 const sinon = require('sinon');
 const yaml = require('js-yaml');
 const proxyquire = require('proxyquire');
-const fixturesEngine = require('../../fixtures/programmatic');
+const setupProgrammaticFixture = require('../../utils/setup-programmatic-fixture');
 const resolveConfigurationPath = require('../../../lib/cli/resolve-configuration-path');
 const cloudformationSchema = require('../../../lib/utils/serverless-utils/cloudformation-schema');
 const { expect } = require('chai');
@@ -52,7 +52,7 @@ describe('test/unit/commands/plugin-uninstall.test.js', async () => {
   let configurationFilePath;
 
   before(async () => {
-    const fixture = await fixturesEngine.setup('function', {
+    const fixture = await setupProgrammaticFixture('function', {
       configExt: {
         plugins: [pluginName],
       },
@@ -96,7 +96,7 @@ describe('test/unit/commands/plugin-uninstall.test.js', async () => {
 
   describe('with invalid plugin name', () => {
     it('rejects before uninstalling or updating the configuration file', async () => {
-      const fixture = await fixturesEngine.setup('function', {
+      const fixture = await setupProgrammaticFixture('function', {
         configExt: {
           plugins: [pluginName],
         },
@@ -130,7 +130,7 @@ describe('test/unit/commands/plugin-uninstall.test.js', async () => {
 
   describe('with JSON configuration', () => {
     it('removes a plugin from array-form plugins', async () => {
-      const fixture = await fixturesEngine.setup('function');
+      const fixture = await setupProgrammaticFixture('function');
       const { configurationFilePath, configuration, configurationFilename } =
         await writeJsonConfiguration(fixture.servicePath, {
           service: 'json-service',
@@ -150,7 +150,7 @@ describe('test/unit/commands/plugin-uninstall.test.js', async () => {
     });
 
     it('removes all duplicate plugin entries', async () => {
-      const fixture = await fixturesEngine.setup('function');
+      const fixture = await setupProgrammaticFixture('function');
       const { configurationFilePath, configuration, configurationFilename } =
         await writeJsonConfiguration(fixture.servicePath, {
           service: 'json-service',
@@ -170,7 +170,7 @@ describe('test/unit/commands/plugin-uninstall.test.js', async () => {
     });
 
     it('deletes an empty top-level plugins array', async () => {
-      const fixture = await fixturesEngine.setup('function');
+      const fixture = await setupProgrammaticFixture('function');
       const { configurationFilePath, configuration, configurationFilename } =
         await writeJsonConfiguration(fixture.servicePath, {
           service: 'json-service',
@@ -190,7 +190,7 @@ describe('test/unit/commands/plugin-uninstall.test.js', async () => {
     });
 
     it('deletes an empty object-form plugins.modules array', async () => {
-      const fixture = await fixturesEngine.setup('function');
+      const fixture = await setupProgrammaticFixture('function');
       const { configurationFilePath, configuration, configurationFilename } =
         await writeJsonConfiguration(fixture.servicePath, {
           service: 'json-service',
@@ -211,7 +211,7 @@ describe('test/unit/commands/plugin-uninstall.test.js', async () => {
     });
 
     it('includes the JSON filename in invalid JSON errors', async () => {
-      const fixture = await fixturesEngine.setup('function');
+      const fixture = await setupProgrammaticFixture('function');
       const { configurationFilePath, configuration, configurationFilename } =
         await writeJsonConfiguration(fixture.servicePath, { service: 'json-service' }, '{invalid');
 
@@ -226,7 +226,7 @@ describe('test/unit/commands/plugin-uninstall.test.js', async () => {
     });
 
     it('writes compact JSON with a final newline', async () => {
-      const fixture = await fixturesEngine.setup('function');
+      const fixture = await setupProgrammaticFixture('function');
       const { configurationFilePath, configuration, configurationFilename } =
         await writeJsonConfiguration(fixture.servicePath, {
           service: 'json-service',
@@ -248,7 +248,7 @@ describe('test/unit/commands/plugin-uninstall.test.js', async () => {
 
   describe('with intrinsic-tagged yaml', () => {
     it('preserves shorthand intrinsic tags when removing a plugin from array-form yaml', async () => {
-      const fixture = await fixturesEngine.setup('function');
+      const fixture = await setupProgrammaticFixture('function');
       const fixtureServiceDir = fixture.servicePath;
       const rawYaml = [
         'service: raw-plugin-yaml',
@@ -291,7 +291,7 @@ describe('test/unit/commands/plugin-uninstall.test.js', async () => {
     });
 
     it('preserves sibling shorthand tags when removing a plugin from object-form plugins.modules', async () => {
-      const fixture = await fixturesEngine.setup('function');
+      const fixture = await setupProgrammaticFixture('function');
       const fixtureServiceDir = fixture.servicePath;
       const rawYaml = [
         'service: raw-plugin-yaml',
@@ -337,7 +337,7 @@ describe('test/unit/commands/plugin-uninstall.test.js', async () => {
     });
 
     it('preserves later plugins siblings when removing the last object-form plugin entry', async () => {
-      const fixture = await fixturesEngine.setup('function');
+      const fixture = await setupProgrammaticFixture('function');
       const fixtureServiceDir = fixture.servicePath;
       const rawYaml = [
         'service: raw-plugin-yaml',
@@ -384,7 +384,7 @@ describe('test/unit/commands/plugin-uninstall.test.js', async () => {
     });
 
     it('removes plugins from a quoted top level plugins array without leaving a duplicate section', async () => {
-      const fixture = await fixturesEngine.setup('function');
+      const fixture = await setupProgrammaticFixture('function');
       const fixtureServiceDir = fixture.servicePath;
       const rawYaml = [
         'service: raw-plugin-yaml',
