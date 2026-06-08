@@ -696,7 +696,7 @@ describe('test/unit/lib/plugins/aws/deploy/lib/upload-artifacts.test.js', () => 
       fixture: 'function',
       command: 'deploy',
       lastLifecycleHookName: 'aws:deploy:deploy:uploadArtifacts',
-      awsRequestStubMap: {
+      awsSdkV3StubMap: {
         CloudFormation: {
           describeStacks: { Stacks: [{}] },
           describeStackResource: {
