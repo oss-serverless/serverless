@@ -7,7 +7,7 @@ const proxyquire = require('proxyquire').noCallThru();
 const sinon = require('sinon');
 const { listFileProperties, listZipFiles } = require('../../../../../utils/fs');
 const runServerless = require('../../../../../utils/run-serverless');
-const fixtures = require('../../../../../fixtures/programmatic');
+const setupProgrammaticFixture = require('../../../../../utils/setup-programmatic-fixture');
 const packageService = require('../../../../../../lib/plugins/package/lib/package-service');
 
 // Configure chai
@@ -377,7 +377,8 @@ describe('test/unit/lib/plugins/package/lib/packageService.test.js', () => {
       });
 
       it('for function', async () => {
-        const { servicePath: serviceDir, updateConfig } = await fixtures.setup('package-artifact');
+        const { servicePath: serviceDir, updateConfig } =
+          await setupProgrammaticFixture('package-artifact');
         const absoluteArtifactFilePath = path.join(serviceDir, 'absolute-artifact.zip');
 
         await updateConfig({
@@ -404,7 +405,8 @@ describe('test/unit/lib/plugins/package/lib/packageService.test.js', () => {
       });
 
       it('service-wide', async () => {
-        const { servicePath: serviceDir, updateConfig } = await fixtures.setup('package-artifact');
+        const { servicePath: serviceDir, updateConfig } =
+          await setupProgrammaticFixture('package-artifact');
         const absoluteArtifactFilePath = path.join(serviceDir, 'absolute-artifact.zip');
 
         await updateConfig({
@@ -447,7 +449,8 @@ describe('test/unit/lib/plugins/package/lib/packageService.test.js', () => {
       });
 
       it('for function', async () => {
-        const { servicePath: serviceDir, updateConfig } = await fixtures.setup('package-artifact');
+        const { servicePath: serviceDir, updateConfig } =
+          await setupProgrammaticFixture('package-artifact');
         const absoluteArtifactFilePath = path.join(serviceDir, 'absolute-artifact.zip');
         const zipContent = await fsp.readFile(absoluteArtifactFilePath);
 
@@ -471,7 +474,8 @@ describe('test/unit/lib/plugins/package/lib/packageService.test.js', () => {
       });
 
       it('service-wide', async () => {
-        const { servicePath: serviceDir, updateConfig } = await fixtures.setup('package-artifact');
+        const { servicePath: serviceDir, updateConfig } =
+          await setupProgrammaticFixture('package-artifact');
         const absoluteArtifactFilePath = path.join(serviceDir, 'absolute-artifact.zip');
         const zipContent = await fsp.readFile(absoluteArtifactFilePath);
 
