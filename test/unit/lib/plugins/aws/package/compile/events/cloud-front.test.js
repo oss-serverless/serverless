@@ -1,79 +1,99 @@
 'use strict';
 
 const chai = require('chai');
-const AwsProvider = require('../../../../../../../../lib/plugins/aws/provider');
+const sinon = require('sinon');
 const AwsCompileCloudFrontEvents = require('../../../../../../../../lib/plugins/aws/package/compile/events/cloud-front');
-const Serverless = require('../../../../../../../../lib/serverless');
 const runServerless = require('../../../../../../../utils/run-serverless');
+const { createAwsEventCompilerContext } = require('./test-utils');
 
 const { expect } = chai;
+const logModulePath = require.resolve('../../../../../../../../lib/utils/serverless-utils/log');
+const logModule = require(logModulePath);
 
-describe('AwsCompileCloudFrontEvents', () => {
-  let serverless;
-  let awsCompileCloudFrontEvents;
-  let options;
+const removeReminderMessage =
+  "Don't forget to manually remove your Lambda@Edge functions once the CloudFront distribution removal is successfully propagated!";
 
-  beforeEach(() => {
-    options = {
-      stage: 'dev',
-      region: 'us-east-1',
-    };
-    serverless = new Serverless({ commands: [], options: {} });
-    serverless.processedInput = {
-      commands: [],
-    };
-    serverless.service.environment = {
-      vars: {},
-      stages: {
-        dev: {
-          vars: {},
-          regions: {
-            'us-east-1': {
-              vars: {},
-            },
-          },
-        },
-      },
-    };
-
-    serverless.service.resources = {};
-    serverless.service.provider.compiledCloudFormationTemplate = {
-      Resources: {
-        IamRoleLambdaExecution: {
-          Properties: {
-            AssumeRolePolicyDocument: {
-              Statement: [
-                {
-                  Effect: 'Allow',
-                  Principal: {
-                    Service: ['lambda.amazonaws.com'],
-                  },
-                  Action: ['sts:AssumeRole'],
-                },
-              ],
-            },
-            Policies: [
+function createDefaultCompiledCloudFormationTemplate() {
+  return {
+    Resources: {
+      IamRoleLambdaExecution: {
+        Properties: {
+          AssumeRolePolicyDocument: {
+            Statement: [
               {
-                PolicyDocument: {
-                  Statement: [],
+                Effect: 'Allow',
+                Principal: {
+                  Service: ['lambda.amazonaws.com'],
                 },
+                Action: ['sts:AssumeRole'],
               },
             ],
           },
-        },
-        FirstLambdaVersion: {
-          Type: 'AWS::Lambda::Version',
-          DeletionPolicy: 'Retain',
-          Properties: {
-            FunctionName: {
-              Ref: 'FirstLambdaFunction',
+          Policies: [
+            {
+              PolicyDocument: {
+                Statement: [],
+              },
             },
+          ],
+        },
+      },
+      FirstLambdaVersion: {
+        Type: 'AWS::Lambda::Version',
+        DeletionPolicy: 'Retain',
+        Properties: {
+          FunctionName: {
+            Ref: 'FirstLambdaFunction',
           },
         },
       },
-    };
-    serverless.setProvider('aws', new AwsProvider(serverless, options));
-    awsCompileCloudFrontEvents = new AwsCompileCloudFrontEvents(serverless, options);
+    },
+    Outputs: {},
+  };
+}
+
+function createAwsCompileCloudFrontEvents(config = {}) {
+  const providerConfig = config.provider || {};
+  const { awsCompileEvents } = createAwsEventCompilerContext(AwsCompileCloudFrontEvents, {
+    ...config,
+    provider: {
+      ...providerConfig,
+      compiledCloudFormationTemplate:
+        providerConfig.compiledCloudFormationTemplate ||
+        createDefaultCompiledCloudFormationTemplate(),
+    },
+  });
+
+  return awsCompileEvents;
+}
+
+function createLogModuleWithWarningStub(warningStub) {
+  const logProxy = new Proxy(logModule.log, {
+    get(target, property, receiver) {
+      if (property === 'warning') return warningStub;
+      return Reflect.get(target, property, receiver);
+    },
+  });
+
+  return new Proxy(logModule, {
+    get(target, property, receiver) {
+      if (property === 'log') return logProxy;
+      return Reflect.get(target, property, receiver);
+    },
+  });
+}
+
+function getRemoveReminderWarningCalls(warningStub) {
+  return warningStub
+    .getCalls()
+    .filter((call) => call.args.length === 1 && call.args[0] === removeReminderMessage);
+}
+
+describe('AwsCompileCloudFrontEvents', () => {
+  let awsCompileCloudFrontEvents;
+
+  beforeEach(() => {
+    awsCompileCloudFrontEvents = createAwsCompileCloudFrontEvents();
   });
 
   describe('#compileCloudFrontEvents()', () => {
@@ -320,29 +340,51 @@ describe('AwsCompileCloudFrontEvents', () => {
 });
 
 describe('test/unit/lib/plugins/aws/package/compile/events/cloudFront.test.js', () => {
-  describe.skip('TODO: Removal notice', () => {
-    it('should show preconfigured notice on "sls remove" if service has cloudFront event', async () => {
-      // Replaces
-      // https://github.com/serverless/serverless/blob/85e480b5771d5deeb45ae5eb586723c26cf61a90/lib/plugins/aws/package/compile/events/cloudFront/index.test.js#L88-L109
+  describe('Removal notice', () => {
+    let warningStub;
 
-      // Inspect result.stdoutData
+    it('should show preconfigured notice on "sls remove" if service has cloudFront event', async () => {
+      warningStub = sinon.stub();
+
       await runServerless({
         fixture: 'function',
         command: 'remove',
         lastLifecycleHookName: 'before:remove:remove',
+        configExt: {
+          functions: {
+            basic: {
+              events: [
+                {
+                  cloudFront: {
+                    eventType: 'viewer-request',
+                    origin: 's3://bucketname.s3.amazonaws.com/files',
+                  },
+                },
+              ],
+            },
+          },
+        },
+        modulesCacheStub: {
+          [logModulePath]: createLogModuleWithWarningStub(warningStub),
+        },
       });
+
+      expect(getRemoveReminderWarningCalls(warningStub)).to.have.length(1);
     });
 
     it('should not show preconfigured notice on "sls remove" if service doesn\'t have cloudFront event', async () => {
-      // Replaces
-      // https://github.com/serverless/serverless/blob/85e480b5771d5deeb45ae5eb586723c26cf61a90/lib/plugins/aws/package/compile/events/cloudFront/index.test.js#L113-L118
+      warningStub = sinon.stub();
 
-      // Inspect result.stdoutData
       await runServerless({
         fixture: 'function',
         command: 'remove',
         lastLifecycleHookName: 'before:remove:remove',
+        modulesCacheStub: {
+          [logModulePath]: createLogModuleWithWarningStub(warningStub),
+        },
       });
+
+      expect(getRemoveReminderWarningCalls(warningStub)).to.be.empty;
     });
   });
 
