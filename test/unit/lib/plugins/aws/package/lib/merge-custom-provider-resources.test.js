@@ -1,30 +1,28 @@
 'use strict';
 
-const path = require('path');
 const expect = require('chai').expect;
-const AwsPackage = require('../../../../../../../lib/plugins/aws/package/index');
-const Serverless = require('../../../../../../../lib/serverless');
+const mergeCustomProviderResources = require('../../../../../../../lib/plugins/aws/package/lib/merge-custom-provider-resources');
+const coreCloudFormationTemplateSource = require('../../../../../../../lib/plugins/aws/package/lib/core-cloudformation-template.json');
 const ServerlessError = require('../../../../../../../lib/serverless-error');
 const runServerless = require('../../../../../../utils/run-serverless');
 
 describe('mergeCustomProviderResources', () => {
-  let serverless;
   let awsPackage;
   let coreCloudFormationTemplate;
 
   beforeEach(() => {
-    serverless = new Serverless({ commands: [], options: {} });
-    awsPackage = new AwsPackage(serverless, {});
-
-    coreCloudFormationTemplate = awsPackage.serverless.utils.readFileSync(
-      path.resolve(
-        __dirname,
-        '../../../../../../../lib/plugins/aws/package/lib/core-cloudformation-template.json'
-      )
-    );
-
-    awsPackage.serverless.service.provider.compiledCloudFormationTemplate =
-      coreCloudFormationTemplate;
+    coreCloudFormationTemplate = JSON.parse(JSON.stringify(coreCloudFormationTemplateSource));
+    awsPackage = {
+      ...mergeCustomProviderResources,
+      serverless: {
+        service: {
+          provider: {
+            compiledCloudFormationTemplate: coreCloudFormationTemplate,
+          },
+          resources: {},
+        },
+      },
+    };
   });
 
   describe('#mergeCustomProviderResources()', () => {

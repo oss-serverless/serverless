@@ -4,9 +4,7 @@ const sinon = require('sinon');
 const chai = require('chai');
 const proxyquire = require('proxyquire');
 const { S3Client, ListObjectsV2Command, DeleteObjectsCommand } = require('@aws-sdk/client-s3');
-const AwsProvider = require('../../../../../../../lib/plugins/aws/provider');
-const AwsDeploy = require('../../../../../../../lib/plugins/aws/deploy/index');
-const Serverless = require('../../../../../../../lib/serverless');
+const cleanupS3BucketMixin = require('../../../../../../../lib/plugins/aws/deploy/lib/cleanup-s3-bucket');
 
 const expect = chai.expect;
 
@@ -16,23 +14,37 @@ describe('cleanupS3Bucket', () => {
   let awsDeploy;
   let s3Key;
   let s3SendStub;
+  let sandbox;
+
+  const serviceName = 'cleanupS3Bucket';
+  const stage = 'dev';
+  const deploymentPrefix = 'serverless';
 
   beforeEach(() => {
-    const options = {
-      stage: 'dev',
-      region: 'us-east-1',
+    sandbox = sinon.createSandbox();
+    serverless = {
+      service: {
+        service: serviceName,
+        provider: {},
+        package: {},
+      },
     };
-    serverless = new Serverless({ commands: [], options: {} });
-    serverless.serviceDir = 'foo';
-    provider = new AwsProvider(serverless, options);
-    serverless.setProvider('aws', provider);
-    serverless.service.service = 'cleanupS3Bucket';
-    const prefix = provider.getDeploymentPrefix();
-    s3Key = `${prefix}/${serverless.service.service}/${provider.getStage()}`;
-    awsDeploy = new AwsDeploy(serverless, options);
-    awsDeploy.bucketName = 'deployment-bucket';
-    awsDeploy.serverless.cli = new serverless.classes.CLI();
-    s3SendStub = sinon.stub(S3Client.prototype, 'send');
+    provider = {
+      getAwsSdkV3Config: async () => ({ region: 'us-east-1' }),
+      getDeploymentPrefix: () => deploymentPrefix,
+      getStage: () => stage,
+      naming: {
+        getServiceStateFileName: () => 'serverless-state.json',
+      },
+    };
+    s3Key = `${deploymentPrefix}/${serviceName}/${stage}`;
+    awsDeploy = {
+      ...cleanupS3BucketMixin,
+      bucketName: 'deployment-bucket',
+      provider,
+      serverless,
+    };
+    s3SendStub = sandbox.stub(S3Client.prototype, 'send');
   });
 
   const createSignatureMismatchListError = () => {
@@ -68,7 +80,7 @@ describe('cleanupS3Bucket', () => {
   };
 
   afterEach(() => {
-    if (S3Client.prototype.send.restore) S3Client.prototype.send.restore();
+    sandbox.restore();
   });
 
   function expectListObjectsCall(call, input) {
@@ -108,7 +120,7 @@ describe('cleanupS3Bucket', () => {
         throw new Error(`Unexpected S3 command ${command.constructor.name}`);
       }
     }
-    const cleanupS3Bucket = proxyquire(
+    const cleanupS3BucketWithFakeS3 = proxyquire(
       '../../../../../../../lib/plugins/aws/deploy/lib/cleanup-s3-bucket',
       {
         '@aws-sdk/client-s3': {
@@ -120,7 +132,7 @@ describe('cleanupS3Bucket', () => {
         },
       }
     );
-    Object.assign(awsDeploy, cleanupS3Bucket);
+    Object.assign(awsDeploy, cleanupS3BucketWithFakeS3);
 
     const objectsToRemove = await awsDeploy.getObjectsToRemove();
     await awsDeploy.removeObjects(objectsToRemove);

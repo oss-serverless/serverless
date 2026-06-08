@@ -1,9 +1,6 @@
 'use strict';
 
-const AwsProvider = require('../../../../../../lib/plugins/aws/provider');
 const AwsPackage = require('../../../../../../lib/plugins/aws/package/index');
-const Serverless = require('../../../../../../lib/serverless');
-const CLI = require('../../../../../../lib/classes/cli');
 const expect = require('chai').expect;
 const sinon = require('sinon');
 const path = require('path');
@@ -12,16 +9,38 @@ describe('AwsPackage', () => {
   let awsPackage;
   let serverless;
   let options;
+  let provider;
+
+  const createProvider = () => ({
+    getDeploymentPrefix: () => 'serverless',
+    getStage: () => 'dev',
+    getRegion: () => 'us-east-1',
+  });
+
+  const createServerless = () => ({
+    serviceDir: 'foo',
+    service: {
+      service: 'service',
+      provider: {},
+      package: {},
+    },
+    processedInput: {
+      commands: [],
+    },
+    pluginManager: {
+      commandRunStartTime: Date.now(),
+      spawn() {},
+    },
+    getProvider: sinon.stub().withArgs('aws').returns(provider),
+  });
 
   beforeEach(() => {
-    serverless = new Serverless({ commands: [], options: {} });
     options = {
       stage: 'dev',
       region: 'us-east-1',
     };
-    serverless.setProvider('aws', new AwsProvider(serverless, options));
-    serverless.serviceDir = 'foo';
-    serverless.cli = new CLI(serverless);
+    provider = createProvider();
+    serverless = createServerless();
     awsPackage = new AwsPackage(serverless, options);
   });
 
@@ -67,8 +86,10 @@ describe('AwsPackage', () => {
       expect(awsPackage.packagePath).to.equal(path.join('foo', '.serverless'));
     });
 
-    it('should set the provider variable to an instance of AwsProvider', () =>
-      expect(awsPackage.provider).to.be.instanceof(AwsProvider));
+    it('should set the provider variable to the AWS provider', () => {
+      expect(awsPackage.provider).to.equal(provider);
+      expect(serverless.getProvider).to.have.been.calledWithExactly('aws');
+    });
 
     it('should have commands', () => expect(awsPackage.commands).to.be.not.empty);
 
