@@ -10,7 +10,7 @@ const fs = require('fs');
 const sinon = require('sinon');
 const proxyquire = require('proxyquire');
 const isObject = require('type/object/is');
-const Serverless = require('../../../../../../lib/serverless');
+const Utils = require('../../../../../../lib/classes/utils');
 const { getTmpDirPath } = require('../../../../../utils/fs');
 
 // Configure chai
@@ -21,6 +21,18 @@ const describeLargeZipSmoke = process.env.SERVERLESS_LARGE_ZIP_SMOKE ? describe 
 const forceGc = () => {
   expect(global.gc, 'run with --expose-gc').to.be.a('function');
   for (let index = 0; index < 3; ++index) global.gc();
+};
+
+const createServerlessLike = (serviceDir) => {
+  const serverlessLike = {
+    serviceDir,
+    service: {
+      service: 'first-service',
+      package: {},
+    },
+  };
+  serverlessLike.utils = new Utils(serverlessLike);
+  return serverlessLike;
 };
 
 const resolveSpawnCall = (stub, output = '') =>
@@ -62,11 +74,8 @@ describe('zipService', () => {
     Package = proxyquire('../../../../../../lib/plugins/package/package', {
       './lib/zip-service': zipService,
     });
-    serverless = new Serverless({ commands: [], options: {} });
-    serverless.service.service = 'first-service';
-    serverless.serviceDir = tmpDirPath;
+    serverless = createServerlessLike(tmpDirPath);
     packagePlugin = new Package(serverless, {});
-    packagePlugin.serverless.cli = new serverless.classes.CLI();
     params = {
       include: ['user-defined-include-me'],
       exclude: ['user-defined-exclude-me'],
