@@ -493,7 +493,7 @@ describe('test/unit/lib/plugins/aws/rollback.test.js', () => {
       runServerless({
         fixture: 'function',
         command: 'rollback',
-        awsRequestStubMap: {
+        awsSdkV3StubMap: {
           CloudFormation: {
             describeStacks: {},
             describeStackResource: {

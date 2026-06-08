@@ -14,6 +14,7 @@ const AwsProvider = require('../../../../../lib/plugins/aws/provider');
 const CLI = require('../../../../../lib/classes/cli');
 const AwsRollbackFunction = require('../../../../../lib/plugins/aws/rollback-function.js');
 const configureAwsSdkV3Stub = require('../../../../lib/configure-aws-sdk-v3-stub');
+const runServerless = require('../../../../utils/run-serverless');
 
 describe('AwsRollbackFunction', () => {
   let serverless;
@@ -98,6 +99,48 @@ describe('AwsRollbackFunction', () => {
         expect(fetchFunctionCodeStub.calledOnce).to.equal(true);
         expect(restoreFunctionStub.calledOnce).to.equal(true);
       }));
+  });
+
+  describe('command lifecycle', () => {
+    it('should rollback a function through the command', async () => {
+      const zipBytes = Uint8Array.from([1, 2, 3]);
+      const zipBuffer = Buffer.from(zipBytes);
+      const functionVersion = '4711';
+      const codeLocation = 'https://example.test/function.zip';
+      fetchStub.resolves({ arrayBuffer: async () => zipBytes.buffer });
+
+      const { awsSdkV3Stub, serverless } = await runServerless({
+        fixture: 'function',
+        command: 'rollback function',
+        options: { 'function': 'basic', 'function-version': functionVersion },
+        awsSdkV3StubMap: {
+          Lambda: {
+            getFunction: { Code: { Location: codeLocation } },
+            updateFunctionCode: {},
+          },
+        },
+      });
+      const functionName = serverless.service.getFunction('basic').name;
+      const lambdaSends = awsSdkV3Stub.sends.filter(({ service }) => service === 'Lambda');
+      const expectedCredentials = serverless.getProvider('aws').getAwsSdkV3CredentialsProvider();
+
+      expect(fetchStub).to.have.been.calledOnceWithExactly(codeLocation);
+      expect(lambdaSends.map(({ method }) => method)).to.deep.equal([
+        'getFunction',
+        'updateFunctionCode',
+      ]);
+      expect(lambdaSends[0].input).to.deep.equal({
+        FunctionName: functionName,
+        Qualifier: functionVersion,
+      });
+      expect(lambdaSends[1].input).to.deep.equal({
+        FunctionName: functionName,
+        ZipFile: zipBuffer,
+      });
+      expect(
+        lambdaSends.every(({ clientConfig }) => clientConfig.credentials === expectedCredentials)
+      ).to.equal(true);
+    });
   });
 
   describe('#getFunctionToBeRestored()', () => {

@@ -498,7 +498,7 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
   const imageWithSha = `000000000000.dkr.ecr.sa-east-1.amazonaws.com/test-lambda-docker@sha256:${imageSha}`;
   const updateFunctionCodeStub = sinon.stub();
   const updateFunctionConfigurationStub = sinon.stub();
-  const awsRequestStubMap = {
+  const awsSdkV3StubMap = {
     Lambda: {
       getFunction: {
         Configuration: {
@@ -525,6 +525,11 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
     updateFunctionConfigurationStub.resetHistory();
   });
 
+  const expectUpdateFunctionConfigurationInput = (expectedInput) => {
+    expect(updateFunctionConfigurationStub).to.be.calledOnce;
+    expect(updateFunctionConfigurationStub.firstCall.args[0]).to.deep.equal(expectedInput);
+  };
+
   // This is just a happy-path test of images support. Due to sharing code from `provider.js`
   // all further configurations are tested as a part of `test/unit/lib/plugins/aws/provider.test.js`
   it('should support deploying function that has image defined with sha', async () => {
@@ -532,7 +537,7 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       fixture: 'function',
       command: 'deploy function',
       options: { function: 'foo' },
-      awsRequestStubMap,
+      awsSdkV3StubMap,
       configExt: {
         functions: {
           foo: {
@@ -550,7 +555,7 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       fixture: 'function',
       command: 'deploy function',
       options: { function: 'foo' },
-      awsRequestStubMap,
+      awsSdkV3StubMap,
       configExt: {
         functions: {
           foo: {
@@ -585,10 +590,10 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       fixture: 'function',
       command: 'deploy function',
       options: { function: 'basic' },
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         Lambda: {
-          ...awsRequestStubMap.Lambda,
+          ...awsSdkV3StubMap.Lambda,
           getFunction: {
             Configuration: {
               LastModified: '2020-05-20T15:34:16.494+0000',
@@ -629,10 +634,10 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       fixture: 'function',
       command: 'deploy function',
       options: { function: 'basic' },
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         Lambda: {
-          ...awsRequestStubMap.Lambda,
+          ...awsSdkV3StubMap.Lambda,
           getFunction: {
             Configuration: {
               LastModified: '2020-05-20T15:34:16.494+0000',
@@ -665,10 +670,10 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       fixture: 'function',
       command: 'deploy function',
       options: { function: 'basic' },
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         Lambda: {
-          ...awsRequestStubMap.Lambda,
+          ...awsSdkV3StubMap.Lambda,
           getFunction: {
             Configuration: {
               LastModified: '2020-05-20T15:34:16.494+0000',
@@ -696,10 +701,10 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
         fixture: 'function',
         command: 'deploy function',
         options: { function: 'basic' },
-        awsRequestStubMap: {
-          ...awsRequestStubMap,
+        awsSdkV3StubMap: {
+          ...awsSdkV3StubMap,
           Lambda: {
-            ...awsRequestStubMap.Lambda,
+            ...awsSdkV3StubMap.Lambda,
             getFunction: {
               Configuration: {
                 LastModified: '2020-05-20T15:34:16.494+0000',
@@ -730,10 +735,10 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
         fixture: 'function',
         command: 'deploy function',
         options: { function: 'basic' },
-        awsRequestStubMap: {
-          ...awsRequestStubMap,
+        awsSdkV3StubMap: {
+          ...awsSdkV3StubMap,
           Lambda: {
-            ...awsRequestStubMap.Lambda,
+            ...awsSdkV3StubMap.Lambda,
             getFunction: {
               Configuration: {
                 LastModified: '2020-05-20T15:34:16.494+0000',
@@ -766,10 +771,10 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       fixture: 'function',
       command: 'deploy function',
       options: { function: 'basic' },
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         Lambda: {
-          ...awsRequestStubMap.Lambda,
+          ...awsSdkV3StubMap.Lambda,
           updateFunctionConfiguration: innerUpdateFunctionConfigurationStub,
         },
       },
@@ -793,10 +798,10 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       fixture: 'function',
       command: 'deploy function',
       options: { function: 'basic' },
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         Lambda: {
-          ...awsRequestStubMap.Lambda,
+          ...awsSdkV3StubMap.Lambda,
           getFunction: {
             Configuration: {
               LastModified: '2020-05-20T15:34:16.494+0000',
@@ -835,7 +840,7 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
         },
       },
     });
-    expect(updateFunctionConfigurationStub).to.be.calledWithExactly({
+    expectUpdateFunctionConfigurationInput({
       FunctionName: functionName,
       KMSKeyArn: kmsKeyArn,
       Description: description,
@@ -865,10 +870,10 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       fixture: 'function',
       command: 'deploy function',
       options: { function: 'basic' },
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         Lambda: {
-          ...awsRequestStubMap.Lambda,
+          ...awsSdkV3StubMap.Lambda,
           getFunction: {
             Configuration: {
               LastModified: '2020-05-20T15:34:16.494+0000',
@@ -907,7 +912,7 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
         },
       },
     });
-    expect(updateFunctionConfigurationStub).to.be.calledWithExactly({
+    expectUpdateFunctionConfigurationInput({
       FunctionName: functionName,
       KMSKeyArn: kmsKeyArn,
       Description: description,
@@ -937,10 +942,10 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       fixture: 'function',
       command: 'deploy function',
       options: { function: 'basic' },
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         Lambda: {
-          ...awsRequestStubMap.Lambda,
+          ...awsSdkV3StubMap.Lambda,
           getFunction: {
             Configuration: {
               LastModified: '2020-05-20T15:34:16.494+0000',
@@ -982,7 +987,7 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
         },
       },
     });
-    expect(updateFunctionConfigurationStub).to.be.calledWithExactly({
+    expectUpdateFunctionConfigurationInput({
       FunctionName: functionName,
       Layers: [],
     });
@@ -993,10 +998,10 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       fixture: 'function',
       command: 'deploy function',
       options: { function: 'basic' },
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         Lambda: {
-          ...awsRequestStubMap.Lambda,
+          ...awsSdkV3StubMap.Lambda,
           getFunction: {
             Configuration: {
               LastModified: '2020-05-20T15:34:16.494+0000',
@@ -1041,7 +1046,7 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
         },
       },
     });
-    expect(updateFunctionConfigurationStub).to.be.calledWithExactly({
+    expectUpdateFunctionConfigurationInput({
       FunctionName: functionName,
       Environment: {
         Variables: {
@@ -1061,10 +1066,10 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       fixture: 'function',
       command: 'deploy function',
       options: { function: 'basic' },
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         Lambda: {
-          ...awsRequestStubMap.Lambda,
+          ...awsSdkV3StubMap.Lambda,
           getFunction: {
             Configuration: {
               LastModified: '2020-05-20T15:34:16.494+0000',
@@ -1107,7 +1112,7 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       },
     });
 
-    expect(updateFunctionConfigurationStub).to.be.calledWithExactly({
+    expectUpdateFunctionConfigurationInput({
       FunctionName: functionName,
       Environment: {
         Variables: {
@@ -1125,10 +1130,10 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       fixture: 'function',
       command: 'deploy function',
       options: { function: 'basic' },
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         Lambda: {
-          ...awsRequestStubMap.Lambda,
+          ...awsSdkV3StubMap.Lambda,
           getFunction: {
             Configuration: {
               LastModified: '2020-05-20T15:34:16.494+0000',
@@ -1159,7 +1164,7 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       },
     });
 
-    expect(updateFunctionConfigurationStub).to.be.calledWithExactly({
+    expectUpdateFunctionConfigurationInput({
       FunctionName: functionName,
       Handler: 'basic.handler',
       Timeout: timeout,
@@ -1175,10 +1180,10 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       fixture: 'function',
       command: 'deploy function',
       options: { function: 'basic' },
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         Lambda: {
-          ...awsRequestStubMap.Lambda,
+          ...awsSdkV3StubMap.Lambda,
           getFunction: {
             Configuration: {
               LastModified: '2020-05-20T15:34:16.494+0000',
@@ -1218,7 +1223,7 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
         },
       },
     });
-    expect(updateFunctionConfigurationStub).to.be.calledWithExactly({
+    expectUpdateFunctionConfigurationInput({
       FunctionName: functionName,
       KMSKeyArn: kmsKeyArn,
       Description: description,
@@ -1249,10 +1254,10 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       fixture: 'function',
       command: 'deploy function',
       options: { function: 'basic' },
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         Lambda: {
-          ...awsRequestStubMap.Lambda,
+          ...awsSdkV3StubMap.Lambda,
           getFunction: {
             Configuration: {
               LastModified: '2020-05-20T15:34:16.494+0000',
@@ -1292,7 +1297,7 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
         },
       },
     });
-    expect(updateFunctionConfigurationStub).to.be.calledWithExactly({
+    expectUpdateFunctionConfigurationInput({
       FunctionName: functionName,
       KMSKeyArn: kmsKeyArn,
       Description: description,
@@ -1322,10 +1327,10 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       fixture: 'function',
       command: 'deploy function',
       options: { function: 'basic' },
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         Lambda: {
-          ...awsRequestStubMap.Lambda,
+          ...awsSdkV3StubMap.Lambda,
           getFunction: {
             Configuration: {
               LastModified: '2020-05-20T15:34:16.494+0000',
@@ -1358,7 +1363,7 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       },
     });
 
-    expect(updateFunctionConfigurationStub).to.be.calledWithExactly({
+    expectUpdateFunctionConfigurationInput({
       FunctionName: functionName,
       Handler: 'basic.handler',
       Environment: {
@@ -1382,13 +1387,13 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       fixture: 'function',
       command: 'deploy function',
       options: { function: 'basic' },
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         IAM: {
           getRole: { Role: { Arn: role } },
         },
         Lambda: {
-          ...awsRequestStubMap.Lambda,
+          ...awsSdkV3StubMap.Lambda,
           getFunction: {
             Configuration: {
               LastModified: '2020-05-20T15:34:16.494+0000',
@@ -1424,10 +1429,10 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       fixture: 'function',
       command: 'deploy function',
       options: { function: 'basic' },
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         Lambda: {
-          ...awsRequestStubMap.Lambda,
+          ...awsSdkV3StubMap.Lambda,
           getFunction: {
             Configuration: {
               LastModified: '2020-05-20T15:34:16.494+0000',
@@ -1498,10 +1503,10 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       fixture: 'function',
       command: 'deploy function',
       options: { function: 'basic' },
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         Lambda: {
-          ...awsRequestStubMap.Lambda,
+          ...awsSdkV3StubMap.Lambda,
           getFunction: {
             Configuration: {
               LastModified: '2020-05-20T15:34:16.494+0000',
@@ -1573,10 +1578,10 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       fixture: 'function',
       command: 'deploy function',
       options: { function: 'basic' },
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         Lambda: {
-          ...awsRequestStubMap.Lambda,
+          ...awsSdkV3StubMap.Lambda,
           getFunction: {
             Configuration: {
               LastModified: '2020-05-20T15:34:16.494+0000',
@@ -1631,10 +1636,10 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       fixture: 'function',
       command: 'deploy function',
       options: { function: 'basic' },
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         Lambda: {
-          ...awsRequestStubMap.Lambda,
+          ...awsSdkV3StubMap.Lambda,
           getFunction: {
             Configuration: {
               LastModified: '2020-05-20T15:34:16.494+0000',
@@ -1688,10 +1693,10 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       fixture: 'function',
       command: 'deploy function',
       options: { function: 'basic' },
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         Lambda: {
-          ...awsRequestStubMap.Lambda,
+          ...awsSdkV3StubMap.Lambda,
           getFunction: {
             Configuration: {
               LastModified: '2020-05-20T15:34:16.494+0000',
@@ -1744,7 +1749,7 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       command: 'deploy function',
       options: { function: 'basic' },
       lastLifecycleHookName: 'deploy:function:deploy',
-      awsRequestStubMap,
+      awsSdkV3StubMap,
       configExt: {
         provider: {
           kmsKeyArn: 'arn:aws:kms:us-east-1:oldKey',
@@ -1758,7 +1763,7 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       },
     });
 
-    sinon.assert.calledWith(updateFunctionConfigurationStub, {
+    expectUpdateFunctionConfigurationInput({
       Handler: 'index.handler',
       FunctionName: 'foobar',
       KMSKeyArn: 'arn:aws:kms:us-east-1:oldKey',
@@ -1772,10 +1777,10 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
         command: 'deploy function',
         options: { function: 'basic' },
         lastLifecycleHookName: 'deploy:function:deploy',
-        awsRequestStubMap: {
-          ...awsRequestStubMap,
+        awsSdkV3StubMap: {
+          ...awsSdkV3StubMap,
           Lambda: {
-            ...awsRequestStubMap.Lambda,
+            ...awsSdkV3StubMap.Lambda,
             getFunction: () => {
               throw new Error('Some side error');
             },
@@ -1792,10 +1797,10 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
         command: 'deploy function',
         options: { function: 'basic' },
         lastLifecycleHookName: 'deploy:function:deploy',
-        awsRequestStubMap: {
-          ...awsRequestStubMap,
+        awsSdkV3StubMap: {
+          ...awsSdkV3StubMap,
           Lambda: {
-            ...awsRequestStubMap.Lambda,
+            ...awsSdkV3StubMap.Lambda,
             getFunction: () => {
               throw Object.assign(new Error('Function not found'), {
                 name: 'ResourceNotFoundException',
@@ -1835,10 +1840,10 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
       command: 'deploy function',
       options: { function: 'basic' },
       lastLifecycleHookName: 'deploy:function:deploy',
-      awsRequestStubMap: {
-        ...awsRequestStubMap,
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
         Lambda: {
-          ...awsRequestStubMap.Lambda,
+          ...awsSdkV3StubMap.Lambda,
           getFunction: getFunctionStub,
         },
       },
