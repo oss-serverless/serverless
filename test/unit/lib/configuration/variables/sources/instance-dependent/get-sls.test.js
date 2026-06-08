@@ -7,12 +7,15 @@ const resolve = require('../../../../../../../lib/configuration/variables/resolv
 const selfSource = require('../../../../../../../lib/configuration/variables/sources/self');
 const getSlsSource = require('../../../../../../../lib/configuration/variables/sources/instance-dependent/get-sls');
 const mergePlainObjects = require('../../../../../../../lib/utils/merge-plain-objects');
-const Serverless = require('../../../../../../../lib/serverless');
 
 describe('test/unit/lib/configuration/variables/sources/instance-dependent/get-sls.test.js', () => {
   let configuration;
   let variablesMeta;
   let serverlessInstance;
+
+  const createServerlessInstance = () => ({
+    instanceId: 'test-instance-id',
+  });
 
   const initializeServerless = async ({ configExt, options, setupOptions = {} } = {}) => {
     configuration = {
@@ -33,14 +36,7 @@ describe('test/unit/lib/configuration/variables/sources/instance-dependent/get-s
       configuration = mergePlainObjects(configuration, configExt);
     }
     variablesMeta = resolveMeta(configuration);
-    serverlessInstance = new Serverless({
-      configuration,
-      serviceDir: process.cwd(),
-      configurationFilename: 'serverless.yml',
-      commands: ['package'],
-      options: {},
-    });
-    serverlessInstance.init();
+    serverlessInstance = createServerlessInstance();
     await resolve({
       serviceDir: process.cwd(),
       configuration,

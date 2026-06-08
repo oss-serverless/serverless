@@ -6,9 +6,17 @@ const resolveMeta = require('../../../../../../../lib/configuration/variables/re
 const resolve = require('../../../../../../../lib/configuration/variables/resolve');
 const selfSource = require('../../../../../../../lib/configuration/variables/sources/self');
 const getParamSource = require('../../../../../../../lib/configuration/variables/sources/instance-dependent/param');
-const Serverless = require('../../../../../../../lib/serverless');
 
 describe('test/unit/lib/configuration/variables/sources/instance-dependent/param.test.js', () => {
+  const createServerlessInstance = ({ configuration, cliParameters }) => ({
+    configurationInput: configuration,
+    processedInput: {
+      options: {
+        param: cliParameters,
+      },
+    },
+  });
+
   const runServerless = async ({
     cliParameters = [],
     stageParameters = {},
@@ -37,17 +45,10 @@ describe('test/unit/lib/configuration/variables/sources/instance-dependent/param
 
     const variablesMeta = resolveMeta(configuration);
 
-    const serverlessInstance = new Serverless({
+    const serverlessInstance = createServerlessInstance({
       configuration,
-      options: {
-        param: cliParameters,
-      },
-      serviceDir: process.cwd(),
-      configurationFilename: 'serverless.yml',
-      commands: ['package'],
+      cliParameters,
     });
-
-    serverlessInstance.init();
 
     await resolve({
       serviceDir: process.cwd(),

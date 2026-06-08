@@ -8,7 +8,6 @@ const resolveMeta = require('../../../../../../../lib/configuration/variables/re
 const resolve = require('../../../../../../../lib/configuration/variables/resolve');
 const selfSource = require('../../../../../../../lib/configuration/variables/sources/self');
 const mergePlainObjects = require('../../../../../../../lib/utils/merge-plain-objects');
-const Serverless = require('../../../../../../../lib/serverless');
 
 describe('test/unit/lib/configuration/variables/sources/instance-dependent/get-aws.test.js', () => {
   let configuration;
@@ -52,6 +51,13 @@ describe('test/unit/lib/configuration/variables/sources/instance-dependent/get-a
       });
   }
 
+  const createServerlessInstance = () => ({
+    getProvider: () => ({
+      getRegion: () => 'us-east-1',
+      getAwsSdkV3Config,
+    }),
+  });
+
   const initializeServerless = async ({ configExt, options, custom, handler } = {}) => {
     configuration = {
       service: 'foo',
@@ -70,21 +76,7 @@ describe('test/unit/lib/configuration/variables/sources/instance-dependent/get-a
     };
     if (configExt) configuration = mergePlainObjects(configuration, configExt);
     variablesMeta = resolveMeta(configuration);
-    const serverlessInstance = new Serverless({
-      configuration,
-      serviceDir: process.cwd(),
-      configurationFilename: 'serverless.yml',
-      commands: ['package'],
-      options: {},
-    });
-    serverlessInstance.init();
-    serverlessInstance.getProvider = () => ({
-      constructor: {
-        getProviderName: () => 'aws',
-      },
-      getRegion: () => 'us-east-1',
-      getAwsSdkV3Config,
-    });
+    const serverlessInstance = createServerlessInstance();
     const getAwsSource = loadSource(handler || (() => ({ Account: '1234567890' })));
 
     await resolve({
@@ -179,15 +171,7 @@ describe('test/unit/lib/configuration/variables/sources/instance-dependent/get-a
 
   it('should ignore inherited region from options', async () => {
     const getAwsSource = loadSource(() => ({ Account: '1234567890' }));
-    const source = getAwsSource({
-      getProvider: () => ({
-        constructor: {
-          getProviderName: () => 'aws',
-        },
-        getRegion: () => 'us-east-1',
-        getAwsSdkV3Config,
-      }),
-    });
+    const source = getAwsSource(createServerlessInstance());
     const result = await source.resolve({
       address: 'region',
       options: Object.create({ region: 'eu-central-1' }),
