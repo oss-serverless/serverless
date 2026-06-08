@@ -1,7 +1,6 @@
 'use strict';
 
 const Package = require('../../../../../lib/plugins/package/package');
-const Serverless = require('../../../../../lib/serverless');
 const sinon = require('sinon');
 
 // Configure chai
@@ -12,15 +11,16 @@ describe('Package', () => {
   let options;
   let pkg;
 
-  beforeEach(async () => {
-    serverless = new Serverless({ commands: ['print'], options: {}, serviceDir: null });
-    return serverless.init().then(() => {
-      options = {
-        stage: 'dev',
-        region: 'us-east-1',
-      };
-      pkg = new Package(serverless, options);
-    });
+  beforeEach(() => {
+    serverless = {
+      serviceDir: null,
+      service: { package: {} },
+    };
+    options = {
+      stage: 'dev',
+      region: 'us-east-1',
+    };
+    pkg = new Package(serverless, options);
   });
 
   describe('#constructor()', () => {

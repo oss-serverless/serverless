@@ -1,7 +1,6 @@
 'use strict';
 
 const Deploy = require('../../../../lib/plugins/deploy');
-const Serverless = require('../../../../lib/serverless');
 const sinon = require('sinon');
 const chai = require('chai');
 
@@ -13,11 +12,21 @@ describe('Deploy', () => {
   let options;
 
   beforeEach(() => {
-    serverless = new Serverless({ commands: [], options: {} });
+    serverless = {
+      providers: { validProvider: true },
+      service: {
+        provider: { name: 'validProvider' },
+        package: {},
+      },
+      pluginManager: {
+        spawn: () => Promise.resolve(),
+      },
+      getProvider(name) {
+        return this.providers[name] || false;
+      },
+    };
     options = {};
     deploy = new Deploy(serverless, options);
-    deploy.serverless.providers = { validProvider: true };
-    deploy.serverless.service.provider.name = 'validProvider';
   });
 
   describe('#constructor()', () => {

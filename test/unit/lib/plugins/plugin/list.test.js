@@ -3,8 +3,6 @@
 const chai = require('chai');
 const sinon = require('sinon');
 const PluginList = require('../../../../../lib/plugins/plugin/list');
-const Serverless = require('../../../../../lib/serverless');
-const CLI = require('../../../../../lib/classes/cli');
 
 const expect = chai.expect;
 
@@ -13,8 +11,7 @@ describe('PluginList', () => {
   let serverless;
 
   beforeEach(() => {
-    serverless = new Serverless({ commands: [], options: {} });
-    serverless.cli = new CLI(serverless);
+    serverless = {};
     const options = {};
     pluginList = new PluginList(serverless, options);
   });
