@@ -7,13 +7,18 @@ const runServerless = require('../../../../../utils/run-serverless');
 const expect = require('chai').expect;
 
 describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
-  const baseAwsRequestStubMap = {
+  const baseAwsSdkV3StubMap = {
     STS: {
       getCallerIdentity: {
         ResponseMetadata: { RequestId: 'ffffffff-ffff-ffff-ffff-ffffffffffff' },
         UserId: 'XXXXXXXXXXXXXXXXXXXXX',
         Account: '999999999999',
         Arn: 'arn:aws:iam::999999999999:user/test',
+      },
+    },
+    Lambda: {
+      getFunction: {
+        Configuration: { LastModified: '2020-05-20T15:31:44.359Z' },
       },
     },
   };
@@ -38,8 +43,8 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       const updateStackStub = sinon.stub().resolves({});
       const s3UploadStub = sinon.stub().resolves();
       const deleteObjectsStub = sinon.stub().resolves({});
-      const awsRequestStubMap = {
-        ...baseAwsRequestStubMap,
+      const awsSdkV3StubMap = {
+        ...baseAwsSdkV3StubMap,
         ECR: {
           describeRepositories: sinon.stub().throws({
             providerError: { code: 'RepositoryNotFoundException' },
@@ -78,7 +83,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       const { serverless, awsSdkV3Stub } = await runServerless({
         fixture: 'function',
         command: 'deploy',
-        awsRequestStubMap,
+        awsSdkV3StubMap,
         configExt: {
           provider: {
             deploymentMethod: 'direct',
@@ -119,8 +124,8 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       const updateStackStub = sinon.stub().resolves({});
       const s3UploadStub = sinon.stub().resolves();
       const deleteObjectsStub = sinon.stub().resolves({});
-      const awsRequestStubMap = {
-        ...baseAwsRequestStubMap,
+      const awsSdkV3StubMap = {
+        ...baseAwsSdkV3StubMap,
         ECR: {
           describeRepositories: sinon.stub().throws({
             providerError: { code: 'RepositoryNotFoundException' },
@@ -130,11 +135,6 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
           deleteObjects: deleteObjectsStub,
           listObjectsV2: { Contents: [] },
           upload: s3UploadStub,
-          getBucketLocation: () => {
-            return {
-              LocationConstraint: 'us-east-1',
-            };
-          },
           headBucket: () => {
             return {
               BucketRegion: 'us-east-1',
@@ -165,7 +165,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       await runServerless({
         fixture: 'function',
         command: 'deploy',
-        awsRequestStubMap,
+        awsSdkV3StubMap,
         configExt: {
           provider: {
             deploymentBucket: 'existing-s3-bucket',
@@ -188,8 +188,8 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
         runServerless({
           fixture: 'function',
           command: 'deploy',
-          awsRequestStubMap: {
-            ...baseAwsRequestStubMap,
+          awsSdkV3StubMap: {
+            ...baseAwsSdkV3StubMap,
             CloudFormation: {
               describeStacks: () => {
                 throw new Error('stack does not exist');
@@ -210,8 +210,8 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
         runServerless({
           fixture: 'function',
           command: 'deploy',
-          awsRequestStubMap: {
-            ...baseAwsRequestStubMap,
+          awsSdkV3StubMap: {
+            ...baseAwsSdkV3StubMap,
             CloudFormation: {
               describeStacks: () => {
                 throw Object.assign(new Error('stack does not exist'), {
@@ -256,8 +256,8 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
           ],
         });
       const deleteObjectsStub = sinon.stub().resolves();
-      const awsRequestStubMap = {
-        ...baseAwsRequestStubMap,
+      const awsSdkV3StubMap = {
+        ...baseAwsSdkV3StubMap,
         ECR: {
           describeRepositories: sinon.stub().throws({
             providerError: { code: 'RepositoryNotFoundException' },
@@ -302,7 +302,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       await runServerless({
         fixture: 'function',
         command: 'deploy',
-        awsRequestStubMap,
+        awsSdkV3StubMap,
         configExt: {
           // Default, non-deterministic service-name invalidates this test as S3 Bucket cleanup relies on it
           service: 'test-aws-deploy-with-existing-stack',
@@ -343,8 +343,8 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
           options: {
             force: true,
           },
-          awsRequestStubMap: {
-            ...baseAwsRequestStubMap,
+          awsSdkV3StubMap: {
+            ...baseAwsSdkV3StubMap,
             ECR: {
               describeRepositories: sinon.stub().throws({
                 providerError: { code: 'RepositoryNotFoundException' },
@@ -382,8 +382,8 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
         options: {
           force: true,
         },
-        awsRequestStubMap: {
-          ...baseAwsRequestStubMap,
+        awsSdkV3StubMap: {
+          ...baseAwsSdkV3StubMap,
           ECR: {
             describeRepositories: sinon.stub().throws({
               providerError: { code: 'RepositoryNotFoundException' },
@@ -419,8 +419,8 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
         runServerless({
           fixture: 'function',
           command: 'deploy',
-          awsRequestStubMap: {
-            ...baseAwsRequestStubMap,
+          awsSdkV3StubMap: {
+            ...baseAwsSdkV3StubMap,
             CloudFormation: {
               describeStacks: { Stacks: [{}] },
               validateTemplate: {},
@@ -440,20 +440,14 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       const describeStackResourceStub = sinon
         .stub()
         .onFirstCall()
-        .throws(() => {
-          const err = new Error('does not exist for stack');
-          err.providerError = {
-            code: 'ValidationError',
-          };
-          return err;
-        })
+        .throws(createCloudFormationValidationError('does not exist for stack'))
         .onSecondCall()
         .resolves({
           StackResourceDetail: { PhysicalResourceId: 's3-bucket-resource' },
         });
 
-      const awsRequestStubMap = {
-        ...baseAwsRequestStubMap,
+      const awsSdkV3StubMap = {
+        ...baseAwsSdkV3StubMap,
         ECR: {
           describeRepositories: sinon.stub().throws({
             providerError: { code: 'RepositoryNotFoundException' },
@@ -496,7 +490,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       const { serverless, awsNaming, awsSdkV3Stub } = await runServerless({
         fixture: 'function',
         command: 'deploy',
-        awsRequestStubMap,
+        awsSdkV3StubMap,
         configExt: {
           provider: {
             deploymentMethod: 'direct',
@@ -506,7 +500,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       });
 
       expect(createStackStub).not.to.be.called;
-      expect(updateStackStub).to.be.calledWithExactly({
+      expect(updateStackStub.firstCall.args[0]).to.deep.equal({
         StackName: awsNaming.getStackName(),
         Capabilities: ['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM'],
         Parameters: [],
@@ -535,19 +529,13 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       const describeStackResourceStub = sinon
         .stub()
         .onFirstCall()
-        .throws(() => {
-          const err = new Error('does not exist for stack');
-          err.providerError = {
-            code: 'ValidationError',
-          };
-          return err;
-        })
+        .throws(createCloudFormationValidationError('does not exist for stack'))
         .onSecondCall()
         .resolves({
           StackResourceDetail: { PhysicalResourceId: 's3-bucket-resource' },
         });
-      const awsRequestStubMap = {
-        ...baseAwsRequestStubMap,
+      const awsSdkV3StubMap = {
+        ...baseAwsSdkV3StubMap,
         ECR: {
           describeRepositories: sinon.stub().throws({
             providerError: { code: 'RepositoryNotFoundException' },
@@ -594,7 +582,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       const { serverless, awsSdkV3Stub } = await runServerless({
         fixture: 'function',
         command: 'deploy',
-        awsRequestStubMap,
+        awsSdkV3StubMap,
         configExt: {
           provider: {
             deploymentMethod: 'direct',
@@ -669,8 +657,8 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
           .resolves({ Stacks: [{}] });
         createStackStub = sinon.stub().resolves({});
         updateStackStub = sinon.stub().resolves({});
-        const awsRequestStubMap = {
-          ...baseAwsRequestStubMap,
+        const awsSdkV3StubMap = {
+          ...baseAwsSdkV3StubMap,
           ECR: {
             describeRepositories: sinon.stub().throws({
               providerError: { code: 'RepositoryNotFoundException' },
@@ -709,7 +697,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
         await runServerless({
           fixture: 'function',
           command: 'deploy',
-          awsRequestStubMap,
+          awsSdkV3StubMap,
           configExt: {
             provider: {
               deploymentMethod: 'direct',
@@ -786,8 +774,8 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       const executeChangeSetStub = sinon.stub().resolves({});
       const s3UploadStub = sinon.stub().resolves();
       const deleteObjectsStub = sinon.stub().resolves({});
-      const awsRequestStubMap = {
-        ...baseAwsRequestStubMap,
+      const awsSdkV3StubMap = {
+        ...baseAwsSdkV3StubMap,
         ECR: {
           describeRepositories: sinon.stub().throws({
             providerError: { code: 'RepositoryNotFoundException' },
@@ -797,11 +785,6 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
           deleteObjects: deleteObjectsStub,
           listObjectsV2: { Contents: [] },
           upload: s3UploadStub,
-          getBucketLocation: () => {
-            return {
-              LocationConstraint: 'us-east-1',
-            };
-          },
           headBucket: () => {
             return {
               BucketRegion: 'us-east-1',
@@ -839,7 +822,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       await runServerless({
         fixture: 'function',
         command: 'deploy',
-        awsRequestStubMap,
+        awsSdkV3StubMap,
         configExt: {
           provider: {
             deploymentBucket: 'existing-s3-bucket',
@@ -868,8 +851,8 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       const executeChangeSetStub = sinon.stub().resolves({});
       const s3UploadStub = sinon.stub().resolves();
       const deleteObjectsStub = sinon.stub().resolves({});
-      const awsRequestStubMap = {
-        ...baseAwsRequestStubMap,
+      const awsSdkV3StubMap = {
+        ...baseAwsSdkV3StubMap,
         ECR: {
           describeRepositories: sinon.stub().throws({
             providerError: { code: 'RepositoryNotFoundException' },
@@ -915,7 +898,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       const { serverless, awsSdkV3Stub } = await runServerless({
         fixture: 'function',
         command: 'deploy',
-        awsRequestStubMap,
+        awsSdkV3StubMap,
       });
 
       expect(createChangeSetStub).to.be.calledTwice;
@@ -951,8 +934,8 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       const executeChangeSetStub = sinon.stub().resolves({});
       const s3UploadStub = sinon.stub().resolves();
       const deleteObjectsStub = sinon.stub().resolves({});
-      const awsRequestStubMap = {
-        ...baseAwsRequestStubMap,
+      const awsSdkV3StubMap = {
+        ...baseAwsSdkV3StubMap,
         ECR: {
           describeRepositories: sinon.stub().throws({
             providerError: { code: 'RepositoryNotFoundException' },
@@ -988,7 +971,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
         runServerless({
           fixture: 'function',
           command: 'deploy',
-          awsRequestStubMap,
+          awsSdkV3StubMap,
         })
       ).to.have.been.eventually.rejected.with.property('code', 'AWS_CLOUDFORMATION_INACTIVE_STACK');
     });
@@ -1020,8 +1003,8 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
           ],
         });
       const deleteObjectsStub = sinon.stub().resolves();
-      const awsRequestStubMap = {
-        ...baseAwsRequestStubMap,
+      const awsSdkV3StubMap = {
+        ...baseAwsSdkV3StubMap,
         ECR: {
           describeRepositories: sinon.stub().throws({
             providerError: { code: 'RepositoryNotFoundException' },
@@ -1067,7 +1050,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       await runServerless({
         fixture: 'function',
         command: 'deploy',
-        awsRequestStubMap,
+        awsSdkV3StubMap,
         configExt: {
           // Default, non-deterministic service-name invalidates this test as S3 Bucket cleanup relies on it
           service: 'test-aws-deploy-with-existing-stack',
@@ -1124,8 +1107,8 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
             Contents: objectsToRemove,
           };
         });
-      const awsRequestStubMap = {
-        ...baseAwsRequestStubMap,
+      const awsSdkV3StubMap = {
+        ...baseAwsSdkV3StubMap,
         ECR: {
           describeRepositories: sinon.stub().throws({
             providerError: { code: 'RepositoryNotFoundException' },
@@ -1160,7 +1143,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       await runServerless({
         fixture: 'function',
         command: 'deploy',
-        awsRequestStubMap,
+        awsSdkV3StubMap,
       });
 
       expect(createChangeSetStub).to.be.calledOnce;
@@ -1175,8 +1158,8 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
     });
 
     it('should fail if cannot create a change set', async () => {
-      const awsRequestStubMap = {
-        ...baseAwsRequestStubMap,
+      const awsSdkV3StubMap = {
+        ...baseAwsSdkV3StubMap,
         ECR: {
           describeRepositories: sinon.stub().throws({
             providerError: { code: 'RepositoryNotFoundException' },
@@ -1212,7 +1195,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
         runServerless({
           fixture: 'function',
           command: 'deploy',
-          awsRequestStubMap,
+          awsSdkV3StubMap,
         })
       ).to.have.been.eventually.rejected.with.property(
         'code',
@@ -1226,20 +1209,14 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       const describeStackResourceStub = sinon
         .stub()
         .onFirstCall()
-        .throws(() => {
-          const err = new Error('does not exist for stack');
-          err.providerError = {
-            code: 'ValidationError',
-          };
-          return err;
-        })
+        .throws(createCloudFormationValidationError('does not exist for stack'))
         .onSecondCall()
         .resolves({
           StackResourceDetail: { PhysicalResourceId: 's3-bucket-resource' },
         });
 
-      const awsRequestStubMap = {
-        ...baseAwsRequestStubMap,
+      const awsSdkV3StubMap = {
+        ...baseAwsSdkV3StubMap,
         ECR: {
           describeRepositories: sinon.stub().throws({
             providerError: { code: 'RepositoryNotFoundException' },
@@ -1289,11 +1266,11 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       const { serverless, awsNaming, awsSdkV3Stub } = await runServerless({
         fixture: 'function',
         command: 'deploy',
-        awsRequestStubMap,
+        awsSdkV3StubMap,
         lastLifecycleHookName: 'aws:deploy:deploy:checkForChanges',
       });
 
-      expect(createChangeSetStub).to.be.calledWithExactly({
+      expect(createChangeSetStub.firstCall.args[0]).to.deep.equal({
         StackName: awsNaming.getStackName(),
         ChangeSetName: awsNaming.getStackChangeSetName(),
         ChangeSetType: 'UPDATE',
@@ -1306,7 +1283,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
           Outputs: serverless.service.provider.coreCloudFormationTemplate.Outputs,
         }),
       });
-      expect(executeChangeSetStub).to.be.calledWithExactly({
+      expect(executeChangeSetStub.firstCall.args[0]).to.deep.equal({
         StackName: awsNaming.getStackName(),
         ChangeSetName: awsNaming.getStackChangeSetName(),
       });
@@ -1332,20 +1309,14 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       const describeStackResourceStub = sinon
         .stub()
         .onFirstCall()
-        .throws(() => {
-          const err = new Error('does not exist for stack');
-          err.providerError = {
-            code: 'ValidationError',
-          };
-          return err;
-        })
+        .throws(createCloudFormationValidationError('does not exist for stack'))
         .onSecondCall()
         .resolves({
           StackResourceDetail: { PhysicalResourceId: 's3-bucket-resource' },
         });
 
-      const awsRequestStubMap = {
-        ...baseAwsRequestStubMap,
+      const awsSdkV3StubMap = {
+        ...baseAwsSdkV3StubMap,
         ECR: {
           describeRepositories: sinon.stub().throws({
             providerError: { code: 'RepositoryNotFoundException' },
@@ -1400,7 +1371,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       const { serverless, awsSdkV3Stub } = await runServerless({
         fixture: 'function',
         command: 'deploy',
-        awsRequestStubMap,
+        awsSdkV3StubMap,
         lastLifecycleHookName: 'aws:deploy:deploy:checkForChanges',
       });
 
@@ -1474,8 +1445,8 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
         createChangeSetStub = sinon.stub().resolves({});
         executeChangeSetStub = sinon.stub().resolves({});
         setStackPolicyStub = sinon.stub().resolves({});
-        const awsRequestStubMap = {
-          ...baseAwsRequestStubMap,
+        const awsSdkV3StubMap = {
+          ...baseAwsSdkV3StubMap,
           ECR: {
             describeRepositories: sinon.stub().throws({
               providerError: { code: 'RepositoryNotFoundException' },
@@ -1522,7 +1493,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
         ({ awsSdkV3Stub } = await runServerless({
           fixture: 'function',
           command: 'deploy',
-          awsRequestStubMap,
+          awsSdkV3StubMap,
           configExt: {
             provider: {
               notificationArns,
@@ -1607,17 +1578,14 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
   });
 
   it('with existing stack - missing custom deployment bucket', async () => {
-    const awsRequestStubMap = {
-      ...baseAwsRequestStubMap,
+    const awsSdkV3StubMap = {
+      ...baseAwsSdkV3StubMap,
       ECR: {
         describeRepositories: sinon.stub().throws({
           providerError: { code: 'RepositoryNotFoundException' },
         }),
       },
       S3: {
-        getBucketLocation: () => {
-          throw new Error();
-        },
         headBucket: () => {
           throw new Error();
         },
@@ -1632,7 +1600,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       runServerless({
         fixture: 'function',
         command: 'deploy',
-        awsRequestStubMap,
+        awsSdkV3StubMap,
         lastLifecycleHookName: 'aws:deploy:deploy:checkForChanges',
         configExt: {
           provider: {
@@ -1645,8 +1613,8 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
 
   it('with existing stack - with custom deployment bucket and unknown region', async () => {
     const headBucketStub = sinon.stub().returns({});
-    const awsRequestStubMap = {
-      ...baseAwsRequestStubMap,
+    const awsSdkV3StubMap = {
+      ...baseAwsSdkV3StubMap,
       ECR: {
         describeRepositories: sinon.stub().throws({
           providerError: { code: 'RepositoryNotFoundException' },
@@ -1670,7 +1638,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
     await runServerless({
       fixture: 'function',
       command: 'deploy',
-      awsRequestStubMap,
+      awsSdkV3StubMap,
       lastLifecycleHookName: 'aws:deploy:deploy:checkForChanges',
       configExt: {
         provider: {
@@ -1683,19 +1651,14 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
   });
 
   it('with existing stack - with custom deployment bucket in different region', async () => {
-    const awsRequestStubMap = {
-      ...baseAwsRequestStubMap,
+    const awsSdkV3StubMap = {
+      ...baseAwsSdkV3StubMap,
       ECR: {
         describeRepositories: sinon.stub().throws({
           providerError: { code: 'RepositoryNotFoundException' },
         }),
       },
       S3: {
-        getBucketLocation: () => {
-          return {
-            LocationConstraint: 'us-west-1',
-          };
-        },
         headBucket: () => {
           return {
             BucketRegion: 'us-west-1',
@@ -1712,7 +1675,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       runServerless({
         fixture: 'function',
         command: 'deploy',
-        awsRequestStubMap,
+        awsSdkV3StubMap,
         lastLifecycleHookName: 'aws:deploy:deploy:checkForChanges',
         configExt: {
           provider: {
@@ -1727,8 +1690,8 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
   });
 
   it('with existing stack - with custom deployment bucket region redirect error', async () => {
-    const awsRequestStubMap = {
-      ...baseAwsRequestStubMap,
+    const awsSdkV3StubMap = {
+      ...baseAwsSdkV3StubMap,
       ECR: {
         describeRepositories: sinon.stub().throws({
           providerError: { code: 'RepositoryNotFoundException' },
@@ -1753,7 +1716,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       runServerless({
         fixture: 'function',
         command: 'deploy',
-        awsRequestStubMap,
+        awsSdkV3StubMap,
         lastLifecycleHookName: 'aws:deploy:deploy:checkForChanges',
         configExt: {
           provider: {
@@ -1768,8 +1731,8 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
   });
 
   it('with existing stack - with deployment bucket from CloudFormation deleted manually', async () => {
-    const awsRequestStubMap = {
-      ...baseAwsRequestStubMap,
+    const awsSdkV3StubMap = {
+      ...baseAwsSdkV3StubMap,
       ECR: {
         describeRepositories: sinon.stub().throws({
           providerError: { code: 'RepositoryNotFoundException' },
@@ -1795,7 +1758,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       runServerless({
         fixture: 'function',
         command: 'deploy',
-        awsRequestStubMap,
+        awsSdkV3StubMap,
         lastLifecycleHookName: 'aws:deploy:deploy:checkForChanges',
       })
     ).to.eventually.have.been.rejected.and.have.property(
@@ -1805,8 +1768,8 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
   });
 
   it('should throw when deployment bucket cannot be accessed', async () => {
-    const awsRequestStubMap = {
-      ...baseAwsRequestStubMap,
+    const awsSdkV3StubMap = {
+      ...baseAwsSdkV3StubMap,
       ECR: {
         describeRepositories: sinon.stub().throws({
           providerError: { code: 'RepositoryNotFoundException' },
@@ -1832,7 +1795,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       runServerless({
         fixture: 'function',
         command: 'deploy',
-        awsRequestStubMap,
+        awsSdkV3StubMap,
         lastLifecycleHookName: 'aws:deploy:deploy:checkForChanges',
       })
     ).to.eventually.have.been.rejected.and.have.property('code', 'AWS_S3_HEAD_BUCKET_FORBIDDEN');
