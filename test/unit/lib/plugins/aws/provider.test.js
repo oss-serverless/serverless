@@ -21,6 +21,16 @@ const { STSClient, GetCallerIdentityCommand } = require('@aws-sdk/client-sts');
 const expect = chai.expect;
 const spawnModulePath = path.resolve(__dirname, '../../../../../lib/utils/spawn.js');
 
+const createProviderStub = ({ provider = {}, config = {}, providerOptions = {} } = {}) => {
+  const providerStub = Object.create(AwsProvider.prototype);
+  providerStub.options = { ...providerOptions };
+  providerStub.serverless = {
+    config,
+    service: { provider },
+  };
+  return providerStub;
+};
+
 describe('AwsProvider', () => {
   let awsProvider;
   let serverless;
@@ -30,11 +40,29 @@ describe('AwsProvider', () => {
     region: 'us-east-1',
   };
 
+  const createServerless = (serverlessOptions = {}) => {
+    const serverlessInstance = new Serverless({
+      ...options,
+      commands: [],
+      options: {},
+      ...serverlessOptions,
+    });
+    serverlessInstance.cli = new serverlessInstance.classes.CLI();
+    return serverlessInstance;
+  };
+
+  const createAwsProvider = ({ serverlessOptions, providerOptions = options } = {}) => {
+    const serverlessInstance = createServerless(serverlessOptions);
+    return {
+      serverless: serverlessInstance,
+      awsProvider: new AwsProvider(serverlessInstance, providerOptions),
+    };
+  };
+
   beforeEach(() => {
     ({ restoreEnv } = overrideEnv());
-    serverless = new Serverless({ ...options, commands: [], options: {} });
-    serverless.cli = new serverless.classes.CLI();
-    awsProvider = new AwsProvider(serverless, options);
+    awsProvider = createProviderStub({ providerOptions: options });
+    serverless = awsProvider.serverless;
   });
   afterEach(() => {
     if (CloudFormationClient.prototype.send.restore) {
@@ -144,12 +172,11 @@ describe('AwsProvider', () => {
 
   describe('runtime schema parity', () => {
     it('should keep `awsLambdaRuntime` in sync with `AwsLambdaRuntime`', () => {
-      const localServerless = new Serverless({ ...options, commands: [], options: {} });
+      const localServerless = createServerless();
       const runtimeTypePath = path.resolve(__dirname, '../../../../../types/index.d.ts');
       const runtimeTypeSource = fs.readFileSync(runtimeTypePath, 'utf8');
 
       localServerless.service.provider.name = 'aws';
-      localServerless.cli = new localServerless.classes.CLI();
       const localAwsProvider = new AwsProvider(localServerless, options);
       expect(localAwsProvider.serverless).to.equal(localServerless);
 
@@ -182,6 +209,10 @@ describe('AwsProvider', () => {
   });
 
   describe('#constructor()', () => {
+    beforeEach(() => {
+      ({ serverless, awsProvider } = createAwsProvider());
+    });
+
     it('should set Serverless instance', () => {
       expect(typeof awsProvider.serverless).to.not.equal('undefined');
     });
@@ -308,6 +339,10 @@ describe('AwsProvider', () => {
   });
 
   describe('#getAwsSdkV3Config()', () => {
+    beforeEach(() => {
+      ({ serverless, awsProvider } = createAwsProvider());
+    });
+
     it('returns SDK v3 config with explicit region and env credentials', async () => {
       process.env.AWS_ACCESS_KEY_ID = 'accessKeyId';
       process.env.AWS_SECRET_ACCESS_KEY = 'secretAccessKey';
@@ -557,6 +592,10 @@ describe('AwsProvider', () => {
   });
 
   describe('#getServerlessDeploymentBucketName()', () => {
+    beforeEach(() => {
+      ({ awsProvider } = createAwsProvider());
+    });
+
     it('should return the name of the serverless deployment bucket', async () => {
       const describeStackResourcesStub = sinon
         .stub(CloudFormationClient.prototype, 'send')
@@ -642,6 +681,10 @@ describe('AwsProvider', () => {
   });
 
   describe('#getStackResources()', () => {
+    beforeEach(() => {
+      ({ awsProvider } = createAwsProvider());
+    });
+
     it('paginates ListStackResources with one SDK v3 client', async () => {
       const getAwsSdkV3ConfigSpy = sinon.spy(awsProvider, 'getAwsSdkV3Config');
       const listStackResourcesStub = sinon
@@ -731,6 +774,10 @@ describe('AwsProvider', () => {
   });
 
   describe('#getAccountInfo()', () => {
+    beforeEach(() => {
+      ({ awsProvider } = createAwsProvider());
+    });
+
     it('defines memoized provider methods as lazy non-enumerable descriptors', () => {
       const protoDescriptor = Object.getOwnPropertyDescriptor(
         AwsProvider.prototype,
@@ -804,6 +851,10 @@ describe('AwsProvider', () => {
   });
 
   describe('#getAccountId()', () => {
+    beforeEach(() => {
+      ({ awsProvider } = createAwsProvider());
+    });
+
     it('should return the AWS account id', async () => {
       const accountId = '12345678';
 
@@ -1058,8 +1109,7 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
     });
 
     it('should reject invalid stage from provider options', () => {
-      const serverless = new Serverless({ commands: ['print'], options: {}, serviceDir: null });
-      const provider = new AwsProvider(serverless, { stage: 'foo/bar' });
+      const provider = createProviderStub({ providerOptions: { stage: 'foo/bar' } });
 
       expect(() => provider.getStage())
         .to.throw(ServerlessError)
@@ -1067,9 +1117,10 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
     });
 
     it('should reject invalid stage from serverless config', () => {
-      const serverless = new Serverless({ commands: ['print'], options: {}, serviceDir: null });
-      serverless.config.stage = 'feature.prod';
-      const provider = new AwsProvider(serverless, {});
+      const provider = createProviderStub({
+        config: { stage: 'feature.prod' },
+        providerOptions: {},
+      });
 
       expect(() => provider.getStage())
         .to.throw(ServerlessError)
@@ -1077,9 +1128,10 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
     });
 
     it('should reject invalid stage from service provider config', () => {
-      const serverless = new Serverless({ commands: ['print'], options: {}, serviceDir: null });
-      const provider = new AwsProvider(serverless, {});
-      serverless.service.provider.stage = 'my_stage';
+      const provider = createProviderStub({
+        provider: { stage: 'my_stage' },
+        providerOptions: {},
+      });
 
       expect(() => provider.getStage())
         .to.throw(ServerlessError)
@@ -1087,9 +1139,10 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
     });
 
     it('should reject empty CLI stage instead of falling back to provider stage', () => {
-      const serverless = new Serverless({ commands: ['print'], options: {}, serviceDir: null });
-      serverless.service.provider.stage = 'prod';
-      const provider = new AwsProvider(serverless, { stage: '' });
+      const provider = createProviderStub({
+        provider: { stage: 'prod' },
+        providerOptions: { stage: '' },
+      });
 
       expect(() => provider.getStage())
         .to.throw(ServerlessError)
