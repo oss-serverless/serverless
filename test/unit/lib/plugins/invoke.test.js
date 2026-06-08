@@ -3,7 +3,6 @@
 const chai = require('chai');
 const { overrideEnv } = require('../../../utils/process');
 const Invoke = require('../../../../lib/plugins/invoke');
-const Serverless = require('../../../../lib/serverless');
 
 const expect = chai.expect;
 
@@ -14,7 +13,10 @@ describe('Invoke', () => {
 
   beforeEach(() => {
     ({ restoreEnv } = overrideEnv());
-    serverless = new Serverless({ commands: [], options: {} });
+    serverless = {
+      processedInput: { options: {} },
+      service: { provider: {} },
+    };
     invoke = new Invoke(serverless);
   });
 

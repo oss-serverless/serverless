@@ -2,7 +2,6 @@
 
 const chai = require('chai');
 const Info = require('../../../../lib/plugins/info');
-const Serverless = require('../../../../lib/serverless');
 
 const expect = chai.expect;
 
@@ -11,7 +10,7 @@ describe('Info', () => {
   let serverless;
 
   beforeEach(() => {
-    serverless = new Serverless({ commands: [], options: {} });
+    serverless = {};
     info = new Info(serverless);
   });
 

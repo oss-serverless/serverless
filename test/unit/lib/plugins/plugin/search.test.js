@@ -2,8 +2,6 @@
 
 const sinon = require('sinon');
 const PluginSearch = require('../../../../../lib/plugins/plugin/search');
-const Serverless = require('../../../../../lib/serverless');
-const CLI = require('../../../../../lib/classes/cli');
 const expect = require('chai').expect;
 
 describe('PluginSearch', () => {
@@ -29,8 +27,7 @@ describe('PluginSearch', () => {
   ];
 
   beforeEach(() => {
-    serverless = new Serverless({ commands: [], options: {} });
-    serverless.cli = new CLI(serverless);
+    serverless = {};
     const options = {};
     pluginSearch = new PluginSearch(serverless, options);
   });

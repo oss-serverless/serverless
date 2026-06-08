@@ -2,18 +2,13 @@
 
 const chai = require('chai');
 const sinon = require('sinon');
-const PluginList = require('../../../../../../lib/plugins/plugin/list');
 const pluginUtilsModule = require('../../../../../../lib/plugins/plugin/lib/utils.js');
-const Serverless = require('../../../../../../lib/serverless');
-const CLI = require('../../../../../../lib/classes/cli');
 const { log } = require('../../../../../../lib/utils/serverless-utils/log');
 const observeOutput = require('../../../../../lib/observe-output');
 
 const expect = chai.expect;
 
 describe('PluginUtils', () => {
-  let pluginUtils;
-  let serverless;
   const plugins = [
     {
       name: 'serverless-plugin-1',
@@ -31,13 +26,6 @@ describe('PluginUtils', () => {
       githubUrl: 'https://github.com/serverless/serverless-existing-plugin',
     },
   ];
-
-  beforeEach(() => {
-    serverless = new Serverless({ commands: [], options: {} });
-    serverless.cli = new CLI(serverless);
-    const options = {};
-    pluginUtils = new PluginList(serverless, options);
-  });
 
   describe('#getPlugins()', () => {
     let fetchStub;
@@ -70,7 +58,7 @@ describe('PluginUtils', () => {
 
   describe('#display()', () => {
     it('should display the plugins if present', async () => {
-      const output = await observeOutput(() => pluginUtils.display(plugins));
+      const output = await observeOutput(() => pluginUtilsModule.display(plugins));
       let expectedMessage = '';
       expectedMessage += 'serverless-existing-plugin Serverless Existing plugin\n';
       expectedMessage += 'serverless-plugin-1 Serverless Plugin 1\n';
@@ -84,7 +72,7 @@ describe('PluginUtils', () => {
 
     it('should ignore malformed plugin records and still display valid plugins', async () => {
       const output = await observeOutput(() =>
-        pluginUtils.display([
+        pluginUtilsModule.display([
           {
             name: 'serverless-plugin-2',
             description: 'Serverless Plugin 2',
@@ -121,7 +109,7 @@ describe('PluginUtils', () => {
 
       try {
         const output = await observeOutput(() =>
-          pluginUtils.display([
+          pluginUtilsModule.display([
             null,
             {
               description: 'Missing name',

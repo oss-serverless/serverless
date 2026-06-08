@@ -1,6 +1,5 @@
 'use strict';
 
-const Serverless = require('../../../../lib/serverless');
 const Install = require('../../../../lib/plugins/install.js');
 const sinon = require('sinon');
 const download = require('../../../../lib/utils/download-template-from-repo');
@@ -16,7 +15,7 @@ describe('Install', () => {
 
   let serviceDir;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     const tmpDir = getTmpDirPath();
     cwd = process.cwd();
 
@@ -25,11 +24,8 @@ describe('Install', () => {
 
     serviceDir = tmpDir;
 
-    serverless = new Serverless({ commands: ['print'], options: {}, serviceDir: null });
+    serverless = {};
     install = new Install(serverless);
-    return serverless.init().then(() => {
-      install.serverless.cli = new serverless.classes.CLI();
-    });
   });
 
   afterEach(() => {
