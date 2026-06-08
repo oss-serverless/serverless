@@ -4,8 +4,7 @@ const sinon = require('sinon');
 const proxyquire = require('proxyquire');
 const expect = require('chai').expect;
 const AwsDeployList = require('../../../../../lib/plugins/aws/deploy-list');
-const AwsProvider = require('../../../../../lib/plugins/aws/provider');
-const Serverless = require('../../../../../lib/serverless');
+const ServerlessError = require('../../../../../lib/serverless-error');
 const { S3Client, ListObjectsV2Command } = require('@aws-sdk/client-s3');
 const {
   LambdaClient,
@@ -21,6 +20,42 @@ function formatDeploymentDate(dateString) {
   ).padStart(2, 0)} ${String(date.getUTCHours()).padStart(2, 0)}:${String(
     date.getUTCMinutes()
   ).padStart(2, 0)}:${String(date.getUTCSeconds()).padStart(2, 0)} UTC`;
+}
+
+function createServerlessContext(options) {
+  const provider = {
+    getStage: () => options.stage,
+    getRegion: () => options.region,
+    getDeploymentPrefix: () => 'serverless',
+    getAwsSdkV3Config: async () => ({ region: options.region }),
+  };
+  const service = {
+    service: 'listDeployments',
+    functions: {},
+    getAllFunctions() {
+      return Object.keys(this.functions);
+    },
+    getFunction(functionName) {
+      if (!this.functions || !Object.hasOwn(this.functions, functionName)) {
+        throw new ServerlessError(
+          `Function "${functionName}" doesn't exist in this Service`,
+          'FUNCTION_MISSING_IN_SERVICE'
+        );
+      }
+      return this.functions[functionName];
+    },
+    getAllFunctionsNames() {
+      return this.getAllFunctions().map((functionName) => this.getFunction(functionName).name);
+    },
+  };
+
+  return {
+    provider,
+    serverless: {
+      service,
+      getProvider: sinon.stub().withArgs('aws').returns(provider),
+    },
+  };
 }
 
 async function waitForPendingRequests(pendingResolvers, count) {
@@ -46,10 +81,7 @@ describe('AwsDeployList', () => {
       stage: 'dev',
       region: 'us-east-1',
     };
-    serverless = new Serverless({ commands: [], options: {} });
-    provider = new AwsProvider(serverless, options);
-    serverless.setProvider('aws', provider);
-    serverless.service.service = 'listDeployments';
+    ({ serverless, provider } = createServerlessContext(options));
     const prefix = provider.getDeploymentPrefix();
     s3Key = `${prefix}/${serverless.service.service}/${provider.getStage()}`;
     awsDeployList = new AwsDeployList(serverless, options);

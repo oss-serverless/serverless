@@ -3,14 +3,56 @@
 const expect = require('chai').expect;
 const sinon = require('sinon');
 const AwsInfo = require('../../../../../../lib/plugins/aws/info/index');
-const AwsProvider = require('../../../../../../lib/plugins/aws/provider');
-const Serverless = require('../../../../../../lib/serverless');
 const {
   CloudFormationClient,
   DescribeStacksCommand,
   ListExportsCommand,
 } = require('@aws-sdk/client-cloudformation');
 const { ApiGatewayV2Client, GetApiCommand } = require('@aws-sdk/client-apigatewayv2');
+
+function upperFirst(value) {
+  return `${value[0].toUpperCase()}${value.slice(1)}`;
+}
+
+function createServerlessContext(options) {
+  const provider = {
+    getStage: () => options.stage,
+    getRegion: () => options.region,
+    getAwsSdkV3Config: async () => ({ region: options.region }),
+    naming: {
+      getStackName: () => 'my-service-dev',
+      getServiceEndpointRegex: () => /^(ServiceEndpoint|HttpApiUrl)$/,
+      getLambdaFunctionUrlOutputLogicalId: (functionName) =>
+        `${upperFirst(functionName)}LambdaFunctionUrl`,
+      getLambdaLayerOutputLogicalId: (layerName) =>
+        `${upperFirst(layerName)}LambdaLayerQualifiedArn`,
+      getCloudFrontDistributionDomainNameLogicalId: () => 'CloudFrontDistributionDomainName',
+    },
+  };
+  const service = {
+    service: 'my-service',
+    provider: {},
+    functions: {},
+    layers: {},
+    getAllFunctions() {
+      return Object.keys(this.functions);
+    },
+    getFunction(functionName) {
+      return this.functions[functionName];
+    },
+    getAllLayers() {
+      return Object.keys(this.layers || {});
+    },
+  };
+
+  return {
+    provider,
+    serverless: {
+      service,
+      getProvider: sinon.stub().withArgs('aws').returns(provider),
+    },
+  };
+}
 
 describe('#getStackInfo()', () => {
   let serverless;
@@ -23,9 +65,7 @@ describe('#getStackInfo()', () => {
       stage: 'dev',
       region: 'us-east-1',
     };
-    serverless = new Serverless({ commands: [], options: {} });
-    serverless.setProvider('aws', new AwsProvider(serverless, options));
-    serverless.service.service = 'my-service';
+    ({ serverless } = createServerlessContext(options));
     serverless.service.functions = {
       hello: { name: 'my-service-dev-hello' },
       world: { name: 'customized' },

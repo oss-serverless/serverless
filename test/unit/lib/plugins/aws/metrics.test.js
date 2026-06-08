@@ -3,10 +3,8 @@
 const expect = require('chai').expect;
 const sinon = require('sinon');
 const proxyquire = require('proxyquire');
-const AwsProvider = require('../../../../../lib/plugins/aws/provider');
 const AwsMetrics = require('../../../../../lib/plugins/aws/metrics');
-const Serverless = require('../../../../../lib/serverless');
-const CLI = require('../../../../../lib/classes/cli');
+const ServerlessError = require('../../../../../lib/serverless-error');
 const dayjs = require('dayjs');
 const { CloudWatchClient, GetMetricStatisticsCommand } = require('@aws-sdk/client-cloudwatch');
 const releasePendingRequestsUntilSettled = require('../../../../utils/release-pending-requests-until-settled');
@@ -15,18 +13,51 @@ const LocalizedFormat = require('dayjs/plugin/localizedFormat');
 
 dayjs.extend(LocalizedFormat);
 
+function createServerlessContext(options) {
+  const provider = {
+    getStage: () => options.stage,
+    getRegion: () => options.region,
+    getAwsSdkV3Config: async () => ({ region: options.region }),
+  };
+  const service = {
+    service: 'my-service',
+    functions: {},
+    getAllFunctions() {
+      return Object.keys(this.functions);
+    },
+    getFunction(functionName) {
+      if (!this.functions || !Object.hasOwn(this.functions, functionName)) {
+        throw new ServerlessError(
+          `Function "${functionName}" doesn't exist in this Service`,
+          'FUNCTION_MISSING_IN_SERVICE'
+        );
+      }
+      return this.functions[functionName];
+    },
+    getAllFunctionsNames() {
+      return this.getAllFunctions().map((functionName) => this.getFunction(functionName).name);
+    },
+  };
+
+  return {
+    provider,
+    serverless: {
+      service,
+      getProvider: sinon.stub().withArgs('aws').returns(provider),
+    },
+  };
+}
+
 describe('AwsMetrics', () => {
   let awsMetrics;
   let serverless;
 
   beforeEach(() => {
-    serverless = new Serverless({ commands: [], options: {} });
-    serverless.cli = new CLI(serverless);
     const options = {
       stage: 'dev',
       region: 'us-east-1',
     };
-    serverless.setProvider('aws', new AwsProvider(serverless, options));
+    ({ serverless } = createServerlessContext(options));
     awsMetrics = new AwsMetrics(serverless, options);
   });
 
@@ -39,8 +70,8 @@ describe('AwsMetrics', () => {
       expect(awsMetrics.options).to.deep.equal({ stage: 'dev', region: 'us-east-1' });
     });
 
-    it('should set the provider variable to the AwsProvider instance', () =>
-      expect(awsMetrics.provider).to.be.instanceof(AwsProvider));
+    it('should set the provider variable to the aws provider', () =>
+      expect(awsMetrics.provider).to.equal(serverless.getProvider('aws')));
 
     it('should have a "metrics:metrics" hook', () => {
       expect(awsMetrics.hooks['metrics:metrics']).to.not.be.undefined;
