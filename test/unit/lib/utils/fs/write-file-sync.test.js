@@ -2,17 +2,25 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
-const Serverless = require('../../../../../lib/serverless');
+const Utils = require('../../../../../lib/classes/utils');
+const YamlParser = require('../../../../../lib/classes/yaml-parser');
 const writeFileSync = require('../../../../../lib/utils/fs/write-file-sync');
 const readFileSync = require('../../../../../lib/utils/fs/read-file-sync');
 const { expect } = require('chai');
 const { getTmpFilePath } = require('../../../../utils/fs');
 
+const createHarness = () => {
+  const serverlessLike = {};
+  serverlessLike.utils = new Utils(serverlessLike);
+  serverlessLike.yamlParser = new YamlParser(serverlessLike);
+  return serverlessLike;
+};
+
 describe('#writeFileSync()', () => {
   let serverless;
 
   beforeEach(() => {
-    serverless = new Serverless({ commands: [], options: {} });
+    serverless = createHarness();
   });
 
   it('should write a .json file synchronously', () => {

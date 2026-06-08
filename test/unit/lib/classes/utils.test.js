@@ -3,18 +3,25 @@
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
-const Serverless = require('../../../../lib/serverless');
 const Utils = require('../../../../lib/classes/utils');
+const YamlParser = require('../../../../lib/classes/yaml-parser');
 const { expect } = require('chai');
 const { getTmpFilePath, getTmpDirPath, removeSync } = require('../../../utils/fs');
+
+const createHarness = () => {
+  const serverlessLike = {};
+  serverlessLike.utils = new Utils(serverlessLike);
+  serverlessLike.yamlParser = new YamlParser(serverlessLike);
+  return serverlessLike;
+};
 
 describe('Utils', () => {
   let utils;
   let serverless;
 
   beforeEach(() => {
-    serverless = new Serverless({ commands: [], options: {} });
-    utils = new Utils(serverless);
+    serverless = createHarness();
+    utils = serverless.utils;
   });
 
   describe('#getTmpDirPath()', () => {

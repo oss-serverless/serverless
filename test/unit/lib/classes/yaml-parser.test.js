@@ -8,13 +8,21 @@ const http = require('http');
 const yaml = require('js-yaml');
 const path = require('path');
 const { pathToFileURL } = require('url');
-const Serverless = require('../../../../lib/serverless');
+const Utils = require('../../../../lib/classes/utils');
+const YamlParser = require('../../../../lib/classes/yaml-parser');
 const { getTmpFilePath, getTmpDirPath } = require('../../../utils/fs');
 
 // Configure chai
 const expect = require('chai').expect;
 
-const serverless = new Serverless({ commands: [], options: {} });
+const createHarness = () => {
+  const serverlessLike = {};
+  serverlessLike.utils = new Utils(serverlessLike);
+  serverlessLike.yamlParser = new YamlParser(serverlessLike);
+  return serverlessLike;
+};
+
+const serverless = createHarness();
 
 describe('YamlParser', () => {
   describe('#parse()', () => {

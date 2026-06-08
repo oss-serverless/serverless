@@ -2,7 +2,8 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
-const Serverless = require('../../../../../lib/serverless');
+const Utils = require('../../../../../lib/classes/utils');
+const YamlParser = require('../../../../../lib/classes/yaml-parser');
 const writeFile = require('../../../../../lib/utils/fs/write-file');
 const readFile = require('../../../../../lib/utils/fs/read-file');
 const { getTmpFilePath } = require('../../../../utils/fs');
@@ -10,12 +11,19 @@ const { getTmpFilePath } = require('../../../../utils/fs');
 // Configure chai
 const expect = require('chai').expect;
 
+const createHarness = () => {
+  const serverlessLike = {};
+  serverlessLike.utils = new Utils(serverlessLike);
+  serverlessLike.yamlParser = new YamlParser(serverlessLike);
+  return serverlessLike;
+};
+
 describe('#writeFile()', function () {
   let serverless;
   this.timeout(0);
 
   beforeEach(() => {
-    serverless = new Serverless({ commands: [], options: {} });
+    serverless = createHarness();
   });
 
   it('should write a .json file asynchronously', async () => {
