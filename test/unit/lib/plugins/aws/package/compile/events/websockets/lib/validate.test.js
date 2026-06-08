@@ -1,23 +1,14 @@
 'use strict';
 
 const expect = require('chai').expect;
-const AwsCompileWebsocketsEvents = require('../../../../../../../../../../lib/plugins/aws/package/compile/events/websockets/index');
-const Serverless = require('../../../../../../../../../../lib/serverless');
-const AwsProvider = require('../../../../../../../../../../lib/plugins/aws/provider');
 const runServerless = require('../../../../../../../../../utils/run-serverless');
+const { createWebsocketsCompilerContext } = require('../test-utils');
 
 describe('#validate()', () => {
-  let serverless;
   let awsCompileWebsocketsEvents;
 
   beforeEach(() => {
-    const options = {
-      stage: 'dev',
-      region: 'us-east-1',
-    };
-    serverless = new Serverless({ commands: [], options: {} });
-    serverless.setProvider('aws', new AwsProvider(serverless, options));
-    awsCompileWebsocketsEvents = new AwsCompileWebsocketsEvents(serverless, options);
+    ({ awsCompileWebsocketsEvents } = createWebsocketsCompilerContext());
   });
 
   it('should support the simplified string syntax', () => {

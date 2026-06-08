@@ -3,17 +3,9 @@
 const chai = require('chai');
 
 const expect = chai.expect;
-const sinon = require('sinon');
-const childProcess = require('child_process');
-const { promisify } = require('util');
 const isObject = require('type/object/is');
-const AwsCompileWebsocketsEvents = require('../../../../../../../../../../lib/plugins/aws/package/compile/events/websockets/index');
-const Serverless = require('../../../../../../../../../../lib/serverless');
-const AwsProvider = require('../../../../../../../../../../lib/plugins/aws/provider');
-const { createTmpDir } = require('../../../../../../../../../utils/fs');
 const runServerless = require('../../../../../../../../../utils/run-serverless');
-
-if (!childProcess.execAsync) childProcess.execAsync = promisify(childProcess.exec);
+const { createWebsocketsCompilerContext } = require('../test-utils');
 
 describe('#compileStage()', () => {
   let awsCompileWebsocketsEvents;
@@ -21,22 +13,9 @@ describe('#compileStage()', () => {
   let logGroupLogicalId;
 
   beforeEach(() => {
-    const options = {
-      stage: 'dev',
-      region: 'us-east-1',
-    };
-    const serverless = new Serverless({ commands: [], options: {} });
-    serverless.setProvider('aws', new AwsProvider(serverless));
-    serverless.service.service = 'my-service';
-    serverless.service.provider.compiledCloudFormationTemplate = { Resources: {} };
-    serverless.serviceDir = createTmpDir();
-    serverless.cli = { log: () => {} };
-
-    awsCompileWebsocketsEvents = new AwsCompileWebsocketsEvents(serverless, options);
+    ({ awsCompileWebsocketsEvents } = createWebsocketsCompilerContext());
     stageLogicalId = awsCompileWebsocketsEvents.provider.naming.getWebsocketsStageLogicalId();
     logGroupLogicalId = awsCompileWebsocketsEvents.provider.naming.getWebsocketsLogGroupLogicalId();
-    awsCompileWebsocketsEvents.websocketsApiLogicalId =
-      awsCompileWebsocketsEvents.provider.naming.getWebsocketsApiLogicalId();
   });
 
   it('should create a stage resource if no websocketApiId specified', async () =>
@@ -73,7 +52,6 @@ describe('#compileStage()', () => {
 
   describe('logs', () => {
     beforeEach(() => {
-      sinon.stub(childProcess, 'execAsync');
       // setting up Websocket logs
       awsCompileWebsocketsEvents.serverless.service.provider.logs = {
         websocket: true,
