@@ -1,12 +1,20 @@
 'use strict';
 
-const Serverless = require('../../../../lib/serverless');
+const Utils = require('../../../../lib/classes/utils');
+const YamlParser = require('../../../../lib/classes/yaml-parser');
 const fs = require('fs');
 const path = require('path');
 const { expect } = require('chai');
 const { ensureDirSync, getTmpDirPath } = require('../../../utils/fs');
 
 const { renameService } = require('../../../../lib/utils/rename-service');
+
+const createHarness = () => {
+  const serverlessLike = {};
+  serverlessLike.utils = new Utils(serverlessLike);
+  serverlessLike.yamlParser = new YamlParser(serverlessLike);
+  return serverlessLike;
+};
 
 describe('renameService', () => {
   let serverless;
@@ -23,8 +31,7 @@ describe('renameService', () => {
 
     serviceDir = tmpDir;
 
-    serverless = new Serverless({ commands: ['print'], options: {}, serviceDir: null });
-    return serverless.init();
+    serverless = createHarness();
   });
 
   afterEach(() => {
