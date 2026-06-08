@@ -5,7 +5,7 @@ const sinon = require('sinon');
 const path = require('path');
 const { getTmpDirPath } = require('../../../../utils/fs');
 const runServerless = require('../../../../utils/run-serverless');
-const fixtures = require('../../../../fixtures/programmatic');
+const setupProgrammaticFixture = require('../../../../utils/setup-programmatic-fixture');
 const AwsInvoke = require('../../../../../lib/plugins/aws/invoke');
 const AwsProvider = require('../../../../../lib/plugins/aws/provider');
 const Serverless = require('../../../../../lib/serverless');
@@ -29,7 +29,7 @@ describe('test/unit/lib/plugins/aws/invoke.test.js', () => {
           data: '{"inputKey":"inputValue"}',
           log: true,
         },
-        awsRequestStubMap: {
+        awsSdkV3StubMap: {
           Lambda: {
             invoke: (args) => {
               lambdaInvokeStub.returns({
@@ -115,7 +115,7 @@ describe('test/unit/lib/plugins/aws/invoke.test.js', () => {
       options: {
         function: 'callback',
       },
-      awsRequestStubMap: {
+      awsSdkV3StubMap: {
         Lambda: {
           invoke: (args) => {
             lambdaInvokeStub.returns('payload');
@@ -140,7 +140,7 @@ describe('test/unit/lib/plugins/aws/invoke.test.js', () => {
         options: {
           function: 'callback',
         },
-        awsRequestStubMap: {
+        awsSdkV3StubMap: {
           Lambda: {
             invoke: {
               Payload: Buffer.alloc(0),
@@ -159,7 +159,7 @@ describe('test/unit/lib/plugins/aws/invoke.test.js', () => {
         function: 'callback',
         data: '{"inputKey":"inputValue"}',
       },
-      awsRequestStubMap: {
+      awsSdkV3StubMap: {
         Lambda: {
           invoke: {
             Payload: new Uint8Array(Buffer.from(JSON.stringify({ outputKey: 'outputValue' }))),
@@ -192,7 +192,7 @@ describe('test/unit/lib/plugins/aws/invoke.test.js', () => {
         options: {
           function: 'callback',
         },
-        awsRequestStubMap: {
+        awsSdkV3StubMap: {
           Lambda: {
             invoke: {
               Payload: new Uint8Array(),
@@ -210,7 +210,7 @@ describe('test/unit/lib/plugins/aws/invoke.test.js', () => {
       options: {
         function: 'callback',
       },
-      awsRequestStubMap: {
+      awsSdkV3StubMap: {
         Lambda: {
           invoke: {
             Payload: JSON.stringify({ outputKey: 'outputValue' }),
@@ -230,7 +230,7 @@ describe('test/unit/lib/plugins/aws/invoke.test.js', () => {
         options: {
           function: 'callback',
         },
-        awsRequestStubMap: {
+        awsSdkV3StubMap: {
           Lambda: {
             invoke: {
               FunctionError: 'Unhandled',
@@ -251,7 +251,7 @@ describe('test/unit/lib/plugins/aws/invoke.test.js', () => {
         function: 'callback',
         data: 'simple-string',
       },
-      awsRequestStubMap: {
+      awsSdkV3StubMap: {
         Lambda: {
           invoke: (args) => {
             lambdaInvokeStub.returns('payload');
@@ -278,7 +278,7 @@ describe('test/unit/lib/plugins/aws/invoke.test.js', () => {
         data: '{"inputKey":"inputValue"}',
         raw: true,
       },
-      awsRequestStubMap: {
+      awsSdkV3StubMap: {
         Lambda: {
           invoke: (args) => {
             lambdaInvokeStub.returns('payload');
@@ -304,7 +304,7 @@ describe('test/unit/lib/plugins/aws/invoke.test.js', () => {
         function: 'callback',
         path: 'payload.json',
       },
-      awsRequestStubMap: {
+      awsSdkV3StubMap: {
         Lambda: {
           invoke: (args) => {
             lambdaInvokeStub.returns('payload');
@@ -323,7 +323,7 @@ describe('test/unit/lib/plugins/aws/invoke.test.js', () => {
 
   it('should support absolute file path as data', async () => {
     const lambdaInvokeStub = sinon.stub();
-    const { servicePath: serviceDir } = await fixtures.setup('invocation');
+    const { servicePath: serviceDir } = await setupProgrammaticFixture('invocation');
     const pathToPayload = path.join(serviceDir, 'payload.json');
     const result = await runServerless({
       cwd: serviceDir,
@@ -332,7 +332,7 @@ describe('test/unit/lib/plugins/aws/invoke.test.js', () => {
         function: 'callback',
         path: pathToPayload,
       },
-      awsRequestStubMap: {
+      awsSdkV3StubMap: {
         Lambda: {
           invoke: (args) => {
             lambdaInvokeStub.returns('payload');
@@ -358,7 +358,7 @@ describe('test/unit/lib/plugins/aws/invoke.test.js', () => {
         function: 'callback',
         path: 'payload.yaml',
       },
-      awsRequestStubMap: {
+      awsSdkV3StubMap: {
         Lambda: {
           invoke: (args) => {
             lambdaInvokeStub.returns('payload');
@@ -407,7 +407,7 @@ describe('test/unit/lib/plugins/aws/invoke.test.js', () => {
         function: 'callback',
         type: 'Event',
       },
-      awsRequestStubMap: {
+      awsSdkV3StubMap: {
         Lambda: {
           invoke: (args) => {
             lambdaInvokeStub.returns('payload');
@@ -433,7 +433,7 @@ describe('test/unit/lib/plugins/aws/invoke.test.js', () => {
         function: 'callback',
         qualifier: 'foo',
       },
-      awsRequestStubMap: {
+      awsSdkV3StubMap: {
         Lambda: {
           invoke: (args) => {
             lambdaInvokeStub.returns('payload');
@@ -461,7 +461,7 @@ describe('test/unit/lib/plugins/aws/invoke.test.js', () => {
         function: 'callback',
         context: 'somecontext',
       },
-      awsRequestStubMap: {
+      awsSdkV3StubMap: {
         Lambda: {
           invoke: (args) => {
             lambdaInvokeStub.returns('payload');
@@ -491,7 +491,7 @@ describe('test/unit/lib/plugins/aws/invoke.test.js', () => {
         context: '{"ctx": "somecontext"}',
         raw: true,
       },
-      awsRequestStubMap: {
+      awsSdkV3StubMap: {
         Lambda: {
           invoke: (args) => {
             lambdaInvokeStub.returns('payload');
@@ -531,7 +531,7 @@ describe('test/unit/lib/plugins/aws/invoke.test.js', () => {
         function: 'callback',
         contextPath: contextDataFilePath,
       },
-      awsRequestStubMap: {
+      awsSdkV3StubMap: {
         Lambda: {
           invoke: (args) => {
             lambdaInvokeStub.returns('payload');
@@ -563,7 +563,7 @@ describe('test/unit/lib/plugins/aws/invoke.test.js', () => {
           function: 'callback',
           contextPath: contextDataFilePath,
         },
-        awsRequestStubMap: {
+        awsSdkV3StubMap: {
           Lambda: {
             invoke: (args) => {
               lambdaInvokeStub.returns('payload');
@@ -585,7 +585,7 @@ describe('test/unit/lib/plugins/aws/invoke.test.js', () => {
         options: {
           function: 'callback',
         },
-        awsRequestStubMap: {
+        awsSdkV3StubMap: {
           Lambda: {
             invoke: (args) => {
               lambdaInvokeStub.returns({
@@ -609,7 +609,7 @@ describe('test/unit/lib/plugins/aws/invoke.test.js', () => {
         options: {
           function: 'callback',
         },
-        awsRequestStubMap: {
+        awsSdkV3StubMap: {
           Lambda: {
             invoke: {
               Payload: Buffer.alloc(0),
@@ -631,7 +631,7 @@ describe('test/unit/lib/plugins/aws/invoke.test.js', () => {
           function: 'callback',
           path: false,
         },
-        awsRequestStubMap: {
+        awsSdkV3StubMap: {
           Lambda: {
             invoke: (args) => {
               lambdaInvokeStub.returns('payload');
