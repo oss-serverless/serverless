@@ -1,10 +1,10 @@
-# How To Run, Organize, And Write Tests
+# How to Run, Organize, and Write Tests
 
 This document describes the expected style for new and updated tests.
 
 Prefer the smallest harness that exercises the behavior under test without hiding important framework interactions.
 
-## Unit tests
+## Unit Tests
 
 Tests use [Mocha](https://mochajs.org/) and can be run with:
 
