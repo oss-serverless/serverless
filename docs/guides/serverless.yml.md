@@ -719,7 +719,9 @@ functions:
       - arn:aws:lambda:region:XXXXXX:layer:LayerName:Y
     # Overrides the provider setting. Can be 'Active' or 'PassThrough'
     tracing: Active
-    # Conditionally deploy the function
+    # Conditionally deploy the function and generated function-owned companion resources.
+    # Define the CloudFormation condition under resources.Conditions.
+    # Shared event resources may not inherit this condition directly.
     condition: SomeCondition
     # CloudFormation 'DependsOn' option
     dependsOn:
