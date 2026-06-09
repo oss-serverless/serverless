@@ -3026,6 +3026,55 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
         expect(originalVersionArn).to.equal(updatedVersionArn);
       });
 
+      it('should create a different version if SnapStart changed', async () => {
+        const { servicePath: serviceDir, updateConfig } = await fixtures.setup('function', {
+          configExt,
+        });
+
+        await updateConfig({
+          functions: {
+            basic: {
+              runtime: 'java17',
+              versionFunction: true,
+              snapStart: false,
+            },
+          },
+        });
+
+        const { cfTemplate: originalTemplate } = await runServerless({
+          cwd: serviceDir,
+          command: 'package',
+        });
+
+        const originalVersionArn =
+          originalTemplate.Outputs.BasicLambdaFunctionQualifiedArn.Value.Ref;
+
+        await updateConfig({
+          functions: {
+            basic: {
+              runtime: 'java17',
+              versionFunction: true,
+              snapStart: true,
+            },
+          },
+        });
+
+        const { cfTemplate: updatedTemplate } = await runServerless({
+          cwd: serviceDir,
+          command: 'package',
+        });
+
+        const updatedVersionArn = updatedTemplate.Outputs.BasicLambdaFunctionQualifiedArn.Value.Ref;
+
+        expect(originalTemplate.Resources.BasicLambdaFunction.Properties).to.not.have.property(
+          'SnapStart'
+        );
+        expect(updatedTemplate.Resources.BasicLambdaFunction.Properties.SnapStart).to.deep.equal({
+          ApplyOn: 'PublishedVersions',
+        });
+        expect(originalVersionArn).to.not.equal(updatedVersionArn);
+      });
+
       describe('with layers', () => {
         let firstCfTemplate;
         let serviceDir;
