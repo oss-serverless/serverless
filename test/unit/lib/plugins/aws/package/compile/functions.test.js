@@ -1388,6 +1388,12 @@ describe('AwsCompileFunctions', () => {
           awsProvider.naming.getLambdaEventConfigLogicalId('source')
         ];
 
+      expect(
+        awsCompileFunctions.serverless.service.getFunction('target').targetAlias
+      ).to.deep.equal({
+        name: awsProvider.naming.getLambdaProvisionedConcurrencyAliasName(),
+        logicalId: awsProvider.naming.getLambdaProvisionedConcurrencyAliasLogicalId('target'),
+      });
       expect(eventConfig.DependsOn).to.equal(
         awsProvider.naming.getLambdaProvisionedConcurrencyAliasLogicalId('target')
       );
@@ -3491,9 +3497,12 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
       });
 
       it('should create a different version if SnapStart changed', async () => {
-        const { servicePath: serviceDir, updateConfig } = await fixtures.setup('function', {
-          configExt,
-        });
+        const { servicePath: serviceDir, updateConfig } = await setupProgrammaticFixture(
+          'function',
+          {
+            configExt: {},
+          }
+        );
 
         await updateConfig({
           functions: {
@@ -3523,18 +3532,25 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
           },
         });
 
-        const { cfTemplate: updatedTemplate } = await runServerless({
+        const { awsNaming, cfTemplate: updatedTemplate } = await runServerless({
           cwd: serviceDir,
           command: 'package',
         });
 
         const updatedVersionArn = updatedTemplate.Outputs.BasicLambdaFunctionQualifiedArn.Value.Ref;
+        const snapStartAlias =
+          updatedTemplate.Resources[awsNaming.getLambdaSnapStartAliasLogicalId('basic')];
 
         expect(originalTemplate.Resources.BasicLambdaFunction.Properties).to.not.have.property(
           'SnapStart'
         );
         expect(updatedTemplate.Resources.BasicLambdaFunction.Properties.SnapStart).to.deep.equal({
           ApplyOn: 'PublishedVersions',
+        });
+        expect(snapStartAlias.Properties).to.deep.equal({
+          FunctionName: { Ref: awsNaming.getLambdaLogicalId('basic') },
+          FunctionVersion: { 'Fn::GetAtt': [updatedVersionArn, 'Version'] },
+          Name: awsNaming.getLambdaSnapStartEnabledAliasName(),
         });
         expect(originalVersionArn).to.not.equal(updatedVersionArn);
       });
