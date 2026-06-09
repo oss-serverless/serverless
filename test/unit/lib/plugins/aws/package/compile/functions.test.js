@@ -1816,6 +1816,15 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
             fnTargetFailure: {
               handler: 'target.handler',
             },
+            fnProvisionedDestinationTarget: {
+              handler: 'target.handler',
+              provisionedConcurrency: 1,
+            },
+            fnProvisionedDestinationSource: {
+              handler: 'trigger.handler',
+              provisionedConcurrency: 1,
+              destinations: { onSuccess: 'fnProvisionedDestinationTarget' },
+            },
             fnDestinationsOnFailure: {
               handler: 'trigger.handler',
               destinations: { onFailure: 'fnTargetFailure' },
@@ -2169,21 +2178,23 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
     });
 
     it('should support `functions[].url` set to `true` with provisionedConcurrency set', () => {
+      const provisionedTarget = {
+        'Fn::Join': [
+          ':',
+          [
+            {
+              'Fn::GetAtt': ['FnUrlWithProvisionedLambdaFunction', 'Arn'],
+            },
+            'provisioned',
+          ],
+        ],
+      };
+
       expect(
         cfResources[naming.getLambdaFunctionUrlLogicalId('fnUrlWithProvisioned')].Properties
       ).to.deep.equal({
         AuthType: 'NONE',
-        TargetFunctionArn: {
-          'Fn::Join': [
-            ':',
-            [
-              {
-                'Fn::GetAtt': ['FnUrlWithProvisionedLambdaFunction', 'Arn'],
-              },
-              'provisioned',
-            ],
-          ],
-        },
+        TargetFunctionArn: provisionedTarget,
       });
       expect(
         cfResources[naming.getLambdaFunctionUrlLogicalId('fnUrlWithProvisioned')].DependsOn
@@ -2201,6 +2212,25 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
       });
       expect(
         cfResources[naming.getLambdaFnUrlPermissionLogicalId('fnUrlWithProvisioned')].DependsOn
+      ).to.equal('FnUrlWithProvisionedProvConcLambdaAlias');
+      expect(
+        cfResources[naming.getLambdaFnUrlPermissionLogicalId('fnUrlWithProvisioned')].Properties
+      ).to.deep.equal({
+        Action: 'lambda:InvokeFunctionUrl',
+        FunctionName: provisionedTarget,
+        FunctionUrlAuthType: 'NONE',
+        Principal: '*',
+      });
+      expect(
+        cfResources[naming.getLambdaFnPermissionLogicalId('fnUrlWithProvisioned')].Properties
+      ).to.deep.equal({
+        Action: 'lambda:InvokeFunction',
+        FunctionName: provisionedTarget,
+        InvokedViaFunctionUrl: true,
+        Principal: '*',
+      });
+      expect(
+        cfResources[naming.getLambdaFnPermissionLogicalId('fnUrlWithProvisioned')].DependsOn
       ).to.equal('FnUrlWithProvisionedProvConcLambdaAlias');
     });
 
@@ -2323,6 +2353,41 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
           'Fn::Sub': `arn:\${AWS::Partition}:lambda:\${AWS::Region}:\${AWS::AccountId}:function:${
             serverless.service.getFunction('fnTargetFailure').name
           }`,
+        },
+      });
+    });
+
+    it('should support `functions[].destinations` referencing a provisioned function in same stack', () => {
+      const target = {
+        'Fn::Join': [
+          ':',
+          [
+            {
+              'Fn::GetAtt': [naming.getLambdaLogicalId('fnProvisionedDestinationTarget'), 'Arn'],
+            },
+            'provisioned',
+          ],
+        ],
+      };
+      const eventConfig =
+        cfResources[naming.getLambdaEventConfigLogicalId('fnProvisionedDestinationSource')];
+
+      expect(eventConfig.Properties.Qualifier).to.equal('provisioned');
+      expect(eventConfig.Properties.DestinationConfig).to.deep.equal({
+        OnSuccess: { Destination: target },
+      });
+      expect(eventConfig.DependsOn).to.have.members([
+        naming.getLambdaProvisionedConcurrencyAliasLogicalId('fnProvisionedDestinationSource'),
+        naming.getLambdaProvisionedConcurrencyAliasLogicalId('fnProvisionedDestinationTarget'),
+      ]);
+
+      expect(iamRolePolicyStatements).to.deep.include({
+        Effect: 'Allow',
+        Action: 'lambda:InvokeFunction',
+        Resource: {
+          'Fn::Sub': `arn:\${AWS::Partition}:lambda:\${AWS::Region}:\${AWS::AccountId}:function:${
+            serverless.service.getFunction('fnProvisionedDestinationTarget').name
+          }:provisioned`,
         },
       });
     });
