@@ -3491,9 +3491,12 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
       });
 
       it('should create a different version if SnapStart changed', async () => {
-        const { servicePath: serviceDir, updateConfig } = await fixtures.setup('function', {
-          configExt,
-        });
+        const { servicePath: serviceDir, updateConfig } = await setupProgrammaticFixture(
+          'function',
+          {
+            configExt: {},
+          }
+        );
 
         await updateConfig({
           functions: {
