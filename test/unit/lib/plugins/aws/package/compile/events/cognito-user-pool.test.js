@@ -505,7 +505,10 @@ describe('AwsCompileCognitoUserPoolEvents', () => {
           {
             Action: ['lambda:AddPermission', 'lambda:RemovePermission'],
             Effect: 'Allow',
-            Resource: { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:first' },
+            Resource: [
+              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:first' },
+              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:first:*' },
+            ],
           },
           {
             Effect: 'Allow',
@@ -640,7 +643,10 @@ describe('AwsCompileCognitoUserPoolEvents', () => {
           {
             Action: ['lambda:AddPermission', 'lambda:RemovePermission'],
             Effect: 'Allow',
-            Resource: { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:first' },
+            Resource: [
+              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:first' },
+              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:first:*' },
+            ],
           },
           {
             Effect: 'Allow',
@@ -755,7 +761,10 @@ describe('AwsCompileCognitoUserPoolEvents', () => {
           {
             Action: ['lambda:AddPermission', 'lambda:RemovePermission'],
             Effect: 'Allow',
-            Resource: { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:first' },
+            Resource: [
+              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:first' },
+              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:first:*' },
+            ],
           },
           {
             Action: [
@@ -769,7 +778,10 @@ describe('AwsCompileCognitoUserPoolEvents', () => {
           {
             Action: ['lambda:AddPermission', 'lambda:RemovePermission'],
             Effect: 'Allow',
-            Resource: { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:second' },
+            Resource: [
+              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:second' },
+              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:second:*' },
+            ],
           },
           {
             Effect: 'Allow',
@@ -1028,6 +1040,22 @@ describe('lib/plugins/aws/package/compile/events/cognito-user-pool.test.js', () 
       fixture: 'cognito-user-pool',
       configExt: {
         ...serverlessConfigurationExtension,
+        functions: {
+          ...serverlessConfigurationExtension.functions,
+          provisionedExisting: {
+            handler: 'index.js',
+            provisionedConcurrency: 1,
+            events: [
+              {
+                cognitoUserPool: {
+                  pool: 'ProvisionedExistingPool',
+                  trigger: 'PreSignUp',
+                  existing: true,
+                },
+              },
+            ],
+          },
+        },
         resources: {
           Resources: {
             CognitoUserPoolCUPCustomEmailSender: {
@@ -1111,6 +1139,10 @@ describe('lib/plugins/aws/package/compile/events/cognito-user-pool.test.js', () 
         cfResources[
           naming.getCustomResourceCognitoUserPoolResourceLogicalId('existingCustomEmailSender')
         ];
+      const provisionedResource =
+        cfResources[
+          naming.getCustomResourceCognitoUserPoolResourceLogicalId('provisionedExisting')
+        ];
 
       expect(simpleResource).to.deep.equal({
         Type: 'Custom::CognitoUserPool',
@@ -1145,6 +1177,16 @@ describe('lib/plugins/aws/package/compile/events/cognito-user-pool.test.js', () 
           LambdaVersion: 'V1_0',
         },
       ]);
+      expect(provisionedResource.DependsOn).to.deep.equal([
+        naming.getLambdaLogicalId('provisionedExisting'),
+        naming.getLambdaProvisionedConcurrencyAliasLogicalId('provisionedExisting'),
+        naming.getCustomResourceCognitoUserPoolHandlerFunctionLogicalId(),
+      ]);
+      expect(provisionedResource.Properties).to.deep.include({
+        FunctionName: serverlessInstance.service.getFunction('provisionedExisting').name,
+        FunctionQualifier: naming.getLambdaProvisionedConcurrencyAliasName(),
+        UserPoolName: 'ProvisionedExistingPool',
+      });
     });
   });
 
