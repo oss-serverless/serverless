@@ -1135,6 +1135,46 @@ describe('AwsCompileFunctions', () => {
         ).to.deep.equal(['FuncLogGroup', 'MyThing', 'MyOtherThing']);
       });
     });
+
+    it('should initialize target aliases when compiling one function', async () => {
+      awsCompileFunctions.serverless.service.functions = {
+        source: {
+          handler: 'source.handler',
+          name: 'source',
+          role: 'arn:aws:iam::123456789012:role/source-role',
+          destinations: { onSuccess: 'target' },
+        },
+        target: {
+          handler: 'target.handler',
+          name: 'target',
+          provisionedConcurrency: 1,
+        },
+      };
+
+      await awsCompileFunctions.compileFunction('source');
+
+      const eventConfig =
+        awsCompileFunctions.serverless.service.provider.compiledCloudFormationTemplate.Resources[
+          awsProvider.naming.getLambdaEventConfigLogicalId('source')
+        ];
+
+      expect(eventConfig.DependsOn).to.equal(
+        awsProvider.naming.getLambdaProvisionedConcurrencyAliasLogicalId('target')
+      );
+      expect(eventConfig.Properties.DestinationConfig).to.deep.equal({
+        OnSuccess: {
+          Destination: {
+            'Fn::Join': [
+              ':',
+              [
+                { 'Fn::GetAtt': [awsProvider.naming.getLambdaLogicalId('target'), 'Arn'] },
+                'provisioned',
+              ],
+            ],
+          },
+        },
+      });
+    });
   });
 });
 
