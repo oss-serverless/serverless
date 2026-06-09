@@ -16,6 +16,16 @@ describe('#getLambdaArn()', () => {
 
     expect(arn).to.equal('arn:aws:lambda:us-east-1:123456:function:some-function');
   });
+
+  it('should return the qualified Lambda arn', () => {
+    const partition = 'aws';
+    const region = 'us-east-1';
+    const accountId = '123456';
+    const functionName = 'some-function';
+    const arn = getLambdaArn(partition, region, accountId, functionName, 'provisioned');
+
+    expect(arn).to.equal('arn:aws:lambda:us-east-1:123456:function:some-function:provisioned');
+  });
 });
 
 describe('#getLambdaArn() govloud west', () => {

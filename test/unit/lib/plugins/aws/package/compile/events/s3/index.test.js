@@ -1026,6 +1026,19 @@ describe('test/unit/lib/plugins/aws/package/compile/events/s3/index.test.js', ()
               },
             ],
           },
+          provisionedExisting: {
+            handler: 'core.provisioned',
+            provisionedConcurrency: 1,
+            events: [
+              {
+                s3: {
+                  bucket: 'provisioned-bucket',
+                  event: 's3:ObjectCreated:*',
+                  existing: true,
+                },
+              },
+            ],
+          },
         },
       },
       command: 'package',
@@ -1240,6 +1253,24 @@ describe('test/unit/lib/plugins/aws/package/compile/events/s3/index.test.js', ()
           },
         ],
       },
+    });
+  });
+
+  it('should target a generated alias for existing buckets when targetAlias is set', () => {
+    const resource =
+      cfResources[naming.getCustomResourceS3ResourceLogicalId('provisionedExisting')];
+    const aliasLogicalId =
+      naming.getLambdaProvisionedConcurrencyAliasLogicalId('provisionedExisting');
+
+    expect(resource.DependsOn).to.deep.equal([
+      naming.getLambdaLogicalId('provisionedExisting'),
+      aliasLogicalId,
+      naming.getCustomResourceS3HandlerFunctionLogicalId(),
+    ]);
+    expect(resource.Properties).to.deep.include({
+      FunctionName: serverlessInstance.service.getFunction('provisionedExisting').name,
+      FunctionQualifier: naming.getLambdaProvisionedConcurrencyAliasName(),
+      BucketName: 'provisioned-bucket',
     });
   });
 
