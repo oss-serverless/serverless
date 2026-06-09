@@ -44,11 +44,11 @@ Prefer a small fake or direct collaborator when the subject is a pure helper, fo
 
 Direct `new Serverless(...)` is allowed only when constructor/class wiring is the subject, or when a smaller fake would hide the behavior being asserted. Label remaining direct construction as `constructor-under-test`, `pure-unit-fake-not-possible`, or `temporary-migration-seam`.
 
-Do not import `test/fixtures/programmatic/index.js` directly in new tests. Use `runServerless({ fixture })` for command/lifecycle tests or [`setupProgrammaticFixture(...)`](./utils/setup-programmatic-fixture.js) for mutable copied services.
+Do not wire fixture-engine wrappers directly in new tests. Use `runServerless({ fixture })` for command/lifecycle tests or [`setupProgrammaticFixture(...)`](./utils/setup-programmatic-fixture.js) for mutable copied services.
 
 Run `node scripts/test-migration-inventory.js` when reviewing migration work. Use `node scripts/test-migration-inventory.js --json` for automation and `node scripts/test-migration-inventory.js --ratchet --base-ref <ref>` to reject new unapproved direct construction, direct fixture wrapper files, or `awsRequestStubMap` files.
 
-For new AWS lifecycle tests, prefer `awsSdkV3StubMap` over `awsRequestStubMap`. Shared data factories for common deploy stubs live in [`test/utils/aws-stub-maps.js`](./utils/aws-stub-maps.js); tests should still assert the relevant `awsSdkV3Stub.sends` entries.
+For new AWS lifecycle tests, use `awsSdkV3StubMap`. Shared data factories for common deploy stubs live in [`test/utils/aws-stub-maps.js`](./utils/aws-stub-maps.js); tests should still assert the relevant `awsSdkV3Stub.sends` entries.
 
 ## Package integration tests
 

@@ -57,7 +57,6 @@ const resolveCwd = async ({ cwd, config }) => {
 module.exports = async (
   serverlessPath,
   {
-    awsRequestStubMap,
     awsSdkV3StubMap,
     command,
     options,
@@ -67,12 +66,9 @@ module.exports = async (
     envWhitelist,
     hooks,
     lastLifecycleHookName,
-    lifecycleHookNamesBlacklist,
     modulesCacheStub,
     noService,
-    pluginPathsBlacklist,
     shouldStubSpawn,
-    shouldUseLegacyVariablesResolver,
   }
 ) => {
   serverlessPath = path.resolve(
@@ -117,18 +113,6 @@ module.exports = async (
     default: {},
     errorMessage: 'Expected `options` to be a plain object, received %v',
   });
-  pluginPathsBlacklist = ensureIterable(pluginPathsBlacklist, {
-    default: [],
-    ensureItem: (pluginPath) =>
-      require.resolve(path.resolve(serverlessPath, ensureString(pluginPath))),
-    errorMessage:
-      'Expected `pluginPathsBlacklist` to be a valid plugin paths collection, received %v',
-  });
-  lifecycleHookNamesBlacklist = ensureIterable(lifecycleHookNamesBlacklist, {
-    default: [],
-    ensureItem: ensureString,
-    errorMessage: 'Expected `lifecycleHookNamesBlacklist` to be a string collection, received %v',
-  });
   lastLifecycleHookName = ensureString(lastLifecycleHookName, { isOptional: true });
   hooks = ensurePlainObject(hooks, {
     default: {},
@@ -147,15 +131,12 @@ module.exports = async (
     ensureItem: ensureString,
     errorMessage: 'Expected `envWhitelist` to be a var names collection, received %v',
   });
-  awsRequestStubMap = ensurePlainObject(awsRequestStubMap, { isOptional: true });
   awsSdkV3StubMap = ensurePlainObject(awsSdkV3StubMap, { isOptional: true });
   if (modulesCacheStub) modulesCacheStub = { ...modulesCacheStub };
   let awsSdkV3Stub;
-  const effectiveAwsSdkV3StubMap = awsSdkV3StubMap || awsRequestStubMap;
-  if (effectiveAwsSdkV3StubMap) {
-    awsSdkV3Stub = configureAwsSdkV3Stub(effectiveAwsSdkV3StubMap, {
-      ignoreUnsupportedServices: !awsSdkV3StubMap,
-      passContextToCallbacks: Boolean(awsSdkV3StubMap),
+  if (awsSdkV3StubMap) {
+    awsSdkV3Stub = configureAwsSdkV3Stub(awsSdkV3StubMap, {
+      passContextToCallbacks: true,
     });
     const sdkV3ModuleStubs = Object.entries(awsSdkV3Stub.modulesCacheStub);
     if (sdkV3ModuleStubs.length) {
@@ -236,7 +217,7 @@ module.exports = async (
             ? await readConfiguration(configurationPath)
             : undefined;
 
-          if (configuration && !shouldUseLegacyVariablesResolver) {
+          if (configuration) {
             await resolveVariables({
               servicePath: path.dirname(configurationPath),
               configuration,
@@ -250,7 +231,7 @@ module.exports = async (
             configurationFilename:
               configurationPath && configurationPath.slice(confirmedCwd.length + 1),
             configurationPath,
-            isConfigurationResolved: !shouldUseLegacyVariablesResolver,
+            isConfigurationResolved: true,
             hasResolvedCommandsExternally: true,
             commands: command ? command.split(' ') : [],
             options,
@@ -259,9 +240,6 @@ module.exports = async (
           if (serverless.triggeredDeprecations) {
             serverless.triggeredDeprecations.clear();
           }
-          const pluginConstructorsBlacklist = pluginPathsBlacklist.map((pluginPath) =>
-            require(pluginPath)
-          );
           try {
             if (hooks.beforeInstanceInit) await hooks.beforeInstanceInit(serverless);
             const output = await observeOutput(async () => {
@@ -269,40 +247,6 @@ module.exports = async (
 
               if (serverless.invokedInstance) serverless = serverless.invokedInstance;
               const { pluginManager } = serverless;
-              const blacklistedPlugins = pluginManager.plugins.filter((plugin) =>
-                pluginConstructorsBlacklist.some((Plugin) => plugin instanceof Plugin)
-              );
-              for (const [index, Plugin] of pluginConstructorsBlacklist.entries()) {
-                if (!blacklistedPlugins.some((plugin) => plugin instanceof Plugin)) {
-                  throw new Error(
-                    `Didn't resolve a plugin instance for ${pluginPathsBlacklist[index]}`
-                  );
-                }
-              }
-
-              const { hooks: lifecycleHooks } = pluginManager;
-              const unconfirmedLifecycleHookNames = new Set(lifecycleHookNamesBlacklist);
-              for (const hookName of Object.keys(lifecycleHooks)) {
-                unconfirmedLifecycleHookNames.delete(hookName);
-                if (lifecycleHookNamesBlacklist.includes(hookName)) {
-                  delete lifecycleHooks[hookName];
-                  continue;
-                }
-
-                lifecycleHooks[hookName] = lifecycleHooks[hookName].filter(
-                  (hookData) =>
-                    !blacklistedPlugins.some((blacklistedPlugin) =>
-                      Object.values(blacklistedPlugin.hooks).includes(hookData.hook)
-                    )
-                );
-              }
-              if (unconfirmedLifecycleHookNames.size) {
-                throw new Error(
-                  `${Array.from(unconfirmedLifecycleHookNames).join(
-                    ', '
-                  )} blacklisted lifecycle hook names were not recognized.`
-                );
-              }
 
               if (lastLifecycleHookName) {
                 let hasLastHookFinalized = null;
