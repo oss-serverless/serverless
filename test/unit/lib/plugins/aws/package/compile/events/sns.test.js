@@ -208,6 +208,69 @@ describe('AwsCompileSNSEvents', () => {
       ).to.equal('AWS::Lambda::Permission');
     });
 
+    it('should merge generated topic dependencies for aliased inline subscriptions', () => {
+      awsCompileSNSEvents.serverless.service.functions = {
+        first: {
+          targetAlias: { name: 'provisioned', logicalId: 'FirstAlias' },
+          events: [{ sns: 'SharedTopic' }],
+        },
+        second: {
+          targetAlias: { name: 'provisioned', logicalId: 'SecondAlias' },
+          events: [{ sns: 'SharedTopic' }],
+        },
+      };
+
+      awsCompileSNSEvents.compileSNSEvents();
+
+      const resources =
+        awsCompileSNSEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources;
+      expect(resources.SNSTopicSharedTopic.DependsOn).to.have.members([
+        'FirstAlias',
+        'SecondAlias',
+      ]);
+      expect(resources.SNSTopicSharedTopic.Properties.Subscription).to.deep.equal([
+        {
+          Endpoint: {
+            'Fn::Join': [':', [{ 'Fn::GetAtt': ['FirstLambdaFunction', 'Arn'] }, 'provisioned']],
+          },
+          Protocol: 'lambda',
+        },
+        {
+          Endpoint: {
+            'Fn::Join': [':', [{ 'Fn::GetAtt': ['SecondLambdaFunction', 'Arn'] }, 'provisioned']],
+          },
+          Protocol: 'lambda',
+        },
+      ]);
+    });
+
+    it('should make generated subscriptions depend on target aliases', () => {
+      awsCompileSNSEvents.serverless.service.functions = {
+        first: {
+          targetAlias: { name: 'provisioned', logicalId: 'FirstAlias' },
+          events: [
+            {
+              sns: {
+                topicName: 'Topic 1',
+                filterPolicy: { pet: ['dog'] },
+              },
+            },
+          ],
+        },
+      };
+
+      awsCompileSNSEvents.compileSNSEvents();
+
+      const resources =
+        awsCompileSNSEvents.serverless.service.provider.compiledCloudFormationTemplate.Resources;
+      expect(resources.SNSTopicTopic1.DependsOn).to.equal('FirstAlias');
+      expect(resources.FirstSnsSubscriptionTopic1.DependsOn).to.equal('FirstAlias');
+      expect(resources.FirstSnsSubscriptionTopic1.Properties.Endpoint).to.deep.equal({
+        'Fn::Join': [':', [{ 'Fn::GetAtt': ['FirstLambdaFunction', 'Arn'] }, 'provisioned']],
+      });
+      expect(resources.FirstLambdaPermissionTopic1SNS.DependsOn).to.equal('FirstAlias');
+    });
+
     it('should throw an error when the event an object and the displayName is not given', () => {
       awsCompileSNSEvents.serverless.service.functions = {
         first: {

@@ -607,6 +607,52 @@ describe('EventBridgeEvents', () => {
         expect(ruleTarget.Arn['Fn::GetAtt'][0]).to.equal(naming.getLambdaLogicalId('basic'));
       });
 
+      it('should merge created EventBus and target alias dependencies', async () => {
+        const { cfTemplate, awsNaming } = await runServerless({
+          fixture: 'function',
+          configExt: {
+            functions: {
+              basic: {
+                provisionedConcurrency: 1,
+                events: [
+                  {
+                    eventBridge: {
+                      eventBus: eventBusName,
+                      schedule,
+                    },
+                  },
+                ],
+              },
+            },
+          },
+          command: 'package',
+        });
+        const resources = cfTemplate.Resources;
+        const createdRuleResource = Object.values(resources).find(
+          (resource) => resource.Type === 'AWS::Events::Rule'
+        );
+        const aliasLogicalId = awsNaming.getLambdaProvisionedConcurrencyAliasLogicalId('basic');
+
+        expect(createdRuleResource.DependsOn).to.have.members([
+          aliasLogicalId,
+          awsNaming.getEventBridgeEventBusLogicalId(eventBusName),
+        ]);
+        expect(createdRuleResource.Properties.Targets[0].Arn).to.deep.equal({
+          'Fn::Join': [
+            ':',
+            [
+              {
+                'Fn::GetAtt': [awsNaming.getLambdaLogicalId('basic'), 'Arn'],
+              },
+              'provisioned',
+            ],
+          ],
+        });
+        expect(
+          resources[awsNaming.getEventBridgeLambdaPermissionLogicalId('basic', 1)].DependsOn
+        ).to.equal(aliasLogicalId);
+      });
+
       it('should create a lambda permission resource that correctly references event bus in SourceArn', () => {
         const lambdaPermissionResource =
           cfResources[naming.getEventBridgeLambdaPermissionLogicalId('basic', 1)];

@@ -19,4 +19,19 @@ describe('#resolveLambdaTarget', () => {
       'Fn::Join': [':', [{ 'Fn::GetAtt': ['FooLambdaFunction', 'Arn'] }, 'provisioned']],
     });
   });
+
+  it('should reflect a target alias added after an earlier unqualified resolution', () => {
+    const functionObj = {};
+    const functionName = 'foo';
+
+    expect(resolveLambdaTarget(functionName, functionObj)).to.deep.equal({
+      'Fn::GetAtt': ['FooLambdaFunction', 'Arn'],
+    });
+
+    functionObj.targetAlias = { name: 'provisioned' };
+
+    expect(resolveLambdaTarget(functionName, functionObj)).to.deep.equal({
+      'Fn::Join': [':', [{ 'Fn::GetAtt': ['FooLambdaFunction', 'Arn'] }, 'provisioned']],
+    });
+  });
 });
