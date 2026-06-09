@@ -1365,6 +1365,46 @@ describe('AwsCompileFunctions', () => {
         ).to.deep.equal(['FuncLogGroup', 'MyThing', 'MyOtherThing']);
       });
     });
+
+    it('should initialize target aliases when compiling one function', async () => {
+      awsCompileFunctions.serverless.service.functions = {
+        source: {
+          handler: 'source.handler',
+          name: 'source',
+          role: 'arn:aws:iam::123456789012:role/source-role',
+          destinations: { onSuccess: 'target' },
+        },
+        target: {
+          handler: 'target.handler',
+          name: 'target',
+          provisionedConcurrency: 1,
+        },
+      };
+
+      await awsCompileFunctions.compileFunction('source');
+
+      const eventConfig =
+        awsCompileFunctions.serverless.service.provider.compiledCloudFormationTemplate.Resources[
+          awsProvider.naming.getLambdaEventConfigLogicalId('source')
+        ];
+
+      expect(eventConfig.DependsOn).to.equal(
+        awsProvider.naming.getLambdaProvisionedConcurrencyAliasLogicalId('target')
+      );
+      expect(eventConfig.Properties.DestinationConfig).to.deep.equal({
+        OnSuccess: {
+          Destination: {
+            'Fn::Join': [
+              ':',
+              [
+                { 'Fn::GetAtt': [awsProvider.naming.getLambdaLogicalId('target'), 'Arn'] },
+                'provisioned',
+              ],
+            ],
+          },
+        },
+      });
+    });
   });
 });
 
@@ -2110,6 +2150,15 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
             fnTargetFailure: {
               handler: 'target.handler',
             },
+            fnProvisionedDestinationTarget: {
+              handler: 'target.handler',
+              provisionedConcurrency: 1,
+            },
+            fnProvisionedDestinationSource: {
+              handler: 'trigger.handler',
+              provisionedConcurrency: 1,
+              destinations: { onSuccess: 'fnProvisionedDestinationTarget' },
+            },
             fnDestinationsOnFailure: {
               handler: 'trigger.handler',
               destinations: { onFailure: 'fnTargetFailure' },
@@ -2529,21 +2578,23 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
     });
 
     it('should support `functions[].url` set to `true` with provisionedConcurrency set', () => {
+      const provisionedTarget = {
+        'Fn::Join': [
+          ':',
+          [
+            {
+              'Fn::GetAtt': ['FnUrlWithProvisionedLambdaFunction', 'Arn'],
+            },
+            'provisioned',
+          ],
+        ],
+      };
+
       expect(
         cfResources[naming.getLambdaFunctionUrlLogicalId('fnUrlWithProvisioned')].Properties
       ).to.deep.equal({
         AuthType: 'NONE',
-        TargetFunctionArn: {
-          'Fn::Join': [
-            ':',
-            [
-              {
-                'Fn::GetAtt': ['FnUrlWithProvisionedLambdaFunction', 'Arn'],
-              },
-              'provisioned',
-            ],
-          ],
-        },
+        TargetFunctionArn: provisionedTarget,
       });
       expect(
         cfResources[naming.getLambdaFunctionUrlLogicalId('fnUrlWithProvisioned')].DependsOn
@@ -2561,6 +2612,25 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
       });
       expect(
         cfResources[naming.getLambdaFnUrlPermissionLogicalId('fnUrlWithProvisioned')].DependsOn
+      ).to.equal('FnUrlWithProvisionedProvConcLambdaAlias');
+      expect(
+        cfResources[naming.getLambdaFnUrlPermissionLogicalId('fnUrlWithProvisioned')].Properties
+      ).to.deep.equal({
+        Action: 'lambda:InvokeFunctionUrl',
+        FunctionName: provisionedTarget,
+        FunctionUrlAuthType: 'NONE',
+        Principal: '*',
+      });
+      expect(
+        cfResources[naming.getLambdaFnPermissionLogicalId('fnUrlWithProvisioned')].Properties
+      ).to.deep.equal({
+        Action: 'lambda:InvokeFunction',
+        FunctionName: provisionedTarget,
+        InvokedViaFunctionUrl: true,
+        Principal: '*',
+      });
+      expect(
+        cfResources[naming.getLambdaFnPermissionLogicalId('fnUrlWithProvisioned')].DependsOn
       ).to.equal('FnUrlWithProvisionedProvConcLambdaAlias');
     });
 
@@ -2683,6 +2753,41 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
           'Fn::Sub': `arn:\${AWS::Partition}:lambda:\${AWS::Region}:\${AWS::AccountId}:function:${
             serverless.service.getFunction('fnTargetFailure').name
           }`,
+        },
+      });
+    });
+
+    it('should support `functions[].destinations` referencing a provisioned function in same stack', () => {
+      const target = {
+        'Fn::Join': [
+          ':',
+          [
+            {
+              'Fn::GetAtt': [naming.getLambdaLogicalId('fnProvisionedDestinationTarget'), 'Arn'],
+            },
+            'provisioned',
+          ],
+        ],
+      };
+      const eventConfig =
+        cfResources[naming.getLambdaEventConfigLogicalId('fnProvisionedDestinationSource')];
+
+      expect(eventConfig.Properties.Qualifier).to.equal('provisioned');
+      expect(eventConfig.Properties.DestinationConfig).to.deep.equal({
+        OnSuccess: { Destination: target },
+      });
+      expect(eventConfig.DependsOn).to.have.members([
+        naming.getLambdaProvisionedConcurrencyAliasLogicalId('fnProvisionedDestinationSource'),
+        naming.getLambdaProvisionedConcurrencyAliasLogicalId('fnProvisionedDestinationTarget'),
+      ]);
+
+      expect(iamRolePolicyStatements).to.deep.include({
+        Effect: 'Allow',
+        Action: 'lambda:InvokeFunction',
+        Resource: {
+          'Fn::Sub': `arn:\${AWS::Partition}:lambda:\${AWS::Region}:\${AWS::AccountId}:function:${
+            serverless.service.getFunction('fnProvisionedDestinationTarget').name
+          }:provisioned`,
         },
       });
     });
@@ -3383,6 +3488,55 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
         ).to.equal(1);
 
         expect(originalVersionArn).to.equal(updatedVersionArn);
+      });
+
+      it('should create a different version if SnapStart changed', async () => {
+        const { servicePath: serviceDir, updateConfig } = await fixtures.setup('function', {
+          configExt,
+        });
+
+        await updateConfig({
+          functions: {
+            basic: {
+              runtime: 'java17',
+              versionFunction: true,
+              snapStart: false,
+            },
+          },
+        });
+
+        const { cfTemplate: originalTemplate } = await runServerless({
+          cwd: serviceDir,
+          command: 'package',
+        });
+
+        const originalVersionArn =
+          originalTemplate.Outputs.BasicLambdaFunctionQualifiedArn.Value.Ref;
+
+        await updateConfig({
+          functions: {
+            basic: {
+              runtime: 'java17',
+              versionFunction: true,
+              snapStart: true,
+            },
+          },
+        });
+
+        const { cfTemplate: updatedTemplate } = await runServerless({
+          cwd: serviceDir,
+          command: 'package',
+        });
+
+        const updatedVersionArn = updatedTemplate.Outputs.BasicLambdaFunctionQualifiedArn.Value.Ref;
+
+        expect(originalTemplate.Resources.BasicLambdaFunction.Properties).to.not.have.property(
+          'SnapStart'
+        );
+        expect(updatedTemplate.Resources.BasicLambdaFunction.Properties.SnapStart).to.deep.equal({
+          ApplyOn: 'PublishedVersions',
+        });
+        expect(originalVersionArn).to.not.equal(updatedVersionArn);
       });
 
       describe('with layers', () => {
