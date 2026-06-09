@@ -3027,33 +3027,52 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
       });
 
       it('should create a different version if SnapStart changed', async () => {
-        const packageService = async (snapStart) => {
-          const { servicePath: serviceDir, updateConfig } = await fixtures.setup('function', {
-            configExt,
-          });
+        const { servicePath: serviceDir, updateConfig } = await fixtures.setup('function', {
+          configExt,
+        });
 
-          await updateConfig({
-            functions: {
-              basic: {
-                runtime: 'java17',
-                versionFunction: true,
-                snapStart,
-              },
+        await updateConfig({
+          functions: {
+            basic: {
+              runtime: 'java17',
+              versionFunction: true,
+              snapStart: false,
             },
-          });
+          },
+        });
 
-          const { cfTemplate } = await runServerless({
-            cwd: serviceDir,
-            command: 'package',
-          });
+        const { cfTemplate: originalTemplate } = await runServerless({
+          cwd: serviceDir,
+          command: 'package',
+        });
 
-          return cfTemplate.Outputs.BasicLambdaFunctionQualifiedArn.Value.Ref;
-        };
+        const originalVersionArn =
+          originalTemplate.Outputs.BasicLambdaFunctionQualifiedArn.Value.Ref;
 
-        const versionWithoutSnapStart = await packageService(false);
-        const versionWithSnapStart = await packageService(true);
+        await updateConfig({
+          functions: {
+            basic: {
+              runtime: 'java17',
+              versionFunction: true,
+              snapStart: true,
+            },
+          },
+        });
 
-        expect(versionWithoutSnapStart).to.not.equal(versionWithSnapStart);
+        const { cfTemplate: updatedTemplate } = await runServerless({
+          cwd: serviceDir,
+          command: 'package',
+        });
+
+        const updatedVersionArn = updatedTemplate.Outputs.BasicLambdaFunctionQualifiedArn.Value.Ref;
+
+        expect(originalTemplate.Resources.BasicLambdaFunction.Properties).to.not.have.property(
+          'SnapStart'
+        );
+        expect(updatedTemplate.Resources.BasicLambdaFunction.Properties.SnapStart).to.deep.equal({
+          ApplyOn: 'PublishedVersions',
+        });
+        expect(originalVersionArn).to.not.equal(updatedVersionArn);
       });
 
       describe('with layers', () => {
