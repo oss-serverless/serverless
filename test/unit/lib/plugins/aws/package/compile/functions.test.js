@@ -2140,6 +2140,15 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
             fnCondition: {
               handler: 'target.handler',
               condition: 'CreateFunctionCondition',
+              maximumRetryAttempts: 0,
+              provisionedConcurrency: 1,
+              url: true,
+            },
+            fnConditionSnapStart: {
+              handler: 'target.handler',
+              runtime: 'java17',
+              condition: 'CreateFunctionCondition',
+              snapStart: true,
             },
             fnDependsOn: {
               handler: 'target.handler',
@@ -2539,10 +2548,39 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
       ).to.deep.equal([{ Ref: 'ExternalLambdaLayer' }]);
     });
 
-    it('should support `functions[].conditions`', () => {
-      expect(getFunctionResource('fnCondition').Condition).to.equal(
-        serviceConfig.functions.fnCondition.condition
+    it('should support `functions[].condition`', () => {
+      const condition = serviceConfig.functions.fnCondition.condition;
+      const [versionLogicalId, versionResource] = getVersionResourceEntry('fnCondition');
+
+      expect(getFunctionResource('fnCondition').Condition).to.equal(condition);
+      expect(versionResource.Condition).to.equal(condition);
+      expect(cfOutputs[naming.getLambdaVersionOutputLogicalId('fnCondition')]).to.deep.include({
+        Condition: condition,
+      });
+      expect(cfOutputs[naming.getLambdaVersionOutputLogicalId('fnCondition')].Value).to.deep.equal({
+        Ref: versionLogicalId,
+      });
+      expect(
+        cfResources[naming.getLambdaProvisionedConcurrencyAliasLogicalId('fnCondition')].Condition
+      ).to.equal(condition);
+      expect(cfResources[naming.getLambdaFunctionUrlLogicalId('fnCondition')].Condition).to.equal(
+        condition
       );
+      expect(
+        cfOutputs[naming.getLambdaFunctionUrlOutputLogicalId('fnCondition')].Condition
+      ).to.equal(condition);
+      expect(
+        cfResources[naming.getLambdaFnUrlPermissionLogicalId('fnCondition')].Condition
+      ).to.equal(condition);
+      expect(cfResources[naming.getLambdaFnPermissionLogicalId('fnCondition')].Condition).to.equal(
+        condition
+      );
+      expect(cfResources[naming.getLambdaEventConfigLogicalId('fnCondition')].Condition).to.equal(
+        condition
+      );
+      expect(
+        cfResources[naming.getLambdaSnapStartAliasLogicalId('fnConditionSnapStart')].Condition
+      ).to.equal(serviceConfig.functions.fnConditionSnapStart.condition);
     });
 
     it('should support `functions[].dependsOn`', () => {

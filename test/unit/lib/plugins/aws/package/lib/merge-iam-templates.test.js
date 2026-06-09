@@ -93,6 +93,17 @@ describe('lib/plugins/aws/package/lib/mergeIamTemplates.test.js', () => {
                 handler: 'index.handler',
                 role: 'myCustRole0',
               },
+              fnCondition: {
+                handler: 'index.handler',
+                condition: 'CreateFunctionCondition',
+              },
+            },
+            resources: {
+              Conditions: {
+                CreateFunctionCondition: {
+                  'Fn::Equals': ['true', 'true'],
+                },
+              },
             },
           },
         });
@@ -168,6 +179,12 @@ describe('lib/plugins/aws/package/lib/mergeIamTemplates.test.js', () => {
         expect(myFunctionResource.Properties.LogGroupName).to.be.equal(
           `/aws/lambda/${service}-dev-myFunction`
         );
+
+        const conditionFunctionName = naming.getLogGroupLogicalId('fnCondition');
+        const conditionFunctionResource = cfResources[conditionFunctionName];
+
+        expect(conditionFunctionResource.Type).to.be.equal('AWS::Logs::LogGroup');
+        expect(conditionFunctionResource.Condition).to.be.equal('CreateFunctionCondition');
       });
     });
 
