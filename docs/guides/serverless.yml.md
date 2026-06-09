@@ -721,7 +721,7 @@ functions:
     tracing: Active
     # Conditionally deploy the function and generated function-owned companion resources.
     # Define the CloudFormation condition under resources.Conditions.
-    # Shared event resources may not inherit this condition directly.
+    # Shared event resources do not inherit this condition directly.
     condition: SomeCondition
     # CloudFormation 'DependsOn' option
     dependsOn:

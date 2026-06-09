@@ -2548,7 +2548,7 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
       ).to.deep.equal([{ Ref: 'ExternalLambdaLayer' }]);
     });
 
-    it('should support `functions[].conditions`', () => {
+    it('should support `functions[].condition`', () => {
       const condition = serviceConfig.functions.fnCondition.condition;
       const [versionLogicalId, versionResource] = getVersionResourceEntry('fnCondition');
 
