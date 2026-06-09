@@ -158,4 +158,154 @@ describe('Custom resource Cognito user pool handler', () => {
       'removePermission',
     ]);
   });
+
+  it('should continue migration when qualified permission already exists', async () => {
+    const findUserPoolByName = sinon.stub().resolves({ Id: 'us-east-1_abc123' });
+    const addPermission = sinon.stub().rejects({ name: 'ResourceConflictException' });
+    const updateConfiguration = sinon.stub().resolves();
+    const removePermission = sinon.stub().resolves();
+    const removeConfiguration = sinon.stub().resolves();
+
+    const { handler } = proxyquire(
+      '../../../../../../../lib/plugins/aws/custom-resources/resources/cognito-user-pool/handler',
+      {
+        '../utils': {
+          ...utils,
+          getEnvironment: () => ({
+            Partition: 'aws',
+            Region: 'us-east-1',
+            AccountId: '123456789012',
+          }),
+          handlerWrapper: (wrappedHandler) => wrappedHandler,
+        },
+        './lib/permissions': { addPermission, removePermission },
+        './lib/user-pool': {
+          findUserPoolByName,
+          updateConfiguration,
+          removeConfiguration,
+        },
+      }
+    );
+
+    await handler(
+      {
+        RequestType: 'Update',
+        ResourceProperties: {
+          FunctionName: 'orders',
+          FunctionQualifier: 'provisioned',
+          UserPoolName: 'orders-pool',
+          UserPoolConfigs: [{ Trigger: 'PreSignUp' }],
+        },
+        OldResourceProperties: {
+          FunctionName: 'orders',
+          UserPoolName: 'orders-pool',
+          UserPoolConfigs: [{ Trigger: 'PreSignUp' }],
+        },
+      },
+      {}
+    );
+
+    expect(updateConfiguration).to.have.been.calledOnce;
+    expect(removePermission).to.have.been.calledOnce;
+  });
+
+  it('should not remove previous Lambda arn from a new user pool', async () => {
+    const findUserPoolByName = sinon.stub().resolves({ Id: 'us-east-1_abc123' });
+    const addPermission = sinon.stub().resolves();
+    const updateConfiguration = sinon.stub().resolves();
+    const removePermission = sinon.stub().resolves();
+    const removeConfiguration = sinon.stub().resolves();
+
+    const { handler } = proxyquire(
+      '../../../../../../../lib/plugins/aws/custom-resources/resources/cognito-user-pool/handler',
+      {
+        '../utils': {
+          ...utils,
+          getEnvironment: () => ({
+            Partition: 'aws',
+            Region: 'us-east-1',
+            AccountId: '123456789012',
+          }),
+          handlerWrapper: (wrappedHandler) => wrappedHandler,
+        },
+        './lib/permissions': { addPermission, removePermission },
+        './lib/user-pool': {
+          findUserPoolByName,
+          updateConfiguration,
+          removeConfiguration,
+        },
+      }
+    );
+
+    await handler(
+      {
+        RequestType: 'Update',
+        ResourceProperties: {
+          FunctionName: 'orders',
+          FunctionQualifier: 'provisioned',
+          UserPoolName: 'new-orders-pool',
+          UserPoolConfigs: [{ Trigger: 'PreSignUp' }],
+        },
+        OldResourceProperties: {
+          FunctionName: 'orders',
+          UserPoolName: 'old-orders-pool',
+          UserPoolConfigs: [{ Trigger: 'PreSignUp' }],
+        },
+      },
+      {}
+    );
+
+    expect(updateConfiguration.args[0][0]).to.include({
+      lambdaArn: 'arn:aws:lambda:us-east-1:123456789012:function:orders:provisioned',
+      previousLambdaArn: undefined,
+      userPoolName: 'new-orders-pool',
+    });
+    expect(removeConfiguration.args[0][0]).to.include({
+      lambdaArn: 'arn:aws:lambda:us-east-1:123456789012:function:orders',
+      userPoolName: 'old-orders-pool',
+    });
+  });
+
+  it('should remove trigger configuration when Lambda permission is already missing', async () => {
+    const findUserPoolByName = sinon.stub().resolves({ Id: 'us-east-1_abc123' });
+    const addPermission = sinon.stub().resolves();
+    const updateConfiguration = sinon.stub().resolves();
+    const removePermission = sinon.stub().rejects({ name: 'ResourceNotFoundException' });
+    const removeConfiguration = sinon.stub().resolves();
+
+    const { handler } = proxyquire(
+      '../../../../../../../lib/plugins/aws/custom-resources/resources/cognito-user-pool/handler',
+      {
+        '../utils': {
+          ...utils,
+          getEnvironment: () => ({
+            Partition: 'aws',
+            Region: 'us-east-1',
+            AccountId: '123456789012',
+          }),
+          handlerWrapper: (wrappedHandler) => wrappedHandler,
+        },
+        './lib/permissions': { addPermission, removePermission },
+        './lib/user-pool': {
+          findUserPoolByName,
+          updateConfiguration,
+          removeConfiguration,
+        },
+      }
+    );
+
+    await handler(
+      {
+        RequestType: 'Delete',
+        ResourceProperties: {
+          FunctionName: 'orders',
+          FunctionQualifier: 'provisioned',
+          UserPoolName: 'orders-pool',
+        },
+      },
+      {}
+    );
+
+    expect(removeConfiguration).to.have.been.calledOnce;
+  });
 });

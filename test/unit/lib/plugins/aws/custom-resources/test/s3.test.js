@@ -151,6 +151,89 @@ describe('Custom resource S3 handler', () => {
       'removePermission',
     ]);
   });
+
+  it('should continue migration when qualified permission already exists', async () => {
+    const addPermission = sinon.stub().rejects({ name: 'ResourceConflictException' });
+    const updateConfiguration = sinon.stub().resolves();
+    const removePermission = sinon.stub().resolves();
+    const removeConfiguration = sinon.stub().resolves();
+
+    const { handler } = proxyquire(
+      '../../../../../../../lib/plugins/aws/custom-resources/resources/s3/handler',
+      {
+        '../utils': {
+          ...utils,
+          getEnvironment: () => ({
+            Partition: 'aws',
+            Region: 'us-east-1',
+            AccountId: '123456789012',
+          }),
+          handlerWrapper: (wrappedHandler) => wrappedHandler,
+        },
+        './lib/permissions': { addPermission, removePermission },
+        './lib/bucket': { updateConfiguration, removeConfiguration },
+      }
+    );
+
+    await handler(
+      {
+        RequestType: 'Update',
+        ResourceProperties: {
+          FunctionName: 'orders',
+          FunctionQualifier: 'provisioned',
+          BucketName: 'orders-bucket',
+          BucketConfigs: [],
+        },
+        OldResourceProperties: {
+          FunctionName: 'orders',
+          BucketName: 'orders-bucket',
+          BucketConfigs: [],
+        },
+      },
+      {}
+    );
+
+    expect(updateConfiguration).to.have.been.calledOnce;
+    expect(removePermission).to.have.been.calledOnce;
+  });
+
+  it('should remove notification configuration when Lambda permission is already missing', async () => {
+    const addPermission = sinon.stub().resolves();
+    const updateConfiguration = sinon.stub().resolves();
+    const removePermission = sinon.stub().rejects({ name: 'ResourceNotFoundException' });
+    const removeConfiguration = sinon.stub().resolves();
+
+    const { handler } = proxyquire(
+      '../../../../../../../lib/plugins/aws/custom-resources/resources/s3/handler',
+      {
+        '../utils': {
+          ...utils,
+          getEnvironment: () => ({
+            Partition: 'aws',
+            Region: 'us-east-1',
+            AccountId: '123456789012',
+          }),
+          handlerWrapper: (wrappedHandler) => wrappedHandler,
+        },
+        './lib/permissions': { addPermission, removePermission },
+        './lib/bucket': { updateConfiguration, removeConfiguration },
+      }
+    );
+
+    await handler(
+      {
+        RequestType: 'Delete',
+        ResourceProperties: {
+          FunctionName: 'orders',
+          FunctionQualifier: 'provisioned',
+          BucketName: 'orders-bucket',
+        },
+      },
+      {}
+    );
+
+    expect(removeConfiguration).to.have.been.calledOnce;
+  });
 });
 
 describe('Custom resource S3 bucket configuration', () => {
@@ -168,12 +251,12 @@ describe('Custom resource S3 bucket configuration', () => {
           return Promise.resolve({
             LambdaFunctionConfigurations: [
               {
-                Id: 'orders-previous',
+                Id: `orders-${'a'.repeat(32)}`,
                 LambdaFunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:orders',
               },
               {
-                Id: 'orders2-previous',
-                LambdaFunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:orders2',
+                Id: `orders-api-${'b'.repeat(32)}`,
+                LambdaFunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:orders-api',
               },
               {
                 LambdaFunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:external',
@@ -221,7 +304,7 @@ describe('Custom resource S3 bucket configuration', () => {
 
     expect(configs).to.have.length(3);
     expect(configs.map((config) => config.LambdaFunctionArn)).to.deep.equal([
-      'arn:aws:lambda:us-east-1:123456789012:function:orders2',
+      'arn:aws:lambda:us-east-1:123456789012:function:orders-api',
       'arn:aws:lambda:us-east-1:123456789012:function:external',
       'arn:aws:lambda:us-east-1:123456789012:function:orders:provisioned',
     ]);

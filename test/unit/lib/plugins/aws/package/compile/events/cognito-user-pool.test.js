@@ -511,6 +511,14 @@ describe('AwsCompileCognitoUserPoolEvents', () => {
             ],
           },
           {
+            Action: ['lambda:RemovePermission'],
+            Effect: 'Allow',
+            Resource: [
+              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:*' },
+              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:*:*' },
+            ],
+          },
+          {
             Effect: 'Allow',
             Resource: {
               'Fn::Sub': 'arn:${AWS::Partition}:iam::*:role/*',
@@ -649,6 +657,14 @@ describe('AwsCompileCognitoUserPoolEvents', () => {
             ],
           },
           {
+            Action: ['lambda:RemovePermission'],
+            Effect: 'Allow',
+            Resource: [
+              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:*' },
+              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:*:*' },
+            ],
+          },
+          {
             Effect: 'Allow',
             Resource: {
               'Fn::Sub': 'arn:${AWS::Partition}:iam::*:role/*',
@@ -781,6 +797,14 @@ describe('AwsCompileCognitoUserPoolEvents', () => {
             Resource: [
               { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:second' },
               { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:second:*' },
+            ],
+          },
+          {
+            Action: ['lambda:RemovePermission'],
+            Effect: 'Allow',
+            Resource: [
+              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:*' },
+              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:*:*' },
             ],
           },
           {
