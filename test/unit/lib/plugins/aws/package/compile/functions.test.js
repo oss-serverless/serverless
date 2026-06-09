@@ -26,8 +26,7 @@ describe('AwsCompileFunctions', () => {
   const functionName = 'test';
   const compiledFunctionName = 'TestLambdaFunction';
 
-  // Test migration whitelist: pure-unit-fake-not-possible.
-  // These sections exercise AwsCompileFunctions internals directly.
+  // Direct setup is intentional because these sections exercise AwsCompileFunctions internals.
   beforeEach(() => {
     const options = {
       stage: 'dev',

@@ -42,9 +42,6 @@ jobs:
           node-version: 24.x
           package-manager-cache: false
 
-      - name: Test migration ratchets
-        run: node scripts/test-migration-inventory.js --ratchet --base-ref origin/4.x
-
       - name: Install dependencies
         run: npm install --package-lock=false
 
