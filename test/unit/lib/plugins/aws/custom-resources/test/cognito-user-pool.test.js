@@ -127,6 +127,59 @@ describe('Custom resource Cognito user pool handler', () => {
     expect(addPermission).to.not.have.been.called;
   });
 
+  it('should reject update with a descriptive missing-pool error', async () => {
+    const findUserPoolByName = sinon.stub().resolves(null);
+    const addPermission = sinon.stub().resolves();
+    const updateConfiguration = sinon.stub().resolves();
+    const removePermission = sinon.stub().resolves();
+    const removeConfiguration = sinon.stub().resolves();
+
+    const { handler } = proxyquire(
+      '../../../../../../../lib/plugins/aws/custom-resources/resources/cognito-user-pool/handler',
+      {
+        '../utils': {
+          ...utils,
+          getEnvironment: () => ({
+            Partition: 'aws',
+            Region: 'us-east-1',
+            AccountId: '123456789012',
+          }),
+          handlerWrapper: (wrappedHandler) => wrappedHandler,
+        },
+        './lib/permissions': { addPermission, removePermission },
+        './lib/user-pool': {
+          findUserPoolByName,
+          updateConfiguration,
+          removeConfiguration,
+        },
+      }
+    );
+
+    await expect(
+      handler(
+        {
+          RequestType: 'Update',
+          ResourceProperties: {
+            FunctionName: 'orders',
+            FunctionQualifier: 'provisioned',
+            UserPoolName: 'orders-pool',
+            UserPoolConfigs: [{ Trigger: 'PreSignUp' }],
+          },
+          OldResourceProperties: {
+            FunctionName: 'orders-old',
+            FunctionQualifier: 'provisioned',
+            UserPoolName: 'orders-pool',
+            UserPoolConfigs: [{ Trigger: 'PreSignUp' }],
+          },
+        },
+        {}
+      )
+    ).to.be.rejectedWith('Could not find Cognito User Pool "orders-pool"');
+
+    expect(addPermission).to.not.have.been.called;
+    expect(updateConfiguration).to.not.have.been.called;
+  });
+
   it('should add permission before updating the user pool on create', async () => {
     const calls = [];
     const findUserPoolByName = sinon.stub().resolves({ Id: 'us-east-1_abc123' });
