@@ -1,6 +1,6 @@
 import js from '@eslint/js';
 import globals from 'globals';
-import importX from 'eslint-plugin-import-x';
+import { flatConfigs as importXFlatConfigs } from 'eslint-plugin-import-x';
 import n from 'eslint-plugin-n';
 import eslintConfigPrettier from 'eslint-config-prettier/flat';
 import { defineConfig, globalIgnores } from 'eslint/config';
@@ -24,13 +24,13 @@ export default defineConfig([
   globalIgnores(['**/.*', '!.github/', '!.github/**']),
   js.configs.recommended,
   n.configs['flat/recommended-script'],
-  importX.flatConfigs.recommended,
+  importXFlatConfigs.recommended,
   eslintConfigPrettier,
   {
     name: 'osls/javascript',
     files: ['**/*.{cjs,js,mjs}'],
     languageOptions: {
-      ecmaVersion: 2023,
+      ecmaVersion: 2025,
       sourceType: 'commonjs',
       globals: {
         ...globals.node,
