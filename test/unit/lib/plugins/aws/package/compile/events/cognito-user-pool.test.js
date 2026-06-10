@@ -893,6 +893,54 @@ describe('AwsCompileCognitoUserPoolEvents', () => {
       });
     });
 
+    it('should chain custom resources across different existing user pools', async () => {
+      awsCompileCognitoUserPoolEvents.serverless.service.functions = {
+        first: {
+          name: 'first',
+          targetAlias: { logicalId: 'FirstLambdaAlias', name: 'live' },
+          events: [
+            {
+              cognitoUserPool: {
+                pool: 'first-existing-user-pool',
+                trigger: 'CustomMessage',
+                existing: true,
+              },
+            },
+          ],
+        },
+        second: {
+          name: 'second',
+          targetAlias: { logicalId: 'SecondLambdaAlias', name: 'live' },
+          events: [
+            {
+              cognitoUserPool: {
+                pool: 'second-existing-user-pool',
+                trigger: 'PostConfirmation',
+                existing: true,
+              },
+            },
+          ],
+        },
+      };
+
+      await awsCompileCognitoUserPoolEvents.existingCognitoUserPools();
+
+      const { Resources } =
+        awsCompileCognitoUserPoolEvents.serverless.service.provider.compiledCloudFormationTemplate;
+
+      expect(Resources.FirstCustomCognitoUserPool1.DependsOn).to.deep.equal([
+        'FirstLambdaFunction',
+        'FirstLambdaAlias',
+        'CustomDashresourceDashexistingDashcupLambdaFunction',
+      ]);
+      expect(Resources.SecondCustomCognitoUserPool1.DependsOn).to.deep.equal([
+        'SecondLambdaFunction',
+        'SecondLambdaAlias',
+        'CustomDashresourceDashexistingDashcupLambdaFunction',
+        'FirstCustomCognitoUserPool1',
+      ]);
+    });
+
     it('should throw if more than 1 Cognito User Pool is configured per function', () => {
       awsCompileCognitoUserPoolEvents.serverless.service.functions = {
         first: {
@@ -1227,6 +1275,9 @@ describe('lib/plugins/aws/package/compile/events/cognito-user-pool.test.js', () 
         naming.getLambdaLogicalId('provisionedExisting'),
         naming.getLambdaProvisionedConcurrencyAliasLogicalId('provisionedExisting'),
         naming.getCustomResourceCognitoUserPoolHandlerFunctionLogicalId(),
+        naming.getCustomResourceCognitoUserPoolResourceLogicalId(
+          'singleCustomSenderSourceForMultiplePoolsExisting2'
+        ),
       ]);
       expect(provisionedResource.Properties).to.deep.include({
         FunctionName: serverlessInstance.service.getFunction('provisionedExisting').name,
@@ -1501,6 +1552,7 @@ describe('lib/plugins/aws/package/compile/events/cognito-user-pool.test.js', () 
           DependsOn: [
             'SingleCustomSenderSourceKmsStringARNExistingLambdaFunction',
             'CustomDashresourceDashexistingDashcupLambdaFunction',
+            'ExistingCustomEmailSenderCustomCognitoUserPool1',
           ],
           Properties: {
             ServiceToken: {
@@ -1533,6 +1585,7 @@ describe('lib/plugins/aws/package/compile/events/cognito-user-pool.test.js', () 
           DependsOn: [
             'SingleCustomSenderSourceKmsRefARNExistingLambdaFunction',
             'CustomDashresourceDashexistingDashcupLambdaFunction',
+            'SingleCustomSenderSourceKmsStringARNExistingCustomCognitoUserPool1',
           ],
           Properties: {
             ServiceToken: {
@@ -1566,6 +1619,7 @@ describe('lib/plugins/aws/package/compile/events/cognito-user-pool.test.js', () 
           DependsOn: [
             'MultipleCustomSenderSourceForSinglePoolExistingLambdaFunction',
             'CustomDashresourceDashexistingDashcupLambdaFunction',
+            'SingleCustomSenderSourceKmsRefARNExistingCustomCognitoUserPool1',
           ],
           Properties: {
             ServiceToken: {
@@ -1604,6 +1658,7 @@ describe('lib/plugins/aws/package/compile/events/cognito-user-pool.test.js', () 
           DependsOn: [
             'SingleCustomSenderSourceForMultiplePoolsExisting1LambdaFunction',
             'CustomDashresourceDashexistingDashcupLambdaFunction',
+            'MultipleCustomSenderSourceForSinglePoolExistingCustomCognitoUserPool1',
           ],
           Properties: {
             ServiceToken: {
@@ -1634,6 +1689,7 @@ describe('lib/plugins/aws/package/compile/events/cognito-user-pool.test.js', () 
           DependsOn: [
             'SingleCustomSenderSourceForMultiplePoolsExisting2LambdaFunction',
             'CustomDashresourceDashexistingDashcupLambdaFunction',
+            'SingleCustomSenderSourceForMultiplePoolsExisting1CustomCognitoUserPool1',
           ],
           Properties: {
             ServiceToken: {
