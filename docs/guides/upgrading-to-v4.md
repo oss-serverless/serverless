@@ -1,9 +1,11 @@
 # Upgrading from osls v3 to v4
 
-osls v4 is a major release focused on internal upgrades and cleanup:
+osls v4 is a major release with internal upgrades and new capabilities:
 
 - **AWS SDK v3**: osls uses the AWS SDK under the hood to interact with AWS. osls v4 upgrades from the deprecated AWS SDK v2 to v3.
 - **IAM Identity Center (AWS SSO) support**: Thanks to the upgrade to the AWS SDK v3, the `osls` CLI now supports AWS IAM Identity Center (aka SSO) credentials.
+- **Lambda version pruning**: Opt-in cleanup of old Lambda function and layer versions after each full deploy via `provider.pruneFunctionVersions`.
+- **AWS Lambda Durable Functions**: Configure `functions[].durableConfig` and osls publishes a function version, generates a `durable` alias that event targets invoke through, and adds the required IAM permissions.
 
 ## osls vs Serverless Framework
 
@@ -194,6 +196,7 @@ See [Deprecations](./deprecations.md).
 ## New in v4
 
 - `provider.pruneFunctionVersions` — opt-in cleanup of old Lambda function and layer versions after a full `serverless deploy`, keeping the newest N. Replaces third-party version-pruning plugins. See [Functions](./functions.md).
+- `functions[].durableConfig` — AWS Lambda Durable Functions support: osls publishes a function version, generates a `durable` alias that event targets and Lambda Function URLs invoke through, and adds the required durable execution IAM permissions. Invoke durable executions with `serverless invoke --qualifier durable --durable-execution-name <name>`. See [AWS Lambda Durable Functions](./functions.md#aws-lambda-durable-functions).
 
 ## Getting help
 
