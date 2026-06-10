@@ -81,6 +81,111 @@ describe('Custom resource Cognito user pool permissions', () => {
 });
 
 describe('Custom resource Cognito user pool handler', () => {
+  it('should reject create with a descriptive missing-pool error', async () => {
+    const findUserPoolByName = sinon.stub().resolves(null);
+    const addPermission = sinon.stub().resolves();
+    const updateConfiguration = sinon.stub().resolves();
+    const removePermission = sinon.stub().resolves();
+    const removeConfiguration = sinon.stub().resolves();
+
+    const { handler } = proxyquire(
+      '../../../../../../../lib/plugins/aws/custom-resources/resources/cognito-user-pool/handler',
+      {
+        '../utils': {
+          ...utils,
+          getEnvironment: () => ({
+            Partition: 'aws',
+            Region: 'us-east-1',
+            AccountId: '123456789012',
+          }),
+          handlerWrapper: (wrappedHandler) => wrappedHandler,
+        },
+        './lib/permissions': { addPermission, removePermission },
+        './lib/user-pool': {
+          findUserPoolByName,
+          updateConfiguration,
+          removeConfiguration,
+        },
+      }
+    );
+
+    await expect(
+      handler(
+        {
+          RequestType: 'Create',
+          ResourceProperties: {
+            FunctionName: 'orders',
+            FunctionQualifier: 'provisioned',
+            UserPoolName: 'orders-pool',
+            UserPoolConfigs: [{ Trigger: 'PreSignUp' }],
+          },
+        },
+        {}
+      )
+    ).to.be.rejectedWith('Could not find Cognito User Pool "orders-pool"');
+
+    expect(addPermission).to.not.have.been.called;
+  });
+
+  it('should add permission before updating the user pool on create', async () => {
+    const calls = [];
+    const findUserPoolByName = sinon.stub().resolves({ Id: 'us-east-1_abc123' });
+    const addPermission = sinon.stub().callsFake(async (input) => {
+      calls.push(['addPermission', input]);
+    });
+    const updateConfiguration = sinon.stub().callsFake(async (input) => {
+      calls.push(['updateConfiguration', input]);
+    });
+    const removePermission = sinon.stub().resolves();
+    const removeConfiguration = sinon.stub().resolves();
+
+    const { handler } = proxyquire(
+      '../../../../../../../lib/plugins/aws/custom-resources/resources/cognito-user-pool/handler',
+      {
+        '../utils': {
+          ...utils,
+          getEnvironment: () => ({
+            Partition: 'aws',
+            Region: 'us-east-1',
+            AccountId: '123456789012',
+          }),
+          handlerWrapper: (wrappedHandler) => wrappedHandler,
+        },
+        './lib/permissions': { addPermission, removePermission },
+        './lib/user-pool': {
+          findUserPoolByName,
+          updateConfiguration,
+          removeConfiguration,
+        },
+      }
+    );
+
+    await handler(
+      {
+        RequestType: 'Create',
+        ResourceProperties: {
+          FunctionName: 'orders',
+          FunctionQualifier: 'provisioned',
+          UserPoolName: 'orders-pool',
+          UserPoolConfigs: [{ Trigger: 'PreSignUp' }],
+        },
+      },
+      {}
+    );
+
+    expect(addPermission.args[0][0]).to.include({
+      functionName: 'orders',
+      functionQualifier: 'provisioned',
+      userPoolName: 'orders-pool',
+      userPoolId: 'us-east-1_abc123',
+    });
+    expect(updateConfiguration.args[0][0]).to.include({
+      lambdaArn: 'arn:aws:lambda:us-east-1:123456789012:function:orders:provisioned',
+      userPoolName: 'orders-pool',
+    });
+    expect(calls.map(([name]) => name)).to.deep.equal(['addPermission', 'updateConfiguration']);
+  });
+
   it('should add qualified permission before migrating existing trigger target', async () => {
     const calls = [];
     const findUserPoolByName = sinon.stub().resolves({ Id: 'us-east-1_abc123' });
@@ -307,5 +412,131 @@ describe('Custom resource Cognito user pool handler', () => {
     );
 
     expect(removeConfiguration).to.have.been.calledOnce;
+  });
+
+  it('should rethrow AccessDeniedException when removing Lambda permission during delete', async () => {
+    const findUserPoolByName = sinon.stub().resolves({ Id: 'us-east-1_abc123' });
+    const addPermission = sinon.stub().resolves();
+    const updateConfiguration = sinon.stub().resolves();
+    const removePermission = sinon
+      .stub()
+      .rejects(Object.assign(new Error('denied'), { name: 'AccessDeniedException' }));
+    const removeConfiguration = sinon.stub().resolves();
+
+    const { handler } = proxyquire(
+      '../../../../../../../lib/plugins/aws/custom-resources/resources/cognito-user-pool/handler',
+      {
+        '../utils': {
+          ...utils,
+          getEnvironment: () => ({
+            Partition: 'aws',
+            Region: 'us-east-1',
+            AccountId: '123456789012',
+          }),
+          handlerWrapper: (wrappedHandler) => wrappedHandler,
+        },
+        './lib/permissions': { addPermission, removePermission },
+        './lib/user-pool': {
+          findUserPoolByName,
+          updateConfiguration,
+          removeConfiguration,
+        },
+      }
+    );
+
+    await expect(
+      handler(
+        {
+          RequestType: 'Delete',
+          ResourceProperties: {
+            FunctionName: 'orders',
+            FunctionQualifier: 'provisioned',
+            UserPoolName: 'orders-pool',
+          },
+        },
+        {}
+      )
+    ).to.be.rejectedWith('denied');
+
+    expect(removeConfiguration).to.not.have.been.called;
+  });
+});
+
+describe('Custom resource Cognito user pool configuration', () => {
+  const makeUserPoolLib = (responses) => {
+    const sentCommands = [];
+
+    class CognitoIdentityProviderClient {
+      constructor() {
+        this.config = {};
+      }
+
+      send(command) {
+        sentCommands.push(command);
+        const response = responses.shift();
+        if (response instanceof Error) return Promise.reject(response);
+        return Promise.resolve(response);
+      }
+    }
+
+    class ListUserPoolsCommand {
+      constructor(input) {
+        this.input = input;
+      }
+    }
+
+    class DescribeUserPoolCommand {
+      constructor(input) {
+        this.input = input;
+      }
+    }
+
+    class UpdateUserPoolCommand {
+      constructor(input) {
+        this.input = input;
+      }
+    }
+
+    return {
+      sentCommands,
+      lib: proxyquire(
+        '../../../../../../../lib/plugins/aws/custom-resources/resources/cognito-user-pool/lib/user-pool',
+        {
+          '@aws-sdk/client-cognito-identity-provider': {
+            CognitoIdentityProviderClient,
+            ListUserPoolsCommand,
+            DescribeUserPoolCommand,
+            UpdateUserPoolCommand,
+          },
+        }
+      ),
+    };
+  };
+
+  it('should reject update with a descriptive missing-pool error', async () => {
+    const { lib } = makeUserPoolLib([{ UserPools: [] }]);
+
+    await expect(
+      lib.updateConfiguration({
+        lambdaArn: 'arn:aws:lambda:us-east-1:123456789012:function:orders:provisioned',
+        userPoolName: 'orders-pool',
+        userPoolConfigs: [{ Trigger: 'PreSignUp' }],
+        region: 'us-east-1',
+      })
+    ).to.be.rejectedWith('Could not find Cognito User Pool "orders-pool"');
+  });
+
+  it('should no-op delete when the target user pool no longer exists', async () => {
+    const { sentCommands, lib } = makeUserPoolLib([{ UserPools: [] }]);
+
+    await lib.removeConfiguration({
+      lambdaArn: 'arn:aws:lambda:us-east-1:123456789012:function:orders:provisioned',
+      userPoolName: 'orders-pool',
+      region: 'us-east-1',
+    });
+
+    expect(sentCommands.map((command) => command.constructor.name)).to.deep.equal([
+      'ListUserPoolsCommand',
+    ]);
   });
 });

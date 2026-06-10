@@ -46,6 +46,35 @@ describe('test/unit/lib/utils/logDeprecation.test.js', () => {
     );
   });
 
+  it('should honor env notification mode set after module load', () => {
+    const logDeprecation = require('../../../../lib/utils/log-deprecation');
+    let error;
+
+    process.env.SLS_DEPRECATION_NOTIFICATION_MODE = 'error';
+
+    try {
+      logDeprecation('CODE_DYNAMIC_ENV_MODE', 'Dynamic env mode');
+    } catch (thrownError) {
+      error = thrownError;
+    }
+
+    expect(error).to.be.instanceOf(ServerlessError);
+    expect(error).to.have.property('code', 'REJECTED_DEPRECATION_CODE_DYNAMIC_ENV_MODE');
+    expect(error.message).to.include('Dynamic env mode');
+  });
+
+  it('should honor env disabled deprecations set after module load', () => {
+    const logDeprecation = require('../../../../lib/utils/log-deprecation');
+
+    process.env.SLS_DEPRECATION_DISABLE = 'CODE_DYNAMIC_ENV_DISABLE';
+
+    expect(() =>
+      logDeprecation('CODE_DYNAMIC_ENV_DISABLE', 'Dynamic env disable', {
+        serviceConfig: { deprecationNotificationMode: 'error' },
+      })
+    ).to.not.throw();
+  });
+
   it('should write deprecation docs URL to summary output', async () => {
     const logDeprecation = require('../../../../lib/utils/log-deprecation');
     const healthStatusFilename = require('../../../../lib/utils/health-status-filename');

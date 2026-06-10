@@ -234,6 +234,126 @@ describe('Custom resource S3 handler', () => {
 
     expect(removeConfiguration).to.have.been.calledOnce;
   });
+
+  it('should ignore NoSuchBucket while deleting notification configuration', async () => {
+    const addPermission = sinon.stub().resolves();
+    const updateConfiguration = sinon.stub().resolves();
+    const removePermission = sinon.stub().resolves();
+    const removeConfiguration = sinon.stub().rejects({ name: 'NoSuchBucket' });
+
+    const { handler } = proxyquire(
+      '../../../../../../../lib/plugins/aws/custom-resources/resources/s3/handler',
+      {
+        '../utils': {
+          ...utils,
+          getEnvironment: () => ({
+            Partition: 'aws',
+            Region: 'us-east-1',
+            AccountId: '123456789012',
+          }),
+          handlerWrapper: (wrappedHandler) => wrappedHandler,
+        },
+        './lib/permissions': { addPermission, removePermission },
+        './lib/bucket': { updateConfiguration, removeConfiguration },
+      }
+    );
+
+    await handler(
+      {
+        RequestType: 'Delete',
+        ResourceProperties: {
+          FunctionName: 'orders',
+          FunctionQualifier: 'provisioned',
+          BucketName: 'orders-bucket',
+        },
+      },
+      {}
+    );
+
+    expect(removeConfiguration).to.have.been.calledOnce;
+  });
+
+  it('should rethrow AccessDeniedException when removing Lambda permission during delete', async () => {
+    const addPermission = sinon.stub().resolves();
+    const updateConfiguration = sinon.stub().resolves();
+    const removePermission = sinon
+      .stub()
+      .rejects(Object.assign(new Error('denied'), { name: 'AccessDeniedException' }));
+    const removeConfiguration = sinon.stub().resolves();
+
+    const { handler } = proxyquire(
+      '../../../../../../../lib/plugins/aws/custom-resources/resources/s3/handler',
+      {
+        '../utils': {
+          ...utils,
+          getEnvironment: () => ({
+            Partition: 'aws',
+            Region: 'us-east-1',
+            AccountId: '123456789012',
+          }),
+          handlerWrapper: (wrappedHandler) => wrappedHandler,
+        },
+        './lib/permissions': { addPermission, removePermission },
+        './lib/bucket': { updateConfiguration, removeConfiguration },
+      }
+    );
+
+    await expect(
+      handler(
+        {
+          RequestType: 'Delete',
+          ResourceProperties: {
+            FunctionName: 'orders',
+            FunctionQualifier: 'provisioned',
+            BucketName: 'orders-bucket',
+          },
+        },
+        {}
+      )
+    ).to.be.rejectedWith('denied');
+
+    expect(removeConfiguration).to.not.have.been.called;
+  });
+
+  it('should tolerate AccessDenied when removing notification configuration during delete', async () => {
+    const addPermission = sinon.stub().resolves();
+    const updateConfiguration = sinon.stub().resolves();
+    const removePermission = sinon.stub().resolves();
+    const removeConfiguration = sinon
+      .stub()
+      .rejects(Object.assign(new Error('denied'), { name: 'AccessDenied' }));
+
+    const { handler } = proxyquire(
+      '../../../../../../../lib/plugins/aws/custom-resources/resources/s3/handler',
+      {
+        '../utils': {
+          ...utils,
+          getEnvironment: () => ({
+            Partition: 'aws',
+            Region: 'us-east-1',
+            AccountId: '123456789012',
+          }),
+          handlerWrapper: (wrappedHandler) => wrappedHandler,
+        },
+        './lib/permissions': { addPermission, removePermission },
+        './lib/bucket': { updateConfiguration, removeConfiguration },
+      }
+    );
+
+    await handler(
+      {
+        RequestType: 'Delete',
+        ResourceProperties: {
+          FunctionName: 'orders',
+          FunctionQualifier: 'provisioned',
+          BucketName: 'orders-bucket',
+        },
+      },
+      {}
+    );
+
+    expect(removeConfiguration).to.have.been.calledOnce;
+  });
 });
 
 describe('Custom resource S3 bucket configuration', () => {
@@ -307,6 +427,80 @@ describe('Custom resource S3 bucket configuration', () => {
       'arn:aws:lambda:us-east-1:123456789012:function:orders-api',
       'arn:aws:lambda:us-east-1:123456789012:function:external',
       'arn:aws:lambda:us-east-1:123456789012:function:orders:provisioned',
+    ]);
+  });
+
+  it('should only remove owned notification configurations', async () => {
+    const sentCommands = [];
+
+    class S3Client {
+      constructor() {
+        this.config = {};
+      }
+
+      send(command) {
+        sentCommands.push(command);
+        if (command.constructor.name === 'GetBucketNotificationConfigurationCommand') {
+          return Promise.resolve({
+            LambdaFunctionConfigurations: [
+              {
+                Id: `orders-${'a'.repeat(32)}`,
+                LambdaFunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:orders',
+              },
+              {
+                Id: `orders-api-${'b'.repeat(32)}`,
+                LambdaFunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:orders-api',
+              },
+              {
+                Id: 'orders-manual',
+                LambdaFunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:manual',
+              },
+              {
+                LambdaFunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:external',
+              },
+            ],
+          });
+        }
+        return Promise.resolve();
+      }
+    }
+
+    class GetBucketNotificationConfigurationCommand {
+      constructor(input) {
+        this.input = input;
+      }
+    }
+
+    class PutBucketNotificationConfigurationCommand {
+      constructor(input) {
+        this.input = input;
+      }
+    }
+
+    const { removeConfiguration } = proxyquire(
+      '../../../../../../../lib/plugins/aws/custom-resources/resources/s3/lib/bucket',
+      {
+        '@aws-sdk/client-s3': {
+          S3Client,
+          GetBucketNotificationConfigurationCommand,
+          PutBucketNotificationConfigurationCommand,
+        },
+      }
+    );
+
+    await removeConfiguration({
+      functionName: 'orders',
+      bucketName: 'orders-bucket',
+      region: 'us-east-1',
+    });
+
+    const putInput = sentCommands[1].input;
+    const configs = putInput.NotificationConfiguration.LambdaFunctionConfigurations;
+
+    expect(configs.map((config) => config.LambdaFunctionArn)).to.deep.equal([
+      'arn:aws:lambda:us-east-1:123456789012:function:orders-api',
+      'arn:aws:lambda:us-east-1:123456789012:function:manual',
+      'arn:aws:lambda:us-east-1:123456789012:function:external',
     ]);
   });
 });
