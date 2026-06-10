@@ -1,9 +1,10 @@
 'use strict';
 
 const chai = require('chai');
+const os = require('os');
 const path = require('path');
 const awsNaming = require('../../../../../../lib/plugins/aws/lib/naming');
-const { createTmpDir, pathExists } = require('../../../../../utils/fs');
+const { createTmpDir, pathExists, remove } = require('../../../../../utils/fs');
 const {
   addCustomResourceToService,
 } = require('../../../../../../lib/plugins/aws/custom-resources/index.js');
@@ -448,6 +449,25 @@ describe('#addCustomResourceToService()', () => {
   it('creates the package directory before copying the generated zip', async () => {
     serverless.serviceDir = path.join(tmpDirPath, 'nested', 'service');
 
+    await addCustomResourceToService(provider, 's3', iamRoleStatements);
+
+    expect(
+      await pathExists(
+        path.join(
+          serverless.serviceDir,
+          '.serverless',
+          provider.naming.getCustomResourcesArtifactName()
+        )
+      )
+    ).to.equal(true);
+  });
+
+  it('regenerates the cached zip when the artifact cache was removed externally', async () => {
+    await addCustomResourceToService(provider, 's3', iamRoleStatements);
+
+    await remove(path.resolve(os.homedir(), '.serverless', 'artifacts'));
+
+    serverless.serviceDir = createTmpDir();
     await addCustomResourceToService(provider, 's3', iamRoleStatements);
 
     expect(
