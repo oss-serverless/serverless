@@ -2,6 +2,8 @@
 
 const { expect } = require('chai');
 const proxyquire = require('proxyquire').noCallThru().noPreserveCache();
+const sinon = require('sinon');
+const utils = require('../../../../../../../lib/plugins/aws/custom-resources/resources/utils');
 
 describe('Custom resource S3 bucket configuration', () => {
   let sentCommands;
@@ -103,5 +105,79 @@ describe('Custom resource S3 bucket configuration', () => {
       'arn:aws:lambda:us-east-1:123456789012:function:manual',
       'arn:aws:lambda:us-east-1:123456789012:function:external',
     ]);
+  });
+});
+
+describe('Custom resource S3 handler', () => {
+  const context = {
+    invokedFunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:custom-resource',
+  };
+
+  const deleteEvent = {
+    RequestType: 'Delete',
+    ResourceProperties: {
+      FunctionName: 'orders',
+      BucketName: 'orders-bucket',
+    },
+  };
+
+  const makeHandler = ({ removePermission, removeConfiguration }) =>
+    proxyquire('../../../../../../../lib/plugins/aws/custom-resources/resources/s3/handler', {
+      '../utils': {
+        ...utils,
+        handlerWrapper: (wrappedHandler) => wrappedHandler,
+      },
+      './lib/permissions': {
+        addPermission: sinon.stub().resolves(),
+        removePermission,
+      },
+      './lib/bucket': {
+        updateConfiguration: sinon.stub().resolves(),
+        removeConfiguration,
+      },
+    }).handler;
+
+  it('should remove notification configuration when Lambda permission is already missing', async () => {
+    const removePermission = sinon.stub().rejects({ name: 'ResourceNotFoundException' });
+    const removeConfiguration = sinon.stub().resolves();
+    const handler = makeHandler({ removePermission, removeConfiguration });
+
+    await handler(deleteEvent, context);
+
+    expect(removePermission).to.have.been.calledOnce;
+    expect(removeConfiguration).to.have.been.calledOnce;
+  });
+
+  it('should ignore NoSuchBucket while deleting notification configuration', async () => {
+    const removePermission = sinon.stub().resolves();
+    const removeConfiguration = sinon.stub().rejects({ name: 'NoSuchBucket' });
+    const handler = makeHandler({ removePermission, removeConfiguration });
+
+    await handler(deleteEvent, context);
+
+    expect(removePermission).to.have.been.calledOnce;
+    expect(removeConfiguration).to.have.been.calledOnce;
+  });
+
+  it('should rethrow AccessDeniedException when removing Lambda permission during delete', async () => {
+    const error = Object.assign(new Error('denied'), { name: 'AccessDeniedException' });
+    const removePermission = sinon.stub().rejects(error);
+    const removeConfiguration = sinon.stub().resolves();
+    const handler = makeHandler({ removePermission, removeConfiguration });
+
+    await expect(handler(deleteEvent, context)).to.be.rejectedWith('denied');
+
+    expect(removeConfiguration).to.not.have.been.called;
+  });
+
+  it('should rethrow AccessDenied when removing notification configuration during delete', async () => {
+    const error = Object.assign(new Error('denied'), { name: 'AccessDenied' });
+    const removePermission = sinon.stub().resolves();
+    const removeConfiguration = sinon.stub().rejects(error);
+    const handler = makeHandler({ removePermission, removeConfiguration });
+
+    await expect(handler(deleteEvent, context)).to.be.rejectedWith('denied');
+
+    expect(removeConfiguration).to.have.been.calledOnce;
   });
 });
