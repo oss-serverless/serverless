@@ -10,7 +10,7 @@ const JSZip = require('jszip');
 const tmpDirCommonPath = require('../lib/process-tmp-dir');
 
 function getTmpDirPath() {
-  return path.join(tmpDirCommonPath, crypto.randomBytes(8).toString('hex'));
+  return path.join(tmpDirCommonPath, crypto.randomBytes(12).toString('hex'));
 }
 
 function getTmpFilePath(fileName) {

@@ -7,7 +7,7 @@ const processTmpDir = require('./process-tmp-dir');
 
 module.exports = () =>
   new Promise((resolve) => {
-    const tmpDirName = path.join(processTmpDir, crypto.randomBytes(3).toString('hex'));
+    const tmpDirName = path.join(processTmpDir, crypto.randomBytes(12).toString('hex'));
     resolve(
       mkdir(tmpDirName).then(
         () => tmpDirName,
