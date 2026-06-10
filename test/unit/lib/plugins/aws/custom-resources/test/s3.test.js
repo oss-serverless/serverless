@@ -80,11 +80,16 @@ describe('Custom resource S3 permissions', () => {
 });
 
 describe('Custom resource S3 handler', () => {
+  function getStatementId(functionName, bucketName) {
+    return `${functionName}-${bucketName.replace(/[.:*]/g, '')}`;
+  }
+
   function makeHandler({
     addPermission = sinon.stub().resolves(),
     updateConfiguration = sinon.stub().resolves(),
     removePermission = sinon.stub().resolves(),
     removeConfiguration = sinon.stub().resolves(),
+    getStatementId: resolveStatementId = getStatementId,
   } = {}) {
     const { handler } = proxyquire(
       '../../../../../../../lib/plugins/aws/custom-resources/resources/s3/handler',
@@ -98,13 +103,116 @@ describe('Custom resource S3 handler', () => {
           }),
           handlerWrapper: (wrappedHandler) => wrappedHandler,
         },
-        './lib/permissions': { addPermission, removePermission },
+        './lib/permissions': {
+          addPermission,
+          removePermission,
+          getStatementId: resolveStatementId,
+        },
         './lib/bucket': { updateConfiguration, removeConfiguration },
       }
     );
 
     return { handler, addPermission, updateConfiguration, removePermission, removeConfiguration };
   }
+
+  it('should not churn Lambda permission on same-target ForceDeploy updates', async () => {
+    const { handler, addPermission, updateConfiguration, removePermission } = makeHandler();
+
+    await handler(
+      {
+        RequestType: 'Update',
+        ResourceProperties: {
+          FunctionName: 'orders',
+          BucketName: 'orders-bucket',
+          BucketConfigs: [],
+          ForceDeploy: 'new',
+        },
+        OldResourceProperties: {
+          FunctionName: 'orders',
+          BucketName: 'orders-bucket',
+          BucketConfigs: [],
+          ForceDeploy: 'old',
+        },
+      },
+      {}
+    );
+
+    expect(addPermission).to.not.have.been.called;
+    expect(updateConfiguration).to.have.been.calledOnce;
+    expect(removePermission).to.not.have.been.called;
+  });
+
+  it('should remove and re-add conflicting Lambda permission on create', async () => {
+    const calls = [];
+    const addPermission = sinon.stub();
+    addPermission.onFirstCall().callsFake(async (input) => {
+      calls.push(['addPermission', input]);
+      throw Object.assign(new Error('permission exists'), {
+        name: 'ResourceConflictException',
+      });
+    });
+    addPermission.onSecondCall().callsFake(async (input) => {
+      calls.push(['addPermission', input]);
+    });
+    const updateConfiguration = sinon.stub().callsFake(async (input) => {
+      calls.push(['updateConfiguration', input]);
+    });
+    const removePermission = sinon.stub().callsFake(async (input) => {
+      calls.push(['removePermission', input]);
+    });
+    const { handler } = makeHandler({ addPermission, updateConfiguration, removePermission });
+
+    await handler(
+      {
+        RequestType: 'Create',
+        ResourceProperties: {
+          FunctionName: 'orders',
+          FunctionQualifier: 'provisioned',
+          BucketName: 'orders-bucket',
+          BucketConfigs: [],
+        },
+      },
+      {}
+    );
+
+    expect(addPermission).to.have.been.calledTwice;
+    expect(removePermission).to.have.been.calledOnce;
+    expect(removePermission.args[0][0]).to.include({
+      functionName: 'orders',
+      functionQualifier: 'provisioned',
+      bucketName: 'orders-bucket',
+    });
+    expect(calls.map(([name]) => name)).to.deep.equal([
+      'addPermission',
+      'removePermission',
+      'addPermission',
+      'updateConfiguration',
+    ]);
+  });
+
+  it('should rethrow non-conflict Lambda permission add errors', async () => {
+    const addPermission = sinon
+      .stub()
+      .rejects(Object.assign(new Error('denied'), { name: 'AccessDeniedException' }));
+    const { handler, updateConfiguration, removePermission } = makeHandler({ addPermission });
+
+    await expect(
+      handler(
+        {
+          RequestType: 'Create',
+          ResourceProperties: {
+            FunctionName: 'orders',
+            BucketName: 'orders-bucket',
+            BucketConfigs: [],
+          },
+        },
+        {}
+      )
+    ).to.be.rejectedWith('denied');
+
+    expect(removePermission).to.not.have.been.called;
+    expect(updateConfiguration).to.not.have.been.called;
+  });
 
   it('should add qualified permission before migrating existing notification target', async () => {
     const calls = [];
@@ -244,7 +352,9 @@ describe('Custom resource S3 handler', () => {
 
   it('should clean up old notification target only when the bucket changes', async () => {
     const removeConfiguration = sinon.stub().resolves();
-    const { handler, updateConfiguration } = makeHandler({ removeConfiguration });
+    const { handler, updateConfiguration, removePermission } = makeHandler({
+      removeConfiguration,
+    });
 
     await handler(
       {
@@ -269,6 +379,41 @@ describe('Custom resource S3 handler', () => {
       functionName: 'orders',
       bucketName: 'old-orders-bucket',
     });
+    expect(removePermission).to.have.been.calledOnce;
+    expect(removePermission.args[0][0]).to.include({
+      functionName: 'orders',
+      bucketName: 'old-orders-bucket',
+      region: 'us-east-1',
+    });
+  });
+
+  it('should not remove old permission when migrated buckets share a statement ID', async () => {
+    const removeConfiguration = sinon.stub().resolves();
+    const { handler, removePermission } = makeHandler({ removeConfiguration });
+
+    await handler(
+      {
+        RequestType: 'Update',
+        ResourceProperties: {
+          FunctionName: 'orders',
+          BucketName: 'ordersbucket',
+          BucketConfigs: [],
+        },
+        OldResourceProperties: {
+          FunctionName: 'orders',
+          BucketName: 'orders.bucket',
+          BucketConfigs: [],
+        },
+      },
+      {}
+    );
+
+    expect(removeConfiguration).to.have.been.calledOnceWithExactly({
+      region: 'us-east-1',
+      functionName: 'orders',
+      bucketName: 'orders.bucket',
+    });
+    expect(removePermission).to.not.have.been.called;
   });
 
   it('should tolerate missing old bucket while cleaning up migrated notification target', async () => {
@@ -385,9 +530,23 @@ describe('Custom resource S3 handler', () => {
   });
 
   it('should continue migration when qualified permission already exists', async () => {
-    const addPermission = sinon.stub().rejects({ name: 'ResourceConflictException' });
-    const updateConfiguration = sinon.stub().resolves();
-    const removePermission = sinon.stub().resolves();
+    const calls = [];
+    const addPermission = sinon.stub();
+    addPermission.onFirstCall().callsFake(async (input) => {
+      calls.push(['addPermission', input]);
+      throw Object.assign(new Error('permission exists'), {
+        name: 'ResourceConflictException',
+      });
+    });
+    addPermission.onSecondCall().callsFake(async (input) => {
+      calls.push(['addPermission', input]);
+    });
+    const updateConfiguration = sinon.stub().callsFake(async (input) => {
+      calls.push(['updateConfiguration', input]);
+    });
+    const removePermission = sinon.stub().callsFake(async (input) => {
+      calls.push(['removePermission', input]);
+    });
     const removeConfiguration = sinon.stub().resolves();
 
     const { handler } = proxyquire(
@@ -402,7 +561,7 @@ describe('Custom resource S3 handler', () => {
           }),
           handlerWrapper: (wrappedHandler) => wrappedHandler,
         },
-        './lib/permissions': { addPermission, removePermission },
+        './lib/permissions': { addPermission, removePermission, getStatementId },
         './lib/bucket': { updateConfiguration, removeConfiguration },
       }
     );
@@ -425,8 +584,26 @@ describe('Custom resource S3 handler', () => {
       {}
     );
 
+    expect(addPermission).to.have.been.calledTwice;
     expect(updateConfiguration).to.have.been.calledOnce;
-    expect(removePermission).to.have.been.calledOnce;
+    expect(removePermission).to.have.been.calledTwice;
+    expect(removePermission.args[0][0]).to.include({
+      functionName: 'orders',
+      functionQualifier: 'provisioned',
+      bucketName: 'orders-bucket',
+    });
+    expect(removePermission.args[1][0]).to.include({
+      functionName: 'orders',
+      bucketName: 'orders-bucket',
+    });
+    expect(removePermission.args[1][0]).to.have.property('functionQualifier', undefined);
+    expect(calls.map(([name]) => name)).to.deep.equal([
+      'addPermission',
+      'removePermission',
+      'addPermission',
+      'updateConfiguration',
+      'removePermission',
+    ]);
   });
 
   it('should remove notification configuration when Lambda permission is already missing', async () => {
