@@ -82,7 +82,7 @@
     "eslint": "^10.2.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import-x": "^4.16.2",
-    "eslint-plugin-n": "^17.24.0",
+    "eslint-plugin-n": "^18.1.0",
     "git-list-updated": "^1.2.1",
     "globals": "^17.5.0",
     "jszip": "^3.10.1",
