@@ -7,6 +7,7 @@ const deepSortObjectByKey = require('../../../../../lib/utils/deep-sort-object-b
 const path = require('path');
 const os = require('os');
 const fsp = require('fs').promises;
+const proxyquire = require('proxyquire');
 
 const expect = chai.expect;
 
@@ -52,6 +53,38 @@ describe('test/unit/lib/classes/ConfigSchemaHandler/resolveAjvValidate.test.js',
 
     const fileStat = await fsp.lstat(getExpectedCachePath(schemaHash));
     expect(fileStat.isFile()).to.be.true;
+  });
+
+  it('regenerates the cached validator module if removed externally', async () => {
+    const realFsp = require('fs').promises;
+    let injectedRemoval = false;
+    const resolveAjvValidateFresh = proxyquire(
+      '../../../../../lib/classes/config-schema-handler/resolve-ajv-validate',
+      {
+        fs: {
+          promises: {
+            ...realFsp,
+            readFile: async (filePath, ...args) => {
+              if (!injectedRemoval && String(filePath).includes('ajv-validate')) {
+                injectedRemoval = true;
+                await realFsp.unlink(filePath);
+              }
+              return realFsp.readFile(filePath, ...args);
+            },
+          },
+        },
+      }
+    );
+
+    const uniqueSchema = { ...schema, title: 'ExternallyRemovedCache' };
+    const validate = await resolveAjvValidateFresh(uniqueSchema);
+
+    expect(injectedRemoval).to.equal(true);
+    expect(typeof validate).to.equal('function');
+    expect(validate({ firstProp: 'value' })).to.equal(true);
+
+    const schemaHash = objectHash(deepSortObjectByKey(uniqueSchema));
+    expect((await realFsp.lstat(getExpectedCachePath(schemaHash))).isFile()).to.be.true;
   });
 
   it('validates date-time formats with ajv-formats v3 semantics', async () => {
