@@ -1476,6 +1476,25 @@ describe('AwsCompileFunctions', () => {
       expect(error).to.have.property('code', 'EVENT_INVOKE_CONFIG_CONDITIONAL_DESTINATION');
     });
 
+    it('should reject destinations to functions with different conditions', async () => {
+      useFunctions({
+        source: {
+          condition: 'IsSourceEnabled',
+          destinations: { onSuccess: 'target' },
+        },
+        target: {
+          condition: 'IsTargetEnabled',
+        },
+      });
+
+      const error = await expectCompileError();
+
+      expect(error).to.have.property('code', 'EVENT_INVOKE_CONFIG_CONDITIONAL_DESTINATION');
+      expect(error.message).to.equal(
+        'Function "source" routes async destinations to conditional function "target". Apply condition "IsTargetEnabled" to "source" or remove the destination.'
+      );
+    });
+
     it('should allow source and destination functions with the same condition', async () => {
       useFunctions({
         source: {
