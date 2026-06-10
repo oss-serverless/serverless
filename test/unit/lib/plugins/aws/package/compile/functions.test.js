@@ -1412,6 +1412,152 @@ describe('AwsCompileFunctions', () => {
       });
     });
   });
+
+  describe('#compileFunctionEventInvokeConfig()', () => {
+    function useFunctions(functions) {
+      awsCompileFunctions.serverless.service.provider.versionFunctions = false;
+      awsCompileFunctions.serverless.service.functions = Object.fromEntries(
+        Object.entries(functions).map(([name, config]) => [
+          name,
+          {
+            name,
+            handler: `${name}.handler`,
+            role: 'arn:aws:iam::123456789012:role/test-role',
+            ...config,
+          },
+        ])
+      );
+    }
+
+    function getEventInvokeConfig(functionName) {
+      return awsCompileFunctions.serverless.service.provider.compiledCloudFormationTemplate
+        .Resources[awsProvider.naming.getLambdaEventConfigLogicalId(functionName)];
+    }
+
+    async function expectCompileError() {
+      try {
+        await awsCompileFunctions.compileFunctions();
+      } catch (error) {
+        return error;
+      }
+      throw new Error('Expected compileFunctions to reject');
+    }
+
+    it('should reject unconditioned source destinations to conditional functions', async () => {
+      useFunctions({
+        source: {
+          destinations: { onSuccess: 'target' },
+        },
+        target: {
+          condition: 'IsEnabled',
+        },
+      });
+
+      const error = await expectCompileError();
+
+      expect(error).to.have.property('code', 'EVENT_INVOKE_CONFIG_CONDITIONAL_DESTINATION');
+      expect(error.message).to.equal(
+        'Function "source" routes async destinations to conditional function "target". Apply condition "IsEnabled" to "source" or remove the destination.'
+      );
+    });
+
+    it('should reject onFailure destinations to conditional functions', async () => {
+      useFunctions({
+        source: {
+          destinations: { onFailure: 'target' },
+        },
+        target: {
+          condition: 'IsEnabled',
+        },
+      });
+
+      const error = await expectCompileError();
+
+      expect(error).to.have.property('code', 'EVENT_INVOKE_CONFIG_CONDITIONAL_DESTINATION');
+    });
+
+    it('should allow source and destination functions with the same condition', async () => {
+      useFunctions({
+        source: {
+          condition: 'IsEnabled',
+          destinations: { onSuccess: 'target' },
+        },
+        target: {
+          condition: 'IsEnabled',
+        },
+      });
+
+      await awsCompileFunctions.compileFunctions();
+
+      const eventInvokeConfig = getEventInvokeConfig('source');
+      expect(eventInvokeConfig.Condition).to.equal('IsEnabled');
+      expect(eventInvokeConfig.Properties.DestinationConfig).to.deep.equal({
+        OnSuccess: {
+          Destination: { 'Fn::GetAtt': [awsProvider.naming.getLambdaLogicalId('target'), 'Arn'] },
+        },
+      });
+    });
+
+    it('should allow conditional source functions to target unconditioned functions', async () => {
+      useFunctions({
+        source: {
+          condition: 'IsEnabled',
+          destinations: { onSuccess: 'target' },
+        },
+        target: {},
+      });
+
+      await awsCompileFunctions.compileFunctions();
+
+      expect(getEventInvokeConfig('source').Properties.DestinationConfig).to.deep.equal({
+        OnSuccess: {
+          Destination: { 'Fn::GetAtt': [awsProvider.naming.getLambdaLogicalId('target'), 'Arn'] },
+        },
+      });
+    });
+
+    it('should not validate ARN destination conditions', async () => {
+      const arn = 'arn:aws:lambda:us-east-1:123456789012:function:external';
+      useFunctions({
+        source: {
+          destinations: { onSuccess: arn },
+        },
+      });
+
+      await awsCompileFunctions.compileFunctions();
+
+      expect(getEventInvokeConfig('source').Properties.DestinationConfig).to.deep.equal({
+        OnSuccess: { Destination: arn },
+      });
+    });
+
+    it('should not validate object destination conditions', async () => {
+      const destination = { type: 'function', arn: { Ref: 'SomeFunctionArn' } };
+      useFunctions({
+        source: {
+          destinations: { onSuccess: destination },
+        },
+      });
+
+      await awsCompileFunctions.compileFunctions();
+
+      expect(getEventInvokeConfig('source').Properties.DestinationConfig).to.deep.equal({
+        OnSuccess: { Destination: destination.arn },
+      });
+    });
+
+    it('should preserve existing errors for unknown string destinations', async () => {
+      useFunctions({
+        source: {
+          destinations: { onSuccess: 'missingTarget' },
+        },
+      });
+
+      const error = await expectCompileError();
+
+      expect(error).to.have.property('code', 'FUNCTION_MISSING_IN_SERVICE');
+    });
+  });
 });
 
 describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
