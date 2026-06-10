@@ -208,9 +208,43 @@ describe('Custom resource S3 handler', () => {
     expect(removeConfiguration).to.not.have.been.called;
   });
 
+  it('should remove old function notifications from the new bucket during rename and bucket migration', async () => {
+    const updateConfiguration = sinon.stub().resolves();
+    const removeConfiguration = sinon.stub().resolves();
+    const { handler } = makeHandler({ updateConfiguration, removeConfiguration });
+
+    await handler(
+      {
+        RequestType: 'Update',
+        ResourceProperties: {
+          FunctionName: 'orders-v2',
+          BucketName: 'new-orders-bucket',
+          BucketConfigs: [],
+        },
+        OldResourceProperties: {
+          FunctionName: 'orders-v1',
+          BucketName: 'old-orders-bucket',
+          BucketConfigs: [],
+        },
+      },
+      {}
+    );
+
+    expect(updateConfiguration.args[0][0]).to.include({
+      functionName: 'orders-v2',
+      previousFunctionName: 'orders-v1',
+      bucketName: 'new-orders-bucket',
+    });
+    expect(removeConfiguration).to.have.been.calledOnceWithExactly({
+      region: 'us-east-1',
+      functionName: 'orders-v1',
+      bucketName: 'old-orders-bucket',
+    });
+  });
+
   it('should clean up old notification target only when the bucket changes', async () => {
     const removeConfiguration = sinon.stub().resolves();
-    const { handler } = makeHandler({ removeConfiguration });
+    const { handler, updateConfiguration } = makeHandler({ removeConfiguration });
 
     await handler(
       {
@@ -229,6 +263,7 @@ describe('Custom resource S3 handler', () => {
       {}
     );
 
+    expect(updateConfiguration.args[0][0]).to.have.property('previousFunctionName', undefined);
     expect(removeConfiguration).to.have.been.calledOnceWithExactly({
       region: 'us-east-1',
       functionName: 'orders',
