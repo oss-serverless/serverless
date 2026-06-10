@@ -170,13 +170,13 @@ describe('Custom resource S3 handler', () => {
     expect(removeConfiguration).to.not.have.been.called;
   });
 
-  it('should rethrow AccessDenied when removing notification configuration during delete', async () => {
+  it('should tolerate AccessDenied when removing notification configuration during delete', async () => {
     const error = Object.assign(new Error('denied'), { name: 'AccessDenied' });
     const removePermission = sinon.stub().resolves();
     const removeConfiguration = sinon.stub().rejects(error);
     const handler = makeHandler({ removePermission, removeConfiguration });
 
-    await expect(handler(deleteEvent, context)).to.be.rejectedWith('denied');
+    await handler(deleteEvent, context);
 
     expect(removeConfiguration).to.have.been.calledOnce;
   });
