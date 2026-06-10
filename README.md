@@ -142,4 +142,3 @@ This project is open-source and free to use. However, maintaining it requires ti
 - Serverless Components support has been removed because those projects are old and unmaintained.
 - The Tencent Cloud integration from the upstream `serverless` CLI has been removed.
 - Unused dependencies, broken auto-updating, post-install messages, and automatic use of a local `serverless` installation from `node_modules` have been removed.
-- A Node.js warning for the deprecated `punycode` module has been fixed.
