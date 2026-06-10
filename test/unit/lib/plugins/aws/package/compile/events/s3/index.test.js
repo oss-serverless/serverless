@@ -1330,6 +1330,44 @@ describe('test/unit/lib/plugins/aws/package/compile/events/s3/index.test.js', ()
     });
   });
 
+  it('should target a generated alias for new buckets when targetAlias is set', async () => {
+    const { cfTemplate, awsNaming } = await runServerless({
+      fixture: 'function',
+      configExt: {
+        functions: {
+          basic: {
+            provisionedConcurrency: 1,
+            events: [{ s3: { bucket: 'provisioned-new-bucket', event: 's3:ObjectCreated:*' } }],
+          },
+        },
+      },
+      command: 'package',
+    });
+
+    const aliasLogicalId = awsNaming.getLambdaProvisionedConcurrencyAliasLogicalId('basic');
+    const bucketResource =
+      cfTemplate.Resources[awsNaming.getBucketLogicalId('provisioned-new-bucket')];
+
+    expect(bucketResource.DependsOn).to.include(aliasLogicalId);
+    expect(
+      bucketResource.Properties.NotificationConfiguration.LambdaConfigurations[0].Function
+    ).to.deep.equal({
+      'Fn::Join': [
+        ':',
+        [
+          { 'Fn::GetAtt': [awsNaming.getLambdaLogicalId('basic'), 'Arn'] },
+          awsNaming.getLambdaProvisionedConcurrencyAliasName(),
+        ],
+      ],
+    });
+
+    const permissionResource =
+      cfTemplate.Resources[
+        awsNaming.getLambdaS3PermissionLogicalId('basic', 'provisioned-new-bucket')
+      ];
+    expect(permissionResource.DependsOn).to.equal(aliasLogicalId);
+  });
+
   it('should disallow referencing multiple buckets in context of single function with CF references', async () => {
     await expect(
       runServerless({
