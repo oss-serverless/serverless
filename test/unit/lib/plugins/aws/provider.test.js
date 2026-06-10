@@ -1813,14 +1813,9 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
             )
         ).to.equal(true);
         expect(spawnExtStub).to.be.calledWith('docker', ['--version']);
-        expect(spawnExtStub).not.to.be.calledWith('docker', [
-          'login',
-          '--username',
-          'AWS',
-          '--password',
-          'dockerauthtoken',
-          proxyEndpoint,
-        ]);
+        expect(
+          spawnExtStub.getCalls().some((call) => (call.args[1] || [])[0] === 'login')
+        ).to.equal(false);
         expect(spawnExtStub).to.be.calledWith('docker', [
           'build',
           '-t',
@@ -2076,14 +2071,11 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
           'push',
           `${repositoryUri}:baseimage`,
         ]);
-        expect(innerSpawnExtStub).to.be.calledWith('docker', [
-          'login',
-          '--username',
-          'AWS',
-          '--password',
-          'dockerauthtoken',
-          proxyEndpoint,
-        ]);
+        expect(innerSpawnExtStub).to.be.calledWith(
+          'docker',
+          ['login', '--username', 'AWS', '--password-stdin', proxyEndpoint],
+          { input: 'dockerauthtoken' }
+        );
         const getAuthorizationTokenSend = expectEcrSendInput(
           awsSdkV3Stub,
           'getAuthorizationToken',
@@ -2126,14 +2118,11 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
           'push',
           `${repositoryUri}:baseimage`,
         ]);
-        expect(innerSpawnExtStub).to.be.calledWith('docker', [
-          'login',
-          '--username',
-          'AWS',
-          '--password',
-          'dockerauthtoken',
-          proxyEndpoint,
-        ]);
+        expect(innerSpawnExtStub).to.be.calledWith(
+          'docker',
+          ['login', '--username', 'AWS', '--password-stdin', proxyEndpoint],
+          { input: 'dockerauthtoken' }
+        );
         const getAuthorizationTokenSend = expectEcrSendInput(
           awsSdkV3Stub,
           'getAuthorizationToken',
@@ -2574,8 +2563,8 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
         ).to.be.eventually.rejected.and.have.property('code', 'DOCKER_PUSH_ERROR');
       });
 
-      it('should fail when docker login fails', async () => {
-        await expect(
+      it('should fail when docker login fails without exposing the token', async () => {
+        const error = await expect(
           runServerless({
             fixture: 'ecr',
             command: 'package',
@@ -2591,7 +2580,47 @@ describe('test/unit/lib/plugins/aws/provider.test.js', () => {
                 .throws(),
             },
           })
-        ).to.be.eventually.rejected.and.have.property('code', 'DOCKER_LOGIN_ERROR');
+        ).to.be.eventually.rejected;
+        expect(error.code).to.equal('DOCKER_LOGIN_ERROR');
+        expect(error.message).to.include('--password-stdin');
+        expect(error.message).to.not.include('dockerauthtoken');
+      });
+
+      it('should fail without invoking docker login when ECR authorization token is malformed', async () => {
+        const innerSpawnExtStub = sinon
+          .stub()
+          .returns({})
+          .onCall(3)
+          .throws({ stdBuffer: 'no basic auth credentials' });
+        const error = await expect(
+          runServerless({
+            fixture: 'ecr',
+            command: 'package',
+            awsSdkV3StubMap: {
+              ...baseAwsSdkV3StubMap,
+              ECR: {
+                ...baseAwsSdkV3StubMap.ECR,
+                getAuthorizationToken: {
+                  authorizationData: [
+                    {
+                      proxyEndpoint,
+                      authorizationToken: Buffer.from('malformedtoken').toString('base64'),
+                    },
+                  ],
+                },
+              },
+            },
+            modulesCacheStub: {
+              ...modulesCacheStub,
+              [spawnModulePath]: innerSpawnExtStub,
+            },
+          })
+        ).to.be.eventually.rejected;
+        expect(error.code).to.equal('DOCKER_LOGIN_ERROR');
+        expect(error.message).to.not.include('malformedtoken');
+        expect(
+          innerSpawnExtStub.getCalls().some((call) => (call.args[1] || [])[0] === 'login')
+        ).to.equal(false);
       });
     });
   });
