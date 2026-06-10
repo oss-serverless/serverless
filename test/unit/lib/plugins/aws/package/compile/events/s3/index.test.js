@@ -924,6 +924,52 @@ describe('AwsCompileS3Events', () => {
       });
     });
 
+    it('should chain custom resources across different existing buckets', async () => {
+      awsCompileS3Events.serverless.service.functions = {
+        first: {
+          name: 'first',
+          targetAlias: { logicalId: 'FirstLambdaAlias', name: 'live' },
+          events: [
+            {
+              s3: {
+                bucket: 'first-existing-s3-bucket',
+                existing: true,
+              },
+            },
+          ],
+        },
+        second: {
+          name: 'second',
+          targetAlias: { logicalId: 'SecondLambdaAlias', name: 'live' },
+          events: [
+            {
+              s3: {
+                bucket: 'second-existing-s3-bucket',
+                existing: true,
+              },
+            },
+          ],
+        },
+      };
+
+      await awsCompileS3Events.existingS3Buckets();
+
+      const { Resources } =
+        awsCompileS3Events.serverless.service.provider.compiledCloudFormationTemplate;
+
+      expect(Resources.FirstCustomS31.DependsOn).to.deep.equal([
+        'FirstLambdaFunction',
+        'FirstLambdaAlias',
+        'CustomDashresourceDashexistingDashs3LambdaFunction',
+      ]);
+      expect(Resources.SecondCustomS31.DependsOn).to.deep.equal([
+        'SecondLambdaFunction',
+        'SecondLambdaAlias',
+        'CustomDashresourceDashexistingDashs3LambdaFunction',
+        'FirstCustomS31',
+      ]);
+    });
+
     it('should throw if more than 1 S3 bucket is configured per function', () => {
       awsCompileS3Events.serverless.service.functions = {
         first: {
@@ -1189,7 +1235,11 @@ describe('test/unit/lib/plugins/aws/package/compile/events/s3/index.test.js', ()
     expect(cfResources[naming.getCustomResourceS3ResourceLogicalId('other')]).to.deep.equal({
       Type: 'Custom::S3',
       Version: 1,
-      DependsOn: ['OtherLambdaFunction', 'CustomDashresourceDashexistingDashs3LambdaFunction'],
+      DependsOn: [
+        'OtherLambdaFunction',
+        'CustomDashresourceDashexistingDashs3LambdaFunction',
+        'BasicCustomS31',
+      ],
       Properties: {
         ServiceToken: {
           'Fn::GetAtt': ['CustomDashresourceDashexistingDashs3LambdaFunction', 'Arn'],
@@ -1205,7 +1255,11 @@ describe('test/unit/lib/plugins/aws/package/compile/events/s3/index.test.js', ()
     expect(cfResources[naming.getCustomResourceS3ResourceLogicalId('withIf')]).to.deep.equal({
       Type: 'Custom::S3',
       Version: 1,
-      DependsOn: ['WithIfLambdaFunction', 'CustomDashresourceDashexistingDashs3LambdaFunction'],
+      DependsOn: [
+        'WithIfLambdaFunction',
+        'CustomDashresourceDashexistingDashs3LambdaFunction',
+        'OtherCustomS31',
+      ],
       Properties: {
         ServiceToken: {
           'Fn::GetAtt': ['CustomDashresourceDashexistingDashs3LambdaFunction', 'Arn'],
@@ -1228,6 +1282,7 @@ describe('test/unit/lib/plugins/aws/package/compile/events/s3/index.test.js', ()
       DependsOn: [
         'PrefixSuffixWithCfFunctionLambdaFunction',
         'CustomDashresourceDashexistingDashs3LambdaFunction',
+        'WithIfCustomS31',
       ],
       Properties: {
         ServiceToken: {
@@ -1266,6 +1321,7 @@ describe('test/unit/lib/plugins/aws/package/compile/events/s3/index.test.js', ()
       naming.getLambdaLogicalId('provisionedExisting'),
       aliasLogicalId,
       naming.getCustomResourceS3HandlerFunctionLogicalId(),
+      naming.getCustomResourceS3ResourceLogicalId('prefixSuffixWithCfFunction'),
     ]);
     expect(resource.Properties).to.deep.include({
       FunctionName: serverlessInstance.service.getFunction('provisionedExisting').name,
