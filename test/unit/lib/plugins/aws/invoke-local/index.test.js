@@ -1285,6 +1285,65 @@ describe('AwsInvokeLocal', () => {
         await fsp.rm(tempRoot, { recursive: true, force: true });
       }
     });
+
+    it('uses existing local remote layer contents without SDK lookup, download, or copy', async () => {
+      const cacheDirPath = path.join(os.tmpdir(), 'serverless-cache');
+      const downloadStub = sinon.stub().resolves();
+      const dirExistsStub = sinon.stub().resolves(true);
+      const ensureDirStub = sinon.stub().resolves();
+      const copyStub = sinon.stub().resolves();
+
+      const ProxyquiredAwsInvokeLocal = proxyquire
+        .noCallThru()
+        .load('../../../../../../lib/plugins/aws/invoke-local/index', {
+          '../../../utils/get-stdin': sinon.stub().resolves(''),
+          '../../../utils/spawn': sinon.stub().resolves({
+            stdoutBuffer: Buffer.from('Mocked output'),
+          }),
+          'fs': {
+            promises: {
+              mkdir: ensureDirStub,
+            },
+          },
+          '../../../utils/fs/copy': copyStub,
+          'cachedir': sinon.stub().returns(cacheDirPath),
+          '../../../utils/fs/dir-exists': dirExistsStub,
+          '../../../utils/serverless-utils/download': downloadStub,
+        });
+
+      const localOptions = {
+        stage: 'dev',
+        region: 'us-east-1',
+        function: 'first',
+      };
+      const localServerless = new Serverless({ commands: [], options: {} });
+      localServerless.serviceDir = 'servicePath';
+      localServerless.cli = new CLI(localServerless);
+      localServerless.processedInput = { commands: ['invoke'] };
+      localServerless.service.layers = {};
+
+      const localProvider = new AwsProvider(localServerless, localOptions);
+      localServerless.setProvider('aws', localProvider);
+
+      const invokeLocal = new ProxyquiredAwsInvokeLocal(localServerless, localOptions);
+      invokeLocal.provider = localProvider;
+      invokeLocal.options.functionObj = {
+        layers: ['arn:aws:lambda:us-east-1:123456789012:layer:my-layer:3'],
+      };
+
+      const requestStub = sinon.stub(localProvider, 'request').resolves({});
+
+      const expectedLayerPath = path.join('.serverless', 'layers', 'my-layer', '3');
+
+      const result = await invokeLocal.getLayerPaths();
+
+      expect(dirExistsStub.calledOnceWithExactly(expectedLayerPath)).to.equal(true);
+      expect(requestStub).to.not.have.been.called;
+      expect(ensureDirStub).to.not.have.been.called;
+      expect(downloadStub).to.not.have.been.called;
+      expect(copyStub).to.not.have.been.called;
+      expect(result).to.deep.equal([expectedLayerPath]);
+    });
   });
 
   describe('#getEnvVarsFromOptions', () => {
