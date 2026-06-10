@@ -4,7 +4,7 @@ osls, short for Open Serverless, is an open-source command-line tool for deployi
 
 osls v4 continues the osls project that began as a maintained fork of [Serverless Framework](https://github.com/serverless/serverless) v3. It is independent from upstream Serverless Framework v4 and does not use Serverless Dashboard, Console, or licensing services. It remains compatible with most Serverless Framework v3 service configurations, with the v4 breaking changes documented in the [upgrade guide](./docs/guides/upgrading-to-v4.md).
 
-If you are coming from osls v3 or Serverless Framework v3, start with [Upgrading to v4](./docs/guides/upgrading-to-v4.md).
+osls v4 is currently in beta and will be released as stable soon. The stable osls v3 line lives on the [`3.x` branch](https://github.com/oss-serverless/osls/tree/3.x) and continues to receive regular releases. If you are coming from osls v3 or Serverless Framework v3, start with [Upgrading to v4](./docs/guides/upgrading-to-v4.md).
 
 ## Installation
 
