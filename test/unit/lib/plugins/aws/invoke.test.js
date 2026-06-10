@@ -132,6 +132,250 @@ describe('test/unit/lib/plugins/aws/invoke.test.js', () => {
     });
   });
 
+  it('should pass durable execution name to Lambda invoke', async () => {
+    const lambdaInvokeStub = sinon.stub();
+    const result = await runServerless({
+      fixture: 'invocation',
+      command: 'invoke',
+      options: {
+        'function': 'callback',
+        'qualifier': 'durable',
+        'durable-execution-name': 'order-123',
+      },
+      awsSdkV3StubMap: {
+        Lambda: {
+          invoke: (args) => {
+            lambdaInvokeStub.returns('payload');
+            return lambdaInvokeStub(args);
+          },
+        },
+      },
+    });
+
+    expect(lambdaInvokeStub.args[0][0]).to.deep.equal({
+      FunctionName: result.serverless.service.getFunction('callback').name,
+      InvocationType: 'RequestResponse',
+      LogType: 'None',
+      Qualifier: 'durable',
+      DurableExecutionName: 'order-123',
+      Payload: Buffer.from('{}'),
+    });
+  });
+
+  it('should accept durable execution names at the 64 character boundary', async () => {
+    const lambdaInvokeStub = sinon.stub();
+    const result = await runServerless({
+      fixture: 'invocation',
+      command: 'invoke',
+      options: {
+        'function': 'callback',
+        'qualifier': 'durable',
+        'durable-execution-name': 'a'.repeat(64),
+      },
+      awsSdkV3StubMap: {
+        Lambda: {
+          invoke: (args) => {
+            lambdaInvokeStub.returns('payload');
+            return lambdaInvokeStub(args);
+          },
+        },
+      },
+    });
+
+    expect(lambdaInvokeStub.args[0][0]).to.deep.equal({
+      FunctionName: result.serverless.service.getFunction('callback').name,
+      InvocationType: 'RequestResponse',
+      LogType: 'None',
+      Qualifier: 'durable',
+      DurableExecutionName: 'a'.repeat(64),
+      Payload: Buffer.from('{}'),
+    });
+  });
+
+  it('should include durable execution ARN in output', async () => {
+    const durableExecutionArn =
+      'arn:aws:lambda:us-east-1:123456789012:function:service-dev-callback:1/durable-execution/order-123/execution-123';
+    const result = await runServerless({
+      fixture: 'invocation',
+      command: 'invoke',
+      options: {
+        'function': 'callback',
+        'qualifier': 'durable',
+        'durable-execution-name': 'order-123',
+      },
+      awsSdkV3StubMap: {
+        Lambda: {
+          invoke: {
+            DurableExecutionArn: durableExecutionArn,
+          },
+        },
+      },
+    });
+
+    expect(result.output).to.contain(`DurableExecutionArn: ${durableExecutionArn}`);
+  });
+
+  it('should reject invalid durable execution names', async () => {
+    await expect(
+      runServerless({
+        fixture: 'invocation',
+        command: 'invoke',
+        options: {
+          'function': 'callback',
+          'qualifier': 'durable',
+          'durable-execution-name': 'invalid name',
+        },
+      })
+    ).to.be.eventually.rejected.and.have.property('code', 'INVALID_DURABLE_EXECUTION_NAME');
+  });
+
+  it('should require a durable execution name value', async () => {
+    await expect(
+      runServerless({
+        fixture: 'invocation',
+        command: 'invoke',
+        options: {
+          'function': 'callback',
+          'qualifier': 'durable',
+          'durable-execution-name': true,
+        },
+      })
+    ).to.be.eventually.rejected.and.have.property('code', 'MISSING_CLI_PARAM_VALUE');
+  });
+
+  it('should reject non-string durable execution names from programmatic options', async () => {
+    const serverless = new Serverless({ commands: [], options: {} });
+    serverless.serviceDir = __dirname;
+    const options = {
+      'stage': 'dev',
+      'region': 'us-east-1',
+      'function': 'callback',
+      'qualifier': 'durable',
+      'data': '{}',
+      'durable-execution-name': true,
+    };
+    serverless.setProvider('aws', new AwsProvider(serverless, options));
+    serverless.service.functions = {
+      callback: {
+        name: 'service-dev-callback',
+        handler: 'callback.handler',
+      },
+    };
+
+    await expect(
+      new AwsInvoke(serverless, options).extendedValidate()
+    ).to.be.eventually.rejected.and.have.property('code', 'INVALID_DURABLE_EXECUTION_NAME');
+  });
+
+  it('should reject empty durable execution names from programmatic options', async () => {
+    const serverless = new Serverless({ commands: [], options: {} });
+    serverless.serviceDir = __dirname;
+    const options = {
+      'stage': 'dev',
+      'region': 'us-east-1',
+      'function': 'callback',
+      'qualifier': 'durable',
+      'data': '{}',
+      'durable-execution-name': '',
+    };
+    serverless.setProvider('aws', new AwsProvider(serverless, options));
+    serverless.service.functions = {
+      callback: {
+        name: 'service-dev-callback',
+        handler: 'callback.handler',
+      },
+    };
+
+    await expect(
+      new AwsInvoke(serverless, options).extendedValidate()
+    ).to.be.eventually.rejected.and.have.property('code', 'INVALID_DURABLE_EXECUTION_NAME');
+  });
+
+  it('should reject durable execution names longer than 64 characters', async () => {
+    await expect(
+      runServerless({
+        fixture: 'invocation',
+        command: 'invoke',
+        options: {
+          'function': 'callback',
+          'qualifier': 'durable',
+          'durable-execution-name': 'a'.repeat(65),
+        },
+      })
+    ).to.be.eventually.rejected.and.have.property('code', 'INVALID_DURABLE_EXECUTION_NAME');
+  });
+
+  it('should require qualifier with durable execution names', async () => {
+    await expect(
+      runServerless({
+        fixture: 'invocation',
+        command: 'invoke',
+        options: {
+          'function': 'callback',
+          'durable-execution-name': 'order-123',
+        },
+      })
+    ).to.be.eventually.rejected.and.have.property('code', 'DURABLE_INVOKE_REQUIRES_QUALIFIER');
+  });
+
+  it('should require qualifier when invoking configured durable functions', async () => {
+    await expect(
+      runServerless({
+        fixture: 'invocation',
+        command: 'invoke',
+        options: {
+          function: 'callback',
+        },
+        configExt: {
+          functions: {
+            callback: {
+              durableConfig: {
+                executionTimeout: 3600,
+              },
+            },
+          },
+        },
+      })
+    ).to.be.eventually.rejected.and.have.property('code', 'DURABLE_INVOKE_REQUIRES_QUALIFIER');
+  });
+
+  it('should invoke configured durable functions with explicit qualifier', async () => {
+    const lambdaInvokeStub = sinon.stub();
+    const result = await runServerless({
+      fixture: 'invocation',
+      command: 'invoke',
+      options: {
+        function: 'callback',
+        qualifier: 'durable',
+      },
+      configExt: {
+        functions: {
+          callback: {
+            durableConfig: {
+              executionTimeout: 3600,
+            },
+          },
+        },
+      },
+      awsSdkV3StubMap: {
+        Lambda: {
+          invoke: (args) => {
+            lambdaInvokeStub.returns('payload');
+            return lambdaInvokeStub(args);
+          },
+        },
+      },
+    });
+
+    expect(lambdaInvokeStub.args[0][0]).to.deep.equal({
+      FunctionName: result.serverless.service.getFunction('callback').name,
+      InvocationType: 'RequestResponse',
+      LogType: 'None',
+      Qualifier: 'durable',
+      Payload: Buffer.from('{}'),
+    });
+  });
+
   it('should ignore empty payload responses', async () => {
     await expect(
       runServerless({

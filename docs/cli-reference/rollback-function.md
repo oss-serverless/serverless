@@ -9,6 +9,8 @@ serverless rollback function --function <name> \
 
 **Note:** You can only rollback a function which was previously deployed through `serverless deploy`. Functions are not versioned when running `serverless deploy function`.
 
+**Note:** This command is not supported for functions configured with `durableConfig` locally or already deployed with durable configuration in AWS. Use `serverless deploy` to publish and retarget durable function versions.
+
 ## Options
 
 - `--function` or `-f` The name of the function which should be rolled back

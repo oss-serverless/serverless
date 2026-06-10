@@ -49,6 +49,7 @@ describe('AwsRollbackFunction', () => {
 
   describe('#constructor()', () => {
     let validateStub;
+    let rejectDurableFunctionRollbackStub;
     let getFunctionToBeRestoredStub;
     let fetchFunctionCodeStub;
     let restoreFunctionStub;
@@ -59,6 +60,9 @@ describe('AwsRollbackFunction', () => {
       const restoreResult = { restored: true };
 
       validateStub = sinon.stub(awsRollbackFunction, 'validate').resolves();
+      rejectDurableFunctionRollbackStub = sinon
+        .stub(awsRollbackFunction, 'rejectDurableFunctionRollback')
+        .resolves();
       getFunctionToBeRestoredStub = sinon
         .stub(awsRollbackFunction, 'getFunctionToBeRestored')
         .resolves(func);
@@ -74,6 +78,7 @@ describe('AwsRollbackFunction', () => {
 
     afterEach(() => {
       awsRollbackFunction.validate.restore();
+      awsRollbackFunction.rejectDurableFunctionRollback.restore();
       awsRollbackFunction.getFunctionToBeRestored.restore();
       awsRollbackFunction.fetchFunctionCode.restore();
       awsRollbackFunction.restoreFunction.restore();
@@ -93,7 +98,10 @@ describe('AwsRollbackFunction', () => {
       awsRollbackFunction.hooks['rollback:function:rollback']().then((result) => {
         expect(result).to.deep.equal({ restored: true });
         expect(validateStub.calledOnce).to.equal(true);
-        expect(getFunctionToBeRestoredStub.calledAfter(validateStub)).to.equal(true);
+        expect(rejectDurableFunctionRollbackStub.calledAfter(validateStub)).to.equal(true);
+        expect(getFunctionToBeRestoredStub.calledAfter(rejectDurableFunctionRollbackStub)).to.equal(
+          true
+        );
         expect(fetchFunctionCodeStub.calledAfter(getFunctionToBeRestoredStub)).to.equal(true);
         expect(restoreFunctionStub.calledAfter(fetchFunctionCodeStub)).to.equal(true);
         expect(fetchFunctionCodeStub.calledOnce).to.equal(true);
@@ -102,6 +110,114 @@ describe('AwsRollbackFunction', () => {
   });
 
   describe('command lifecycle', () => {
+    it('should reject rollback function for durable functions', async () => {
+      serverless.service.functions.hello.durableConfig = { executionTimeout: 3600 };
+
+      await expect(
+        awsRollbackFunction.restoreFunction(Buffer.from('zip'))
+      ).to.be.eventually.rejected.and.have.property(
+        'code',
+        'DURABLE_ROLLBACK_FUNCTION_UNSUPPORTED'
+      );
+    });
+
+    it('should reject rollback function for locally durable functions through the command', async () => {
+      await expect(
+        runServerless({
+          fixture: 'function',
+          command: 'rollback function',
+          options: { 'function': 'basic', 'function-version': '23' },
+          configExt: {
+            functions: { basic: { durableConfig: { executionTimeout: 3600 } } },
+          },
+          awsSdkV3StubMap: {
+            Lambda: {
+              getFunction: { Configuration: {} },
+              updateFunctionCode: {},
+            },
+          },
+        })
+      ).to.be.eventually.rejected.and.have.property(
+        'code',
+        'DURABLE_ROLLBACK_FUNCTION_UNSUPPORTED'
+      );
+
+      expect(fetchStub).to.not.have.been.called;
+    });
+
+    it('should surface the version-aware error when the function is missing', async () => {
+      const error = await expect(
+        runServerless({
+          fixture: 'function',
+          command: 'rollback function',
+          options: { 'function': 'basic', 'function-version': '23' },
+          awsSdkV3StubMap: {
+            Lambda: {
+              getFunction: () => {
+                throw Object.assign(new Error('Function not found'), {
+                  name: 'ResourceNotFoundException',
+                });
+              },
+            },
+          },
+        })
+      ).to.be.eventually.rejected;
+
+      expect(error).to.have.property('code', 'AWS_FUNCTION_NOT_FOUND');
+      expect(error.message).to.include('with version "23"');
+    });
+
+    it('should wrap unexpected errors from the durable pre-check', async () => {
+      const error = await expect(
+        runServerless({
+          fixture: 'function',
+          command: 'rollback function',
+          options: { 'function': 'basic', 'function-version': '23' },
+          awsSdkV3StubMap: {
+            Lambda: {
+              getFunction: () => {
+                throw Object.assign(new Error('User is not authorized'), {
+                  name: 'AccessDeniedException',
+                });
+              },
+            },
+          },
+        })
+      ).to.be.eventually.rejected;
+
+      expect(error).to.have.property('code', 'AWS_FUNCTION_NOT_ACCESSIBLE');
+    });
+
+    it('should reject rollback function when remote function is durable', async () => {
+      await expect(
+        runServerless({
+          fixture: 'function',
+          command: 'rollback function',
+          options: { 'function': 'basic', 'function-version': '23' },
+          awsSdkV3StubMap: {
+            Lambda: {
+              getFunction: [
+                {
+                  Configuration: {
+                    DurableConfig: {
+                      ExecutionTimeout: 3600,
+                    },
+                  },
+                },
+                { Code: { Location: 'https://example.test/function.zip' } },
+              ],
+              updateFunctionCode: {},
+            },
+          },
+        })
+      ).to.be.eventually.rejected.and.have.property(
+        'code',
+        'DURABLE_ROLLBACK_FUNCTION_UNSUPPORTED'
+      );
+
+      expect(fetchStub).to.not.have.been.called;
+    });
+
     it('should rollback a function through the command', async () => {
       const zipBytes = Uint8Array.from([1, 2, 3]);
       const zipBuffer = Buffer.from(zipBytes);
@@ -127,13 +243,17 @@ describe('AwsRollbackFunction', () => {
       expect(fetchStub).to.have.been.calledOnceWithExactly(codeLocation);
       expect(lambdaSends.map(({ method }) => method)).to.deep.equal([
         'getFunction',
+        'getFunction',
         'updateFunctionCode',
       ]);
       expect(lambdaSends[0].input).to.deep.equal({
         FunctionName: functionName,
-        Qualifier: functionVersion,
       });
       expect(lambdaSends[1].input).to.deep.equal({
+        FunctionName: functionName,
+        Qualifier: functionVersion,
+      });
+      expect(lambdaSends[2].input).to.deep.equal({
         FunctionName: functionName,
         ZipFile: zipBuffer,
       });

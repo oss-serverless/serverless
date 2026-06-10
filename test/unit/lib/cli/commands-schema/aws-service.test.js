@@ -17,4 +17,10 @@ describe('test/unit/lib/cli/commands-schema/aws-service.test.js', () => {
     expect(awsServiceCommands.get('deploy').options).to.have.property('config'));
   it('should expose AWS options on AWS service commands', () =>
     expect(awsServiceCommands.get('deploy').options).to.have.property('region'));
+
+  it('should expose durable execution name as a string invoke option', () => {
+    expect(awsServiceCommands.get('invoke').options['durable-execution-name']).to.include({
+      type: 'string',
+    });
+  });
 });

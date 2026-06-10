@@ -691,6 +691,10 @@ export interface AWS {
             };
       };
       disableLogs?: boolean;
+      durableConfig?: {
+        executionTimeout: number;
+        retentionPeriodInDays?: number;
+      };
       environment?: AwsLambdaEnvironment;
       ephemeralStorageSize?: number;
       fileSystemConfig?: {

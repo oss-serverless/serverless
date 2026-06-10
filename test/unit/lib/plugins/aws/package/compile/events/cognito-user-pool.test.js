@@ -1227,6 +1227,37 @@ describe('lib/plugins/aws/package/compile/events/cognito-user-pool.test.js', () 
       });
     });
 
+    it('should target the durable alias for new pools on durable functions', async () => {
+      const { cfTemplate, awsNaming } = await runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              runtime: 'nodejs24.x',
+              durableConfig: { executionTimeout: 900 },
+              events: [{ cognitoUserPool: { pool: 'DurableNewPool', trigger: 'PreSignUp' } }],
+            },
+          },
+        },
+        command: 'package',
+      });
+
+      const aliasLogicalId = awsNaming.getLambdaDurableAliasLogicalId('basic');
+      const poolResource =
+        cfTemplate.Resources[awsNaming.getCognitoUserPoolLogicalId('DurableNewPool')];
+
+      expect(poolResource.DependsOn).to.include(aliasLogicalId);
+      expect(poolResource.Properties.LambdaConfig.PreSignUp).to.deep.equal({
+        'Fn::Join': [
+          ':',
+          [
+            { 'Fn::GetAtt': [awsNaming.getLambdaLogicalId('basic'), 'Arn'] },
+            awsNaming.getLambdaDurableAliasName(),
+          ],
+        ],
+      });
+    });
+
     it('should merge generated Cognito user pool resources with custom resources', () => {
       const serviceName = serverlessInstance.service.service;
       const poolResource = cfResources[naming.getCognitoUserPoolLogicalId('CUP CustomEmailSender')];
@@ -1313,6 +1344,44 @@ describe('lib/plugins/aws/package/compile/events/cognito-user-pool.test.js', () 
         FunctionQualifier: naming.getLambdaProvisionedConcurrencyAliasName(),
         UserPoolName: 'ProvisionedExistingPool',
       });
+    });
+
+    it('should configure existing Cognito durable functions through the durable alias', async () => {
+      const { cfTemplate, awsNaming, serverless } = await runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            durableExisting: {
+              handler: 'index.handler',
+              runtime: 'nodejs24.x',
+              durableConfig: { executionTimeout: 900 },
+              events: [
+                {
+                  cognitoUserPool: {
+                    pool: 'ExistingPool',
+                    trigger: 'PreSignUp',
+                    existing: true,
+                  },
+                },
+              ],
+            },
+          },
+        },
+        command: 'package',
+      });
+
+      const resource =
+        cfTemplate.Resources[
+          awsNaming.getCustomResourceCognitoUserPoolResourceLogicalId('durableExisting')
+        ];
+
+      expect(resource.DependsOn).to.include(
+        awsNaming.getLambdaDurableAliasLogicalId('durableExisting')
+      );
+      expect(resource.Properties.FunctionName).to.equal(
+        serverless.service.getFunction('durableExisting').name
+      );
+      expect(resource.Properties.FunctionQualifier).to.equal('durable');
     });
   });
 

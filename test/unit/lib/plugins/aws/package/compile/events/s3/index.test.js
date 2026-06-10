@@ -1202,6 +1202,41 @@ describe('test/unit/lib/plugins/aws/package/compile/events/s3/index.test.js', ()
     ]);
   });
 
+  it('should configure existing S3 durable functions through the durable alias', async () => {
+    const { cfTemplate, awsNaming, serverless } = await runServerless({
+      fixture: 's3',
+      configExt: {
+        functions: {
+          durableExisting: {
+            handler: 'core.existing',
+            runtime: 'nodejs24.x',
+            durableConfig: { executionTimeout: 900 },
+            events: [
+              {
+                s3: {
+                  bucket: 'existing-s3-bucket',
+                  existing: true,
+                },
+              },
+            ],
+          },
+        },
+      },
+      command: 'package',
+    });
+
+    const resource =
+      cfTemplate.Resources[awsNaming.getCustomResourceS3ResourceLogicalId('durableExisting')];
+
+    expect(resource.DependsOn).to.include(
+      awsNaming.getLambdaDurableAliasLogicalId('durableExisting')
+    );
+    expect(resource.Properties.FunctionName).to.equal(
+      serverless.service.getFunction('durableExisting').name
+    );
+    expect(resource.Properties.FunctionQualifier).to.equal('durable');
+  });
+
   it('should create lambda permissions policy with wild card', async () => {
     const expectedResource = [
       'arn',
@@ -1365,6 +1400,42 @@ describe('test/unit/lib/plugins/aws/package/compile/events/s3/index.test.js', ()
       cfTemplate.Resources[
         awsNaming.getLambdaS3PermissionLogicalId('basic', 'provisioned-new-bucket')
       ];
+    expect(permissionResource.DependsOn).to.equal(aliasLogicalId);
+  });
+
+  it('should target the durable alias for new buckets on durable functions', async () => {
+    const { cfTemplate, awsNaming } = await runServerless({
+      fixture: 'function',
+      configExt: {
+        functions: {
+          basic: {
+            runtime: 'nodejs24.x',
+            durableConfig: { executionTimeout: 900 },
+            events: [{ s3: { bucket: 'durable-new-bucket', event: 's3:ObjectCreated:*' } }],
+          },
+        },
+      },
+      command: 'package',
+    });
+
+    const aliasLogicalId = awsNaming.getLambdaDurableAliasLogicalId('basic');
+    const bucketResource = cfTemplate.Resources[awsNaming.getBucketLogicalId('durable-new-bucket')];
+
+    expect(bucketResource.DependsOn).to.include(aliasLogicalId);
+    expect(
+      bucketResource.Properties.NotificationConfiguration.LambdaConfigurations[0].Function
+    ).to.deep.equal({
+      'Fn::Join': [
+        ':',
+        [
+          { 'Fn::GetAtt': [awsNaming.getLambdaLogicalId('basic'), 'Arn'] },
+          awsNaming.getLambdaDurableAliasName(),
+        ],
+      ],
+    });
+
+    const permissionResource =
+      cfTemplate.Resources[awsNaming.getLambdaS3PermissionLogicalId('basic', 'durable-new-bucket')];
     expect(permissionResource.DependsOn).to.equal(aliasLogicalId);
   });
 
