@@ -164,6 +164,13 @@ const result = await client.send(new ListBucketsCommand({}));
 
 Declare any `@aws-sdk/client-*` packages your plugin imports in its own dependencies.
 
+### Bundled `open` and `punycode` packages removed (plugin authors)
+
+- The internal `lib/utils/open-browser.js` module is removed, along with the [`open`](https://www.npmjs.com/package/open) package it wrapped. It was unused by osls and never part of the public plugin API. If your plugin deep-required it, depend on `open` directly.
+- osls no longer ships the userland [`punycode`](https://www.npmjs.com/package/punycode) package, and no longer aliases `require('punycode')` to it. Code that requires `punycode` now gets the deprecated Node.js builtin, which prints a `DEP0040` deprecation warning on Node.js 22+. If your plugin (or its dependencies) needs punycode, declare the userland package in its dependencies and require it as `punycode/` (with the trailing slash) so it takes precedence over the builtin.
+
+The `@serverless/utils/config` and `@serverless/utils/log` compatibility aliases are unaffected.
+
 ## Deprecated in v4 (clean up before v5)
 
 These still work in v4 but emit deprecation warnings. Most were deprecated back in v3, with removal deferred to v5. `provider.websocket.useProviderTags` is the exception, as it became redundant only in v4 once provider tags became the default. All will be removed in v5 except the Kinesis consumer name, which will change rather than being removed.
