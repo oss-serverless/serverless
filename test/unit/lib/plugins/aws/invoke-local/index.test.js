@@ -1592,7 +1592,7 @@ describe('AwsInvokeLocal', () => {
       expect(result).to.deep.equal([expectedLayerPath]);
     });
 
-    it('uses existing local remote layer contents without SDK lookup or download', async () => {
+    it('uses existing local remote layer contents without SDK lookup, download, or copy', async () => {
       const cacheDirPath = path.join(os.tmpdir(), 'serverless-cache');
       const downloadStub = sinon.stub().resolves();
       const dirExistsStub = sinon.stub().resolves(true);
@@ -1618,13 +1618,13 @@ describe('AwsInvokeLocal', () => {
       };
 
       const expectedLayerPath = path.join('.serverless', 'layers', 'my-layer', '3');
-      const expectedCachePath = path.join(cacheDirPath, 'invokeLocal', 'layers', 'my-layer', '3');
       const result = await invokeLocal.getLayerPaths();
 
       expect(dirExistsStub.calledOnceWithExactly(expectedLayerPath)).to.equal(true);
       expect(awsSdkV3Stub.sends).to.have.length(0);
+      expect(ensureDirStub).to.not.have.been.called;
       expect(downloadStub).to.not.have.been.called;
-      expect(copyStub.calledOnceWithExactly(expectedCachePath, expectedLayerPath)).to.equal(true);
+      expect(copyStub).to.not.have.been.called;
       expect(result).to.deep.equal([expectedLayerPath]);
     });
 
