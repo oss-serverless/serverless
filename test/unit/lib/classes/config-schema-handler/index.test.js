@@ -80,6 +80,43 @@ describe('test/unit/lib/classes/ConfigSchemaHandler/index.test.js', () => {
       expect(getConfigurationValidationResult(serverless.configurationInput)).to.be.true;
     });
 
+    it('should reject an explicit function name containing CloudFormation substitution syntax', async () => {
+      const serverless = new Serverless({ commands: [], options: {} });
+      const userConfig = {
+        service: 'service',
+        frameworkVersion: '*',
+        provider: { name: 'aws' },
+        functions: { fn: { name: 'fn-${AWS::AccountId}' } },
+      };
+      serverless.configurationInput = userConfig;
+      serverless.service.configValidationMode = 'error';
+
+      await expect(
+        serverless.configSchemaHandler.validateConfig(userConfig)
+      ).to.eventually.be.rejected.and.have.property(
+        'code',
+        'INVALID_NON_SCHEMA_COMPLIANT_CONFIGURATION'
+      );
+    });
+
+    it('should accept explicit function names within the Lambda character set, including long ones', async () => {
+      const serverless = new Serverless({ commands: [], options: {} });
+      const userConfig = {
+        service: 'service',
+        frameworkVersion: '*',
+        provider: { name: 'aws' },
+        functions: {
+          explicitName: { name: 'my-Function_1' },
+          longGeneratedShape: { name: 'a'.repeat(68) },
+        },
+      };
+      serverless.configurationInput = userConfig;
+      serverless.service.configValidationMode = 'error';
+
+      await expect(serverless.configSchemaHandler.validateConfig(userConfig)).to.eventually.be
+        .fulfilled;
+    });
+
     it('restores safe null paths and skips unsafe null paths without mutating prototypes', async () => {
       const serverless = new Serverless({ commands: [], options: {} });
       const userConfig = JSON.parse(
