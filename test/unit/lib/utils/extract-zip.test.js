@@ -269,11 +269,13 @@ describe('extractZip', () => {
 
   it('closes streamed temp file handles before renaming', async () => {
     const closeSpy = sinon.spy();
+    let openedPath;
     const fsStub = {
       ...fs,
       promises: {
         ...fs.promises,
         async open(...args) {
+          openedPath = args[0];
           const handle = await fs.promises.open(...args);
           return {
             chmod: (...chmodArgs) => handle.chmod(...chmodArgs),
@@ -297,6 +299,7 @@ describe('extractZip', () => {
     await extractZipWithFsStub(zipBuffer, tmpDir);
 
     expect(closeSpy.calledOnce).to.equal(true);
+    expect(path.basename(openedPath)).to.match(/^\.sls-extract-[0-9a-f]{24}\.tmp$/);
     expect(await fsp.readFile(path.join(tmpDir, 'file.txt'), 'utf8')).to.equal('fixture');
   });
 
