@@ -2,10 +2,11 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const proxyquire = require('proxyquire');
 const sandbox = require('sinon');
 const expect = require('chai').expect;
 const { overrideEnv } = require('../../../utils/process');
-const { pathExists, remove } = require('../../../utils/fs');
+const { getTmpDirPath, pathExists } = require('../../../utils/fs');
 const ServerlessError = require('../../../../lib/serverless-error');
 
 describe('test/unit/lib/utils/logDeprecation.test.js', () => {
@@ -91,10 +92,15 @@ describe('test/unit/lib/utils/logDeprecation.test.js', () => {
   });
 
   it('should create the health status parent directory before writing summary output', async () => {
-    const logDeprecation = require('../../../../lib/utils/log-deprecation');
-    const healthStatusFilename = require('../../../../lib/utils/health-status-filename');
+    const healthStatusFilename = path.join(
+      getTmpDirPath(),
+      '.serverless',
+      'last-command-health-status'
+    );
+    const logDeprecation = proxyquire('../../../../lib/utils/log-deprecation', {
+      './health-status-filename': healthStatusFilename,
+    });
 
-    await remove(path.dirname(healthStatusFilename));
     expect(await pathExists(path.dirname(healthStatusFilename))).to.equal(false);
 
     logDeprecation('CODE1', 'Start using deprecation log');
