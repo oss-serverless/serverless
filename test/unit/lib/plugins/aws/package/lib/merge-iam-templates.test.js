@@ -185,6 +185,8 @@ describe('lib/plugins/aws/package/lib/mergeIamTemplates.test.js', () => {
 
         expect(conditionFunctionResource.Type).to.be.equal('AWS::Logs::LogGroup');
         expect(conditionFunctionResource.Condition).to.be.equal('CreateFunctionCondition');
+        expect(conditionFunctionResource).to.not.have.property('DeletionPolicy');
+        expect(conditionFunctionResource).to.not.have.property('UpdateReplacePolicy');
       });
     });
 
