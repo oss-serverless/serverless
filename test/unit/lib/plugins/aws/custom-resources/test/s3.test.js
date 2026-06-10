@@ -80,6 +80,32 @@ describe('Custom resource S3 permissions', () => {
 });
 
 describe('Custom resource S3 handler', () => {
+  function makeHandler({
+    addPermission = sinon.stub().resolves(),
+    updateConfiguration = sinon.stub().resolves(),
+    removePermission = sinon.stub().resolves(),
+    removeConfiguration = sinon.stub().resolves(),
+  } = {}) {
+    const { handler } = proxyquire(
+      '../../../../../../../lib/plugins/aws/custom-resources/resources/s3/handler',
+      {
+        '../utils': {
+          ...utils,
+          getEnvironment: () => ({
+            Partition: 'aws',
+            Region: 'us-east-1',
+            AccountId: '123456789012',
+          }),
+          handlerWrapper: (wrappedHandler) => wrappedHandler,
+        },
+        './lib/permissions': { addPermission, removePermission },
+        './lib/bucket': { updateConfiguration, removeConfiguration },
+      }
+    );
+
+    return { handler, addPermission, updateConfiguration, removePermission, removeConfiguration };
+  }
+
   it('should add qualified permission before migrating existing notification target', async () => {
     const calls = [];
     const addPermission = sinon.stub().callsFake(async (input) => {
@@ -150,6 +176,177 @@ describe('Custom resource S3 handler', () => {
       'updateConfiguration',
       'removePermission',
     ]);
+  });
+
+  it('should remove old same-bucket function notifications in the update put', async () => {
+    const updateConfiguration = sinon.stub().resolves();
+    const removeConfiguration = sinon.stub().resolves();
+    const { handler } = makeHandler({ updateConfiguration, removeConfiguration });
+
+    await handler(
+      {
+        RequestType: 'Update',
+        ResourceProperties: {
+          FunctionName: 'orders-v2',
+          BucketName: 'orders-bucket',
+          BucketConfigs: [],
+        },
+        OldResourceProperties: {
+          FunctionName: 'orders-v1',
+          BucketName: 'orders-bucket',
+          BucketConfigs: [],
+        },
+      },
+      {}
+    );
+
+    expect(updateConfiguration.args[0][0]).to.include({
+      functionName: 'orders-v2',
+      previousFunctionName: 'orders-v1',
+      bucketName: 'orders-bucket',
+    });
+    expect(removeConfiguration).to.not.have.been.called;
+  });
+
+  it('should clean up old notification target only when the bucket changes', async () => {
+    const removeConfiguration = sinon.stub().resolves();
+    const { handler } = makeHandler({ removeConfiguration });
+
+    await handler(
+      {
+        RequestType: 'Update',
+        ResourceProperties: {
+          FunctionName: 'orders',
+          BucketName: 'new-orders-bucket',
+          BucketConfigs: [],
+        },
+        OldResourceProperties: {
+          FunctionName: 'orders',
+          BucketName: 'old-orders-bucket',
+          BucketConfigs: [],
+        },
+      },
+      {}
+    );
+
+    expect(removeConfiguration).to.have.been.calledOnceWithExactly({
+      region: 'us-east-1',
+      functionName: 'orders',
+      bucketName: 'old-orders-bucket',
+    });
+  });
+
+  it('should tolerate missing old bucket while cleaning up migrated notification target', async () => {
+    const removeConfiguration = sinon.stub().rejects({ name: 'NoSuchBucket' });
+    const { handler } = makeHandler({ removeConfiguration });
+
+    await handler(
+      {
+        RequestType: 'Update',
+        ResourceProperties: {
+          FunctionName: 'orders',
+          BucketName: 'new-orders-bucket',
+          BucketConfigs: [],
+        },
+        OldResourceProperties: {
+          FunctionName: 'orders',
+          BucketName: 'old-orders-bucket',
+          BucketConfigs: [],
+        },
+      },
+      {}
+    );
+
+    expect(removeConfiguration).to.have.been.calledOnce;
+  });
+
+  it('should tolerate denied old bucket cleanup after updating the new notification target', async () => {
+    const removeConfiguration = sinon
+      .stub()
+      .rejects(Object.assign(new Error('denied'), { name: 'AccessDenied' }));
+    const log = sinon.stub(console, 'log');
+    const { handler } = makeHandler({ removeConfiguration });
+
+    try {
+      await handler(
+        {
+          RequestType: 'Update',
+          ResourceProperties: {
+            FunctionName: 'orders',
+            BucketName: 'new-orders-bucket',
+            BucketConfigs: [],
+          },
+          OldResourceProperties: {
+            FunctionName: 'orders',
+            BucketName: 'old-orders-bucket',
+            BucketConfigs: [],
+          },
+        },
+        {}
+      );
+    } finally {
+      log.restore();
+    }
+
+    expect(removeConfiguration).to.have.been.calledOnce;
+    expect(log).to.have.been.calledWith(
+      'Skipping S3 notification cleanup after AccessDenied; stale configuration may remain on the old bucket.'
+    );
+  });
+
+  it('should reject denied new notification target updates', async () => {
+    const updateConfiguration = sinon
+      .stub()
+      .rejects(Object.assign(new Error('denied new bucket'), { name: 'AccessDenied' }));
+    const removeConfiguration = sinon.stub().resolves();
+    const { handler } = makeHandler({ updateConfiguration, removeConfiguration });
+
+    await expect(
+      handler(
+        {
+          RequestType: 'Update',
+          ResourceProperties: {
+            FunctionName: 'orders',
+            BucketName: 'new-orders-bucket',
+            BucketConfigs: [],
+          },
+          OldResourceProperties: {
+            FunctionName: 'orders',
+            BucketName: 'old-orders-bucket',
+            BucketConfigs: [],
+          },
+        },
+        {}
+      )
+    ).to.be.rejectedWith('denied new bucket');
+
+    expect(removeConfiguration).to.not.have.been.called;
+  });
+
+  it('should reject denied old Lambda permission cleanup during migration', async () => {
+    const removePermission = sinon
+      .stub()
+      .rejects(Object.assign(new Error('denied permission'), { name: 'AccessDeniedException' }));
+    const { handler } = makeHandler({ removePermission });
+
+    await expect(
+      handler(
+        {
+          RequestType: 'Update',
+          ResourceProperties: {
+            FunctionName: 'orders',
+            BucketName: 'new-orders-bucket',
+            BucketConfigs: [],
+          },
+          OldResourceProperties: {
+            FunctionName: 'orders',
+            BucketName: 'old-orders-bucket',
+            BucketConfigs: [],
+          },
+        },
+        {}
+      )
+    ).to.be.rejectedWith('denied permission');
   });
 
   it('should continue migration when qualified permission already exists', async () => {
@@ -322,6 +519,7 @@ describe('Custom resource S3 handler', () => {
     const removeConfiguration = sinon
       .stub()
       .rejects(Object.assign(new Error('denied'), { name: 'AccessDenied' }));
+    const log = sinon.stub(console, 'log');
 
     const { handler } = proxyquire(
       '../../../../../../../lib/plugins/aws/custom-resources/resources/s3/handler',
@@ -340,17 +538,21 @@ describe('Custom resource S3 handler', () => {
       }
     );
 
-    await handler(
-      {
-        RequestType: 'Delete',
-        ResourceProperties: {
-          FunctionName: 'orders',
-          FunctionQualifier: 'provisioned',
-          BucketName: 'orders-bucket',
+    try {
+      await handler(
+        {
+          RequestType: 'Delete',
+          ResourceProperties: {
+            FunctionName: 'orders',
+            FunctionQualifier: 'provisioned',
+            BucketName: 'orders-bucket',
+          },
         },
-      },
-      {}
-    );
+        {}
+      );
+    } finally {
+      log.restore();
+    }
 
     expect(removeConfiguration).to.have.been.calledOnce;
   });
@@ -427,6 +629,89 @@ describe('Custom resource S3 bucket configuration', () => {
       'arn:aws:lambda:us-east-1:123456789012:function:orders-api',
       'arn:aws:lambda:us-east-1:123456789012:function:external',
       'arn:aws:lambda:us-east-1:123456789012:function:orders:provisioned',
+    ]);
+  });
+
+  it('should replace current and previous owned notification configurations', async () => {
+    const sentCommands = [];
+
+    class S3Client {
+      constructor() {
+        this.config = {};
+      }
+
+      send(command) {
+        sentCommands.push(command);
+        if (command.constructor.name === 'GetBucketNotificationConfigurationCommand') {
+          return Promise.resolve({
+            LambdaFunctionConfigurations: [
+              {
+                Id: `orders-v2-${'a'.repeat(32)}`,
+                LambdaFunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:orders-v2-old',
+              },
+              {
+                Id: `orders-v1-${'b'.repeat(32)}`,
+                LambdaFunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:orders-v1',
+              },
+              {
+                Id: `orders-v2-api-${'c'.repeat(32)}`,
+                LambdaFunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:orders-v2-api',
+              },
+              {
+                Id: 'orders-v1-manual',
+                LambdaFunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:manual',
+              },
+              {
+                LambdaFunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:external',
+              },
+            ],
+          });
+        }
+        return Promise.resolve();
+      }
+    }
+
+    class GetBucketNotificationConfigurationCommand {
+      constructor(input) {
+        this.input = input;
+      }
+    }
+
+    class PutBucketNotificationConfigurationCommand {
+      constructor(input) {
+        this.input = input;
+      }
+    }
+
+    const { updateConfiguration } = proxyquire(
+      '../../../../../../../lib/plugins/aws/custom-resources/resources/s3/lib/bucket',
+      {
+        '@aws-sdk/client-s3': {
+          S3Client,
+          GetBucketNotificationConfigurationCommand,
+          PutBucketNotificationConfigurationCommand,
+        },
+      }
+    );
+
+    await updateConfiguration({
+      lambdaArn: 'arn:aws:lambda:us-east-1:123456789012:function:orders-v2',
+      functionName: 'orders-v2',
+      previousFunctionName: 'orders-v1',
+      bucketName: 'orders-bucket',
+      bucketConfigs: [{ Event: 's3:ObjectCreated:*', Rules: [] }],
+      region: 'us-east-1',
+    });
+
+    const putInput = sentCommands[1].input;
+    const configs = putInput.NotificationConfiguration.LambdaFunctionConfigurations;
+
+    expect(configs).to.have.length(4);
+    expect(configs.map((config) => config.LambdaFunctionArn)).to.deep.equal([
+      'arn:aws:lambda:us-east-1:123456789012:function:orders-v2-api',
+      'arn:aws:lambda:us-east-1:123456789012:function:manual',
+      'arn:aws:lambda:us-east-1:123456789012:function:external',
+      'arn:aws:lambda:us-east-1:123456789012:function:orders-v2',
     ]);
   });
 
