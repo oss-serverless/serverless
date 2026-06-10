@@ -1965,6 +1965,25 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
       );
     });
 
+    it('should reject `functions[].name` values outside the Lambda character set', () => {
+      return expect(
+        runServerless({
+          fixture: 'function',
+          command: 'package',
+          configExt: {
+            functions: {
+              basic: {
+                name: 'my.dotted.name',
+              },
+            },
+          },
+        })
+      ).to.eventually.be.rejected.and.have.property(
+        'code',
+        'INVALID_NON_SCHEMA_COMPLIANT_CONFIGURATION'
+      );
+    });
+
     it('should support `provider.runtimeManagement`', () => {
       const providerConfig = serviceConfig.provider;
 
