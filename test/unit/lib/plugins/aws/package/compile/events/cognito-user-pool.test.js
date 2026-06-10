@@ -581,8 +581,7 @@ describe('AwsCompileCognitoUserPoolEvents', () => {
       expect(addCustomResourceToServiceStub.args[0][2]).to.deep.equal([
         {
           Effect: 'Allow',
-          Resource:
-            'arn:aws:kms:eu-west-1:111111111111:key/11111111-9abc-def0-1234-56789abcdef1',
+          Resource: 'arn:aws:kms:eu-west-1:111111111111:key/11111111-9abc-def0-1234-56789abcdef1',
           Action: ['kms:CreateGrant'],
         },
         {
