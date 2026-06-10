@@ -81,6 +81,152 @@ describe('Custom resource Cognito user pool permissions', () => {
 });
 
 describe('Custom resource Cognito user pool handler', () => {
+  function getStatementId(functionName, userPoolName) {
+    return `${functionName}-${userPoolName.toLowerCase().replace(/[.:*\s]/g, '')}`;
+  }
+
+  function makeHandler({
+    findUserPoolByName = sinon.stub().resolves({ Id: 'us-east-1_abc123' }),
+    addPermission = sinon.stub().resolves(),
+    updateConfiguration = sinon.stub().resolves(),
+    removePermission = sinon.stub().resolves(),
+    removeConfiguration = sinon.stub().resolves(),
+    getStatementId: resolveStatementId = getStatementId,
+  } = {}) {
+    const { handler } = proxyquire(
+      '../../../../../../../lib/plugins/aws/custom-resources/resources/cognito-user-pool/handler',
+      {
+        '../utils': {
+          ...utils,
+          getEnvironment: () => ({
+            Partition: 'aws',
+            Region: 'us-east-1',
+            AccountId: '123456789012',
+          }),
+          handlerWrapper: (wrappedHandler) => wrappedHandler,
+        },
+        './lib/permissions': {
+          addPermission,
+          removePermission,
+          getStatementId: resolveStatementId,
+        },
+        './lib/user-pool': {
+          findUserPoolByName,
+          updateConfiguration,
+          removeConfiguration,
+        },
+      }
+    );
+
+    return {
+      handler,
+      findUserPoolByName,
+      addPermission,
+      updateConfiguration,
+      removePermission,
+      removeConfiguration,
+    };
+  }
+
+  it('should not churn Lambda permission on same-target ForceDeploy updates', async () => {
+    const { handler, addPermission, updateConfiguration, removePermission } = makeHandler();
+
+    await handler(
+      {
+        RequestType: 'Update',
+        ResourceProperties: {
+          FunctionName: 'orders',
+          UserPoolName: 'orders-pool',
+          UserPoolConfigs: [{ Trigger: 'PreSignUp' }],
+          ForceDeploy: 'new',
+        },
+        OldResourceProperties: {
+          FunctionName: 'orders',
+          UserPoolName: 'orders-pool',
+          UserPoolConfigs: [{ Trigger: 'PreSignUp' }],
+          ForceDeploy: 'old',
+        },
+      },
+      {}
+    );
+
+    expect(addPermission).to.not.have.been.called;
+    expect(updateConfiguration).to.have.been.calledOnce;
+    expect(removePermission).to.not.have.been.called;
+  });
+
+  it('should remove and re-add conflicting Lambda permission on create', async () => {
+    const calls = [];
+    const addPermission = sinon.stub();
+    addPermission.onFirstCall().callsFake(async (input) => {
+      calls.push(['addPermission', input]);
+      throw Object.assign(new Error('permission exists'), {
+        name: 'ResourceConflictException',
+      });
+    });
+    addPermission.onSecondCall().callsFake(async (input) => {
+      calls.push(['addPermission', input]);
+    });
+    const updateConfiguration = sinon.stub().callsFake(async (input) => {
+      calls.push(['updateConfiguration', input]);
+    });
+    const removePermission = sinon.stub().callsFake(async (input) => {
+      calls.push(['removePermission', input]);
+    });
+    const { handler } = makeHandler({ addPermission, updateConfiguration, removePermission });
+
+    await handler(
+      {
+        RequestType: 'Create',
+        ResourceProperties: {
+          FunctionName: 'orders',
+          FunctionQualifier: 'provisioned',
+          UserPoolName: 'orders-pool',
+          UserPoolConfigs: [{ Trigger: 'PreSignUp' }],
+        },
+      },
+      {}
+    );
+
+    expect(addPermission).to.have.been.calledTwice;
+    expect(removePermission).to.have.been.calledOnce;
+    expect(removePermission.args[0][0]).to.include({
+      functionName: 'orders',
+      functionQualifier: 'provisioned',
+      userPoolName: 'orders-pool',
+    });
+    expect(calls.map(([name]) => name)).to.deep.equal([
+      'addPermission',
+      'removePermission',
+      'addPermission',
+      'updateConfiguration',
+    ]);
+  });
+
+  it('should rethrow non-conflict Lambda permission add errors', async () => {
+    const addPermission = sinon
+      .stub()
+      .rejects(Object.assign(new Error('denied'), { name: 'AccessDeniedException' }));
+    const { handler, updateConfiguration, removePermission } = makeHandler({ addPermission });
+
+    await expect(
+      handler(
+        {
+          RequestType: 'Create',
+          ResourceProperties: {
+            FunctionName: 'orders',
+            UserPoolName: 'orders-pool',
+            UserPoolConfigs: [{ Trigger: 'PreSignUp' }],
+          },
+        },
+        {}
+      )
+    ).to.be.rejectedWith('denied');
+
+    expect(removePermission).to.not.have.been.called;
+    expect(updateConfiguration).to.not.have.been.called;
+  });
+
   it('should reject create with a descriptive missing-pool error', async () => {
     const findUserPoolByName = sinon.stub().resolves(null);
     const addPermission = sinon.stub().resolves();
@@ -318,10 +464,24 @@ describe('Custom resource Cognito user pool handler', () => {
   });
 
   it('should continue migration when qualified permission already exists', async () => {
+    const calls = [];
     const findUserPoolByName = sinon.stub().resolves({ Id: 'us-east-1_abc123' });
-    const addPermission = sinon.stub().rejects({ name: 'ResourceConflictException' });
-    const updateConfiguration = sinon.stub().resolves();
-    const removePermission = sinon.stub().resolves();
+    const addPermission = sinon.stub();
+    addPermission.onFirstCall().callsFake(async (input) => {
+      calls.push(['addPermission', input]);
+      throw Object.assign(new Error('permission exists'), {
+        name: 'ResourceConflictException',
+      });
+    });
+    addPermission.onSecondCall().callsFake(async (input) => {
+      calls.push(['addPermission', input]);
+    });
+    const updateConfiguration = sinon.stub().callsFake(async (input) => {
+      calls.push(['updateConfiguration', input]);
+    });
+    const removePermission = sinon.stub().callsFake(async (input) => {
+      calls.push(['removePermission', input]);
+    });
     const removeConfiguration = sinon.stub().resolves();
 
     const { handler } = proxyquire(
@@ -336,7 +496,7 @@ describe('Custom resource Cognito user pool handler', () => {
           }),
           handlerWrapper: (wrappedHandler) => wrappedHandler,
         },
-        './lib/permissions': { addPermission, removePermission },
+        './lib/permissions': { addPermission, removePermission, getStatementId },
         './lib/user-pool': {
           findUserPoolByName,
           updateConfiguration,
@@ -363,8 +523,55 @@ describe('Custom resource Cognito user pool handler', () => {
       {}
     );
 
+    expect(addPermission).to.have.been.calledTwice;
     expect(updateConfiguration).to.have.been.calledOnce;
-    expect(removePermission).to.have.been.calledOnce;
+    expect(removePermission).to.have.been.calledTwice;
+    expect(removePermission.args[0][0]).to.include({
+      functionName: 'orders',
+      functionQualifier: 'provisioned',
+      userPoolName: 'orders-pool',
+    });
+    expect(removePermission.args[1][0]).to.include({
+      functionName: 'orders',
+      userPoolName: 'orders-pool',
+    });
+    expect(removePermission.args[1][0]).to.have.property('functionQualifier', undefined);
+    expect(calls.map(([name]) => name)).to.deep.equal([
+      'addPermission',
+      'removePermission',
+      'addPermission',
+      'updateConfiguration',
+      'removePermission',
+    ]);
+  });
+
+  it('should not remove old permission when migrated user pools share a statement ID', async () => {
+    const removeConfiguration = sinon.stub().resolves();
+    const { handler, removePermission } = makeHandler({ removeConfiguration });
+
+    await handler(
+      {
+        RequestType: 'Update',
+        ResourceProperties: {
+          FunctionName: 'orders',
+          UserPoolName: 'orderspool',
+          UserPoolConfigs: [{ Trigger: 'PreSignUp' }],
+        },
+        OldResourceProperties: {
+          FunctionName: 'orders',
+          UserPoolName: 'Orders Pool',
+          UserPoolConfigs: [{ Trigger: 'PreSignUp' }],
+        },
+      },
+      {}
+    );
+
+    expect(removeConfiguration).to.have.been.calledOnceWithExactly({
+      lambdaArn: 'arn:aws:lambda:us-east-1:123456789012:function:orders',
+      userPoolName: 'Orders Pool',
+      region: 'us-east-1',
+    });
+    expect(removePermission).to.not.have.been.called;
   });
 
   it('should not remove previous Lambda arn from a new user pool', async () => {
@@ -422,6 +629,13 @@ describe('Custom resource Cognito user pool handler', () => {
       lambdaArn: 'arn:aws:lambda:us-east-1:123456789012:function:orders',
       userPoolName: 'old-orders-pool',
     });
+    expect(removePermission).to.have.been.calledOnce;
+    expect(removePermission.args[0][0]).to.include({
+      functionName: 'orders',
+      userPoolName: 'old-orders-pool',
+      region: 'us-east-1',
+    });
+    expect(removePermission.args[0][0]).to.have.property('functionQualifier', undefined);
   });
 
   it('should remove trigger configuration when Lambda permission is already missing', async () => {
