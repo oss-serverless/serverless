@@ -2372,11 +2372,20 @@ describe('test/unit/lib/plugins/aws/invokeLocal/index.test.js', () => {
     });
   });
 
-  describe('Python', () => {
+  describe('Python', function () {
+    // First real child-process spawns of the suite; Windows runners show rare
+    // multi-tens-of-seconds AV/disk stalls on first interpreter execution.
+    this.timeout(180000);
+
     before(async function () {
       const executable = process.platform === 'win32' ? 'python.exe' : 'python';
       try {
         await spawnExt(executable, ['--version']);
+        // Full interpreter boot and stdin round trip, so first-execution
+        // scanning cost lands here instead of in a fixture-running hook.
+        await spawnExt(executable, ['-c', 'import json,sys; json.load(sys.stdin)'], {
+          input: '{}',
+        });
       } catch {
         skipWithNotice(this, 'Python runtime is not installed');
       }
@@ -2398,11 +2407,20 @@ describe('test/unit/lib/plugins/aws/invokeLocal/index.test.js', () => {
     });
   });
 
-  describe('Ruby', () => {
+  describe('Ruby', function () {
+    // First real child-process spawns of the suite; Windows runners show rare
+    // multi-tens-of-seconds AV/disk stalls on first interpreter execution.
+    this.timeout(180000);
+
     before(async function () {
       const executable = process.platform === 'win32' ? 'ruby.exe' : 'ruby';
       try {
         await spawnExt(executable, ['--version']);
+        // Full interpreter boot and stdin round trip, so first-execution
+        // scanning cost lands here instead of in a fixture-running hook.
+        await spawnExt(executable, ['-e', 'require "json"; JSON.parse(STDIN.read)'], {
+          input: '{}',
+        });
       } catch {
         skipWithNotice(this, 'Ruby runtime is not installed');
       }

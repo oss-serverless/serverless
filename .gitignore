@@ -5,4 +5,5 @@ npm-debug.log
 /package-lock.json
 /yarn.lock
 **/.DS_Store
+**/__pycache__/
 bun.lockb
