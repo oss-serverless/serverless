@@ -1051,6 +1051,65 @@ describe('#compileMethods()', () => {
     });
   });
 
+  it('should target the generated Lambda durable alias for durable REST API routes', async () => {
+    const { awsNaming, cfTemplate } = await runServerless({
+      fixture: 'function',
+      command: 'package',
+      configExt: {
+        functions: {
+          basic: {
+            runtime: 'nodejs24.x',
+            durableConfig: {
+              executionTimeout: 3600,
+            },
+            events: [
+              {
+                http: {
+                  method: 'get',
+                  path: 'orders',
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
+    const durableAliasLogicalId = awsNaming.getLambdaDurableAliasLogicalId('basic');
+    const durableAliasTarget = {
+      'Fn::Join': [
+        ':',
+        [
+          { 'Fn::GetAtt': [awsNaming.getLambdaLogicalId('basic'), 'Arn'] },
+          awsNaming.getLambdaDurableAliasName(),
+        ],
+      ],
+    };
+    const method = cfTemplate.Resources[awsNaming.getMethodLogicalId('Orders', 'get')];
+
+    expect(method.Properties.Integration.Uri).to.deep.equal({
+      'Fn::Join': [
+        '',
+        [
+          'arn:',
+          { Ref: 'AWS::Partition' },
+          ':apigateway:',
+          { Ref: 'AWS::Region' },
+          ':lambda:path/2015-03-31/functions/',
+          { 'Fn::GetAtt': [awsNaming.getLambdaLogicalId('basic'), 'Arn'] },
+          ':',
+          awsNaming.getLambdaDurableAliasName(),
+          '/invocations',
+        ],
+      ],
+    });
+    expect(method.DependsOn).to.include(durableAliasLogicalId);
+
+    const permission =
+      cfTemplate.Resources[awsNaming.getLambdaApiGatewayPermissionLogicalId('basic')];
+    expect(permission.Properties.FunctionName).to.deep.equal(durableAliasTarget);
+    expect(permission.DependsOn).to.equal(durableAliasLogicalId);
+  });
+
   it('should use streaming lambda URI when transferMode is STREAM with AWS_PROXY', () => {
     awsCompileApigEvents.validated.events = [
       {

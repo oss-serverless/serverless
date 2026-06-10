@@ -2,6 +2,7 @@
 
 const expect = require('chai').expect;
 const sinon = require('sinon');
+const logEmitter = require('log/lib/emitter');
 const { ListVersionsByFunctionCommand } = require('@aws-sdk/client-lambda');
 const AwsPrune = require('../../../../../lib/plugins/aws/prune');
 const ServerlessError = require('../../../../../lib/serverless-error');
@@ -108,6 +109,12 @@ describe('AwsPrune', () => {
       serverless.service.functions.FunctionA.versionFunction = true;
       expect(awsPrune.shouldVersionFunction('FunctionA')).to.equal(true);
     });
+
+    it('should skip durable functions', () => {
+      serverless.service.functions.FunctionA.versionFunction = true;
+      serverless.service.functions.FunctionA.durableConfig = { executionTimeout: 3600 };
+      expect(awsPrune.shouldVersionFunction('FunctionA')).to.equal(false);
+    });
   });
 
   describe('#validateConfiguration()', () => {
@@ -115,7 +122,37 @@ describe('AwsPrune', () => {
       serverless.service.provider.pruneFunctionVersions = true;
       serverless.service.provider.versionFunctions = false;
 
-      expect(() => awsPrune.validateConfiguration()).to.throw(ServerlessError);
+      expect(() => awsPrune.validateConfiguration())
+        .to.throw(ServerlessError)
+        .with.property('code', 'PRUNE_INCOMPATIBLE_WITH_VERSION_FUNCTIONS');
+    });
+
+    it('should not throw when only durable functions force versioning', () => {
+      serverless.service.provider.pruneFunctionVersions = true;
+      serverless.service.provider.versionFunctions = false;
+      serverless.service.functions.FunctionA.durableConfig = { executionTimeout: 3600 };
+      delete serverless.service.functions.FunctionB;
+
+      expect(() => awsPrune.validateConfiguration()).to.not.throw();
+    });
+
+    it('should throw when versionFunctions is false and a non-durable function is prunable', () => {
+      serverless.service.provider.pruneFunctionVersions = true;
+      serverless.service.provider.versionFunctions = false;
+      serverless.service.functions.FunctionA.durableConfig = { executionTimeout: 3600 };
+      serverless.service.functions.FunctionB.versionFunction = true;
+
+      expect(() => awsPrune.validateConfiguration())
+        .to.throw(ServerlessError)
+        .with.property('code', 'PRUNE_INCOMPATIBLE_WITH_VERSION_FUNCTIONS');
+    });
+
+    it('should not throw when durable functions are mixed with non-prunable functions', () => {
+      serverless.service.provider.pruneFunctionVersions = true;
+      serverless.service.provider.versionFunctions = false;
+      serverless.service.functions.FunctionA.durableConfig = { executionTimeout: 3600 };
+
+      expect(() => awsPrune.validateConfiguration()).to.not.throw();
     });
 
     it('should not throw when pruning is disabled', () => {
@@ -323,6 +360,27 @@ describe('AwsPrune', () => {
       expect(deleteStub.calledOnce).to.equal(true);
       expect(deleteStub.firstCall.args[0]).to.equal('service-FunctionB');
     });
+
+    it('should log a verbose skip notice for durable functions', async () => {
+      serverless.service.functions.FunctionA.durableConfig = { executionTimeout: 3600 };
+      serverless.service.functions.FunctionB.versionFunction = false;
+      const logEvents = [];
+      const listener = (event) => logEvents.push(event);
+      logEmitter.on('log', listener);
+
+      try {
+        await awsPrune.pruneFunctions();
+      } finally {
+        logEmitter.off('log', listener);
+      }
+
+      const infoMessages = logEvents
+        .filter((event) => event.logger.level === 'info')
+        .map((event) => event.messageTokens[0]);
+      expect(infoMessages).to.include(
+        'Skipped pruning 1 durable function; retained versions may be needed for durable execution replay.'
+      );
+    });
   });
 
   describe('#pruneLayers()', () => {
@@ -361,6 +419,30 @@ describe('AwsPrune', () => {
 
       expect(pruneFunctionsStub.called).to.equal(false);
       expect(pruneLayersStub.called).to.equal(false);
+    });
+
+    it('should prune only layers when only durable functions force versioning', async () => {
+      serverless.service.provider.pruneFunctionVersions = { number: 2 };
+      serverless.service.provider.versionFunctions = false;
+      serverless.service.functions.FunctionA.durableConfig = { executionTimeout: 3600 };
+      delete serverless.service.functions.FunctionB;
+      const listFunctionVersionsStub = sinon.stub(awsPrune, 'listVersionsForFunction').resolves([]);
+      const listFunctionAliasesStub = sinon.stub(awsPrune, 'listAliasesForFunction').resolves([]);
+      const deleteFunctionVersionsStub = sinon
+        .stub(awsPrune, 'deleteVersionsForFunction')
+        .resolves(0);
+      const listLayerVersionsStub = sinon
+        .stub(awsPrune, 'listVersionsForLayer')
+        .resolves([{ Version: 1 }, { Version: 2 }, { Version: 3 }, { Version: 4 }]);
+      const deleteLayerVersionsStub = sinon.stub(awsPrune, 'deleteVersionsForLayer').resolves(2);
+
+      await awsPrune.postDeploy();
+
+      expect(listFunctionVersionsStub.called).to.equal(false);
+      expect(listFunctionAliasesStub.called).to.equal(false);
+      expect(deleteFunctionVersionsStub.called).to.equal(false);
+      expect(listLayerVersionsStub.calledOnceWith('layer-LayerA')).to.equal(true);
+      expect(deleteLayerVersionsStub.firstCall.args).to.deep.equal(['layer-LayerA', [2, 1]]);
     });
   });
 });

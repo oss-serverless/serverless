@@ -1240,6 +1240,940 @@ describe('AwsCompileFunctions', () => {
 
       expect(cfTemplate.Resources.BasicLambdaFunction.Properties).to.not.have.property('SnapStart');
     });
+
+    it('should set function DurableConfig when configured', async () => {
+      const { awsNaming, cfTemplate } = await runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              runtime: 'nodejs24.x',
+              versionFunction: false,
+              durableConfig: {
+                executionTimeout: 3600,
+                retentionPeriodInDays: 30,
+              },
+            },
+          },
+        },
+        command: 'package',
+      });
+
+      expect(cfTemplate.Resources.BasicLambdaFunction.Properties.DurableConfig).to.deep.equal({
+        ExecutionTimeout: 3600,
+        RetentionPeriodInDays: 30,
+      });
+      expect(cfTemplate.Outputs).to.have.property(
+        awsNaming.getLambdaVersionOutputLogicalId('basic')
+      );
+
+      const versionOutput = cfTemplate.Outputs[awsNaming.getLambdaVersionOutputLogicalId('basic')];
+      expect(cfTemplate.Resources[awsNaming.getLambdaDurableAliasLogicalId('basic')]).to.deep.equal(
+        {
+          Type: 'AWS::Lambda::Alias',
+          Properties: {
+            FunctionName: { Ref: awsNaming.getLambdaLogicalId('basic') },
+            FunctionVersion: { 'Fn::GetAtt': [versionOutput.Value.Ref, 'Version'] },
+            Name: awsNaming.getLambdaDurableAliasName(),
+          },
+          DependsOn: awsNaming.getLambdaLogicalId('basic'),
+        }
+      );
+    });
+
+    it('should set function DurableConfig with only executionTimeout', async () => {
+      const { cfTemplate } = await runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              runtime: 'nodejs24.x',
+              durableConfig: {
+                executionTimeout: 7200,
+              },
+            },
+          },
+        },
+        command: 'package',
+      });
+
+      expect(cfTemplate.Resources.BasicLambdaFunction.Properties.DurableConfig).to.deep.equal({
+        ExecutionTimeout: 7200,
+      });
+    });
+
+    it('should support durableConfig with container images', async () => {
+      const imageUri =
+        '000000000000.dkr.ecr.us-east-1.amazonaws.com/test@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+      const { awsNaming, cfTemplate } = await runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            imageDurable: {
+              image: imageUri,
+              durableConfig: {
+                executionTimeout: 3600,
+              },
+            },
+          },
+        },
+        command: 'package',
+      });
+
+      const functionResource = cfTemplate.Resources[awsNaming.getLambdaLogicalId('imageDurable')];
+      const versionResource = Object.values(cfTemplate.Resources).find(
+        (resource) =>
+          resource.Type === 'AWS::Lambda::Version' &&
+          resource.Properties.FunctionName.Ref === awsNaming.getLambdaLogicalId('imageDurable')
+      );
+      const aliasResource =
+        cfTemplate.Resources[awsNaming.getLambdaDurableAliasLogicalId('imageDurable')];
+
+      expect(functionResource.Properties.Code).to.deep.equal({ ImageUri: imageUri });
+      expect(functionResource.Properties.PackageType).to.equal('Image');
+      expect(functionResource.Properties).to.not.have.property('Handler');
+      expect(functionResource.Properties).to.not.have.property('Runtime');
+      expect(functionResource.Properties.DurableConfig).to.deep.equal({ ExecutionTimeout: 3600 });
+      expect(versionResource.Properties.CodeSha256).to.equal(
+        'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+      );
+      expect(aliasResource.Properties).to.deep.include({ Name: 'durable' });
+      expect(aliasResource.Properties.FunctionVersion).to.deep.equal({
+        'Fn::GetAtt': [
+          cfTemplate.Outputs[awsNaming.getLambdaVersionOutputLogicalId('imageDurable')].Value.Ref,
+          'Version',
+        ],
+      });
+    });
+
+    it('should include DurableConfig changes in version logical ids', async () => {
+      const packageService = async (durableConfig) => {
+        const { awsNaming, cfTemplate } = await runServerless({
+          fixture: 'function',
+          configExt: {
+            functions: {
+              basic: { runtime: 'nodejs24.x', durableConfig },
+            },
+          },
+          command: 'package',
+        });
+
+        const versionOutput =
+          cfTemplate.Outputs[awsNaming.getLambdaVersionOutputLogicalId('basic')];
+        return versionOutput.Value.Ref;
+      };
+
+      const firstVersionLogicalId = await packageService({ executionTimeout: 3600 });
+      const secondVersionLogicalId = await packageService({ executionTimeout: 7200 });
+      const thirdVersionLogicalId = await packageService({
+        executionTimeout: 7200,
+        retentionPeriodInDays: 30,
+      });
+
+      expect(firstVersionLogicalId).to.not.equal(secondVersionLogicalId);
+      expect(secondVersionLogicalId).to.not.equal(thirdVersionLogicalId);
+    });
+
+    it('should reject durableConfig without executionTimeout', async () => {
+      await expect(
+        runServerless({
+          fixture: 'function',
+          configExt: {
+            functions: {
+              basic: {
+                durableConfig: {
+                  retentionPeriodInDays: 30,
+                },
+              },
+            },
+          },
+          command: 'package',
+        })
+      ).to.be.eventually.rejected.and.have.property(
+        'code',
+        'INVALID_NON_SCHEMA_COMPLIANT_CONFIGURATION'
+      );
+    });
+
+    it('should reject durableConfig values outside supported ranges', async () => {
+      await expect(
+        runServerless({
+          fixture: 'function',
+          configExt: {
+            functions: {
+              basic: {
+                durableConfig: {
+                  executionTimeout: 31622401,
+                },
+              },
+            },
+          },
+          command: 'package',
+        })
+      ).to.be.eventually.rejected.and.have.property(
+        'code',
+        'INVALID_NON_SCHEMA_COMPLIANT_CONFIGURATION'
+      );
+
+      await expect(
+        runServerless({
+          fixture: 'function',
+          configExt: {
+            functions: {
+              basic: {
+                runtime: 'nodejs24.x',
+                durableConfig: {
+                  executionTimeout: 3600,
+                  retentionPeriodInDays: 91,
+                },
+              },
+            },
+          },
+          command: 'package',
+        })
+      ).to.be.eventually.rejected.and.have.property(
+        'code',
+        'INVALID_NON_SCHEMA_COMPLIANT_CONFIGURATION'
+      );
+    });
+
+    it('should reject durableConfig values below supported ranges', async () => {
+      await expect(
+        runServerless({
+          fixture: 'function',
+          configExt: {
+            functions: {
+              basic: {
+                runtime: 'nodejs24.x',
+                durableConfig: {
+                  executionTimeout: 0,
+                },
+              },
+            },
+          },
+          command: 'package',
+        })
+      ).to.be.eventually.rejected.and.have.property(
+        'code',
+        'INVALID_NON_SCHEMA_COMPLIANT_CONFIGURATION'
+      );
+
+      await expect(
+        runServerless({
+          fixture: 'function',
+          configExt: {
+            functions: {
+              basic: {
+                runtime: 'nodejs24.x',
+                durableConfig: {
+                  executionTimeout: 3600,
+                  retentionPeriodInDays: 0,
+                },
+              },
+            },
+          },
+          command: 'package',
+        })
+      ).to.be.eventually.rejected.and.have.property(
+        'code',
+        'INVALID_NON_SCHEMA_COMPLIANT_CONFIGURATION'
+      );
+    });
+
+    it('should reject durableConfig with unknown properties', async () => {
+      await expect(
+        runServerless({
+          fixture: 'function',
+          configExt: {
+            functions: {
+              basic: {
+                runtime: 'nodejs24.x',
+                durableConfig: {
+                  executionTimeout: 3600,
+                  unknown: true,
+                },
+              },
+            },
+          },
+          command: 'package',
+        })
+      ).to.be.eventually.rejected.and.have.property(
+        'code',
+        'INVALID_NON_SCHEMA_COMPLIANT_CONFIGURATION'
+      );
+    });
+
+    it('should reject durableConfig with unsupported managed runtimes', async () => {
+      await expect(
+        runServerless({
+          fixture: 'function',
+          configExt: {
+            functions: {
+              basic: {
+                runtime: 'nodejs20.x',
+                durableConfig: {
+                  executionTimeout: 3600,
+                },
+              },
+            },
+          },
+          command: 'package',
+        })
+      ).to.be.eventually.rejected.and.have.property('code', 'DURABLE_FUNCTION_UNSUPPORTED_RUNTIME');
+    });
+
+    it('should reject durableConfig resolved through an unsupported provider runtime', async () => {
+      const error = await expect(
+        runServerless({
+          fixture: 'function',
+          configExt: {
+            functions: { basic: { durableConfig: { executionTimeout: 3600 } } },
+          },
+          command: 'package',
+        })
+      ).to.be.eventually.rejected;
+
+      expect(error).to.have.property('code', 'DURABLE_FUNCTION_UNSUPPORTED_RUNTIME');
+      expect(error.message).to.include('nodejs20.x');
+    });
+
+    it('should accept durableConfig resolved through a supported provider runtime', async () => {
+      const { cfTemplate } = await runServerless({
+        fixture: 'function',
+        configExt: {
+          provider: { runtime: 'nodejs22.x' },
+          functions: { basic: { durableConfig: { executionTimeout: 3600 } } },
+        },
+        command: 'package',
+      });
+
+      expect(cfTemplate.Resources.BasicLambdaFunction.Properties.DurableConfig).to.deep.equal({
+        ExecutionTimeout: 3600,
+      });
+    });
+
+    it('should reject durableConfig with maximumRetryAttempts', async () => {
+      await expect(
+        runServerless({
+          fixture: 'function',
+          configExt: {
+            functions: {
+              basic: {
+                runtime: 'nodejs24.x',
+                durableConfig: {
+                  executionTimeout: 3600,
+                },
+                maximumRetryAttempts: 1,
+              },
+            },
+          },
+          command: 'package',
+        })
+      ).to.be.eventually.rejected.and.have.property(
+        'code',
+        'DURABLE_FUNCTION_MAXIMUM_RETRY_ATTEMPTS_UNSUPPORTED'
+      );
+    });
+
+    it('should use durable alias for durable functions with provisioned concurrency', async () => {
+      const { awsNaming, cfTemplate } = await runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              runtime: 'nodejs24.x',
+              durableConfig: {
+                executionTimeout: 3600,
+              },
+              provisionedConcurrency: 1,
+            },
+          },
+        },
+        command: 'package',
+      });
+
+      const versionOutput = cfTemplate.Outputs[awsNaming.getLambdaVersionOutputLogicalId('basic')];
+      expect(cfTemplate.Resources).to.not.have.property(
+        awsNaming.getLambdaProvisionedConcurrencyAliasLogicalId('basic')
+      );
+      expect(cfTemplate.Resources[awsNaming.getLambdaDurableAliasLogicalId('basic')]).to.deep.equal(
+        {
+          Type: 'AWS::Lambda::Alias',
+          Properties: {
+            FunctionName: { Ref: awsNaming.getLambdaLogicalId('basic') },
+            FunctionVersion: { 'Fn::GetAtt': [versionOutput.Value.Ref, 'Version'] },
+            Name: awsNaming.getLambdaDurableAliasName(),
+            ProvisionedConcurrencyConfig: {
+              ProvisionedConcurrentExecutions: 1,
+            },
+          },
+          DependsOn: awsNaming.getLambdaLogicalId('basic'),
+        }
+      );
+    });
+
+    it('should force versioning and the durable alias when provider versionFunctions is false', async () => {
+      const { awsNaming, cfTemplate } = await runServerless({
+        fixture: 'function',
+        configExt: {
+          provider: { versionFunctions: false },
+          functions: {
+            basic: { runtime: 'nodejs24.x', durableConfig: { executionTimeout: 3600 } },
+          },
+        },
+        command: 'package',
+      });
+
+      expect(cfTemplate.Outputs).to.have.property(
+        awsNaming.getLambdaVersionOutputLogicalId('basic')
+      );
+      expect(cfTemplate.Resources).to.have.property(
+        awsNaming.getLambdaDurableAliasLogicalId('basic')
+      );
+    });
+
+    it('should use durable alias for durable functions with SnapStart', async () => {
+      const { awsNaming, cfTemplate } = await runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              runtime: 'java17',
+              durableConfig: {
+                executionTimeout: 3600,
+              },
+              snapStart: true,
+            },
+          },
+        },
+        command: 'package',
+      });
+
+      const versionOutput = cfTemplate.Outputs[awsNaming.getLambdaVersionOutputLogicalId('basic')];
+      expect(cfTemplate.Resources.BasicLambdaFunction.Properties.SnapStart).to.deep.equal({
+        ApplyOn: 'PublishedVersions',
+      });
+      expect(cfTemplate.Resources).to.not.have.property(
+        awsNaming.getLambdaSnapStartAliasLogicalId('basic')
+      );
+      expect(cfTemplate.Resources[awsNaming.getLambdaDurableAliasLogicalId('basic')]).to.deep.equal(
+        {
+          Type: 'AWS::Lambda::Alias',
+          Properties: {
+            FunctionName: { Ref: awsNaming.getLambdaLogicalId('basic') },
+            FunctionVersion: { 'Fn::GetAtt': [versionOutput.Value.Ref, 'Version'] },
+            Name: awsNaming.getLambdaDurableAliasName(),
+          },
+          DependsOn: awsNaming.getLambdaLogicalId('basic'),
+        }
+      );
+    });
+
+    it('should reject durableConfig with SnapStart on unsupported durable SnapStart runtimes', async () => {
+      await expect(
+        runServerless({
+          fixture: 'function',
+          configExt: {
+            functions: {
+              basic: {
+                runtime: 'nodejs24.x',
+                durableConfig: {
+                  executionTimeout: 3600,
+                },
+                snapStart: true,
+              },
+            },
+          },
+          command: 'package',
+        })
+      ).to.be.eventually.rejected.and.have.property(
+        'code',
+        'DURABLE_FUNCTION_SNAPSTART_UNSUPPORTED'
+      );
+    });
+
+    it('should reject durableConfig with SnapStart and EFS', async () => {
+      await expect(
+        runServerless({
+          fixture: 'function',
+          configExt: {
+            functions: {
+              basic: {
+                runtime: 'java17',
+                durableConfig: {
+                  executionTimeout: 3600,
+                },
+                snapStart: true,
+                vpc: {
+                  subnetIds: ['subnet-01010101'],
+                  securityGroupIds: ['sg-0a0a0a0a'],
+                },
+                fileSystemConfig: {
+                  arn: 'arn:aws:elasticfilesystem:us-east-1:111111111111:access-point/fsap-a1a1a1a1a1a1a1a1a',
+                  localMountPath: '/mnt/path',
+                },
+              },
+            },
+          },
+          command: 'package',
+        })
+      ).to.be.eventually.rejected.and.have.property(
+        'code',
+        'DURABLE_FUNCTION_SNAPSTART_UNSUPPORTED'
+      );
+    });
+
+    it('should reject durableConfig with SnapStart and container images', async () => {
+      await expect(
+        runServerless({
+          fixture: 'function',
+          configExt: {
+            functions: {
+              basic: {
+                handler: null,
+                image:
+                  '000000000000.dkr.ecr.sa-east-1.amazonaws.com/test-lambda-docker@sha256:6bb600b4d6e1d7cf521097177dd0c4e9ea373edb91984a505333be8ac9455d38',
+                durableConfig: {
+                  executionTimeout: 3600,
+                },
+                snapStart: true,
+              },
+            },
+          },
+          command: 'package',
+        })
+      ).to.be.eventually.rejected.and.have.property(
+        'code',
+        'DURABLE_FUNCTION_SNAPSTART_UNSUPPORTED'
+      );
+    });
+
+    it('should reject durableConfig with SnapStart and 513 MB ephemeral storage', async () => {
+      await expect(
+        runServerless({
+          fixture: 'function',
+          configExt: {
+            functions: {
+              basic: {
+                runtime: 'python3.13',
+                durableConfig: {
+                  executionTimeout: 3600,
+                },
+                snapStart: true,
+                ephemeralStorageSize: 513,
+              },
+            },
+          },
+          command: 'package',
+        })
+      ).to.be.eventually.rejected.and.have.property(
+        'code',
+        'DURABLE_FUNCTION_SNAPSTART_UNSUPPORTED'
+      );
+    });
+
+    it('should accept durableConfig with SnapStart at the 512 MB ephemeral storage boundary', async () => {
+      const { awsNaming, cfTemplate } = await runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              runtime: 'python3.13',
+              durableConfig: { executionTimeout: 3600 },
+              snapStart: true,
+              ephemeralStorageSize: 512,
+            },
+          },
+        },
+        command: 'package',
+      });
+
+      expect(cfTemplate.Resources.BasicLambdaFunction.Properties.SnapStart).to.deep.equal({
+        ApplyOn: 'PublishedVersions',
+      });
+      expect(cfTemplate.Resources.BasicLambdaFunction.Properties.EphemeralStorage).to.deep.equal({
+        Size: 512,
+      });
+      expect(cfTemplate.Resources).to.have.property(
+        awsNaming.getLambdaDurableAliasLogicalId('basic')
+      );
+    });
+
+    it('should include SnapStart changes in version logical ids', async () => {
+      const packageService = async (snapStart) => {
+        const { awsNaming, cfTemplate } = await runServerless({
+          fixture: 'function',
+          configExt: {
+            functions: {
+              basic: {
+                runtime: 'java17',
+                durableConfig: {
+                  executionTimeout: 3600,
+                },
+                snapStart,
+              },
+            },
+          },
+          command: 'package',
+        });
+
+        const versionOutput =
+          cfTemplate.Outputs[awsNaming.getLambdaVersionOutputLogicalId('basic')];
+        return versionOutput.Value.Ref;
+      };
+
+      const withoutSnapStart = await packageService(false);
+      const withSnapStart = await packageService(true);
+
+      expect(withoutSnapStart).to.not.equal(withSnapStart);
+    });
+
+    it('should reject durableConfig with Lambda destinations', async () => {
+      await expect(
+        runServerless({
+          fixture: 'function',
+          configExt: {
+            functions: {
+              basic: {
+                runtime: 'nodejs24.x',
+                durableConfig: {
+                  executionTimeout: 3600,
+                },
+                destinations: {
+                  onSuccess: 'other',
+                },
+              },
+            },
+          },
+          command: 'package',
+        })
+      ).to.be.eventually.rejected.and.have.property(
+        'code',
+        'DURABLE_FUNCTION_DESTINATIONS_UNSUPPORTED'
+      );
+    });
+
+    it('should reject durableConfig with cloudFront events', async () => {
+      await expect(
+        runServerless({
+          fixture: 'function',
+          configExt: {
+            functions: {
+              basic: {
+                runtime: 'nodejs24.x',
+                durableConfig: { executionTimeout: 900 },
+                events: [
+                  {
+                    cloudFront: {
+                      eventType: 'viewer-request',
+                      origin: 's3://bucketname.s3.amazonaws.com/files',
+                    },
+                  },
+                ],
+              },
+            },
+          },
+          command: 'package',
+        })
+      ).to.be.eventually.rejected.and.have.property(
+        'code',
+        'DURABLE_FUNCTION_LAMBDA_EDGE_UNSUPPORTED'
+      );
+    });
+
+    it('should accept durableConfig at the maximum boundary values', async () => {
+      const { cfTemplate } = await runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              runtime: 'nodejs24.x',
+              durableConfig: { executionTimeout: 31622400, retentionPeriodInDays: 90 },
+            },
+          },
+        },
+        command: 'package',
+      });
+
+      expect(cfTemplate.Resources.BasicLambdaFunction.Properties.DurableConfig).to.deep.equal({
+        ExecutionTimeout: 31622400,
+        RetentionPeriodInDays: 90,
+      });
+    });
+
+    it('should accept durableConfig at the minimum boundary values', async () => {
+      const { cfTemplate } = await runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              runtime: 'nodejs24.x',
+              durableConfig: { executionTimeout: 1, retentionPeriodInDays: 1 },
+            },
+          },
+        },
+        command: 'package',
+      });
+
+      expect(cfTemplate.Resources.BasicLambdaFunction.Properties.DurableConfig).to.deep.equal({
+        ExecutionTimeout: 1,
+        RetentionPeriodInDays: 1,
+      });
+    });
+
+    it('should reject durableConfig over 900 seconds with event source mappings', async () => {
+      const events = [
+        { sqs: 'arn:aws:sqs:region:account:MyQueue' },
+        { stream: 'arn:aws:dynamodb:region:account:table/foo/stream/1' },
+        {
+          msk: {
+            topic: 'TestingTopic',
+            arn: 'arn:aws:kafka:us-east-1:111111111111:cluster/ClusterName/a1a1a1a1a1a1a1a1a',
+          },
+        },
+        {
+          kafka: {
+            topic: 'TestingTopic',
+            bootstrapServers: ['abc.xyz:9092'],
+            accessConfigurations: {
+              saslScram256Auth:
+                'arn:aws:secretsmanager:us-east-1:01234567890:secret:SaslScram256Auth',
+            },
+          },
+        },
+        {
+          activemq: {
+            queue: 'TestingQueue',
+            arn: 'arn:aws:mq:us-east-1:0000:broker:ExampleMQBroker:b-xxx-xxx',
+            basicAuthArn: 'arn:aws:secretsmanager:us-east-1:01234567890:secret:MyBrokerSecretName',
+          },
+        },
+        {
+          rabbitmq: {
+            queue: 'TestingQueue',
+            arn: 'arn:aws:mq:us-east-1:0000:broker:ExampleMQBroker:b-xxx-xxx',
+            basicAuthArn: 'arn:aws:secretsmanager:us-east-1:01234567890:secret:MyBrokerSecretName',
+          },
+        },
+      ];
+
+      for (const event of events) {
+        await expect(
+          runServerless({
+            fixture: 'function',
+            configExt: {
+              functions: {
+                basic: {
+                  runtime: 'nodejs24.x',
+                  durableConfig: {
+                    executionTimeout: 901,
+                  },
+                  events: [event],
+                },
+              },
+            },
+            command: 'package',
+          })
+        ).to.be.eventually.rejected.and.have.property(
+          'code',
+          'DURABLE_FUNCTION_ESM_TIMEOUT_UNSUPPORTED'
+        );
+      }
+    });
+
+    it('should support durableConfig with event source mappings at 900 seconds', async () => {
+      const { awsNaming, cfTemplate } = await runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              runtime: 'nodejs24.x',
+              durableConfig: {
+                executionTimeout: 900,
+              },
+              events: [
+                {
+                  sqs: 'arn:aws:sqs:region:account:MyQueue',
+                },
+              ],
+            },
+          },
+        },
+        command: 'package',
+      });
+
+      const eventSourceMapping = Object.values(cfTemplate.Resources).find(
+        (resource) => resource.Type === 'AWS::Lambda::EventSourceMapping'
+      );
+      expect(eventSourceMapping.Properties.FunctionName).to.deep.equal({
+        'Fn::Join': [
+          ':',
+          [
+            { 'Fn::GetAtt': [awsNaming.getLambdaLogicalId('basic'), 'Arn'] },
+            awsNaming.getLambdaDurableAliasName(),
+          ],
+        ],
+      });
+      expect(eventSourceMapping.DependsOn).to.include(
+        awsNaming.getLambdaDurableAliasLogicalId('basic')
+      );
+    });
+
+    it('should support durableConfig with stream event source mapping destinations', async () => {
+      const destination = 'arn:aws:sqs:us-east-1:123456789012:queue';
+      const { awsNaming, cfTemplate } = await runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              runtime: 'nodejs24.x',
+              durableConfig: {
+                executionTimeout: 900,
+              },
+              events: [
+                {
+                  stream: {
+                    type: 'dynamodb',
+                    arn: 'arn:aws:dynamodb:region:account:table/foo/stream/1',
+                    destinations: {
+                      onFailure: destination,
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+        command: 'package',
+      });
+
+      const eventSourceMapping = Object.values(cfTemplate.Resources).find(
+        (resource) => resource.Type === 'AWS::Lambda::EventSourceMapping'
+      );
+      expect(eventSourceMapping.Properties.DestinationConfig).to.deep.equal({
+        OnFailure: { Destination: destination },
+      });
+      expect(eventSourceMapping.Properties.FunctionName).to.deep.equal({
+        'Fn::Join': [
+          ':',
+          [
+            { 'Fn::GetAtt': [awsNaming.getLambdaLogicalId('basic'), 'Arn'] },
+            awsNaming.getLambdaDurableAliasName(),
+          ],
+        ],
+      });
+      expect(eventSourceMapping.DependsOn).to.include(
+        awsNaming.getLambdaDurableAliasLogicalId('basic')
+      );
+    });
+
+    it('should support durableConfig with kafka event source mapping destinations', async () => {
+      const destination = 'arn:aws:sqs:us-east-1:123456789012:queue';
+      const { awsNaming, cfTemplate } = await runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              runtime: 'nodejs24.x',
+              durableConfig: {
+                executionTimeout: 900,
+              },
+              events: [
+                {
+                  kafka: {
+                    topic: 'TestingTopic',
+                    bootstrapServers: ['abc.xyz:9092'],
+                    accessConfigurations: {
+                      saslScram256Auth:
+                        'arn:aws:secretsmanager:us-east-1:01234567890:secret:SaslScram256Auth',
+                    },
+                    onFailureDestination: destination,
+                  },
+                },
+              ],
+            },
+          },
+        },
+        command: 'package',
+      });
+
+      const eventSourceMapping = Object.values(cfTemplate.Resources).find(
+        (resource) => resource.Type === 'AWS::Lambda::EventSourceMapping'
+      );
+      expect(eventSourceMapping.Properties.DestinationConfig).to.deep.equal({
+        OnFailure: { Destination: destination },
+      });
+      expect(eventSourceMapping.Properties.FunctionName).to.deep.equal({
+        'Fn::Join': [
+          ':',
+          [
+            { 'Fn::GetAtt': [awsNaming.getLambdaLogicalId('basic'), 'Arn'] },
+            awsNaming.getLambdaDurableAliasName(),
+          ],
+        ],
+      });
+      expect(eventSourceMapping.DependsOn).to.include(
+        awsNaming.getLambdaDurableAliasLogicalId('basic')
+      );
+    });
+
+    it('should propagate function conditions to generated durable resources', async () => {
+      const condition = 'CreateFunctionCondition';
+      const { awsNaming, cfTemplate } = await runServerless({
+        fixture: 'function',
+        configExt: {
+          resources: {
+            Conditions: {
+              [condition]: {
+                'Fn::Equals': ['true', 'true'],
+              },
+            },
+          },
+          functions: {
+            basic: {
+              runtime: 'nodejs24.x',
+              condition,
+              durableConfig: {
+                executionTimeout: 3600,
+              },
+              url: true,
+              maximumEventAge: 3600,
+            },
+          },
+        },
+        command: 'package',
+      });
+
+      const functionVersionOutputLogicalId = awsNaming.getLambdaVersionOutputLogicalId('basic');
+      const functionVersionLogicalId = cfTemplate.Outputs[functionVersionOutputLogicalId].Value.Ref;
+
+      expect(cfTemplate.Resources[awsNaming.getLogGroupLogicalId('basic')].Condition).to.equal(
+        condition
+      );
+      expect(cfTemplate.Resources[functionVersionLogicalId].Condition).to.equal(condition);
+      expect(cfTemplate.Outputs[functionVersionOutputLogicalId].Condition).to.equal(condition);
+      expect(
+        cfTemplate.Resources[awsNaming.getLambdaDurableAliasLogicalId('basic')].Condition
+      ).to.equal(condition);
+      expect(
+        cfTemplate.Resources[awsNaming.getLambdaFunctionUrlLogicalId('basic')].Condition
+      ).to.equal(condition);
+      expect(
+        cfTemplate.Resources[awsNaming.getLambdaFnUrlPermissionLogicalId('basic')].Condition
+      ).to.equal(condition);
+      expect(
+        cfTemplate.Resources[awsNaming.getLambdaFnPermissionLogicalId('basic')].Condition
+      ).to.equal(condition);
+      expect(cfTemplate.Resources[awsNaming.getLambdaEventConfigLogicalId('basic')]).to.include({
+        Condition: condition,
+      });
+      expect(
+        cfTemplate.Resources[awsNaming.getLambdaEventConfigLogicalId('basic')].Properties.Qualifier
+      ).to.equal(awsNaming.getLambdaDurableAliasName());
+      expect(
+        cfTemplate.Resources[awsNaming.getLambdaEventConfigLogicalId('basic')].DependsOn
+      ).to.equal(awsNaming.getLambdaDurableAliasLogicalId('basic'));
+    });
   });
 
   describe('#compileRole()', () => {
@@ -2862,6 +3796,70 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
       ).to.equal('FnUrlWithProvisionedProvConcLambdaAlias');
     });
 
+    it('should support `functions[].url` with durableConfig', async () => {
+      const { awsNaming, cfTemplate } = await runServerless({
+        fixture: 'function',
+        command: 'package',
+        configExt: {
+          functions: {
+            basic: {
+              runtime: 'nodejs24.x',
+              durableConfig: {
+                executionTimeout: 3600,
+              },
+              url: true,
+            },
+          },
+        },
+      });
+
+      const versionOutput = cfTemplate.Outputs[awsNaming.getLambdaVersionOutputLogicalId('basic')];
+      const durableAliasLogicalId = awsNaming.getLambdaDurableAliasLogicalId('basic');
+      const durableAliasTarget = {
+        'Fn::Join': [
+          ':',
+          [
+            { 'Fn::GetAtt': [awsNaming.getLambdaLogicalId('basic'), 'Arn'] },
+            awsNaming.getLambdaDurableAliasName(),
+          ],
+        ],
+      };
+
+      expect(cfTemplate.Resources[durableAliasLogicalId]).to.deep.equal({
+        Type: 'AWS::Lambda::Alias',
+        Properties: {
+          FunctionName: { Ref: awsNaming.getLambdaLogicalId('basic') },
+          FunctionVersion: { 'Fn::GetAtt': [versionOutput.Value.Ref, 'Version'] },
+          Name: awsNaming.getLambdaDurableAliasName(),
+        },
+        DependsOn: awsNaming.getLambdaLogicalId('basic'),
+      });
+
+      expect(
+        cfTemplate.Resources[awsNaming.getLambdaFunctionUrlLogicalId('basic')].Properties
+      ).to.deep.equal({
+        AuthType: 'NONE',
+        TargetFunctionArn: durableAliasTarget,
+      });
+      expect(
+        cfTemplate.Resources[awsNaming.getLambdaFunctionUrlLogicalId('basic')].DependsOn
+      ).to.equal(durableAliasLogicalId);
+      expect(
+        cfTemplate.Resources[awsNaming.getLambdaFnUrlPermissionLogicalId('basic')].Properties
+          .FunctionName
+      ).to.deep.equal(durableAliasTarget);
+      expect(
+        cfTemplate.Resources[awsNaming.getLambdaFnUrlPermissionLogicalId('basic')].DependsOn
+      ).to.equal(durableAliasLogicalId);
+      expect(
+        cfTemplate.Resources[awsNaming.getLambdaFnPermissionLogicalId('basic')].Properties
+          .FunctionName
+      ).to.deep.equal(durableAliasTarget);
+      expect(
+        cfTemplate.Resources[awsNaming.getLambdaFnPermissionLogicalId('basic')].DependsOn
+      ).to.equal(durableAliasLogicalId);
+    });
+
     it('should support `functions[].url` set to an object with values', () => {
       expect(
         cfResources[naming.getLambdaFunctionUrlLogicalId('fnUrlWithAuthCorsAndInvokeMode')]
@@ -3016,6 +4014,64 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
           'Fn::Sub': `arn:\${AWS::Partition}:lambda:\${AWS::Region}:\${AWS::AccountId}:function:${
             serverless.service.getFunction('fnProvisionedDestinationTarget').name
           }:provisioned`,
+        },
+      });
+    });
+
+    it('should support `functions[].destinations` referencing durable function in same stack', async () => {
+      const {
+        awsNaming,
+        cfTemplate,
+        serverless: serverlessInstance,
+      } = await runServerless({
+        fixture: 'function',
+        command: 'package',
+        configExt: {
+          functions: {
+            source: {
+              handler: 'source.handler',
+              destinations: {
+                onSuccess: 'target',
+                onFailure: 'target',
+              },
+            },
+            target: {
+              handler: 'target.handler',
+              runtime: 'nodejs24.x',
+              durableConfig: {
+                executionTimeout: 3600,
+              },
+            },
+          },
+        },
+      });
+      const durableAliasLogicalId = awsNaming.getLambdaDurableAliasLogicalId('target');
+      const durableAliasTarget = {
+        'Fn::Join': [
+          ':',
+          [
+            { 'Fn::GetAtt': [awsNaming.getLambdaLogicalId('target'), 'Arn'] },
+            awsNaming.getLambdaDurableAliasName(),
+          ],
+        ],
+      };
+      const eventConfig = cfTemplate.Resources[awsNaming.getLambdaEventConfigLogicalId('source')];
+      const iamStatements =
+        cfTemplate.Resources[awsNaming.getRoleLogicalId()].Properties.Policies[0].PolicyDocument
+          .Statement;
+
+      expect(eventConfig.Properties.DestinationConfig).to.deep.equal({
+        OnSuccess: { Destination: durableAliasTarget },
+        OnFailure: { Destination: durableAliasTarget },
+      });
+      expect([].concat(eventConfig.DependsOn)).to.include(durableAliasLogicalId);
+      expect(iamStatements).to.deep.include({
+        Effect: 'Allow',
+        Action: 'lambda:InvokeFunction',
+        Resource: {
+          'Fn::Sub': `arn:\${AWS::Partition}:lambda:\${AWS::Region}:\${AWS::AccountId}:function:${
+            serverlessInstance.service.getFunction('target').name
+          }:${awsNaming.getLambdaDurableAliasName()}`,
         },
       });
     });

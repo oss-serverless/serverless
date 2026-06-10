@@ -756,7 +756,18 @@ functions:
       arn: arn:aws:elasticfilesystem:us-east-1:11111111:access-point/fsap-a1a1a1
       # Path under which EFS will be mounted and accessible in Lambda
       localMountPath: /mnt/example
-    # Maximum retry attempts when an asynchronous invocation fails (between 0 and 2; default: 2)
+    # AWS Lambda Durable Functions; requires a supported runtime or compatible container
+    # image. Automatically publishes a function version and a 'durable' alias that
+    # generated event targets invoke through. Adding or removing durableConfig on a
+    # deployed function requires replacement; changing its values updates in place.
+    # See the Functions guide (guides/functions.md#aws-lambda-durable-functions).
+    durableConfig:
+      # Required: 1-31622400 seconds
+      executionTimeout: 3600
+      # Optional: 1-90 days
+      retentionPeriodInDays: 30
+    # Maximum retry attempts when an asynchronous invocation fails (between 0 and 2; default: 2).
+    # This top-level setting is not supported on functions that configure durableConfig.
     maximumRetryAttempts: 1
     # Maximum event age in seconds when invoking asynchronously (between 60 and 21600)
     maximumEventAge: 7200

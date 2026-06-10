@@ -668,6 +668,46 @@ describe('lib/plugins/aws/package/compile/events/httpApi.test.js', () => {
       });
     });
 
+    it('should target the generated Lambda durable alias for durable HTTP API routes', async () => {
+      const { awsNaming, cfTemplate } = await runServerless({
+        fixture: 'http-api',
+        configExt: {
+          functions: {
+            foo: {
+              runtime: 'nodejs24.x',
+              durableConfig: {
+                executionTimeout: 3600,
+              },
+              events: [
+                {
+                  httpApi: 'GET /orders',
+                },
+              ],
+            },
+          },
+        },
+        command: 'package',
+      });
+      const durableAliasLogicalId = awsNaming.getLambdaDurableAliasLogicalId('foo');
+      const durableAliasTarget = {
+        'Fn::Join': [
+          ':',
+          [
+            { 'Fn::GetAtt': [awsNaming.getLambdaLogicalId('foo'), 'Arn'] },
+            awsNaming.getLambdaDurableAliasName(),
+          ],
+        ],
+      };
+
+      const integration = cfTemplate.Resources[awsNaming.getHttpApiIntegrationLogicalId('foo')];
+      expect(integration.Properties.IntegrationUri).to.deep.equal(durableAliasTarget);
+      expect(integration.DependsOn).to.equal(durableAliasLogicalId);
+
+      const permission = cfTemplate.Resources[awsNaming.getLambdaHttpApiPermissionLogicalId('foo')];
+      expect(permission.Properties.FunctionName).to.deep.equal(durableAliasTarget);
+      expect(permission.DependsOn).to.equal(durableAliasLogicalId);
+    });
+
     it('should throw when request authorizer does not have "functionName" and "functionArn" defined', async () => {
       await expect(
         runServerless({

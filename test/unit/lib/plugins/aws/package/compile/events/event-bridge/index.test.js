@@ -247,6 +247,85 @@ describe('EventBridgeEvents', () => {
         ).to.equal(aliasLogicalId);
       });
 
+      it('should target the generated Lambda durable alias for durable functions', async () => {
+        const { awsNaming, cfTemplate } = await runServerless({
+          fixture: 'function',
+          command: 'package',
+          configExt: {
+            functions: {
+              basic: {
+                runtime: 'nodejs24.x',
+                durableConfig: {
+                  executionTimeout: 3600,
+                },
+                events: [
+                  {
+                    eventBridge: {
+                      schedule: 'rate(10 minutes)',
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        });
+
+        const eventRule = Object.values(cfTemplate.Resources).find(
+          (resource) => resource.Type === 'AWS::Events::Rule'
+        );
+        const target = eventRule.Properties.Targets[0];
+        const durableAliasTarget = {
+          'Fn::Join': [
+            ':',
+            [
+              { 'Fn::GetAtt': [awsNaming.getLambdaLogicalId('basic'), 'Arn'] },
+              awsNaming.getLambdaDurableAliasName(),
+            ],
+          ],
+        };
+
+        expect(target.Arn).to.deep.equal(durableAliasTarget);
+        expect(eventRule.DependsOn).to.equal(awsNaming.getLambdaDurableAliasLogicalId('basic'));
+
+        const lambdaPermissionResource =
+          cfTemplate.Resources[awsNaming.getEventBridgeLambdaPermissionLogicalId('basic', 1)];
+        expect(lambdaPermissionResource.Properties.FunctionName).to.deep.equal(durableAliasTarget);
+      });
+
+      it('should create durable rules that depend on the generated alias and event bus', async () => {
+        const { awsNaming, cfTemplate } = await runServerless({
+          fixture: 'function',
+          command: 'package',
+          configExt: {
+            functions: {
+              basic: {
+                runtime: 'nodejs24.x',
+                durableConfig: {
+                  executionTimeout: 3600,
+                },
+                events: [
+                  {
+                    eventBridge: {
+                      eventBus: eventBusName,
+                      schedule: 'rate(10 minutes)',
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        });
+
+        const eventRule = Object.values(cfTemplate.Resources).find(
+          (resource) => resource.Type === 'AWS::Events::Rule'
+        );
+
+        expect(eventRule.DependsOn).to.have.members([
+          awsNaming.getLambdaDurableAliasLogicalId('basic'),
+          awsNaming.getEventBridgeEventBusLogicalId(eventBusName),
+        ]);
+      });
+
       it('should create a lambda permission resource that correctly references event bus in SourceArn', () => {
         const lambdaPermissionResource =
           cfResources[naming.getEventBridgeLambdaPermissionLogicalId('basic', 1)];

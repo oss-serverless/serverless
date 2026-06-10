@@ -618,6 +618,169 @@ describe('lib/plugins/aws/package/lib/mergeIamTemplates.test.js', () => {
           ],
         });
       });
+
+      it('should add durable execution permissions when durableConfig is configured', async () => {
+        const { cfTemplate, awsNaming } = await runServerless({
+          fixture: 'function',
+          command: 'package',
+          configExt: {
+            functions: {
+              basic: {
+                runtime: 'nodejs24.x',
+                durableConfig: {
+                  executionTimeout: 3600,
+                },
+              },
+            },
+          },
+        });
+
+        const { Properties } = cfTemplate.Resources[awsNaming.getRoleLogicalId()];
+        const functionName =
+          cfTemplate.Resources[awsNaming.getLambdaLogicalId('basic')].Properties.FunctionName;
+
+        expect(Properties.ManagedPolicyArns || []).to.not.deep.include({
+          'Fn::Join': [
+            '',
+            [
+              'arn:',
+              { Ref: 'AWS::Partition' },
+              ':iam::aws:policy/service-role/AWSLambdaBasicDurableExecutionRolePolicy',
+            ],
+          ],
+        });
+        expect(Properties.Policies[0].PolicyDocument.Statement).to.deep.include({
+          Effect: 'Allow',
+          Action: ['lambda:CheckpointDurableExecution', 'lambda:GetDurableExecutionState'],
+          Resource: [
+            {
+              'Fn::Sub': `arn:\${AWS::Partition}:lambda:\${AWS::Region}:\${AWS::AccountId}:function:${functionName}:*/durable-execution/*/*`,
+            },
+          ],
+        });
+      });
+
+      it('should add durable execution permissions when durableConfig references the generated role', async () => {
+        const { cfTemplate, awsNaming } = await runServerless({
+          fixture: 'function',
+          command: 'package',
+          configExt: {
+            functions: {
+              basic: {
+                runtime: 'nodejs24.x',
+                role: {
+                  'Fn::GetAtt': ['IamRoleLambdaExecution', 'Arn'],
+                },
+                durableConfig: {
+                  executionTimeout: 3600,
+                },
+              },
+            },
+          },
+        });
+
+        const { Properties } = cfTemplate.Resources[awsNaming.getRoleLogicalId()];
+        const functionName =
+          cfTemplate.Resources[awsNaming.getLambdaLogicalId('basic')].Properties.FunctionName;
+
+        expect(Properties.Policies[0].PolicyDocument.Statement).to.deep.include({
+          Effect: 'Allow',
+          Action: ['lambda:CheckpointDurableExecution', 'lambda:GetDurableExecutionState'],
+          Resource: [
+            {
+              'Fn::Sub': `arn:\${AWS::Partition}:lambda:\${AWS::Region}:\${AWS::AccountId}:function:${functionName}:*/durable-execution/*/*`,
+            },
+          ],
+        });
+      });
+
+      it('should include all generated-role durable functions in durable execution permissions', async () => {
+        const { cfTemplate, awsNaming } = await runServerless({
+          fixture: 'function',
+          command: 'package',
+          configExt: {
+            functions: {
+              first: {
+                handler: 'first.handler',
+                runtime: 'nodejs24.x',
+                durableConfig: {
+                  executionTimeout: 3600,
+                },
+              },
+              second: {
+                handler: 'second.handler',
+                runtime: 'python3.13',
+                durableConfig: {
+                  executionTimeout: 3600,
+                },
+              },
+            },
+          },
+        });
+
+        const { Properties } = cfTemplate.Resources[awsNaming.getRoleLogicalId()];
+        const durableStatement = Properties.Policies[0].PolicyDocument.Statement.find(
+          ({ Action }) => JSON.stringify(Action).includes('CheckpointDurableExecution')
+        );
+        expect(durableStatement.Resource).to.have.deep.members(
+          ['first', 'second'].map((functionName) => {
+            const resolvedName =
+              cfTemplate.Resources[awsNaming.getLambdaLogicalId(functionName)].Properties
+                .FunctionName;
+            return {
+              'Fn::Sub': `arn:\${AWS::Partition}:lambda:\${AWS::Region}:\${AWS::AccountId}:function:${resolvedName}:*/durable-execution/*/*`,
+            };
+          })
+        );
+      });
+
+      it('should not add durable execution permissions when only custom-role functions use durableConfig', async () => {
+        const { cfTemplate, awsNaming } = await runServerless({
+          fixture: 'function',
+          command: 'package',
+          configExt: {
+            resources: {
+              Resources: {
+                CustomDurableRole: {
+                  Type: 'AWS::IAM::Role',
+                  Properties: {
+                    AssumeRolePolicyDocument: {},
+                  },
+                },
+              },
+            },
+            functions: {
+              basic: {
+                runtime: 'nodejs24.x',
+                role: {
+                  'Fn::GetAtt': ['CustomDurableRole', 'Arn'],
+                },
+                durableConfig: {
+                  executionTimeout: 3600,
+                },
+              },
+              other: {},
+            },
+          },
+        });
+
+        const { Properties } = cfTemplate.Resources[awsNaming.getRoleLogicalId()];
+        expect(Properties.ManagedPolicyArns || []).to.not.deep.include({
+          'Fn::Join': [
+            '',
+            [
+              'arn:',
+              { Ref: 'AWS::Partition' },
+              ':iam::aws:policy/service-role/AWSLambdaBasicDurableExecutionRolePolicy',
+            ],
+          ],
+        });
+        expect(
+          Properties.Policies[0].PolicyDocument.Statement.some(({ Action }) => {
+            return JSON.stringify(Action).includes('CheckpointDurableExecution');
+          })
+        ).to.equal(false);
+      });
     });
   });
 });

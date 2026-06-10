@@ -457,6 +457,52 @@ functions:
 
 **Note:** SnapStart support and limitations are defined by AWS and may change over time. See the [AWS SnapStart documentation](https://docs.aws.amazon.com/lambda/latest/dg/snapstart.html) for the current supported runtimes and restrictions.
 
+## AWS Lambda Durable Functions
+
+AWS Lambda Durable Functions enable long-running, fault-tolerant workflows without custom chaining or external state management. Durable functions use checkpoint-and-replay mechanisms to reliably execute workflows that can run for up to one year.
+
+To configure a durable function, add `durableConfig` to the function configuration:
+
+```yaml
+functions:
+  orderProcessor:
+    handler: handler.processOrder
+    runtime: nodejs24.x
+    durableConfig:
+      executionTimeout: 3600
+      retentionPeriodInDays: 30
+```
+
+`executionTimeout` is required and accepts a value from 1 to 31,622,400 seconds. `retentionPeriodInDays` is optional and accepts a value from 1 to 90 days.
+
+Durable functions require qualified Lambda invocations. When `durableConfig` is configured, osls automatically publishes a function version even when function versioning is otherwise disabled. osls also creates a stable `durable` alias for generated event targets and Lambda Function URLs so invocations are qualified. `provisionedConcurrency` remains supported for durable functions; osls attaches the provisioned concurrency configuration to the generated `durable` alias instead of creating a separate `provisioned` alias.
+
+CloudFormation marks the top-level `AWS::Lambda::Function.DurableConfig` property as a replacement property: adding `durableConfig` to an already deployed function, or removing it, requires CloudFormation to replace the Lambda function. osls gives Lambda functions explicit names, so CloudFormation cannot perform the replacement invisibly; a replacement-requiring update of a custom-named resource fails and forces an explicit migration. Changing `executionTimeout` or `retentionPeriodInDays` values on an existing durable function updates with no interruption; osls publishes a new version and retargets the `durable` alias. Plan enable or disable migrations carefully, for example by deploying a new function name, shifting event sources, or recreating the stack when appropriate.
+
+When using Lambda event source mappings, durable execution timeout must be 900 seconds or less. Event source mappings invoke durable functions synchronously through the generated `durable` alias. AWS Lambda Durable Functions support dead-letter queues and event source mapping destinations, but do not support Lambda asynchronous destinations configured through `functions[].destinations`. Functions configured with `durableConfig` also cannot declare `cloudFront` (Lambda@Edge) events.
+
+Event source mappings do not support durable execution-name idempotency at launch. If retries must not start duplicate durable executions, implement idempotency in your function code or use an intermediary standard Lambda function that invokes the durable function with a `DurableExecutionName`.
+
+The top-level `functions[].maximumRetryAttempts` Lambda asynchronous invocation setting is not supported with `durableConfig`; configure durable step retries in the AWS Durable Execution SDK instead. Event source mapping retry settings, such as `stream.maximumRetryAttempts`, remain supported where AWS supports them for that event source. `maximumEventAge` is still deployed for durable functions via the durable alias; AWS has not documented whether it is honored for durable executions.
+
+When you configure a function with `durableConfig`, osls automatically adds inline `lambda:CheckpointDurableExecution` and `lambda:GetDurableExecutionState` permissions to the generated Lambda execution role. If you configure a custom function or provider IAM role, you must attach equivalent durable execution permissions yourself. For least privilege, scope the permissions to durable execution ARNs for the function, for example `arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:my-service-dev-orderProcessor:*/durable-execution/*/*`.
+
+Lambda Function URLs for durable functions are configured on the generated `durable` alias. Function URLs are synchronous HTTP invoke endpoints, so use asynchronous invocation for durable executions that may run longer than a synchronous request can wait.
+
+You can provide an execution name when invoking a durable function:
+
+```bash
+serverless invoke --function orderProcessor --qualifier durable --durable-execution-name order-12345
+```
+
+If you invoke a function with an execution name that already exists, Lambda handles the invocation idempotently only when the payload matches. A matching running execution returns existing execution information, and a matching closed execution returns the closed result. A different payload for the same execution name returns an error. Execution names must be 1-64 characters and can contain alphanumeric characters, hyphens, or underscores.
+
+Use `serverless deploy` after code or durable configuration changes so CloudFormation can publish a new function version and update generated aliases and event targets. Adding or removing `durableConfig` may still require Lambda function replacement as described above. `serverless deploy function` and `serverless rollback function` are not supported for functions configured with `durableConfig` locally or already deployed with durable configuration because they update `$LATEST` without publishing and retargeting the durable alias.
+
+Functions currently configured with `durableConfig` are skipped by osls function pruning because durable executions may depend on retained versions for replay.
+
+osls supports durable functions for managed runtimes `nodejs22.x`, `nodejs24.x`, `python3.13`, `python3.14`, `java17`, `java21`, and `java25`, plus compatible container images. Durable functions with `snapStart: true` are limited to the runtime intersection supported by both features: `python3.13`, `python3.14`, `java17`, `java21`, and `java25`. Durable functions with SnapStart cannot use container images, EFS, provisioned concurrency, or ephemeral storage larger than 512 MB.
+
 ## Recursive Loop Detection
 
 By default, AWS Lambda [detects and stops recursive invocation loops](https://docs.aws.amazon.com/lambda/latest/dg/invocation-recursion.html) between supported AWS services. To allow recursive loops for a function, set `recursiveLoop` to `Allow`. To explicitly enforce termination (the default behavior), set it to `Terminate`.
@@ -724,7 +770,7 @@ By default, osls creates function versions for every deploy. This behavior is op
 
 Older versions are not removed automatically unless you enable `provider.pruneFunctionVersions`. When enabled, osls deletes function and layer versions beyond the configured limit after a full service deploy (`serverless deploy`), keeping the newest versions. Function versions referenced by an alias are never deleted; layer versions are pruned purely by recency. `serverless deploy function` does not publish new versions and does not prune.
 
-To turn off function versioning, set the provider-level option `versionFunctions`. `pruneFunctionVersions` cannot be used when `versionFunctions` is `false`.
+To turn off function versioning, set the provider-level option `versionFunctions`. `pruneFunctionVersions` cannot be used when `versionFunctions` is `false`, unless the only functions publishing versions are durable: at least one function configures `durableConfig` and no other function sets `versionFunction: true`. Functions configured with `durableConfig` are always skipped by function pruning, so in this configuration only layer versions are pruned.
 
 ```yml
 provider:
@@ -860,6 +906,8 @@ functions:
 
 `maximumEventAge` accepts values between 60 seconds and 6 hours, provided in seconds.
 `maximumRetryAttempts` accepts values between 0 and 2.
+
+The top-level `functions[].maximumRetryAttempts` setting is not supported for durable functions because Lambda asynchronous retry attempts do not apply to durable executions. Use retry strategies in the AWS Durable Execution SDK for durable workflow steps. Event source mapping retry settings are separate and remain available where AWS supports them.
 
 ```yml
 functions:

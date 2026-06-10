@@ -865,6 +865,73 @@ describe('test/unit/lib/plugins/aws/deployFunction.test.js', () => {
     });
   });
 
+  it('should reject deploy function for durable functions', async () => {
+    await expect(
+      runServerless({
+        fixture: 'function',
+        command: 'deploy function',
+        options: { function: 'basic' },
+        awsSdkV3StubMap: {
+          ...awsSdkV3StubMap,
+          Lambda: {
+            ...awsSdkV3StubMap.Lambda,
+            getFunction: {
+              Configuration: {
+                LastModified: '2020-05-20T15:34:16.494+0000',
+                PackageType: 'Zip',
+                State: 'Active',
+                LastUpdateStatus: 'Successful',
+              },
+            },
+          },
+        },
+        configExt: {
+          functions: {
+            basic: {
+              runtime: 'nodejs24.x',
+              durableConfig: {
+                executionTimeout: 3600,
+                retentionPeriodInDays: 30,
+              },
+            },
+          },
+        },
+      })
+    ).to.be.eventually.rejected.and.have.property('code', 'DURABLE_DEPLOY_FUNCTION_UNSUPPORTED');
+
+    expect(updateFunctionConfigurationStub).not.to.be.called;
+  });
+
+  it('should reject deploy function when remote function is durable', async () => {
+    await expect(
+      runServerless({
+        fixture: 'function',
+        command: 'deploy function',
+        options: { function: 'basic' },
+        awsSdkV3StubMap: {
+          ...awsSdkV3StubMap,
+          Lambda: {
+            ...awsSdkV3StubMap.Lambda,
+            getFunction: {
+              Configuration: {
+                LastModified: '2020-05-20T15:34:16.494+0000',
+                PackageType: 'Zip',
+                State: 'Active',
+                LastUpdateStatus: 'Successful',
+                DurableConfig: {
+                  ExecutionTimeout: 3600,
+                },
+              },
+            },
+          },
+        },
+      })
+    ).to.be.eventually.rejected.and.have.property('code', 'DURABLE_DEPLOY_FUNCTION_UNSUPPORTED');
+
+    expect(updateFunctionCodeStub).not.to.be.called;
+    expect(updateFunctionConfigurationStub).not.to.be.called;
+  });
+
   it('should recognize layers at `provider.layers`', async () => {
     await runServerless({
       fixture: 'function',

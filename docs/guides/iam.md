@@ -37,7 +37,7 @@ provider:
 
 ## The Default IAM Role
 
-By default, one IAM Role is shared by all the Lambda functions in your service. Also by default, your Lambda functions have permission to create and write to CloudWatch logs. When VPC configuration is provided the default AWS `AWSLambdaVPCAccessExecutionRole` will be associated in order to communicate with your VPC resources.
+By default, one IAM Role is shared by all the Lambda functions in your service. Also by default, your Lambda functions have permission to create and write to CloudWatch logs. When VPC configuration is provided the default AWS `AWSLambdaVPCAccessExecutionRole` will be associated in order to communicate with your VPC resources. Functions configured with `durableConfig` additionally receive scoped `lambda:CheckpointDurableExecution` and `lambda:GetDurableExecutionState` permissions so durable executions can checkpoint and replay (see [AWS Lambda Durable Functions](./functions.md#aws-lambda-durable-functions)).
 
 To add permissions to this role, add IAM statements in `provider.iam.role.statements`. These will be merged into the generated policy. As those statements will be merged into the CloudFormation template, you can use `Join`, `Ref` or any other CloudFormation method or feature.
 
@@ -123,7 +123,7 @@ provider:
 
 **WARNING:** You need to take care of the overall role setup as soon as you define custom roles.
 
-That means that `iam.statements` you've defined on the `provider` level won't be applied anymore. Furthermore, you need to provide the corresponding permissions for your Lambdas `logs` and [`stream`](../events/streams.md) events.
+That means that `iam.statements` you've defined on the `provider` level won't be applied anymore. Furthermore, you need to provide the corresponding permissions for your Lambdas `logs` and [`stream`](../events/streams.md) events, and for functions configured with `durableConfig`, the durable execution permissions (`lambda:CheckpointDurableExecution`, `lambda:GetDurableExecutionState`); see [AWS Lambda Durable Functions](./functions.md#aws-lambda-durable-functions) for a least-privilege example.
 
 osls empowers you to define custom roles and apply them to your functions on a provider or individual function basis. To do this, you must declare a `role` attribute at the level at which you would like the role to be applied.
 
