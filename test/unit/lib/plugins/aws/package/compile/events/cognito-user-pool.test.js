@@ -203,6 +203,27 @@ const preTokenGenerationConfigurationExtension = {
 
 const customUserPoolDependency = 'CustomCognitoUserPoolDependency';
 
+const scopedCognitoLambdaResource = () => ({
+  'Fn::Sub': 'arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:*',
+});
+
+const scopedCognitoAddPermissionStatement = () => ({
+  Action: ['lambda:AddPermission'],
+  Condition: {
+    StringEquals: {
+      'lambda:Principal': 'cognito-idp.amazonaws.com',
+    },
+  },
+  Effect: 'Allow',
+  Resource: scopedCognitoLambdaResource(),
+});
+
+const scopedCognitoRemovePermissionStatement = () => ({
+  Action: ['lambda:RemovePermission'],
+  Effect: 'Allow',
+  Resource: scopedCognitoLambdaResource(),
+});
+
 describe('AwsCompileCognitoUserPoolEvents', () => {
   let serverless;
   let awsCompileCognitoUserPoolEvents;
@@ -502,22 +523,8 @@ describe('AwsCompileCognitoUserPoolEvents', () => {
             Effect: 'Allow',
             Resource: '*',
           },
-          {
-            Action: ['lambda:AddPermission', 'lambda:RemovePermission'],
-            Effect: 'Allow',
-            Resource: [
-              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:first' },
-              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:first:*' },
-            ],
-          },
-          {
-            Action: ['lambda:RemovePermission'],
-            Effect: 'Allow',
-            Resource: [
-              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:*' },
-              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:*:*' },
-            ],
-          },
+          scopedCognitoAddPermissionStatement(),
+          scopedCognitoRemovePermissionStatement(),
           {
             Effect: 'Allow',
             Resource: {
@@ -526,6 +533,9 @@ describe('AwsCompileCognitoUserPoolEvents', () => {
             Action: ['iam:PassRole'],
           },
         ]);
+        expect(addCustomResourceToServiceStub.args[0][2][1].Resource).to.not.equal(
+          addCustomResourceToServiceStub.args[0][2][2].Resource
+        );
         expect(Resources.FirstCustomCognitoUserPool1).to.deep.equal({
           Type: 'Custom::CognitoUserPool',
           Version: 1,
@@ -545,6 +555,55 @@ describe('AwsCompileCognitoUserPoolEvents', () => {
           },
         });
       });
+    });
+
+    it('should preserve KMS grants for existing custom sender triggers', async () => {
+      awsCompileCognitoUserPoolEvents.serverless.service.functions = {
+        first: {
+          name: 'first',
+          events: [
+            {
+              cognitoUserPool: {
+                pool: 'existing-cognito-user-pool',
+                trigger: 'CustomSMSSender',
+                existing: true,
+                kmsKeyId:
+                  'arn:aws:kms:eu-west-1:111111111111:key/11111111-9abc-def0-1234-56789abcdef1',
+              },
+            },
+          ],
+        },
+      };
+
+      await awsCompileCognitoUserPoolEvents.existingCognitoUserPools();
+
+      expect(addCustomResourceToServiceStub).to.have.been.calledOnce;
+      expect(addCustomResourceToServiceStub.args[0][2]).to.deep.equal([
+        {
+          Effect: 'Allow',
+          Resource:
+            'arn:aws:kms:eu-west-1:111111111111:key/11111111-9abc-def0-1234-56789abcdef1',
+          Action: ['kms:CreateGrant'],
+        },
+        {
+          Action: [
+            'cognito-idp:ListUserPools',
+            'cognito-idp:DescribeUserPool',
+            'cognito-idp:UpdateUserPool',
+          ],
+          Effect: 'Allow',
+          Resource: '*',
+        },
+        scopedCognitoAddPermissionStatement(),
+        scopedCognitoRemovePermissionStatement(),
+        {
+          Effect: 'Allow',
+          Resource: {
+            'Fn::Sub': 'arn:${AWS::Partition}:iam::*:role/*',
+          },
+          Action: ['iam:PassRole'],
+        },
+      ]);
     });
 
     it('should preserve pool names named like __proto__ when tracking existing pools', async () => {
@@ -648,22 +707,8 @@ describe('AwsCompileCognitoUserPoolEvents', () => {
             Effect: 'Allow',
             Resource: '*',
           },
-          {
-            Action: ['lambda:AddPermission', 'lambda:RemovePermission'],
-            Effect: 'Allow',
-            Resource: [
-              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:first' },
-              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:first:*' },
-            ],
-          },
-          {
-            Action: ['lambda:RemovePermission'],
-            Effect: 'Allow',
-            Resource: [
-              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:*' },
-              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:*:*' },
-            ],
-          },
+          scopedCognitoAddPermissionStatement(),
+          scopedCognitoRemovePermissionStatement(),
           {
             Effect: 'Allow',
             Resource: {
@@ -775,14 +820,6 @@ describe('AwsCompileCognitoUserPoolEvents', () => {
             Resource: '*',
           },
           {
-            Action: ['lambda:AddPermission', 'lambda:RemovePermission'],
-            Effect: 'Allow',
-            Resource: [
-              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:first' },
-              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:first:*' },
-            ],
-          },
-          {
             Action: [
               'cognito-idp:ListUserPools',
               'cognito-idp:DescribeUserPool',
@@ -791,22 +828,8 @@ describe('AwsCompileCognitoUserPoolEvents', () => {
             Effect: 'Allow',
             Resource: '*',
           },
-          {
-            Action: ['lambda:AddPermission', 'lambda:RemovePermission'],
-            Effect: 'Allow',
-            Resource: [
-              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:second' },
-              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:second:*' },
-            ],
-          },
-          {
-            Action: ['lambda:RemovePermission'],
-            Effect: 'Allow',
-            Resource: [
-              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:*' },
-              { 'Fn::Sub': 'arn:${AWS::Partition}:lambda:*:*:function:*:*' },
-            ],
-          },
+          scopedCognitoAddPermissionStatement(),
+          scopedCognitoRemovePermissionStatement(),
           {
             Effect: 'Allow',
             Resource: {
