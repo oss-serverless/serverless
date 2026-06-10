@@ -1198,6 +1198,35 @@ describe('lib/plugins/aws/package/compile/events/cognito-user-pool.test.js', () 
       });
     });
 
+    it('should target a generated alias for new pools when targetAlias is set', async () => {
+      const { cfTemplate, awsNaming } = await runServerless({
+        fixture: 'function',
+        configExt: {
+          functions: {
+            basic: {
+              provisionedConcurrency: 1,
+              events: [{ cognitoUserPool: { pool: 'NewPool', trigger: 'PreSignUp' } }],
+            },
+          },
+        },
+        command: 'package',
+      });
+
+      const aliasLogicalId = awsNaming.getLambdaProvisionedConcurrencyAliasLogicalId('basic');
+      const poolResource = cfTemplate.Resources[awsNaming.getCognitoUserPoolLogicalId('NewPool')];
+
+      expect(poolResource.DependsOn).to.include(aliasLogicalId);
+      expect(poolResource.Properties.LambdaConfig.PreSignUp).to.deep.equal({
+        'Fn::Join': [
+          ':',
+          [
+            { 'Fn::GetAtt': [awsNaming.getLambdaLogicalId('basic'), 'Arn'] },
+            awsNaming.getLambdaProvisionedConcurrencyAliasName(),
+          ],
+        ],
+      });
+    });
+
     it('should merge generated Cognito user pool resources with custom resources', () => {
       const serviceName = serverlessInstance.service.service;
       const poolResource = cfResources[naming.getCognitoUserPoolLogicalId('CUP CustomEmailSender')];
