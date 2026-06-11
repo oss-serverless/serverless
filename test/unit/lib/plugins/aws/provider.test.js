@@ -426,7 +426,9 @@ describe('AwsProvider', () => {
         retryMode: 'adaptive',
         region: 'us-east-1',
       });
+      // The raw provider is wrapped in process-wide memoization
       expect(buildConfigInput.credentials).to.be.a('function');
+      expect(buildConfigInput.credentials.memoized).to.equal(true);
       await expect(buildConfigInput.credentials({ caller: 'test' })).to.eventually.deep.equal({
         accessKeyId: 'key',
         secretAccessKey: 'secret',
@@ -530,6 +532,31 @@ describe('AwsProvider', () => {
       } catch (error) {
         expect(error).to.equal(nonStringMessageError);
       }
+    });
+
+    it('memoizes credential resolution across clients sharing a provider', async () => {
+      const resolvedCredentials = { accessKeyId: 'accessKeyId', secretAccessKey: 'secret' };
+      const baseProvider = sinon.stub().resolves(resolvedCredentials);
+      const AwsProviderProxyquired = proxyquire
+        .noCallThru()
+        .load('../../../../../lib/plugins/aws/provider.js', {
+          '../../aws/credentials': {
+            getAwsSdkV3CredentialsProviderCacheKey: sinon.stub().returns('cache-key'),
+            getAwsSdkV3CredentialsProvider: sinon.stub().returns(baseProvider),
+          },
+        });
+      const provider = new AwsProviderProxyquired(serverless, options);
+
+      const credentialsProvider = provider.getAwsSdkV3CredentialsProvider();
+
+      expect(credentialsProvider.memoized).to.equal(true);
+      await expect(credentialsProvider()).to.eventually.deep.equal(resolvedCredentials);
+      await expect(credentialsProvider()).to.eventually.deep.equal(resolvedCredentials);
+      // A second client obtaining the provider must not trigger another resolution either
+      await expect(provider.getAwsSdkV3CredentialsProvider()()).to.eventually.deep.equal(
+        resolvedCredentials
+      );
+      expect(baseProvider).to.have.been.calledOnce;
     });
 
     it('reuses SDK v3 credential providers for the same credential source', async () => {

@@ -271,6 +271,11 @@ custom CA, or timeout configuration. The returned `credentials` value is a
 credential provider function and should be passed to AWS SDK v3 clients
 unchanged.
 
+Credential resolution results are memoized process-wide, so multiple clients
+sharing the provider trigger a single resolution (one MFA prompt, one
+AssumeRole call, one `credential_process` invocation), and temporary
+credentials are refreshed automatically as they approach expiry.
+
 Create separate client instances when you need different regions, profiles, or
 client options.
 
@@ -293,6 +298,27 @@ const config = await this.provider.getAwsSdkV3Config({
 });
 const s3 = new S3Client(config);
 ```
+
+### Credential resolution semantics
+
+Credential profiles resolve with the standard AWS SDK v3 semantics:
+
+- `~/.aws/config` is always merged into same-named profiles from
+  `~/.aws/credentials`. A profile with static keys in the credentials file and
+  `role_arn`/`source_profile` in the config file resolves via AssumeRole, so
+  commands run under the assumed role identity. osls logs a warning when it
+  detects this layout.
+- `mfa_serial` in the config file is honored and triggers an interactive
+  prompt. When no interactive input is available (for example in CI), the
+  prompt fails with `MFA_CODE_UNAVAILABLE` instead of hanging.
+- SSO (IAM Identity Center), `credential_process`, and web identity profiles
+  are supported. The HTTP calls these make inherit the same proxy, custom CA,
+  and timeout configuration as regular clients.
+- `AWS_CLIENT_TIMEOUT` is enforced as a socket inactivity timeout and defaults
+  to 120 seconds.
+- If `AWS_DEFAULT_PROFILE` names a profile that does not exist in either file,
+  resolution falls back to the SDK default provider chain (environment
+  variables, ECS/EC2 instance credentials) with a warning.
 
 ## ESM plugins
 

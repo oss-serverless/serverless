@@ -1,8 +1,11 @@
 'use strict';
 
 const chai = require('chai');
+const net = require('net');
 const proxyquire = require('proxyquire');
+const { NodeHttpHandler } = require('@smithy/node-http-handler');
 const { overrideEnv } = require('../../../utils/process');
+const { buildHttpOptions } = require('../../../../lib/aws/config');
 
 const { expect } = chai;
 
@@ -72,7 +75,7 @@ describe('test/unit/lib/aws/config.test.js', () => {
 
       const config = buildClientConfig();
 
-      expect(config.requestHandler.options).to.deep.equal({ requestTimeout: 1234 });
+      expect(config.requestHandler.options).to.deep.equal({ socketTimeout: 1234 });
     });
   });
 
@@ -83,7 +86,69 @@ describe('test/unit/lib/aws/config.test.js', () => {
 
       const config = buildClientConfig();
 
-      expect(config.requestHandler.options).to.deep.equal({ requestTimeout: 0 });
+      expect(config.requestHandler.options).to.deep.equal({ socketTimeout: 0 });
+    });
+  });
+
+  it('defaults to a 120 second socket timeout and always constructs a request handler', async () => {
+    await overrideEnv(async () => {
+      const { buildClientConfig } = loadConfig();
+
+      const config = buildClientConfig();
+
+      expect(config.requestHandler.options).to.deep.equal({ socketTimeout: 120000 });
+    });
+  });
+
+  it('assigns the proxy agent for both http and https requests', async () => {
+    await overrideEnv(async () => {
+      process.env.HTTPS_PROXY = 'https://proxy.example.com:1234';
+      const { buildClientConfig } = loadConfig();
+
+      const config = buildClientConfig();
+
+      expect(config.requestHandler.options.httpAgent).to.equal(
+        config.requestHandler.options.httpsAgent
+      );
+      expect(config.requestHandler.options.httpsAgent.proxy).to.equal(
+        'https://proxy.example.com:1234'
+      );
+    });
+  });
+
+  it('enforces the socket inactivity timeout with the real transport', async () => {
+    await overrideEnv(async () => {
+      process.env.AWS_CLIENT_TIMEOUT = '500';
+      const sockets = new Set();
+      const server = net.createServer((socket) => {
+        // Accept the connection and never respond
+        sockets.add(socket);
+      });
+      await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+      const handler = new NodeHttpHandler(buildHttpOptions());
+
+      try {
+        const error = await handler
+          .handle({
+            protocol: 'http:',
+            hostname: '127.0.0.1',
+            port: server.address().port,
+            method: 'GET',
+            path: '/',
+            headers: {},
+          })
+          .then(
+            () => null,
+            (handleError) => handleError
+          );
+
+        expect(error).to.exist;
+        expect(error.name).to.equal('TimeoutError');
+      } finally {
+        handler.destroy();
+        for (const socket of sockets) socket.destroy();
+        await new Promise((resolve) => server.close(resolve));
+      }
     });
   });
 

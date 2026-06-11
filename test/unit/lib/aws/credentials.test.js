@@ -44,7 +44,15 @@ describe('test/unit/lib/aws/credentials.test.js', () => {
     );
   }
 
-  function loadCredentials({ files = {}, fromIni, fromNodeProviderChain }) {
+  class FakeNodeHttpHandler {
+    constructor(options) {
+      this.options = options;
+      FakeNodeHttpHandler.instances.push(this);
+    }
+  }
+  FakeNodeHttpHandler.instances = [];
+
+  function loadCredentials({ files = {}, fromIni, fromNodeProviderChain, readline, logWarning }) {
     const readFileSync = sinon.stub().callsFake((filePath) => {
       if (Object.prototype.hasOwnProperty.call(files, filePath)) {
         const result = files[filePath];
@@ -54,20 +62,51 @@ describe('test/unit/lib/aws/credentials.test.js', () => {
       throw createMissingFileError();
     });
 
-    return proxyquire('../../../../lib/aws/credentials', {
+    const stubs = {
       '@aws-sdk/credential-providers': {
         fromIni,
         fromNodeProviderChain,
       },
+      '@smithy/node-http-handler': { NodeHttpHandler: FakeNodeHttpHandler },
+      '../utils/serverless-utils/log': { log: { warning: logWarning || sinon.stub() } },
       'fs': { readFileSync },
       'os': { homedir: () => homeDir },
-    });
+    };
+    if (readline) stubs.readline = readline;
+
+    return proxyquire('../../../../lib/aws/credentials', stubs);
+  }
+
+  function createFakeReadline({ answer } = {}) {
+    return {
+      createInterface: () => {
+        const handlers = {};
+        return {
+          question: (prompt, callback) => {
+            if (answer !== undefined) {
+              callback(answer);
+            } else {
+              // Simulate stdin EOF: the question callback never fires, the interface closes
+              setImmediate(() => handlers.close && handlers.close());
+            }
+          },
+          close: () => {
+            if (handlers.close) handlers.close();
+          },
+          on: (event, handler) => {
+            handlers[event] = handler;
+          },
+        };
+      },
+    };
   }
 
   beforeEach(() => {
     originalEnv = new Map(envKeys.map((key) => [key, process.env[key]]));
 
     for (const key of envKeys) delete process.env[key];
+
+    FakeNodeHttpHandler.instances = [];
   });
 
   afterEach(() => {
@@ -352,27 +391,32 @@ describe('test/unit/lib/aws/credentials.test.js', () => {
     });
   });
 
-  it('does not fallback when AWS_DEFAULT_PROFILE is explicitly set but absent', async () => {
+  it('falls back to the default provider chain when AWS_DEFAULT_PROFILE is absent', async () => {
     await overrideEnv(async () => {
       process.env.AWS_DEFAULT_PROFILE = 'missing-default';
-      const fallbackProvider = sinon.stub().resolves({
+      const fallbackCredentials = {
         accessKeyId: 'fallbackAccessKeyId',
         secretAccessKey: 'fallbackSecretAccessKey',
-      });
+      };
+      const fallbackProvider = sinon.stub().resolves(fallbackCredentials);
       const fromIni = sinon
         .stub()
         .returns(sinon.stub().rejects(createUnresolvedProfileError('missing-default')));
       const fromNodeProviderChain = sinon.stub().returns(fallbackProvider);
+      const logWarning = sinon.spy();
       const { getAwsSdkV3CredentialsProvider } = loadCredentials({
         fromIni,
         fromNodeProviderChain,
+        logWarning,
       });
 
-      await expect(getAwsSdkV3CredentialsProvider()()).to.be.rejectedWith(
-        'Could not resolve credentials using profile'
+      await expect(getAwsSdkV3CredentialsProvider()()).to.eventually.deep.equal(
+        fallbackCredentials
       );
-      expect(fromNodeProviderChain).to.not.have.been.called;
-      expect(fallbackProvider).to.not.have.been.called;
+      expect(fromIni).to.not.have.been.called;
+      expect(fromNodeProviderChain).to.have.been.calledOnce;
+      expect(logWarning).to.have.been.calledOnce;
+      expect(logWarning.firstCall.args[0]).to.include('missing-default');
     });
   });
 
@@ -474,5 +518,180 @@ describe('test/unit/lib/aws/credentials.test.js', () => {
     await expect(getAwsSdkV3CredentialsProvider()()).to.be.rejectedWith('permission denied');
     expect(fromNodeProviderChain).to.not.have.been.called;
     expect(fallbackProvider).to.not.have.been.called;
+  });
+
+  it('passes a request handler to profile providers without overriding region', async () => {
+    await overrideEnv(async () => {
+      process.env.AWS_PROFILE = 'dev';
+      const fromIni = sinon.stub().returns(sinon.stub().resolves({}));
+      const fromNodeProviderChain = sinon.stub();
+      loadCredentials({ fromIni, fromNodeProviderChain }).getAwsSdkV3CredentialsProvider();
+
+      expect(fromIni).to.have.been.calledOnce;
+      const initOptions = fromIni.firstCall.args[0];
+      expect(initOptions.profile).to.equal('dev');
+      expect(initOptions.clientConfig.requestHandler).to.be.an.instanceOf(FakeNodeHttpHandler);
+      expect(initOptions.clientConfig).to.not.have.property('region');
+    });
+  });
+
+  it('passes a request handler to the default provider chain fallback', async () => {
+    const fallbackCredentials = {
+      accessKeyId: 'fallbackAccessKeyId',
+      secretAccessKey: 'fallbackSecretAccessKey',
+    };
+    const fromIni = sinon
+      .stub()
+      .returns(sinon.stub().rejects(createUnresolvedProfileError('default')));
+    const fromNodeProviderChain = sinon.stub().returns(sinon.stub().resolves(fallbackCredentials));
+    const { getAwsSdkV3CredentialsProvider } = loadCredentials({ fromIni, fromNodeProviderChain });
+
+    await expect(getAwsSdkV3CredentialsProvider()()).to.eventually.deep.equal(fallbackCredentials);
+    expect(fromNodeProviderChain).to.have.been.calledOnce;
+    const initOptions = fromNodeProviderChain.firstCall.args[0];
+    expect(initOptions.clientConfig.requestHandler).to.be.an.instanceOf(FakeNodeHttpHandler);
+    expect(initOptions.clientConfig).to.not.have.property('region');
+  });
+
+  it('shares a single request handler across all credential providers', async () => {
+    await overrideEnv(async () => {
+      const fromIni = sinon.stub().returns(sinon.stub().resolves({}));
+      const fromNodeProviderChain = sinon.stub();
+      const { getAwsSdkV3CredentialsProvider } = loadCredentials({
+        fromIni,
+        fromNodeProviderChain,
+      });
+
+      getAwsSdkV3CredentialsProvider({ profile: 'first' });
+      getAwsSdkV3CredentialsProvider({ profile: 'second' });
+
+      expect(fromIni).to.have.been.calledTwice;
+      expect(FakeNodeHttpHandler.instances).to.have.length(1);
+      expect(fromIni.firstCall.args[0].clientConfig.requestHandler).to.equal(
+        fromIni.secondCall.args[0].clientConfig.requestHandler
+      );
+    });
+  });
+
+  it('rejects the MFA prompt when input closes without an answer', async () => {
+    await overrideEnv(async () => {
+      process.env.AWS_PROFILE = 'mfa-profile';
+      const fromIni = sinon.stub().returns(sinon.stub().resolves({}));
+      const fromNodeProviderChain = sinon.stub();
+      loadCredentials({
+        fromIni,
+        fromNodeProviderChain,
+        readline: createFakeReadline(),
+      }).getAwsSdkV3CredentialsProvider();
+
+      const { mfaCodeProvider } = fromIni.firstCall.args[0];
+      const error = await mfaCodeProvider('arn:aws:iam::123456789012:mfa/user').then(
+        () => null,
+        (promptError) => promptError
+      );
+
+      expect(error).to.exist;
+      expect(error.code).to.equal('MFA_CODE_UNAVAILABLE');
+      expect(error.message).to.include('arn:aws:iam::123456789012:mfa/user');
+    });
+  });
+
+  it('resolves the MFA prompt with the provided answer', async () => {
+    await overrideEnv(async () => {
+      process.env.AWS_PROFILE = 'mfa-profile';
+      const fromIni = sinon.stub().returns(sinon.stub().resolves({}));
+      const fromNodeProviderChain = sinon.stub();
+      loadCredentials({
+        fromIni,
+        fromNodeProviderChain,
+        readline: createFakeReadline({ answer: '123456' }),
+      }).getAwsSdkV3CredentialsProvider();
+
+      const { mfaCodeProvider } = fromIni.firstCall.args[0];
+
+      await expect(mfaCodeProvider('arn:aws:iam::123456789012:mfa/user')).to.eventually.equal(
+        '123456'
+      );
+    });
+  });
+
+  it('warns once when a profile has static keys shadowed by a config file role_arn', async () => {
+    await overrideEnv(async () => {
+      process.env.AWS_PROFILE = 'divergent';
+      const fromIni = sinon.stub().returns(sinon.stub().resolves({}));
+      const fromNodeProviderChain = sinon.stub();
+      const logWarning = sinon.spy();
+      const { getAwsSdkV3CredentialsProvider } = loadCredentials({
+        files: {
+          [credentialsFilePath]: [
+            '[divergent]',
+            'aws_access_key_id = accessKeyId',
+            'aws_secret_access_key = secretAccessKey',
+          ].join('\n'),
+          [configFilePath]: [
+            '[profile divergent]',
+            'role_arn = arn:aws:iam::123456789012:role/deploy',
+            'source_profile = divergent',
+          ].join('\n'),
+        },
+        fromIni,
+        fromNodeProviderChain,
+        logWarning,
+      });
+
+      getAwsSdkV3CredentialsProvider();
+      getAwsSdkV3CredentialsProvider();
+
+      expect(logWarning).to.have.been.calledOnce;
+      expect(logWarning.firstCall.args[0]).to.include('divergent');
+      expect(logWarning.firstCall.args[0]).to.include('role_arn');
+    });
+  });
+
+  it('does not warn when a profile has no config file role_arn', async () => {
+    await overrideEnv(async () => {
+      process.env.AWS_PROFILE = 'plain';
+      const fromIni = sinon.stub().returns(sinon.stub().resolves({}));
+      const fromNodeProviderChain = sinon.stub();
+      const logWarning = sinon.spy();
+      loadCredentials({
+        files: {
+          [credentialsFilePath]: [
+            '[plain]',
+            'aws_access_key_id = accessKeyId',
+            'aws_secret_access_key = secretAccessKey',
+          ].join('\n'),
+          [configFilePath]: ['[profile plain]', 'region = us-east-1'].join('\n'),
+        },
+        fromIni,
+        fromNodeProviderChain,
+        logWarning,
+      }).getAwsSdkV3CredentialsProvider();
+
+      expect(logWarning).to.not.have.been.called;
+    });
+  });
+
+  it('does not warn when a config file role_arn profile has no static keys', async () => {
+    await overrideEnv(async () => {
+      process.env.AWS_PROFILE = 'role-only';
+      const fromIni = sinon.stub().returns(sinon.stub().resolves({}));
+      const fromNodeProviderChain = sinon.stub();
+      const logWarning = sinon.spy();
+      loadCredentials({
+        files: {
+          [configFilePath]: [
+            '[profile role-only]',
+            'role_arn = arn:aws:iam::123456789012:role/deploy',
+            'credential_source = Environment',
+          ].join('\n'),
+        },
+        fromIni,
+        fromNodeProviderChain,
+        logWarning,
+      }).getAwsSdkV3CredentialsProvider();
+
+      expect(logWarning).to.not.have.been.called;
+    });
   });
 });
