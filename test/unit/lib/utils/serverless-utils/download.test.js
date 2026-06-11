@@ -1,6 +1,7 @@
 'use strict';
 
 const http = require('http');
+const crypto = require('crypto');
 const os = require('os');
 const path = require('path');
 const fsp = require('fs').promises;
@@ -29,8 +30,10 @@ describe('serverless-utils/download', () => {
     nestedZip.addFile('template-main/serverless.yml', Buffer.from('service: fixture\n'));
     nestedZipBuffer = nestedZip.toBuffer();
 
-    traversalFileName = `serverless-download-${Date.now()}-evil.txt`;
-    unsafeDispositionFileName = `serverless-download-${Date.now()}-unsafe.txt`;
+    traversalFileName = `serverless-download-${crypto.randomBytes(12).toString('hex')}-evil.txt`;
+    unsafeDispositionFileName = `serverless-download-${crypto
+      .randomBytes(12)
+      .toString('hex')}-unsafe.txt`;
     const traversalZip = new AdmZip();
     traversalZip.addFile(`xx/${traversalFileName}`, Buffer.from('evil'));
     traversalZipBuffer = traversalZip.toBuffer();

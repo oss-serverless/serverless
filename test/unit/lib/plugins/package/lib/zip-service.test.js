@@ -298,10 +298,10 @@ describe('zipService', () => {
             .getCalls()
             .map((call) => path.basename(call.args[0]));
           expect(
-            openedFiles.some((fileName) => /^node-dependencies-.+-dev$/.test(fileName))
+            openedFiles.some((fileName) => /^node-dependencies-[0-9a-f]{24}-dev$/.test(fileName))
           ).to.equal(true);
           expect(
-            openedFiles.some((fileName) => /^node-dependencies-.+-prod$/.test(fileName))
+            openedFiles.some((fileName) => /^node-dependencies-[0-9a-f]{24}-prod$/.test(fileName))
           ).to.equal(true);
           expect(closeFileStub).to.have.been.calledTwice;
         });
