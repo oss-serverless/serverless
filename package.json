@@ -82,7 +82,7 @@
     "git-list-updated": "^1.2.1",
     "globals": "^17.5.0",
     "jszip": "^3.10.1",
-    "mocha": "12.0.0-beta-9.4",
+    "mocha": "12.0.0-beta-9.6",
     "prettier": "^3.8.3",
     "proxyquire": "^2.1.3",
     "sinon": "^22.0.0",
