@@ -255,6 +255,10 @@ including osls-resolved region, credentials, retry settings, and proxy,
 custom CA, or timeout configuration.
 
 The returned `credentials` value is an AWS SDK v3 credential provider function.
+Resolution results are memoized process-wide, so multiple clients sharing the
+provider trigger a single resolution (one MFA prompt, one AssumeRole call, one
+`credential_process` invocation), and temporary credentials are refreshed
+automatically as they approach expiry.
 
 Supported osls-specific options are:
 
@@ -268,6 +272,30 @@ Other AWS SDK v3 client options, such as `endpoint`, `logger`, `requestHandler`,
 not the recommended AWS SDK v3 plugin API. Core osls internals that have
 not migrated still use that legacy path, so this section describes the
 plugin-created SDK v3 client path only.
+
+### Credential resolution semantics
+
+AWS SDK v3 credential resolution differs from the legacy AWS SDK v2 path that
+core osls internals use, so a plugin and the framework can resolve different
+identities in the same process:
+
+- The SDK v3 provider always merges `~/.aws/config` into same-named profiles
+  from `~/.aws/credentials` (SDK v2 only does this when `AWS_SDK_LOAD_CONFIG`
+  is set, which osls does not set). A profile with static keys in the
+  credentials file and `role_arn`/`source_profile` in the config file resolves
+  via AssumeRole — potentially a different account than the framework's own
+  requests. osls logs a warning when it detects this layout.
+- `mfa_serial` in the config file is honored and triggers an interactive
+  prompt. When no interactive input is available (for example in CI), the
+  prompt fails with `MFA_CODE_UNAVAILABLE` instead of hanging.
+- SSO (IAM Identity Center), `credential_process`, and web identity profiles
+  are supported. The HTTP calls these make inherit the same proxy, custom CA,
+  and timeout configuration as regular clients.
+- `AWS_CLIENT_TIMEOUT` is enforced as a socket inactivity timeout and defaults
+  to 120 seconds.
+- If `AWS_DEFAULT_PROFILE` names a profile that does not exist in either file,
+  resolution falls back to the SDK default provider chain (environment
+  variables, ECS/EC2 instance credentials) with a warning.
 
 ## ESM plugins
 
