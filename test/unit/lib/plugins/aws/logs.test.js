@@ -294,6 +294,59 @@ describe('AwsLogs', () => {
       });
     });
 
+    it('should call filterLogEvents API with epoch start time', async () => {
+      const logStreamNamesMock = ['2016/07/28/[$LATEST]83f5206ab2a8488290349b9c1fbfe2ba'];
+      const filterLogEventsStub = sinon
+        .stub(CloudWatchLogsClient.prototype, 'send')
+        .resolves({ events: [] });
+      awsLogs.serverless.service.service = 'new-service';
+      awsLogs.options = {
+        stage: 'dev',
+        region: 'us-east-1',
+        function: 'first',
+        logGroupName: awsLogs.provider.naming.getLogGroupName('new-service-dev-first'),
+        startTime: '1469694264', // epoch seconds
+      };
+
+      await awsLogs.showLogs(logStreamNamesMock);
+
+      expect(filterLogEventsStub.firstCall.args[0].input.startTime).to.equal(1469694264000);
+    });
+
+    it('should call filterLogEvents API with epoch milliseconds start time', async () => {
+      const logStreamNamesMock = ['2016/07/28/[$LATEST]83f5206ab2a8488290349b9c1fbfe2ba'];
+      const filterLogEventsStub = sinon
+        .stub(CloudWatchLogsClient.prototype, 'send')
+        .resolves({ events: [] });
+      awsLogs.serverless.service.service = 'new-service';
+      awsLogs.options = {
+        stage: 'dev',
+        region: 'us-east-1',
+        function: 'first',
+        logGroupName: awsLogs.provider.naming.getLogGroupName('new-service-dev-first'),
+        startTime: '1469694264000',
+      };
+
+      await awsLogs.showLogs(logStreamNamesMock);
+
+      expect(filterLogEventsStub.firstCall.args[0].input.startTime).to.equal(1469694264000);
+    });
+
+    it('should throw on a malformed start time', async () => {
+      awsLogs.serverless.service.service = 'new-service';
+      awsLogs.options = {
+        stage: 'dev',
+        region: 'us-east-1',
+        function: 'first',
+        logGroupName: awsLogs.provider.naming.getLogGroupName('new-service-dev-first'),
+        startTime: '1h30m',
+      };
+
+      await expect(
+        awsLogs.showLogs(['2016/07/28/[$LATEST]83f5206ab2a8488290349b9c1fbfe2ba'])
+      ).to.eventually.be.rejected.and.have.property('code', 'INVALID_TIME_INPUT');
+    });
+
     it('should call filterLogEvents API with latest 10 minutes if startTime not given', async () => {
       const replyMock = {
         events: [
@@ -395,6 +448,51 @@ describe('AwsLogs', () => {
         logStreamNames: logStreamNamesMock,
         startTime: fakeTime - 10 * 1000, // fakeTime - 10 seconds
       });
+    });
+
+    it('should poll from the last event timestamp + 1 when tailing', async () => {
+      const lastEventTimestamp = 1469687512311;
+      const stopError = new Error('stop tail loop');
+      const sleepStub = sinon.stub().onFirstCall().resolves().onSecondCall().rejects(stopError);
+      const MockedAwsLogs = proxyquire('../../../../../lib/plugins/aws/logs', {
+        '../../utils/sleep': sleepStub,
+      });
+
+      const options = {
+        stage: 'dev',
+        region: 'us-east-1',
+        function: 'first',
+      };
+      const { serverless: mockedServerless } = createServerlessContext(options);
+      const mockedAwsLogs = new MockedAwsLogs(mockedServerless, options);
+
+      const sendStub = sinon
+        .stub(CloudWatchLogsClient.prototype, 'send')
+        .callsFake(async (command) => {
+          if (command instanceof DescribeLogStreamsCommand) {
+            return { logStreams: [{ logStreamName: 'stream' }] };
+          }
+          return {
+            events: [{ logStreamName: 'stream', timestamp: lastEventTimestamp, message: 'test' }],
+          };
+        });
+      mockedAwsLogs.serverless.service.service = 'new-service';
+      mockedAwsLogs.options = {
+        stage: 'dev',
+        region: 'us-east-1',
+        function: 'first',
+        logGroupName: awsLogs.provider.naming.getLogGroupName('new-service-dev-first'),
+        tail: true,
+      };
+
+      await expect(mockedAwsLogs.showLogs(['stream'])).to.be.rejectedWith(stopError);
+
+      const filterCalls = sendStub
+        .getCalls()
+        .filter((call) => call.args[0] instanceof FilterLogEventsCommand);
+      expect(filterCalls).to.have.length(2);
+      expect(filterCalls[0].args[0].input.startTime).to.equal(fakeTime - 10 * 1000);
+      expect(filterCalls[1].args[0].input.startTime).to.equal(lastEventTimestamp + 1);
     });
 
     it('reuses one CloudWatch Logs client across tail polling', async () => {

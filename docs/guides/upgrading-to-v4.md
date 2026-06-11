@@ -132,6 +132,17 @@ events:
 
 See [Alexa Skill](../events/alexa-skill.md).
 
+### `logs` and `metrics` time options are parsed strictly
+
+The `--startTime` option of `serverless logs` and the `--startTime` / `--endTime` options of `serverless metrics` are now parsed by a single strict parser:
+
+- Unix epoch values (e.g. `1469694264`) now work in both commands; they were documented but broken (in `logs` they silently produced a wrong time range, in `metrics` they failed). Digits-only values of 9+ characters are parsed as epoch seconds, or as epoch milliseconds when at or above `10^12` (13+ characters).
+- Dates and datetimes without an explicit UTC offset are now consistently interpreted as **UTC** in both commands. Previously `metrics` interpreted datetimes (e.g. `2016-07-01T10:00`) in the machine's local time zone.
+- Malformed values now fail with an `INVALID_TIME_INPUT` error instead of being silently misparsed. For example, `--startTime 1h30m` previously subtracted 130 _milliseconds_, and ISO week dates (`2013-W06-5`) and ordinal dates (`2013-039`) produced wrong time ranges. Week and ordinal dates are no longer supported.
+- Relative values now also accept seconds (e.g. `30s`), and `metrics --endTime` accepts relative values too.
+
+See [logs](../cli-reference/logs.md) and [metrics](../cli-reference/metrics.md) for the supported formats. As part of this change, osls no longer depends on the [`dayjs`](https://www.npmjs.com/package/dayjs) package; plugins that relied on it being installed alongside osls should declare it in their own dependencies.
+
 ### Plugin custom variables: `configurationVariablesSources` only
 
 Plugins that extend variable resolution via the old `variableResolvers` API will fail with `OLD_VARIABLE_RESOLVER_NOT_SUPPORTED`. Migrate to `configurationVariablesSources`.
