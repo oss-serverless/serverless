@@ -443,6 +443,78 @@ describe('YamlParser', () => {
       expect({}.polluted).to.equal(undefined);
     });
 
+    it('materializes __proto__ with pollution-robust property descriptors', async () => {
+      const copyDescriptor = (descriptor) =>
+        descriptor && Object.assign(Object.create(null), descriptor);
+      const defineDataProperty = (object, key, value) => {
+        Object.defineProperty(
+          object,
+          key,
+          Object.assign(Object.create(null), {
+            value,
+            writable: true,
+            enumerable: true,
+            configurable: true,
+          })
+        );
+      };
+      const definePollutingAccessor = (key) => {
+        Object.defineProperty(
+          Object.prototype,
+          key,
+          Object.assign(Object.create(null), {
+            get() {
+              throw new Error(`inherited descriptor ${key} was read`);
+            },
+            configurable: true,
+          })
+        );
+      };
+      const source = { foo: 'bar' };
+      const parser = new serverless.yamlParser.constructor({
+        utils: { readFileSync: () => source },
+      });
+      const originalGetDescriptor = copyDescriptor(
+        Object.getOwnPropertyDescriptor(Object.prototype, 'get')
+      );
+      const originalSetDescriptor = copyDescriptor(
+        Object.getOwnPropertyDescriptor(Object.prototype, 'set')
+      );
+
+      defineDataProperty(source, '__proto__', { marker: 'value' });
+
+      let result;
+      try {
+        definePollutingAccessor('get');
+        definePollutingAccessor('set');
+
+        result = await parser.parse(getTmpFilePath('descriptor-pollution.yml'));
+      } finally {
+        if (originalGetDescriptor) {
+          Object.defineProperty(Object.prototype, 'get', originalGetDescriptor);
+        } else {
+          delete Object.prototype.get;
+        }
+
+        if (originalSetDescriptor) {
+          Object.defineProperty(Object.prototype, 'set', originalSetDescriptor);
+        } else {
+          delete Object.prototype.set;
+        }
+      }
+
+      expect(result.foo).to.equal('bar');
+      expect(Object.getPrototypeOf(result)).to.equal(Object.prototype);
+      expect(Object.getOwnPropertyDescriptor(result, '__proto__')).to.deep.equal({
+        value: { marker: 'value' },
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
+      expect(result.marker).to.equal(undefined);
+      expect({}.marker).to.equal(undefined);
+    });
+
     it('does not resolve JSON Pointers that target inherited prototype members (#/constructor)', async () => {
       const tmpDirPath = getTmpDirPath();
       const refPath = path.join(tmpDirPath, 'ref.yml');
