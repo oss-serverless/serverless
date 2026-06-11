@@ -8,6 +8,7 @@ const sinon = require('sinon');
 const { overrideEnv } = require('../../../../utils/process');
 
 const AwsProvider = require('../../../../../lib/plugins/aws/provider');
+const awsCredentialsDocsUrl = require('../../../../../lib/aws/credentials-help-url');
 const Serverless = require('../../../../../lib/serverless');
 const ServerlessError = require('../../../../../lib/serverless-error');
 const runServerless = require('../../../../utils/run-serverless');
@@ -69,6 +70,26 @@ describe('AwsProvider', () => {
       CloudFormationClient.prototype.send.restore();
     }
     restoreEnv();
+  });
+
+  describe('removed AWS SDK v2 surface', () => {
+    it('throws a guided error from provider.request()', () => {
+      expect(() => awsProvider.request('S3', 'getObject', {}))
+        .to.throw(ServerlessError, /provider\.getAwsSdkV3Config\(\)/)
+        .with.property('code', 'AWS_SDK_V2_SURFACE_REMOVED');
+    });
+
+    it('throws a guided error from provider.getCredentials()', () => {
+      expect(() => awsProvider.getCredentials())
+        .to.throw(ServerlessError)
+        .with.property('code', 'AWS_SDK_V2_SURFACE_REMOVED');
+    });
+
+    it('throws a guided error when accessing provider.sdk', () => {
+      expect(() => awsProvider.sdk)
+        .to.throw(ServerlessError)
+        .with.property('code', 'AWS_SDK_V2_SURFACE_REMOVED');
+    });
   });
 
   describe('#getRuntime()', () => {
@@ -456,6 +477,36 @@ describe('AwsProvider', () => {
         throw new Error('Expected credentials provider to reject');
       } catch (error) {
         expect(error.code).to.equal('AWS_CREDENTIALS_NOT_FOUND');
+        expect(error.message).to.include(awsCredentialsDocsUrl);
+      }
+    });
+
+    it('normalizes unrecognized profile errors', async () => {
+      const profileError = Object.assign(
+        new Error(
+          'Could not resolve credentials using profile: [missing-profile] in configuration/credentials file(s).'
+        ),
+        { name: 'CredentialsProviderError' }
+      );
+      const credentialsProvider = sinon.stub().rejects(profileError);
+      const AwsProviderProxyquired = proxyquire
+        .noCallThru()
+        .load('../../../../../lib/plugins/aws/provider.js', {
+          '../../aws/credentials': {
+            getAwsSdkV3CredentialsProviderCacheKey: sinon.stub().returns('cache-key'),
+            getAwsSdkV3CredentialsProvider: sinon.stub().returns(credentialsProvider),
+          },
+        });
+      const provider = new AwsProviderProxyquired(serverless, options);
+
+      const config = await provider.getAwsSdkV3Config();
+
+      try {
+        await config.credentials();
+        throw new Error('Expected credentials provider to reject');
+      } catch (error) {
+        expect(error.code).to.equal('UNRECOGNIZED_AWS_PROFILE');
+        expect(error.message).to.include('missing-profile');
       }
     });
 
