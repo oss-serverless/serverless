@@ -5,13 +5,13 @@ const sinon = require('sinon');
 const proxyquire = require('proxyquire');
 const AwsMetrics = require('../../../../../lib/plugins/aws/metrics');
 const ServerlessError = require('../../../../../lib/serverless-error');
-const dayjs = require('dayjs');
 const { CloudWatchClient, GetMetricStatisticsCommand } = require('@aws-sdk/client-cloudwatch');
 const releasePendingRequestsUntilSettled = require('../../../../utils/release-pending-requests-until-settled');
 
-const LocalizedFormat = require('dayjs/plugin/localizedFormat');
+const { formatDisplayTime } = require('../../../../../lib/plugins/aws/utils/time');
 
-dayjs.extend(LocalizedFormat);
+const toLocalDateString = (date) =>
+  `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
 
 function createServerlessContext(options) {
   const provider = {
@@ -129,9 +129,7 @@ describe('AwsMetrics', () => {
 
       awsMetrics.extendedValidate();
 
-      const defaultsStartTime = dayjs(awsMetrics.options.startTime);
-      const defaultsDate = defaultsStartTime.format('YYYY-M-D');
-      expect(defaultsDate).to.equal(yesterdaysDate);
+      expect(toLocalDateString(awsMetrics.options.startTime)).to.equal(yesterdaysDate);
     });
 
     it('should set the startTime to the provided value', () => {
@@ -157,9 +155,7 @@ describe('AwsMetrics', () => {
 
       awsMetrics.extendedValidate();
 
-      const translatedStartTime = dayjs(awsMetrics.options.startTime);
-      const translatedDate = translatedStartTime.format('YYYY-M-D');
-      expect(translatedDate).to.equal(yesterdaysDate);
+      expect(toLocalDateString(awsMetrics.options.startTime)).to.equal(yesterdaysDate);
     });
 
     it('should translate minute-based human friendly syntax for startTime', () => {
@@ -181,10 +177,7 @@ describe('AwsMetrics', () => {
 
       awsMetrics.extendedValidate();
 
-      const defaultsStartTime = dayjs(awsMetrics.options.endTime);
-      const defaultsDate = defaultsStartTime.format('YYYY-M-D');
-
-      expect(defaultsDate).to.equal(todaysDate);
+      expect(toLocalDateString(awsMetrics.options.endTime)).to.equal(todaysDate);
     });
 
     it('should set the endTime to the provided value', () => {
@@ -195,6 +188,47 @@ describe('AwsMetrics', () => {
       const endTime = awsMetrics.options.endTime.toISOString();
       const expectedEndTime = new Date('1970-01-01').toISOString();
       expect(endTime).to.equal(expectedEndTime);
+    });
+
+    it('should support epoch seconds for startTime', () => {
+      awsMetrics.options.startTime = '1469705761';
+
+      awsMetrics.extendedValidate();
+
+      expect(awsMetrics.options.startTime.getTime()).to.equal(1469705761000);
+    });
+
+    it('should support epoch milliseconds for endTime', () => {
+      awsMetrics.options.endTime = '1469705761000';
+
+      awsMetrics.extendedValidate();
+
+      expect(awsMetrics.options.endTime.getTime()).to.equal(1469705761000);
+    });
+
+    it('should interpret datetimes without an offset as UTC', () => {
+      awsMetrics.options.startTime = '2016-07-01T10:00';
+
+      awsMetrics.extendedValidate();
+
+      expect(awsMetrics.options.startTime.getTime()).to.equal(Date.UTC(2016, 6, 1, 10));
+    });
+
+    it('should translate human friendly syntax for endTime', () => {
+      awsMetrics.options.endTime = '1h';
+
+      awsMetrics.extendedValidate();
+
+      const expectedEndTime = Date.now() - 60 * 60 * 1000;
+      expect(awsMetrics.options.endTime.getTime()).to.be.closeTo(expectedEndTime, 5000);
+    });
+
+    it('should throw on a malformed startTime', () => {
+      awsMetrics.options.startTime = '1h30m';
+
+      expect(() => awsMetrics.extendedValidate())
+        .to.throw(ServerlessError)
+        .with.property('code', 'INVALID_TIME_INPUT');
     });
   });
 
@@ -520,6 +554,10 @@ describe('AwsMetrics', () => {
       ]);
 
       expect(writeTextStub).to.have.been.calledOnce;
+      expect(writeTextStub.firstCall.args[0]).to.include(
+        `${formatDisplayTime(proxiedMetrics.options.startTime)} - ` +
+          `${formatDisplayTime(proxiedMetrics.options.endTime)}\n`
+      );
       expect(writeTextStub.firstCall.args[0]).to.include('invocations: 9');
       expect(writeTextStub.firstCall.args[0]).to.include('throttles: 1');
       expect(writeTextStub.firstCall.args[0]).to.include('errors: 1');
