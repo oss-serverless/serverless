@@ -207,3 +207,21 @@ provider:
 It is important to understand that `deploymentRole` only affects the role CloudFormation will assume. All other interactions from the `serverless` CLI with AWS will not use that `deploymentRole`.
 
 This is why we usually recommend using the "assume role" method described above instead of `deploymentRole`.
+
+## Running behind a proxy
+
+osls routes its HTTP traffic — AWS API calls, credential resolution (including IAM Identity Center / SSO), and template, plugin registry, layer, and rollback code downloads — through the proxy configured in the standard environment variables:
+
+```bash
+export HTTPS_PROXY=http://proxy.example.com:8080
+```
+
+AWS API calls and credential resolution use the first defined of `proxy`, `HTTP_PROXY`, `http_proxy`, `HTTPS_PROXY`, or `https_proxy`. Other downloads follow standard proxy semantics: `HTTPS_PROXY` for `https` URLs, `HTTP_PROXY` for `http` URLs, and `NO_PROXY` exclusions are honored.
+
+If your proxy intercepts TLS with its own certificate authority, provide it via the `ca` or `cafile` environment variables described in the [self-signed certificate note](#quick-setup) above. The certificates apply to AWS API calls and downloads alike.
+
+AWS requests time out after 120 seconds of socket inactivity. Slow or unreliable proxy connections can be accommodated with a higher limit in milliseconds:
+
+```bash
+export AWS_CLIENT_TIMEOUT=300000
+```

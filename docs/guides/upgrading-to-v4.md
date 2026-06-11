@@ -159,7 +159,9 @@ osls v3 resolved AWS credentials through AWS SDK v2, which reads `~/.aws/config`
 
 All AWS requests now go through AWS SDK v3, which changes retry, concurrency, timeout, and endpoint behavior:
 
-- **Retries.** v3 layered its own retry loop on top of AWS SDK v2's retries; v4 relies solely on the SDK v3 `standard` retry mode. `SLS_AWS_REQUEST_MAX_RETRIES` still works and sets the SDK retry count: total attempts are the value plus one (default: 4 retries, 5 attempts). Setting it to `0` now disables retries entirely, where v3 still performed SDK-level retries. Under sustained throttling, commands give up sooner than v3 did.
+- **Retries.** v3 layered a general retry loop on top of AWS SDK v2's retries; v4 uses the SDK v3 `standard` retry mode per request, plus targeted framework-level retries where the SDK budget is not enough: sustained throttling during CloudFormation polling and artifact uploads, and transient network failures while reading S3 response bodies. `SLS_AWS_REQUEST_MAX_RETRIES` still works and sets the SDK retry count: total attempts are the value plus one (default: 4 retries, 5 attempts). Setting it to `0` now disables the SDK retries entirely, where v3 still performed SDK-level retries.
+- **Error codes.** AWS failures no longer carry v3's uniform `AWS_<SERVICE>_<METHOD>_<CODE>` error codes. Commands now report context-specific codes or, for unhandled AWS service errors, a code synthesized from the AWS error name (for example `AWS_ACCESS_DENIED`). Update CI scripts or tooling that match on error codes in CLI output.
+- **Proxy and certificates.** The proxy (`HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`) and custom certificate authority (`ca`, `cafile`) environment variables now apply to all HTTP requests osls makes — including template, plugin registry, layer, and rollback code downloads — where v3 honored them only for AWS calls. See [Running behind a proxy](./credentials.md#running-behind-a-proxy).
 - **Concurrency.** v3 funneled all AWS requests through a global queue of 2 concurrent requests; v4 has no global cap, so commands issue more requests in parallel and complete faster. Flow-specific limits such as `SLS_MAX_CONCURRENT_ARTIFACTS_UPLOADS` still apply.
 - **Timeouts.** `AWS_CLIENT_TIMEOUT` (milliseconds) is enforced as a socket inactivity timeout and defaults to 120 seconds.
 - **S3 checksums.** Uploads send CRC32 flexible checksums instead of `Content-MD5`. If you deploy to an S3-compatible endpoint that rejects them, set `AWS_REQUEST_CHECKSUM_CALCULATION=WHEN_REQUIRED`.
@@ -182,7 +184,7 @@ See [Custom commands](./plugins/custom-commands.md#command-options).
 
 osls no longer bundles AWS SDK for JavaScript v2. All built-in AWS calls use **AWS SDK v3** (`@aws-sdk/client-*` packages). For most users this is transparent.
 
-Plugin authors are affected if they used the internal v2 surfaces, which are **removed** in v4 (calling them now throws):
+Plugin authors are affected if they used the internal v2 surfaces, which are **removed** in v4 (calling them now throws a `ServerlessError` with code `AWS_SDK_V2_SURFACE_REMOVED`):
 
 - `provider.request(service, method, params, options)` — the generic v2 API proxy
 - `provider.sdk` — the raw `aws-sdk` v2 module
