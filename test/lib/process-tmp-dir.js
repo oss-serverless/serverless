@@ -15,7 +15,7 @@ try {
 }
 
 module.exports = (function self() {
-  const processTmpDir = path.join(serverlessTmpDir, crypto.randomBytes(2).toString('hex'));
+  const processTmpDir = path.join(serverlessTmpDir, crypto.randomBytes(12).toString('hex'));
   try {
     mkdirSync(processTmpDir);
   } catch (error) {

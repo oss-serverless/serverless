@@ -21,7 +21,7 @@ describe('Utils', () => {
     it('should create a scoped tmp directory', () => {
       const dirPath = serverless.utils.getTmpDirPath();
       const stats = fs.statSync(dirPath);
-      expect(dirPath).to.include('tmpdirs-serverless');
+      expect(dirPath).to.match(/tmpdirs-serverless[/\\][0-9a-f]{24}$/);
       expect(stats.isDirectory()).to.equal(true);
     });
   });

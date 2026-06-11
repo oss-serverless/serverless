@@ -10,6 +10,8 @@ const sinon = require('sinon');
 const { expect } = require('chai');
 
 describe('test/unit/lib/utils/resolve-process-tmp-dir.test.js', () => {
+  const randomHex = 'abcd'.repeat(6);
+
   afterEach(() => {
     sinon.restore();
   });
@@ -23,7 +25,7 @@ describe('test/unit/lib/utils/resolve-process-tmp-dir.test.js', () => {
     const secondTmpDir = await resolveProcessTmpDir();
 
     expect(secondTmpDir).to.equal(firstTmpDir);
-    expect(path.basename(firstTmpDir)).to.match(/^node-process-[0-9a-f]{4}-/);
+    expect(path.basename(firstTmpDir)).to.match(/^node-process-[0-9a-f]{24}-/);
     expect((await fsp.stat(firstTmpDir)).isDirectory()).to.equal(true);
 
     await fsp.rm(firstTmpDir, { recursive: true, force: true });
@@ -31,7 +33,7 @@ describe('test/unit/lib/utils/resolve-process-tmp-dir.test.js', () => {
 
   it('retries after a failed temp directory creation', async () => {
     const error = new Error('temporary failure');
-    const tmpDir = path.join(os.tmpdir(), 'node-process-abcd-retry');
+    const tmpDir = path.join(os.tmpdir(), `node-process-${randomHex}-retry`);
 
     const fsStub = {
       promises: {
@@ -46,7 +48,7 @@ describe('test/unit/lib/utils/resolve-process-tmp-dir.test.js', () => {
     const resolveProcessTmpDir = proxyquire('../../../../lib/utils/resolve-process-tmp-dir', {
       fs: fsStub,
       crypto: {
-        randomBytes: () => Buffer.from('abcd', 'hex'),
+        randomBytes: () => Buffer.from(randomHex, 'hex'),
       },
     });
 
@@ -56,7 +58,7 @@ describe('test/unit/lib/utils/resolve-process-tmp-dir.test.js', () => {
   });
 
   it('memoizes the resolved temp dir for subsequent calls', async () => {
-    const tmpDir = path.join(os.tmpdir(), 'node-process-abcd-memoized');
+    const tmpDir = path.join(os.tmpdir(), `node-process-${randomHex}-memoized`);
     const fsStub = {
       promises: { mkdtemp: sinon.stub().resolves(tmpDir) },
       rmSync: sinon.stub(),
@@ -65,7 +67,7 @@ describe('test/unit/lib/utils/resolve-process-tmp-dir.test.js', () => {
 
     const resolveProcessTmpDir = proxyquire('../../../../lib/utils/resolve-process-tmp-dir', {
       fs: fsStub,
-      crypto: { randomBytes: () => Buffer.from('abcd', 'hex') },
+      crypto: { randomBytes: () => Buffer.from(randomHex, 'hex') },
     });
 
     expect(await resolveProcessTmpDir()).to.equal(tmpDir);
@@ -74,7 +76,7 @@ describe('test/unit/lib/utils/resolve-process-tmp-dir.test.js', () => {
   });
 
   it('registers an exit cleanup for the resolved temp dir', async () => {
-    const tmpDir = path.join(os.tmpdir(), 'node-process-abcd-cleanup');
+    const tmpDir = path.join(os.tmpdir(), `node-process-${randomHex}-cleanup`);
     const fsStub = {
       promises: { mkdtemp: sinon.stub().resolves(tmpDir) },
       rmSync: sinon.stub(),
@@ -83,7 +85,7 @@ describe('test/unit/lib/utils/resolve-process-tmp-dir.test.js', () => {
 
     const resolveProcessTmpDir = proxyquire('../../../../lib/utils/resolve-process-tmp-dir', {
       fs: fsStub,
-      crypto: { randomBytes: () => Buffer.from('abcd', 'hex') },
+      crypto: { randomBytes: () => Buffer.from(randomHex, 'hex') },
     });
 
     await resolveProcessTmpDir();
@@ -97,7 +99,7 @@ describe('test/unit/lib/utils/resolve-process-tmp-dir.test.js', () => {
   });
 
   it('swallows rmSync errors during exit cleanup', async () => {
-    const tmpDir = path.join(os.tmpdir(), 'node-process-abcd-cleanup-error');
+    const tmpDir = path.join(os.tmpdir(), `node-process-${randomHex}-cleanup-error`);
     const fsStub = {
       promises: { mkdtemp: sinon.stub().resolves(tmpDir) },
       rmSync: sinon.stub().throws(new Error('cleanup failed')),
@@ -106,7 +108,7 @@ describe('test/unit/lib/utils/resolve-process-tmp-dir.test.js', () => {
 
     const resolveProcessTmpDir = proxyquire('../../../../lib/utils/resolve-process-tmp-dir', {
       fs: fsStub,
-      crypto: { randomBytes: () => Buffer.from('abcd', 'hex') },
+      crypto: { randomBytes: () => Buffer.from(randomHex, 'hex') },
     });
 
     await resolveProcessTmpDir();

@@ -10,7 +10,7 @@ const crypto = require('crypto');
 const { pathExists } = require('../../../utils/fs');
 
 describe('#ensureArtifact', () => {
-  const testArtifactName = `test-${crypto.randomBytes(2).toString('hex')}`;
+  const testArtifactName = `test-${crypto.randomBytes(12).toString('hex')}`;
 
   let testArtifactPath;
   let invokedCount = 0;
