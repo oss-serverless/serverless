@@ -1425,7 +1425,7 @@ describe('AwsInvokeLocal', () => {
             },
           },
           '../../../utils/fs/copy': copyStub,
-          'cachedir': sinon.stub().returns(cacheDirPath),
+          '../../../utils/resolve-cache-dir': sinon.stub().returns(cacheDirPath),
           '../../../utils/fs/dir-exists': dirExistsStub,
           '../../../utils/serverless-utils/download': downloadStub,
         });
@@ -1479,7 +1479,7 @@ describe('AwsInvokeLocal', () => {
             },
           },
           '../../../utils/fs/copy': copyStub,
-          'cachedir': sinon.stub().returns(cacheDirPath),
+          '../../../utils/resolve-cache-dir': sinon.stub().returns(cacheDirPath),
           '../../../utils/fs/dir-exists': dirExistsStub,
           '../../../utils/serverless-utils/download': downloadStub,
         });
@@ -1705,7 +1705,9 @@ describe('AwsInvokeLocal', () => {
           '../../../utils/spawn': sinon.stub().resolves({
             stdoutBuffer: Buffer.from('Mocked output'),
           }),
-          'cachedir': sinon.stub().returns(path.join(tempRoot, 'cache-root')),
+          '../../../utils/resolve-cache-dir': sinon
+            .stub()
+            .returns(path.join(tempRoot, 'cache-root')),
         });
 
       try {
@@ -1806,7 +1808,7 @@ describe('AwsInvokeLocal', () => {
             },
           },
           '../../../utils/fs/copy': sinon.stub().resolves(),
-          'cachedir': sinon.stub().returns(cacheDirPath),
+          '../../../utils/resolve-cache-dir': sinon.stub().returns(cacheDirPath),
           '../../../utils/fs/dir-exists': sinon.stub().resolves(false),
           '../../../utils/serverless-utils/download': sinon.stub().resolves(),
         });
