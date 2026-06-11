@@ -143,6 +143,29 @@ The `--startTime` option of `serverless logs` and the `--startTime` / `--endTime
 
 See [logs](../cli-reference/logs.md) and [metrics](../cli-reference/metrics.md) for the supported formats. As part of this change, osls no longer depends on the [`dayjs`](https://www.npmjs.com/package/dayjs) package; plugins that relied on it being installed alongside osls should declare it in their own dependencies.
 
+### AWS credential resolution changes
+
+osls v3 resolved AWS credentials through AWS SDK v2, which reads `~/.aws/config` only when `AWS_SDK_LOAD_CONFIG` is set (osls never set it). osls v4 resolves credentials with standard AWS SDK v3 semantics, matching the AWS CLI and other modern AWS tools: `~/.aws/config` is **always merged** into same-named profiles from `~/.aws/credentials`. This changes behavior for several profile layouts:
+
+- **Your deploy identity can change.** If a profile has static keys in the credentials file and a same-named section with `role_arn` and `source_profile` in the config file, v3 used the static keys directly; v4 performs AssumeRole and runs under the role, potentially in a **different AWS account**. osls logs a warning when it detects this layout. To keep the previous identity, remove or rename the config-file section, or point osls at a dedicated profile.
+- **`mfa_serial` is now honored.** Profiles configured with `mfa_serial` trigger an interactive MFA prompt. In non-interactive environments (such as CI) the prompt fails fast with `MFA_CODE_UNAVAILABLE` instead of waiting for input.
+- **`role_arn` with `credential_source = Ec2InstanceMetadata`** now attempts the EC2 instance metadata service as configured. On machines outside EC2 this fails with a timeout, even if the credentials file also contains static keys for that profile.
+- **IAM Identity Center (SSO), `credential_process`, and web identity profiles are now supported.** These were ignored or unsupported in v3. The HTTP calls they make honor the same proxy, custom CA, and timeout configuration as all other AWS requests.
+- **`AWS_DEFAULT_PROFILE`** pointing at a profile that exists in neither shared file logs a warning and falls back to the SDK default provider chain (environment variables, ECS/EC2 instance credentials). v3 skipped it silently.
+- **Credentials resolve once per command** and are shared by all AWS clients, so a deploy triggers at most one MFA prompt, one AssumeRole call, or one `credential_process` invocation. Temporary credentials refresh automatically as they approach expiry.
+- **`invoke local`** now materializes the fully resolved credentials (including SSO, assume-role, and `credential_process` profiles) into the invoked function's environment. `AWS_PROFILE` and `AWS_DEFAULT_PROFILE` are removed from that environment when resolved keys are injected, unless you set them explicitly via `provider.environment`.
+
+### AWS request behavior changes
+
+All AWS requests now go through AWS SDK v3, which changes retry, concurrency, timeout, and endpoint behavior:
+
+- **Retries.** v3 layered its own retry loop on top of AWS SDK v2's retries; v4 relies solely on the SDK v3 `standard` retry mode. `SLS_AWS_REQUEST_MAX_RETRIES` still works and sets the SDK retry count: total attempts are the value plus one (default: 4 retries, 5 attempts). Setting it to `0` now disables retries entirely, where v3 still performed SDK-level retries. Under sustained throttling, commands give up sooner than v3 did.
+- **Concurrency.** v3 funneled all AWS requests through a global queue of 2 concurrent requests; v4 has no global cap, so commands issue more requests in parallel and complete faster. Flow-specific limits such as `SLS_MAX_CONCURRENT_ARTIFACTS_UPLOADS` still apply.
+- **Timeouts.** `AWS_CLIENT_TIMEOUT` (milliseconds) is enforced as a socket inactivity timeout and defaults to 120 seconds.
+- **S3 checksums.** Uploads send CRC32 flexible checksums instead of `Content-MD5`. If you deploy to an S3-compatible endpoint that rejects them, set `AWS_REQUEST_CHECKSUM_CALCULATION=WHEN_REQUIRED`.
+- **STS endpoints.** Security Token Service calls now use the regional endpoint (`sts.<region>.amazonaws.com`) instead of the global one, and `AWS_STS_REGIONAL_ENDPOINTS` is ignored. If your network egress rules pin `sts.amazonaws.com`, allow the regional endpoints or set `AWS_ENDPOINT_URL_STS=https://sts.amazonaws.com`.
+- **Endpoint overrides are now honored.** `AWS_ENDPOINT_URL`, `AWS_ENDPOINT_URL_<SERVICE>`, and the profile `endpoint_url` setting apply to every AWS call osls makes. This enables LocalStack-style workflows without plugins, but also means a leftover `AWS_ENDPOINT_URL` export in your shell silently redirects real deploys, so check your environment if requests go somewhere unexpected.
+
 ### Plugin custom variables: `configurationVariablesSources` only
 
 Plugins that extend variable resolution via the old `variableResolvers` API will fail with `OLD_VARIABLE_RESOLVER_NOT_SUPPORTED`. Migrate to `configurationVariablesSources`.
@@ -174,6 +197,8 @@ const result = await client.send(new ListBucketsCommand({}));
 ```
 
 Declare any `@aws-sdk/client-*` packages your plugin imports in its own dependencies.
+
+See [AWS plugins](./plugins/creating-plugins.md#aws-plugins) for the full plugin-facing AWS API. The [credential resolution changes](#aws-credential-resolution-changes) above apply to plugin-created clients as well.
 
 ### Bundled `open` and `punycode` packages removed (plugin authors)
 
