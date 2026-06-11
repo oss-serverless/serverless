@@ -447,12 +447,42 @@ describe('AwsProvider', () => {
         provider,
         profile: 'custom-profile',
       });
-      expect(buildClientConfigStub).to.have.been.calledOnceWithExactly({
+      expect(buildClientConfigStub).to.have.been.calledOnce;
+      const buildClientConfigOptions = buildClientConfigStub.firstCall.args[0];
+      expect(buildClientConfigOptions).to.include({
         maxAttempts: 2,
         retryMode: 'adaptive',
         region: 'us-east-1',
-        credentials: 'credentials',
       });
+      // The raw provider is wrapped in process-wide memoization
+      expect(buildClientConfigOptions.credentials).to.be.a('function');
+      expect(buildClientConfigOptions.credentials.memoized).to.equal(true);
+      await expect(buildClientConfigOptions.credentials()).to.eventually.equal('credentials');
+    });
+
+    it('memoizes credential resolution across clients sharing a provider', async () => {
+      const resolvedCredentials = { accessKeyId: 'accessKeyId', secretAccessKey: 'secret' };
+      const baseProvider = sinon.stub().resolves(resolvedCredentials);
+      const AwsProviderProxyquired = proxyquire
+        .noCallThru()
+        .load('../../../../../lib/plugins/aws/provider.js', {
+          '../../aws/credentials': {
+            getAwsSdkV3CredentialsProviderCacheKey: sinon.stub().returns('cache-key'),
+            getAwsSdkV3CredentialsProvider: sinon.stub().returns(baseProvider),
+          },
+        });
+      const provider = new AwsProviderProxyquired(serverless, options);
+
+      const credentialsProvider = provider.getAwsSdkV3CredentialsProvider();
+
+      expect(credentialsProvider.memoized).to.equal(true);
+      await expect(credentialsProvider()).to.eventually.deep.equal(resolvedCredentials);
+      await expect(credentialsProvider()).to.eventually.deep.equal(resolvedCredentials);
+      // A second client obtaining the provider must not trigger another resolution either
+      await expect(provider.getAwsSdkV3CredentialsProvider()()).to.eventually.deep.equal(
+        resolvedCredentials
+      );
+      expect(baseProvider).to.have.been.calledOnce;
     });
 
     it('reuses SDK v3 credential providers for the same credential source', async () => {
