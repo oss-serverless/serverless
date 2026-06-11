@@ -2,8 +2,7 @@
 
 const chai = require('chai');
 const resolveAjvValidate = require('../../../../../lib/classes/config-schema-handler/resolve-ajv-validate');
-const objectHash = require('object-hash');
-const deepSortObjectByKey = require('../../../../../lib/utils/deep-sort-object-by-key');
+const getSchemaHash = require('../../../../../lib/classes/config-schema-handler/schema-hash');
 const path = require('path');
 const os = require('os');
 const fsp = require('fs').promises;
@@ -36,7 +35,7 @@ describe('test/unit/lib/classes/ConfigSchemaHandler/resolveAjvValidate.test.js',
 
   it('generates schema validation file', async () => {
     await resolveAjvValidate(schema);
-    const schemaHash = objectHash(deepSortObjectByKey(schema));
+    const schemaHash = getSchemaHash(schema);
 
     const fileStat = await fsp.lstat(getExpectedCachePath(schemaHash));
     expect(fileStat.isFile()).to.be.true;
@@ -49,7 +48,7 @@ describe('test/unit/lib/classes/ConfigSchemaHandler/resolveAjvValidate.test.js',
       title: 'ChangedTitle',
     };
     await resolveAjvValidate(updatedSchema);
-    const schemaHash = objectHash(deepSortObjectByKey(updatedSchema));
+    const schemaHash = getSchemaHash(updatedSchema);
 
     const fileStat = await fsp.lstat(getExpectedCachePath(schemaHash));
     expect(fileStat.isFile()).to.be.true;
@@ -83,7 +82,7 @@ describe('test/unit/lib/classes/ConfigSchemaHandler/resolveAjvValidate.test.js',
     expect(typeof validate).to.equal('function');
     expect(validate({ firstProp: 'value' })).to.equal(true);
 
-    const schemaHash = objectHash(deepSortObjectByKey(uniqueSchema));
+    const schemaHash = getSchemaHash(uniqueSchema);
     expect((await realFsp.lstat(getExpectedCachePath(schemaHash))).isFile()).to.be.true;
   });
 
