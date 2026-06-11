@@ -23,7 +23,7 @@ describe('AwsRollbackFunction', () => {
   let originalFetch;
 
   beforeEach(() => {
-    fetchStub = sinon.stub().resolves({ arrayBuffer: async () => new ArrayBuffer(0) });
+    fetchStub = sinon.stub().resolves({ ok: true, arrayBuffer: async () => new ArrayBuffer(0) });
     originalFetch = globalThis.fetch;
     globalThis.fetch = fetchStub;
     serverless = new Serverless({ commands: [], options: {} });
@@ -223,7 +223,7 @@ describe('AwsRollbackFunction', () => {
       const zipBuffer = Buffer.from(zipBytes);
       const functionVersion = '4711';
       const codeLocation = 'https://example.test/function.zip';
-      fetchStub.resolves({ arrayBuffer: async () => zipBytes.buffer });
+      fetchStub.resolves({ ok: true, arrayBuffer: async () => zipBytes.buffer });
 
       const { awsSdkV3Stub, serverless } = await runServerless({
         fixture: 'function',
@@ -240,7 +240,9 @@ describe('AwsRollbackFunction', () => {
       const lambdaSends = awsSdkV3Stub.sends.filter(({ service }) => service === 'Lambda');
       const expectedCredentials = serverless.getProvider('aws').getAwsSdkV3CredentialsProvider();
 
-      expect(fetchStub).to.have.been.calledOnceWithExactly(codeLocation);
+      expect(fetchStub).to.have.been.calledOnce;
+      expect(fetchStub.firstCall.args[0]).to.equal(codeLocation);
+      expect(fetchStub.firstCall.args[1].dispatcher).to.exist;
       expect(lambdaSends.map(({ method }) => method)).to.deep.equal([
         'getFunction',
         'getFunction',
@@ -460,7 +462,7 @@ describe('AwsRollbackFunction', () => {
   describe('#fetchFunctionCode()', () => {
     it('should fetch the zip file content of the previously requested function', async () => {
       const body = Uint8Array.from([1, 2, 3]);
-      fetchStub.resolves({ arrayBuffer: async () => body.buffer });
+      fetchStub.resolves({ ok: true, arrayBuffer: async () => body.buffer });
       const func = {
         Code: {
           Location: 'https://foo.com/bar',
@@ -469,9 +471,31 @@ describe('AwsRollbackFunction', () => {
 
       const result = await awsRollbackFunction.fetchFunctionCode(func);
 
-      expect(fetchStub.calledOnceWithExactly('https://foo.com/bar')).to.equal(true);
+      expect(fetchStub.calledOnce).to.equal(true);
+      expect(fetchStub.firstCall.args[0]).to.equal('https://foo.com/bar');
+      expect(fetchStub.firstCall.args[1].dispatcher).to.exist;
       expect(Buffer.isBuffer(result)).to.equal(true);
       expect(result).to.deep.equal(Buffer.from([1, 2, 3]));
+    });
+
+    it('should reject unsuccessful download responses', async () => {
+      fetchStub.resolves({ ok: false, status: 403, arrayBuffer: async () => new ArrayBuffer(0) });
+      const func = {
+        Code: {
+          Location: 'https://foo.com/bar',
+        },
+      };
+
+      try {
+        await awsRollbackFunction.fetchFunctionCode(func);
+      } catch (error) {
+        expect(error).to.be.instanceOf(ServerlessError);
+        expect(error.code).to.equal('LAMBDA_CODE_DOWNLOAD_FAILED');
+        expect(error.message).to.include('403');
+        return;
+      }
+
+      throw new Error('Expected fetchFunctionCode to reject');
     });
   });
 
