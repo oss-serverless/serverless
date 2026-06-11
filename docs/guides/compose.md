@@ -241,6 +241,10 @@ Remember to do this for every stage you may have previously deployed.
 
 ## FAQ
 
+### Running behind a proxy
+
+Compose honors the same proxy, custom certificate authority, and timeout environment variables as osls (`HTTP_PROXY`/`HTTPS_PROXY`, `ca`/`cafile`, and `AWS_CLIENT_TIMEOUT`) for its own AWS requests, such as remote state access. The services it deploys are handled by the osls CLI, which reads the same variables. See [Running behind a proxy](./credentials.md#running-behind-a-proxy).
+
 ### Multi-region deployments
 
 > Is multi-region deployment possible via osls compose?
