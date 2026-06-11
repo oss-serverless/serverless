@@ -56,7 +56,7 @@ It is also a good practice to add `osls` to the `peerDependencies` section. That
 {
   ...
   "peerDependencies": {
-    "osls": "^3.67"
+    "osls": "^4.0"
   }
 }
 ```
