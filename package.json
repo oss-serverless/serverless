@@ -86,8 +86,7 @@
     "prettier": "^3.8.3",
     "proxyquire": "^2.1.3",
     "sinon": "^21.1.2",
-    "sinon-chai": "^4.0.1",
-    "ws": "^8.20.0"
+    "sinon-chai": "^4.0.1"
   },
   "scripts": {
     "integration-test-run-package": "mocha --config test/mocha/package.cjs \"test/integration-package/**/*.tests.js\"",
