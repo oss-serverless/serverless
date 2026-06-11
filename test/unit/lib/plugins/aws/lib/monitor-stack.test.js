@@ -118,6 +118,63 @@ describe('monitorStack', () => {
       expect(commands[0]).to.be.instanceOf(DescribeStackEventsCommand);
     });
 
+    it('retries stack event polling on throttling errors', async () => {
+      const throttlingError = Object.assign(new Error('Rate exceeded'), {
+        name: 'ThrottlingException',
+      });
+      const sendStub = sinon.stub();
+      sendStub.onCall(0).rejects(throttlingError);
+      sendStub.onCall(1).resolves({
+        StackEvents: [
+          {
+            EventId: 'complete',
+            StackName: 'stack-id',
+            LogicalResourceId: 'stack-id',
+            ResourceType: 'AWS::CloudFormation::Stack',
+            ResourceStatus: 'CREATE_COMPLETE',
+          },
+        ],
+      });
+      class StubCloudFormationClient {
+        async send(command) {
+          return sendStub(command);
+        }
+      }
+      const { retryOnThrottlingError } = require('../../../../../../lib/aws/retry');
+      const monitorStackWithStub = proxyquire(
+        '../../../../../../lib/plugins/aws/lib/monitor-stack',
+        {
+          '../../../utils/sleep': sinon.stub().resolves(),
+          '../../../aws/retry': {
+            retryOnThrottlingError: (task, options) =>
+              retryOnThrottlingError(task, { ...options, delayMs: 1 }),
+          },
+          '@aws-sdk/client-cloudformation': {
+            CloudFormationClient: StubCloudFormationClient,
+            DescribeStackEventsCommand,
+          },
+        }
+      );
+      const plugin = {
+        provider: {
+          getAwsSdkV3Config: sinon.stub().resolves({ region: 'us-east-1' }),
+        },
+        options: {},
+        ...monitorStackWithStub,
+      };
+
+      const stackStatus = await plugin.checkStackProgress(
+        'create',
+        { StackId: 'stack-id' },
+        'https://example.test/stack',
+        { frequency: 0 },
+        {}
+      );
+
+      expect(stackStatus).to.equal('CREATE_COMPLETE');
+      expect(sendStub).to.have.been.calledTwice;
+    });
+
     it('should skip monitoring if the stack was already created', async () => {
       const describeStackEventsStub = stubDescribeStackEvents();
 

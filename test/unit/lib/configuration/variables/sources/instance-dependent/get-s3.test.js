@@ -138,7 +138,10 @@ describe('test/unit/lib/configuration/variables/sources/instance-dependent/get-s
   });
 
   it('should use AWS SDK v3 config and preserve credential providers', () => {
-    expect(getAwsSdkV3Config).to.have.been.calledWith({ region: 'us-east-1' });
+    expect(getAwsSdkV3Config).to.have.been.calledWith({
+      region: 'us-east-1',
+      followRegionRedirects: true,
+    });
     expect(clientInstances[0].config.credentials).to.equal(credentials);
   });
 
