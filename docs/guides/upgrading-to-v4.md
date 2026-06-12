@@ -87,6 +87,22 @@ The same applies to function- and layer-level `package` blocks. See [Packaging](
 
 `layers.<name>.path` values containing newline, carriage return, or NUL characters are now rejected with an `INVALID_LAYER_PATH` error during packaging and Docker-based local invocation. Such paths never worked correctly and could corrupt the Dockerfile that `invoke local --docker` generates. No action is needed for any real layer path.
 
+### Java and Ruby `invoke local` handlers are validated
+
+Java and Ruby local invocation now validates handler strings before starting the local runtime. Invalid Java handlers fail with `INVALID_JAVA_HANDLER`; invalid Ruby handlers fail with `INVALID_RUBY_HANDLER`.
+
+Use Java handler names such as `com.example.Handler` or `com.example.Handler::handleRequest`. Use Ruby handlers with a safe file path and method or class address, such as `handler.hello` or `handler.MyModule::MyClass.my_class_method`.
+
+### Java and Ruby `invoke local` sanitizes runtime environment variables
+
+Java and Ruby local invocation now removes runtime injection variables before spawning the local runtime: `JAVA_TOOL_OPTIONS`, `_JAVA_OPTIONS`, `JDK_JAVA_OPTIONS`, `RUBYOPT`, `RUBYLIB`, `BUNDLE_GEMFILE`, and `BUNDLE_PATH`.
+
+If your local invocation intentionally depends on those variables, pass `--preserve-runtime-env` to restore the previous inherited environment behavior.
+
+### Java and Ruby `invoke local` fails on nonzero runtime exits
+
+Java and Ruby local invocation now fails the command when the local runtime exits with a nonzero status. In v3, Java and Ruby local invocations could report success even if the spawned runtime process exited unsuccessfully. Update scripts that expected success despite a local runtime failure.
+
 ### `variablesResolutionMode: 20210219` is rejected
 
 The legacy variables resolver mode is no longer supported. Remove `variablesResolutionMode` from your configuration.

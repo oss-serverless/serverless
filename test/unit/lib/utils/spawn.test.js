@@ -13,6 +13,26 @@ const spawn = require('../../../../lib/utils/spawn');
 
 const loadSpawnWithStubs = (stubs) =>
   proxyquire.noCallThru().load('../../../../lib/utils/spawn', stubs);
+const loadSpawnSyncWithStubs = (stubs) =>
+  proxyquire.noCallThru().load('../../../../lib/utils/spawn-sync', stubs);
+
+const repoRoot = path.resolve(__dirname, '../../../../');
+
+const collectJavaScriptFiles = async (directoryPath) => {
+  const entries = await fs.readdir(directoryPath, { withFileTypes: true });
+  const files = [];
+
+  for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+    const entryPath = path.join(directoryPath, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await collectJavaScriptFiles(entryPath)));
+    } else if (entry.name.endsWith('.js')) {
+      files.push(entryPath);
+    }
+  }
+
+  return files;
+};
 
 const waitFor = async (condition) => {
   for (let attempt = 0; attempt < 50; attempt += 1) {
@@ -59,6 +79,17 @@ const expectRejected = async (promise) => {
   throw new Error('Expected promise to reject');
 };
 
+const expectThrownCode = (fn, code) => {
+  try {
+    fn();
+  } catch (error) {
+    expect(error).to.have.property('code', code);
+    return error;
+  }
+
+  throw new Error(`Expected ${code} to be thrown`);
+};
+
 const assertRedaction = async ({ args, redacted, visible = [] }) => {
   const error = await expectRejected(
     spawn(process.execPath, ['-e', 'process.exit(7);', '--', ...args])
@@ -74,6 +105,48 @@ const assertRedaction = async ({ args, redacted, visible = [] }) => {
 };
 
 describe('spawn', () => {
+  it('rejects shell-enabled spawns synchronously before spawning', () => {
+    const crossSpawnStub = sinon.stub();
+    const spawnWithStubs = loadSpawnWithStubs({
+      'cross-spawn': crossSpawnStub,
+    });
+
+    const error = expectThrownCode(
+      () => spawnWithStubs('npm', ['install'], { shell: true }),
+      'UNSAFE_SHELL_SPAWN'
+    );
+
+    expect(error.message).to.include('shell enabled');
+    expect(crossSpawnStub).to.not.have.been.called;
+  });
+
+  it('requires args to be an array', () => {
+    const error = expectThrownCode(() => spawn('npm', 'install'), 'INVALID_SPAWN_INPUT');
+
+    expect(error.message).to.equal('Spawn args must be an array.');
+  });
+
+  it('rejects null bytes in args', () => {
+    const error = expectThrownCode(() => spawn('npm', ['a\0b']), 'INVALID_SPAWN_INPUT');
+
+    expect(error.message).to.equal('Refusing to spawn command with null bytes.');
+  });
+
+  it('enforces spawn policy for sync spawns', () => {
+    const crossSpawnStub = { sync: sinon.stub() };
+    const spawnSyncWithStubs = loadSpawnSyncWithStubs({
+      'cross-spawn': crossSpawnStub,
+    });
+
+    expectThrownCode(
+      () => spawnSyncWithStubs('npm', ['install'], { shell: true }),
+      'UNSAFE_SHELL_SPAWN'
+    );
+    expectThrownCode(() => spawnSyncWithStubs('npm', 'install'), 'INVALID_SPAWN_INPUT');
+    expectThrownCode(() => spawnSyncWithStubs('npm', ['a\0b']), 'INVALID_SPAWN_INPUT');
+    expect(crossSpawnStub.sync).to.not.have.been.called;
+  });
+
   it('executes PATH shims through cross-platform resolution', async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'spawn-shim-'));
     const commandName = `spawn-shim-${crypto.randomBytes(12).toString('hex')}`;
@@ -341,5 +414,29 @@ describe('spawn', () => {
     expect(error.stdoutBuffer).to.deep.equal(Buffer.alloc(0));
     expect(error.stderrBuffer).to.deep.equal(Buffer.alloc(0));
     expect(error.stdBuffer).to.deep.equal(Buffer.alloc(0));
+  });
+
+  it('does not use raw child process APIs in production command or lib files', async () => {
+    const prohibitedPattern =
+      /require\(['"]child_process['"]\)|child_process\.exec|cp\.exec|shell:\s*true/;
+    const files = (
+      await Promise.all(
+        ['commands', 'lib'].map((directoryName) =>
+          collectJavaScriptFiles(path.join(repoRoot, directoryName))
+        )
+      )
+    ).flat();
+    const violations = [];
+
+    for (const filePath of files) {
+      const contents = await fs.readFile(filePath, 'utf8');
+      contents.split(/\n/).forEach((line, index) => {
+        if (prohibitedPattern.test(line)) {
+          violations.push(`${path.relative(repoRoot, filePath)}:${index + 1}: ${line.trim()}`);
+        }
+      });
+    }
+
+    expect(violations).to.deep.equal([]);
   });
 });
