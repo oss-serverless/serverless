@@ -54,6 +54,8 @@ describe('test/unit/lib/configuration/variables/sources/file.test.js', () => {
         '${file(file-property-function-errored-non-error.js):property}',
       jsFilePropertyFunctionAccessUnresolvableProperty:
         '${file(file-property-function-access-unresolvable-property.js):property}',
+      jsFilePropertyProxyTrapErrored: '${file(file-property-access-errored.js):proxy.boom}',
+      jsFilePropertyGetterErrored: '${file(file-property-access-errored.js):getter.boom}',
       jsFilePropertyPromise: '${file(file-property-promise.js):property}',
       notFile: '${file(dir.yaml)}',
       noParams: '${file:}',
@@ -206,6 +208,18 @@ describe('test/unit/lib/configuration/variables/sources/file.test.js', () => {
     expect(variablesMeta.get('jsFilePropertyFunctionErroredNonError').error.code).to.equal(
       'VARIABLE_RESOLUTION_ERROR'
     ));
+
+  it('should report with an error a Proxy "get" trap that crashes during address resolution', () => {
+    const { error } = variablesMeta.get('jsFilePropertyProxyTrapErrored');
+    expect(error.code).to.equal('VARIABLE_RESOLUTION_ERROR');
+    expect(error.message).to.include('Property access errored with');
+  });
+
+  it('should report with an error an own getter that crashes during address resolution', () => {
+    const { error } = variablesMeta.get('jsFilePropertyGetterErrored');
+    expect(error.code).to.equal('VARIABLE_RESOLUTION_ERROR');
+    expect(error.message).to.include('Property access errored with');
+  });
 
   it('should report with an error non file paths', () =>
     expect(variablesMeta.get('notFile').error.code).to.equal('VARIABLE_RESOLUTION_ERROR'));
