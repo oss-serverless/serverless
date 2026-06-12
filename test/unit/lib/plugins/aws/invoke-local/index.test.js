@@ -1418,6 +1418,15 @@ describe('AwsInvokeLocal', () => {
       });
     });
 
+    it('does not reject unused malformed layer entries without paths', async () => {
+      serverless.service.layers = {
+        myLayer: null,
+      };
+      awsInvokeLocal.options.functionObj = { layers: [] };
+
+      await expect(awsInvokeLocal.getLayerPaths()).to.eventually.deep.equal([]);
+    });
+
     const createRemoteLayerTestContext = ({
       awsSdkV3Stub,
       cacheDirPath,
