@@ -111,6 +111,8 @@ Versioned plugin configuration entries such as `example-osls-plugin@1.2.3` now f
 
 The legacy `plugins.localPath` option is still supported, but module names loaded from that directory must use npm package-name syntax. If you previously loaded uppercase local plugin names such as `ServicePluginMock1` through `.serverless_plugins` or `plugins.localPath`, rename them to lowercase npm-style names or reference them with explicit `./` local paths.
 
+`serverless --help` and the `plugin` management commands skip invalid entries with a warning, so you can still inspect the service and fix the configuration.
+
 ### `plugin install` accepts stricter package specs
 
 `serverless plugin install --name` now accepts only npm package names with optional semver ranges or npm dist-tags. Embedded literal quotes are rejected; quote the whole `--name` value at the shell level when the version range contains spaces or shell metacharacters:
