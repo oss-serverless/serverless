@@ -86,7 +86,6 @@ describe('AwsInvokeLocal', () => {
   let provider;
   let stdinStub;
   let spawnExtStub;
-  let spawnStub;
   let writeChildStub;
   let endChildStub;
 
@@ -96,22 +95,19 @@ describe('AwsInvokeLocal', () => {
       region: 'us-east-1',
       function: 'first',
     };
-    spawnStub = sinon.stub();
     endChildStub = sinon.stub();
     writeChildStub = sinon.stub();
-    spawnExtStub = sinon.stub().resolves({
-      stdoutBuffer: Buffer.from('Mocked output'),
-    });
-    spawnStub = sinon.stub().returns({
-      stderr: new EventEmitter().on('data', () => {}),
-      stdout: new EventEmitter().on('data', () => {}),
-      stdin: {
-        write: writeChildStub,
-        end: endChildStub,
-      },
-      on: (key, callback) => {
-        if (key === 'close') process.nextTick(callback);
-      },
+    spawnExtStub = sinon.stub().callsFake(() => {
+      const result = Promise.resolve({ stdoutBuffer: Buffer.from('Mocked output') });
+      result.stderr = new EventEmitter().on('data', () => {});
+      result.stdout = new EventEmitter().on('data', () => {});
+      result.child = {
+        stdin: {
+          write: writeChildStub,
+          end: endChildStub,
+        },
+      };
+      return result;
     });
 
     stdinStub = sinon.stub().resolves('');
@@ -1105,6 +1101,16 @@ describe('AwsInvokeLocal', () => {
       ).to.be.equal(true);
     });
 
+    it('rejects invalid Java handlers', async () => {
+      awsInvokeLocal.options.functionObj.runtime = 'java21';
+      awsInvokeLocal.options.functionObj.handler = 'com.example.Handler;id::customMethod';
+
+      await expect(awsInvokeLocal.invokeLocal()).to.be.rejected.then((error) => {
+        expect(error).to.have.property('code', 'INVALID_JAVA_HANDLER');
+      });
+      expect(invokeLocalJavaStub).to.not.have.been.called;
+    });
+
     it('should call invokeLocalRuby when ruby3.3 runtime is set', async () => {
       awsInvokeLocal.options.functionObj.runtime = 'ruby3.3';
       await awsInvokeLocal.invokeLocal();
@@ -1138,6 +1144,32 @@ describe('AwsInvokeLocal', () => {
       ).to.be.equal(true);
     });
 
+    it('preserves Ruby class and module handler names', async () => {
+      awsInvokeLocal.options.functionObj.runtime = 'ruby3.4';
+      awsInvokeLocal.options.functionObj.handler = 'handler.MyModule::MyClass.my_class_method';
+
+      await awsInvokeLocal.invokeLocal();
+
+      const runtime = process.platform === 'win32' ? 'ruby.exe' : 'ruby';
+      expect(invokeLocalRubyStub).to.have.been.calledOnceWithExactly(
+        runtime,
+        'handler',
+        'MyModule::MyClass.my_class_method',
+        {},
+        undefined
+      );
+    });
+
+    it('rejects invalid Ruby handlers', async () => {
+      awsInvokeLocal.options.functionObj.runtime = 'ruby3.4';
+      awsInvokeLocal.options.functionObj.handler = 'handler.bad-name';
+
+      await expect(awsInvokeLocal.invokeLocal()).to.be.rejected.then((error) => {
+        expect(error).to.have.property('code', 'INVALID_RUBY_HANDLER');
+      });
+      expect(invokeLocalRubyStub).to.not.have.been.called;
+    });
+
     it('should call invokeLocalDocker if using runtime provided.al2023', async () => {
       awsInvokeLocal.options.functionObj.runtime = 'provided.al2023';
       awsInvokeLocal.options.functionObj.handler = 'handler.foobar';
@@ -1162,9 +1194,6 @@ describe('AwsInvokeLocal', () => {
       AwsInvokeLocal = proxyquire('../../../../../../lib/plugins/aws/invoke-local/index', {
         '../../../utils/get-stdin': stdinStub,
         '../../../utils/spawn': spawnExtStub,
-        'child_process': {
-          spawn: spawnStub,
-        },
       });
       invokeLocalSpawnStubbed = new AwsInvokeLocal(serverless, {
         stage: 'dev',
@@ -1178,30 +1207,64 @@ describe('AwsInvokeLocal', () => {
       });
     });
 
-    it('spawns java process with correct arguments', async () => {
+    it('spawns java process with correct arguments and sanitized environment', async () => {
       const artifactPath = path.join(tmpServicePath, 'artifact path;$(id).jar');
       const className = 'com.example.Handler; $(id)';
       const handlerName = 'handle "Request" && id';
 
-      await invokeLocalSpawnStubbed.callJavaBridge(artifactPath, className, handlerName, '{}');
+      await overrideEnv(
+        {
+          variables: {
+            JAVA_TOOL_OPTIONS: '-javaagent:/tmp/agent.jar',
+            _JAVA_OPTIONS: '-Xmx64m',
+            JDK_JAVA_OPTIONS: '--add-opens=java.base/java.lang=ALL-UNNAMED',
+            KEEP_ME: 'yes',
+          },
+        },
+        async () => {
+          await invokeLocalSpawnStubbed.callJavaBridge(artifactPath, className, handlerName, '{}');
+        }
+      );
 
       const wrapperPath = await invokeLocalSpawnStubbed.resolveRuntimeWrapperPath(
         'java/target/invoke-bridge-1.0.1.jar'
       );
+      const [command, args, spawnOptions] = spawnExtStub.firstCall.args;
 
-      expect(spawnStub.firstCall.args).to.deep.equal([
-        'java',
-        [
-          `-DartifactPath=${artifactPath}`,
-          `-DclassName=${className}`,
-          `-DhandlerName=${handlerName}`,
-          '-jar',
-          wrapperPath,
-        ],
+      expect(command).to.equal('java');
+      expect(args).to.deep.equal([
+        `-DartifactPath=${artifactPath}`,
+        `-DclassName=${className}`,
+        `-DhandlerName=${handlerName}`,
+        '-jar',
+        wrapperPath,
       ]);
-      expect(writeChildStub.calledOnce).to.be.equal(true);
-      expect(endChildStub.calledOnce).to.be.equal(true);
-      expect(writeChildStub.calledWithExactly('{}')).to.be.equal(true);
+      expect(spawnOptions).to.include({ input: '{}' });
+      expect(spawnOptions).to.not.have.property('shell');
+      expect(spawnOptions.env).to.include({ KEEP_ME: 'yes' });
+      expect(spawnOptions.env).to.not.have.property('JAVA_TOOL_OPTIONS');
+      expect(spawnOptions.env).to.not.have.property('_JAVA_OPTIONS');
+      expect(spawnOptions.env).to.not.have.property('JDK_JAVA_OPTIONS');
+    });
+
+    it('preserves java runtime environment when requested', async () => {
+      invokeLocalSpawnStubbed.options['preserve-runtime-env'] = true;
+
+      await overrideEnv(
+        { variables: { JAVA_TOOL_OPTIONS: '-javaagent:/tmp/agent.jar' } },
+        async () => {
+          await invokeLocalSpawnStubbed.callJavaBridge(
+            'artifact.jar',
+            'com.example.Handler',
+            'handleRequest',
+            '{}'
+          );
+        }
+      );
+
+      expect(spawnExtStub.firstCall.args[2].env).to.include({
+        JAVA_TOOL_OPTIONS: '-javaagent:/tmp/agent.jar',
+      });
     });
   });
 
@@ -1212,9 +1275,6 @@ describe('AwsInvokeLocal', () => {
       AwsInvokeLocal = proxyquire('../../../../../../lib/plugins/aws/invoke-local/index', {
         '../../../utils/get-stdin': stdinStub,
         '../../../utils/spawn': spawnExtStub,
-        'child_process': {
-          spawn: spawnStub,
-        },
       });
       invokeLocalSpawnStubbed = new AwsInvokeLocal(serverless, {
         stage: 'dev',
@@ -1228,27 +1288,53 @@ describe('AwsInvokeLocal', () => {
       };
     });
 
-    it('spawns ruby process with correct arguments', async () => {
+    it('spawns ruby process with correct arguments and sanitized environment', async () => {
       const handlerPath = 'handler path;$(id)';
       const handlerName = 'hello "quoted" && id';
 
-      await invokeLocalSpawnStubbed.invokeLocalRuby(
-        'ruby',
-        handlerPath,
-        handlerName,
-        {},
-        undefined
+      await overrideEnv(
+        {
+          variables: {
+            RUBYOPT: '-e system("id")',
+            RUBYLIB: '/tmp/lib',
+            BUNDLE_GEMFILE: '/tmp/Gemfile',
+            BUNDLE_PATH: '/tmp/bundle',
+            KEEP_ME: 'yes',
+          },
+        },
+        async () => {
+          await invokeLocalSpawnStubbed.invokeLocalRuby(
+            'ruby',
+            handlerPath,
+            handlerName,
+            {},
+            undefined
+          );
+        }
       );
 
       const wrapperPath = await invokeLocalSpawnStubbed.resolveRuntimeWrapperPath('invoke.rb');
-      const [command, args, options] = spawnStub.firstCall.args;
+      const [command, args, options] = spawnExtStub.firstCall.args;
 
       expect(command).to.equal('ruby');
       expect(args).to.deep.equal([wrapperPath, handlerPath, handlerName]);
-      expect(options).to.have.property('env', process.env);
+      expect(JSON.parse(options.input).event).to.deep.equal({});
+      expect(options.env).to.include({ KEEP_ME: 'yes' });
+      expect(options.env).to.not.have.property('RUBYOPT');
+      expect(options.env).to.not.have.property('RUBYLIB');
+      expect(options.env).to.not.have.property('BUNDLE_GEMFILE');
+      expect(options.env).to.not.have.property('BUNDLE_PATH');
       expect(options).to.not.have.property('shell');
-      expect(writeChildStub.calledOnce).to.be.equal(true);
-      expect(endChildStub.calledOnce).to.be.equal(true);
+    });
+
+    it('preserves ruby runtime environment when requested', async () => {
+      invokeLocalSpawnStubbed.options['preserve-runtime-env'] = true;
+
+      await overrideEnv({ variables: { RUBYOPT: '-e system("id")' } }, async () => {
+        await invokeLocalSpawnStubbed.invokeLocalRuby('ruby', 'handler', 'hello', {}, undefined);
+      });
+
+      expect(spawnExtStub.firstCall.args[2].env).to.include({ RUBYOPT: '-e system("id")' });
     });
   });
 
