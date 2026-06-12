@@ -171,7 +171,7 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
       [`${pluginName}@"^1.60.0 || 2"`, `${pluginName}@^1.60.0 || 2`],
     ]) {
       it(`passes ${JSON.stringify(expectedPackageSpec)} as one npm argv element`, async () => {
-        const fixture = await fixturesEngine.setup('function');
+        const fixture = await setupProgrammaticFixture('function');
         const configuration = fixture.serviceConfig;
         const serviceDir = fixture.servicePath;
         const configurationFilePath = await resolveConfigurationPath({
