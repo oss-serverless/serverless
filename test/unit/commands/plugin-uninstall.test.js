@@ -46,40 +46,48 @@ const writeJsonConfiguration = async (serviceDir, configuration, rawJson) => {
   };
 };
 
-describe('test/unit/commands/plugin-uninstall.test.js', async () => {
-  let serviceDir;
-  let configurationFilePath;
-
-  before(async () => {
-    const fixture = await fixturesEngine.setup('function', {
-      configExt: {
-        plugins: [pluginName],
-      },
-    });
-
-    const configuration = fixture.serviceConfig;
-    serviceDir = fixture.servicePath;
-    configurationFilePath = await resolveConfigurationPath({
-      cwd: serviceDir,
-    });
-    const configurationFilename = configurationFilePath.slice(serviceDir.length + 1);
-    const options = {
-      name: pluginName,
-    };
-
-    await uninstallPlugin({
-      configuration,
-      serviceDir,
-      configurationFilename,
-      options,
-    });
+const setupPluginFixture = async () => {
+  const fixture = await fixturesEngine.setup('function', {
+    configExt: {
+      plugins: [pluginName],
+    },
   });
 
+  const serviceDir = fixture.servicePath;
+  const configurationFilePath = await resolveConfigurationPath({
+    cwd: serviceDir,
+  });
+  const configurationFilename = configurationFilePath.slice(serviceDir.length + 1);
+
+  return {
+    configuration: fixture.serviceConfig,
+    serviceDir,
+    configurationFilePath,
+    configurationFilename,
+  };
+};
+
+const uninstallFromPluginFixture = async () => {
+  const fixture = await setupPluginFixture();
+
+  await uninstallPlugin({
+    configuration: fixture.configuration,
+    serviceDir: fixture.serviceDir,
+    configurationFilename: fixture.configurationFilename,
+    options: { name: pluginName },
+  });
+
+  return fixture;
+};
+
+describe('test/unit/commands/plugin-uninstall.test.js', async () => {
   afterEach(() => {
     spawnFake.resetHistory();
   });
 
-  it('should uninstall plugin', () => {
+  it('should uninstall plugin', async () => {
+    const { serviceDir } = await uninstallFromPluginFixture();
+
     expect(spawnFake.firstCall.args[1].slice(-4)).to.deep.equal([
       'uninstall',
       '--save-dev',
@@ -93,6 +101,8 @@ describe('test/unit/commands/plugin-uninstall.test.js', async () => {
   });
 
   it('should remove plugin from serverless file', async () => {
+    const { configurationFilePath } = await uninstallFromPluginFixture();
+
     const serverlessFileObj = yaml.load(await fsp.readFile(configurationFilePath, 'utf8'), {
       filename: configurationFilePath,
     });
