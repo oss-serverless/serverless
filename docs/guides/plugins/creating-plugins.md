@@ -140,6 +140,45 @@ module.exports = MyPlugin;
 
 **Note:** configuration values are only resolved _after_ plugins are initialized. Do not try to read configuration in the plugin constructor, as variables aren't resolved yet. Read configuration in lifecycle events only.
 
+## Parsing YAML files
+
+Plugins can parse additional YAML files with `serverless.yamlParser.parse(filePath, options)`.
+This helper supports JSON Schema style `$ref` entries in the parsed YAML document.
+
+For v3 compatibility, external `$ref` loading keeps the legacy defaults: file references
+can read outside the parsed file's directory, and HTTP references can reach local or
+private hosts. Plugins that parse untrusted or user-controlled YAML should opt in to
+stricter external reference policies:
+
+```javascript
+const schema = await this.serverless.yamlParser.parse('schema.yml', {
+  externalRefs: {
+    file: {
+      allowedRoots: ['.'],
+    },
+    http: {
+      allowUnsafeUrls: false,
+      allowedUnsafeHosts: ['schemas.example.com'],
+    },
+  },
+});
+```
+
+`externalRefs.file.allowedRoots` limits file `$ref` targets to the listed directories.
+Relative roots are resolved from the parsed YAML file's directory. `file://` roots are
+also supported. Symlink escapes outside an allowed root are blocked.
+
+`externalRefs.http.allowUnsafeUrls: false` blocks HTTP `$ref` targets that use local,
+private, link-local, multicast, reserved, or internal hostnames and addresses. Redirects
+are checked on every hop. `externalRefs.http.allowedUnsafeHosts` can allow a specific
+unsafe host when a plugin intentionally needs it; prefer exact `host:port` entries.
+HTTP policy does not restrict file `$ref` entries found inside remote YAML documents;
+set `externalRefs.file.allowedRoots` too when parsing untrusted remote YAML.
+
+The public `externalRefs.http` options are limited to `allowUnsafeUrls` and
+`allowedUnsafeHosts`. Redirect and timeout limits use osls defaults and are not public
+parser options.
+
 ## Constructor-injected utilities
 
 osls may pass utility helpers as the third constructor argument:
