@@ -1415,7 +1415,15 @@ describe('zipService', () => {
           clearInterval(sampler);
         }
 
-        expect(peakArrayBuffers - before.arrayBuffers).to.be.lessThan(64 * 1024 * 1024);
+        // The sampled peak includes dead stream chunks that V8 has not collected yet,
+        // and that GC lag alone can exceed 64 MiB. The cap only needs to stay far
+        // below the 512 MiB file size to prove the file was streamed, not materialized.
+        expect(peakArrayBuffers - before.arrayBuffers).to.be.lessThan(128 * 1024 * 1024);
+
+        forceGc();
+        expect(process.memoryUsage().arrayBuffers - before.arrayBuffers).to.be.lessThan(
+          16 * 1024 * 1024
+        );
       });
     });
   });
