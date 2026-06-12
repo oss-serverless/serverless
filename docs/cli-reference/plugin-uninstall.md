@@ -10,6 +10,8 @@ serverless plugin uninstall --name pluginName
 
 - `--name` or `-n` The plugins name. **Required**.
 
+The name must be a bare npm package name, such as `serverless-webpack` or `@scope/serverless-plugin`. Versioned package specs such as `serverless-webpack@1.2.3` are not accepted by `plugin uninstall`.
+
 ## Provided lifecycle events
 
 - `plugin:uninstall:uninstall`

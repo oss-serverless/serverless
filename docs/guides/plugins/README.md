@@ -22,6 +22,10 @@ serverless plugin install -n custom-serverless-plugin
 
 This command will install the plugin via NPM and register it in `serverless.yml`.
 
+`serverless plugin install --name` accepts npm package names, scoped package names, semver ranges, and npm dist-tags. For example, `custom-serverless-plugin`, `@scope/custom-serverless-plugin`, `custom-serverless-plugin@^1.0.0`, and `custom-serverless-plugin@next` are valid install specs. Literal embedded quotes are not accepted in osls v4; quote the full `--name` value at the shell level if your version range contains spaces.
+
+npm lifecycle scripts are ignored by default during plugin install. If you trust the plugin and need its lifecycle scripts to run, pass `--allow-install-scripts`.
+
 You can also install the plugin manually via NPM:
 
 ```
@@ -36,6 +40,8 @@ and then register it in `serverless.yml` in the `plugins` section:
 plugins:
   - custom-serverless-plugin
 ```
+
+The `plugins` section accepts bare npm package names and explicit local plugin paths beginning with `./`. Versioned install specs such as `custom-serverless-plugin@1.2.3` are not accepted in configuration; pin plugin versions in `package.json` instead.
 
 Some plugins require extra configuration. The `custom` section in `serverless.yml` is where you can add extra configuration for plugins (the plugin's documentation will tell you if you need to add anything there):
 
@@ -67,6 +73,7 @@ plugins:
 ```
 
 The path must start with `./` and is relative to the root of your service.
+Local plugin paths must stay inside the service directory.
 
 The legacy object form can also set `plugins.localPath` to change where non-relative plugin names are loaded from. Use `plugins.localPath` only with trusted directories.
 
