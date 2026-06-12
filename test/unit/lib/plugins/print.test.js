@@ -77,4 +77,64 @@ describe('test/unit/lib/plugins/print.test.js', () => {
       expect(error.code).to.equal('INVALID_PATH_ARGUMENT');
     }
   });
+
+  it('resolves Proxy-backed virtual path segments', async () => {
+    const writeText = sinon.spy();
+    const Print = proxyquire('../../../../lib/plugins/print', {
+      '../utils/serverless-utils/log': { writeText },
+    });
+    const serverless = {
+      configurationInput: {
+        custom: {
+          proxy: new Proxy(
+            { own: 'own-value' },
+            {
+              get(target, key) {
+                if (key === 'virtual') return { nested: 'proxy-virtual' };
+                return target[key];
+              },
+            }
+          ),
+        },
+      },
+    };
+
+    await new Print(serverless, { path: 'custom.proxy.virtual.nested', format: 'text' }).print();
+    expect(writeText.calledWithExactly('proxy-virtual')).to.equal(true);
+
+    writeText.resetHistory();
+    await new Print(serverless, { path: 'custom.proxy.own', format: 'text' }).print();
+    expect(writeText.calledWithExactly('own-value')).to.equal(true);
+  });
+
+  it('does not resolve unsafe path segments on Proxy-backed values', async () => {
+    const writeText = sinon.spy();
+    const Print = proxyquire('../../../../lib/plugins/print', {
+      '../utils/serverless-utils/log': { writeText },
+    });
+    const serverless = {
+      configurationInput: {
+        custom: {
+          proxy: new Proxy(
+            {},
+            {
+              get(target, key) {
+                return target[key];
+              },
+            }
+          ),
+        },
+      },
+    };
+
+    try {
+      await new Print(serverless, {
+        path: 'custom.proxy.constructor.name',
+        format: 'text',
+      }).print();
+      throw new Error('Expected print() to reject');
+    } catch (error) {
+      expect(error.code).to.equal('INVALID_PATH_ARGUMENT');
+    }
+  });
 });

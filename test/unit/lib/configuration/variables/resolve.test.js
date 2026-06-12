@@ -90,6 +90,21 @@ describe('test/unit/lib/configuration/variables/resolve.test.js', () => {
     configuration.arraySourceLength = '${sourceProperty(arraySource, length)}';
     configuration.inheritedConstructorName =
       '${sourceProperty(arraySource, constructor, name), null}';
+    configuration.proxyObject = new Proxy(
+      { own: 'own-value' },
+      {
+        get(target, key) {
+          if (key === 'virtual') return { nested: 'proxy-virtual' };
+          if (key === 'boom') throw new Error('Proxy get trap crashed');
+          return target[key];
+        },
+      }
+    );
+    configuration.proxyVirtual = '${sourceProperty(proxyObject, virtual, nested)}';
+    configuration.proxyOwn = '${sourceProperty(proxyObject, own)}';
+    configuration.proxyMissingFallback = "${sourceProperty(proxyObject, missing), 'fallback'}";
+    configuration.proxyConstructor = '${sourceProperty(proxyObject, constructor, name), null}';
+    configuration.proxyTrapErrored = '${sourceProperty(proxyObject, boom)}';
     configuration.resolvesUnsafeOwnProtoObject = '${sourceResultVariables(protoObject)}';
     Object.defineProperty(configuration, '__proto__', {
       value: '${sourceDirect:}',
@@ -323,6 +338,23 @@ describe('test/unit/lib/configuration/variables/resolve.test.js', () => {
       expect(configuration.inheritedConstructorName).to.equal(null);
     });
 
+    it('should resolve Proxy-backed virtual properties across dependency paths', () => {
+      expect(configuration.proxyVirtual).to.equal('proxy-virtual');
+      expect(configuration.proxyOwn).to.equal('own-value');
+      expect(configuration.proxyMissingFallback).to.equal('fallback');
+    });
+
+    it('should not traverse unsafe keys on Proxy-backed dependency paths', () => {
+      expect(configuration.proxyConstructor).to.equal(null);
+    });
+
+    it('should mark with error a Proxy "get" trap that crashes during dependency resolution', () => {
+      const valueMeta = variablesMeta.get('proxyTrapErrored');
+      expect(valueMeta).to.not.have.property('variables');
+      expect(valueMeta.error.code).to.equal('VARIABLE_RESOLUTION_ERROR');
+      expect(valueMeta.error.message).to.include('Property access errored with');
+    });
+
     it('should resolve variables in resolved strings which are subject to concatenation', () => {
       expect(configuration.resolveDeepVariablesConcat).to.equal('234foo234');
       expect(configuration.resolveDeepVariablesConcatInParam).to.equal('432oof432');
@@ -528,6 +560,7 @@ describe('test/unit/lib/configuration/variables/resolve.test.js', () => {
         'invalidResultNonJsonCircular',
         'invalidResultValue',
         'nullWithCustomErrorMessage',
+        'proxyTrapErrored',
         `infiniteResolutionRecursion${'\0nest'.repeat(10)}`,
       ]);
     });
