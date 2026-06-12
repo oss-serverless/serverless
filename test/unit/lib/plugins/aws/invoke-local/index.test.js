@@ -882,15 +882,76 @@ describe('AwsInvokeLocal', () => {
     });
 
     it('spawns java process with correct arguments', async () => {
-      await invokeLocalSpawnStubbed.callJavaBridge(
-        tmpServicePath,
-        'com.serverless.Handler',
-        'handleRequest',
-        '{}'
+      const artifactPath = path.join(tmpServicePath, 'artifact path;$(id).jar');
+      const className = 'com.example.Handler; $(id)';
+      const handlerName = 'handle "Request" && id';
+
+      await invokeLocalSpawnStubbed.callJavaBridge(artifactPath, className, handlerName, '{}');
+
+      const wrapperPath = await invokeLocalSpawnStubbed.resolveRuntimeWrapperPath(
+        'java/target/invoke-bridge-1.0.1.jar'
       );
+
+      expect(spawnStub.firstCall.args).to.deep.equal([
+        'java',
+        [
+          `-DartifactPath=${artifactPath}`,
+          `-DclassName=${className}`,
+          `-DhandlerName=${handlerName}`,
+          '-jar',
+          wrapperPath,
+        ],
+      ]);
       expect(writeChildStub.calledOnce).to.be.equal(true);
       expect(endChildStub.calledOnce).to.be.equal(true);
       expect(writeChildStub.calledWithExactly('{}')).to.be.equal(true);
+    });
+  });
+
+  describe('#invokeLocalRuby()', () => {
+    let invokeLocalSpawnStubbed;
+
+    beforeEach(() => {
+      AwsInvokeLocal = proxyquire('../../../../../../lib/plugins/aws/invoke-local/index', {
+        '../../../utils/get-stdin': stdinStub,
+        '../../../utils/spawn': spawnExtStub,
+        'child_process': {
+          spawn: spawnStub,
+        },
+      });
+      invokeLocalSpawnStubbed = new AwsInvokeLocal(serverless, {
+        stage: 'dev',
+        function: 'first',
+        data: {},
+      });
+      invokeLocalSpawnStubbed.options.functionObj = {
+        handler: 'handler.hello',
+        name: 'hello',
+        timeout: 4,
+      };
+    });
+
+    it('spawns ruby process with correct arguments', async () => {
+      const handlerPath = 'handler path;$(id)';
+      const handlerName = 'hello "quoted" && id';
+
+      await invokeLocalSpawnStubbed.invokeLocalRuby(
+        'ruby',
+        handlerPath,
+        handlerName,
+        {},
+        undefined
+      );
+
+      const wrapperPath = await invokeLocalSpawnStubbed.resolveRuntimeWrapperPath('invoke.rb');
+      const [command, args, options] = spawnStub.firstCall.args;
+
+      expect(command).to.equal('ruby');
+      expect(args).to.deep.equal([wrapperPath, handlerPath, handlerName]);
+      expect(options).to.have.property('env', process.env);
+      expect(options).to.not.have.property('shell');
+      expect(writeChildStub.calledOnce).to.be.equal(true);
+      expect(endChildStub.calledOnce).to.be.equal(true);
     });
   });
 
