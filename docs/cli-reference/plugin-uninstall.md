@@ -10,7 +10,7 @@ serverless plugin uninstall --name pluginName
 
 - `--name` or `-n` The plugins name. **Required**.
 
-The name must be a bare npm package name, such as `serverless-webpack` or `@scope/serverless-plugin`. Versioned package specs such as `serverless-webpack@1.2.3` are not accepted by `plugin uninstall`.
+The name must be a bare npm package name, such as `example-osls-plugin` or `@example/osls-plugin`. Versioned package specs such as `example-osls-plugin@1.2.3` are not accepted by `plugin uninstall`.
 
 ## Provided lifecycle events
 
@@ -18,8 +18,8 @@ The name must be a bare npm package name, such as `serverless-webpack` or `@scop
 
 ## Examples
 
-### Remove the `serverless-webpack` plugin
+### Remove the `example-osls-plugin` plugin
 
 ```bash
-serverless plugin uninstall --name serverless-webpack
+serverless plugin uninstall --name example-osls-plugin
 ```

@@ -14,12 +14,12 @@ serverless plugin install --name pluginName
 - `--name` or `-n` The plugins name. **Required**.
 - `--allow-install-scripts` Allow npm lifecycle scripts while installing the plugin. By default, plugin install passes `--ignore-scripts` to npm.
 
-The plugin name must be an npm package name, such as `serverless-webpack` or `@scope/serverless-plugin`. Versioned install specs may use semver ranges or dist-tags, such as `serverless-webpack@3.0.0-rc.2`, `serverless-webpack@^1.0.0 || 2`, or `@scope/serverless-plugin@next`.
+The plugin name must be an npm package name, such as `example-osls-plugin` or `@example/osls-plugin`. Versioned install specs may use semver ranges or dist-tags, such as `example-osls-plugin@3.0.0-rc.2`, `example-osls-plugin@^1.0.0 || 2`, or `@example/osls-plugin@next`.
 
 Literal embedded quotes are not accepted in osls v4. Quote the whole `--name` value at the shell level when the version range contains spaces or shell metacharacters:
 
 ```bash
-serverless plugin install --name 'serverless-webpack@^1.0.0 || 2'
+serverless plugin install --name 'example-osls-plugin@^1.0.0 || 2'
 ```
 
 Package aliases, git URLs, HTTP URLs, file paths, workspace specs, and tarball paths are not accepted by `plugin install`.
@@ -30,20 +30,20 @@ Package aliases, git URLs, HTTP URLs, file paths, workspace specs, and tarball p
 
 ## Examples
 
-### Install the `serverless-webpack` plugin
+### Install the `example-osls-plugin` plugin
 
 ```bash
-serverless plugin install --name serverless-webpack
+serverless plugin install --name example-osls-plugin
 ```
 
 ### Install a specific version
 
 ```bash
-serverless plugin install --name serverless-webpack@3.0.0-rc.2
+serverless plugin install --name example-osls-plugin@3.0.0-rc.2
 ```
 
 ### Allow npm lifecycle scripts
 
 ```bash
-serverless plugin install --name serverless-webpack --allow-install-scripts
+serverless plugin install --name example-osls-plugin --allow-install-scripts
 ```

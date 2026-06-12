@@ -107,7 +107,7 @@ Java and Ruby local invocation now fails the command when the local runtime exit
 
 Plugin entries in `serverless.yml` are now validated when osls loads the service. Entries must be lowercase npm package names, scoped npm package names, or explicit local paths beginning with `./` that stay inside the service directory.
 
-Versioned plugin configuration entries such as `serverless-webpack@1.2.3` now fail with `INVALID_PLUGIN_REFERENCE`; pin plugin versions in `package.json` instead. Non-string entries also fail with `INVALID_PLUGIN_REFERENCE`. Local plugin paths that escape the service directory, such as `./../plugin`, fail with `INVALID_LOCAL_PLUGIN_PATH`.
+Versioned plugin configuration entries such as `example-osls-plugin@1.2.3` now fail with `INVALID_PLUGIN_REFERENCE`; pin plugin versions in `package.json` instead. Non-string entries also fail with `INVALID_PLUGIN_REFERENCE`. Local plugin paths that escape the service directory, such as `./../plugin`, fail with `INVALID_LOCAL_PLUGIN_PATH`.
 
 The legacy `plugins.localPath` option is still supported, but module names loaded from that directory must use npm package-name syntax. If you previously loaded uppercase local plugin names such as `ServicePluginMock1` through `.serverless_plugins` or `plugins.localPath`, rename them to lowercase npm-style names or reference them with explicit `./` local paths.
 
@@ -116,7 +116,7 @@ The legacy `plugins.localPath` option is still supported, but module names loade
 `serverless plugin install --name` now accepts only npm package names with optional semver ranges or npm dist-tags. Embedded literal quotes are rejected; quote the whole `--name` value at the shell level when the version range contains spaces or shell metacharacters:
 
 ```bash
-serverless plugin install --name 'serverless-webpack@^1.0.0 || 2'
+serverless plugin install --name 'example-osls-plugin@^1.0.0 || 2'
 ```
 
 Package aliases, `file:`, `link:`, `workspace:`, `git+`, `github:`, `http:`, `https:`, `npm:`, tarball paths, absolute paths, and relative paths are no longer accepted by `plugin install`.
@@ -125,7 +125,7 @@ npm lifecycle scripts are ignored by default during plugin install. Pass `--allo
 
 ### `plugin uninstall` accepts package names only
 
-`serverless plugin uninstall --name` now accepts only a bare npm package name. Versioned package specs such as `serverless-webpack@1.2.3` fail with `INVALID_PLUGIN_UNINSTALL_SPEC`.
+`serverless plugin uninstall --name` now accepts only a bare npm package name. Versioned package specs such as `example-osls-plugin@1.2.3` fail with `INVALID_PLUGIN_UNINSTALL_SPEC`.
 
 ### `variablesResolutionMode: 20210219` is rejected
 
