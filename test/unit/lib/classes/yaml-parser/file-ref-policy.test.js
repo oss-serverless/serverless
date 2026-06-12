@@ -53,6 +53,18 @@ describe('yaml-parser/file-ref-policy', () => {
     await expect(assertFileRefAllowed(pathToFileURL(sharedRefPath).href, options)).to.be.fulfilled;
   });
 
+  it('allows missing file refs inside configured roots', async () => {
+    const tmpDirPath = getTmpDirPath();
+    const serviceDirPath = path.join(tmpDirPath, 'service');
+    const missingPath = path.join(serviceDirPath, 'missing.yml');
+
+    writeFile(path.join(serviceDirPath, 'serverless.yml'));
+
+    const options = await normalizeFileRefOptions(serviceDirPath, { allowedRoots: ['.'] });
+
+    await expect(assertFileRefAllowed(pathToFileURL(missingPath).href, options)).to.be.fulfilled;
+  });
+
   it('allows file refs inside file URL roots', async () => {
     const tmpDirPath = getTmpDirPath();
     const serviceDirPath = path.join(tmpDirPath, 'service');
@@ -113,5 +125,27 @@ describe('yaml-parser/file-ref-policy', () => {
     const options = await normalizeFileRefOptions(serviceDirPath, { allowedRoots: ['.'] });
 
     await expectAccessDenied(assertFileRefAllowed(pathToFileURL(linkPath).href, options));
+  });
+
+  it('blocks missing file refs under symlink escapes outside configured roots', async function () {
+    const tmpDirPath = getTmpDirPath();
+    const serviceDirPath = path.join(tmpDirPath, 'service');
+    const outsideDirPath = path.join(tmpDirPath, 'outside');
+    const linkPath = path.join(serviceDirPath, 'link');
+    const missingPath = path.join(linkPath, 'missing.yml');
+
+    writeFile(path.join(serviceDirPath, 'serverless.yml'));
+    writeFile(path.join(outsideDirPath, 'placeholder.yml'));
+
+    try {
+      fs.symlinkSync(outsideDirPath, linkPath, 'dir');
+    } catch (error) {
+      skipOnDisabledSymlinksInWindows(error, this);
+      throw error;
+    }
+
+    const options = await normalizeFileRefOptions(serviceDirPath, { allowedRoots: ['.'] });
+
+    await expectAccessDenied(assertFileRefAllowed(pathToFileURL(missingPath).href, options));
   });
 });
