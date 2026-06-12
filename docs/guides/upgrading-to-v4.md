@@ -83,6 +83,10 @@ package:
 
 The same applies to function- and layer-level `package` blocks. See [Packaging](./packaging.md#patterns).
 
+### Layer paths are validated
+
+`layers.<name>.path` values containing newline, carriage return, or NUL characters are now rejected with an `INVALID_LAYER_PATH` error during packaging and local invocation. Such paths never worked correctly and could corrupt the Dockerfile that `invoke local --docker` generates. No action is needed for any real layer path.
+
 ### `variablesResolutionMode: 20210219` is rejected
 
 The legacy variables resolver mode is no longer supported. Remove `variablesResolutionMode` from your configuration.

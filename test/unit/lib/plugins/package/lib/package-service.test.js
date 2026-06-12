@@ -194,6 +194,34 @@ describe('test/unit/lib/plugins/package/lib/packageService.test.js', () => {
   });
 
   describe('#packageLayer()', () => {
+    it('rejects layer paths with control characters', async () => {
+      const resolveFilePathsLayerStub = sinon.stub().resolves(['index.js']);
+
+      let error;
+      try {
+        await packageService.packageLayer.call(
+          {
+            serverless: {
+              serviceDir: process.cwd(),
+              service: {
+                getLayer: () => ({ path: 'layer\nRUN whoami' }),
+              },
+            },
+            resolveFilePathsLayer: resolveFilePathsLayerStub,
+            zipFiles: sinon.stub().resolves('layer.zip'),
+          },
+          'layer'
+        );
+      } catch (caughtError) {
+        error = caughtError;
+      }
+
+      expect(error).to.have.property('code', 'INVALID_LAYER_PATH');
+      expect(error.message).to.include('layers.layer.path');
+      expect(error.message).to.not.include('RUN whoami');
+      expect(resolveFilePathsLayerStub).to.not.have.been.called;
+    });
+
     it('resolves layer package paths against serviceDir instead of cwd', async () => {
       const originalCwd = process.cwd();
       const cwd = await fsp.mkdtemp(path.join(os.tmpdir(), 'sls-cwd-'));

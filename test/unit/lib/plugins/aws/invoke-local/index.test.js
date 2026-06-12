@@ -1405,6 +1405,19 @@ describe('AwsInvokeLocal', () => {
   });
 
   describe('#getLayerPaths()', () => {
+    it('rejects local layer paths with control characters', async () => {
+      serverless.service.layers = {
+        myLayer: { path: 'layer\nRUN whoami' },
+      };
+      awsInvokeLocal.options.functionObj = { layers: [] };
+
+      await expect(awsInvokeLocal.getLayerPaths()).to.be.rejected.then((error) => {
+        expect(error).to.have.property('code', 'INVALID_LAYER_PATH');
+        expect(error.message).to.include('layers.myLayer.path');
+        expect(error.message).to.not.include('RUN whoami');
+      });
+    });
+
     const createRemoteLayerTestContext = ({
       awsSdkV3Stub,
       cacheDirPath,
