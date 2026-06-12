@@ -81,6 +81,7 @@
 
 - [Overview](./guides/plugins/README.md)
 - [Creating Plugins](./guides/plugins/creating-plugins.md)
+  - [Parsing YAML files](./guides/plugins/creating-plugins.md#parsing-yaml-files)
   - [CLI Output](./guides/plugins/cli-output.md)
   - [Custom Commands](./guides/plugins/custom-commands.md)
   - [Custom Variables](./guides/plugins/custom-variables.md)
