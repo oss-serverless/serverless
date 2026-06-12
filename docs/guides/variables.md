@@ -497,6 +497,8 @@ functions:
       - schedule: ${file(./scheduleConfig.js):rate} # Reference a specific module
 ```
 
+Address resolution follows the value's own properties. If a JS file exports (or its resolver function returns) a `Proxy`-backed object, address segments are resolved through the proxy's `get` handler instead. The keys `__proto__`, `prototype` and `constructor` are only followed when they are own properties of the value, so an address can never traverse into prototype internals.
+
 ### Exporting a function
 
 _Note: the method described below works by default in Serverless v3, but it requires the `variablesResolutionMode: 20210326` option in v2. In v3, `variablesResolutionMode` is obsolete; the old `20210219` mode is scheduled to be rejected in osls v4.0.0, and the property itself is scheduled for removal in osls v5.0.0._
