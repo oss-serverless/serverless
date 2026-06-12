@@ -33,6 +33,10 @@ describe('test/unit/lib/configuration/variables/sources/file.test.js', () => {
       arrayLengthAddress: '${file(file-array.json):items.length}',
       unsafeOwnProtoAddress: '${file(file-unsafe-keys.json):__proto__.value}',
       inheritedConstructorAddress: '${file(file-unsafe-keys.json):constructor.name, null}',
+      proxyVirtualAddress: '${file(file-proxy.js):proxy.virtual.nested}',
+      proxyOwnAddress: '${file(file-proxy.js):proxy.own}',
+      proxyMissingAddress: '${file(file-proxy.js):proxy.missing, null}',
+      proxyInheritedConstructorAddress: '${file(file-proxy.js):proxy.constructor.name, null}',
       nonExistingYaml: '${file(not-existing.yaml), null}',
       nonExistingJson: '${file(not-existing.json), null}',
       nonExistingJs: '${file(not-existing.js), null}',
@@ -128,6 +132,16 @@ describe('test/unit/lib/configuration/variables/sources/file.test.js', () => {
   it('should resolve own unsafe-key addresses without traversing inherited properties', () => {
     expect(configuration.unsafeOwnProtoAddress).to.equal('unsafe-key');
     expect(configuration.inheritedConstructorAddress).to.equal(null);
+  });
+
+  it('should resolve Proxy-backed virtual properties across file address resolution', () => {
+    expect(configuration.proxyVirtualAddress).to.equal('proxy-virtual');
+    expect(configuration.proxyOwnAddress).to.equal('own-value');
+    expect(configuration.proxyMissingAddress).to.equal(null);
+  });
+
+  it('should not traverse unsafe keys on Proxy-backed file results', () => {
+    expect(configuration.proxyInheritedConstructorAddress).to.equal(null);
   });
 
   it('should unconditionally split "address" property keys by "."', () =>
