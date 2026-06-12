@@ -215,6 +215,14 @@ The `serverless-compose.yml` and `serverless.yml` files have different syntaxes 
 
 Unless documented here, expect `serverless.yml` features to not be supported in `serverless-compose.yml`. For example, it is not possible to include plugins or use most `serverless.yml` variables (like `${self:`, `${opt:`, etc.) inside `serverless-compose.yml`.
 
+## Security model
+
+The [osls security model](./security.md) applies to Compose as well, with a few Compose-specific notes:
+
+- A Compose configuration is code. The configuration can also be written as `serverless-compose.js` or `serverless-compose.ts`, both of which execute on load, and deploying a project runs the osls CLI in each service directory, which in turn loads each service's `serverless.yml`. Do not run projects from untrusted sources.
+- Values resolved with `${env:...}` become part of the configuration, and values passed between services flow through command line parameters of the spawned osls processes. Treat retained logs of Compose runs, in particular verbose output, as potentially secret-bearing.
+- Service outputs are stored in the local state directory (`.serverless/`) and, when remote state storage is configured, in the state S3 bucket. If outputs contain sensitive values, protect the state bucket and local state files like any other deployment artifact.
+
 ## Refreshing outputs
 
 The outputs of a service are stored locally (in the `.serverless/` directory). If a colleague deployed changes that changed the outputs of a service, you can refresh your local state via the `refresh-outputs` command:
