@@ -39,6 +39,7 @@ describe('test/unit/lib/configuration/variables/resolve.test.js', () => {
       resolvesResultVariablesArray: '${sourceResultVariables(array)}',
       resolvesResultVariablesString: '${sourceResultVariables(string)}',
       resolvesResultVariablesStringInvalid: '${sourceResultVariables(stringInvalid)}',
+      resolvesResultConcatInvalid: 'prefix-${sourceResultVariables(stringInvalid)}',
       resolveDeepVariablesConcat:
         '${sourceResultVariables(string)}foo${sourceResultVariables(string)}',
       resolveDeepVariablesConcatInParam:
@@ -146,7 +147,7 @@ describe('test/unit/lib/configuration/variables/resolve.test.js', () => {
             case 'string':
               return { value: '${sourceDirect:}' };
             case 'stringInvalid':
-              return { value: '${sourceDirect:' };
+              return { value: 'leaked-secret-marker${sourceDirect:' };
             case 'error':
               return { value: [1, '${sourceUnrecognized:}', '${sourceError:}'] };
             default:
@@ -464,6 +465,18 @@ describe('test/unit/lib/configuration/variables/resolve.test.js', () => {
       const valueMeta = variablesMeta.get('resolvesResultVariablesStringInvalid');
       expect(valueMeta).to.not.have.property('variables');
       expect(valueMeta.error.code).to.equal('UNTERMINATED_VARIABLE');
+      expect(valueMeta.error.message).to.include('(UNTERMINATED_VARIABLE)');
+      expect(valueMeta.error.message).to.not.include('leaked-secret-marker');
+      expect(valueMeta.error.message).to.not.include('${sourceDirect');
+    });
+
+    it('should error on invalid variable notation in returned concatenated result', () => {
+      const valueMeta = variablesMeta.get('resolvesResultConcatInvalid');
+      expect(valueMeta).to.not.have.property('variables');
+      expect(valueMeta.error.code).to.equal('UNTERMINATED_VARIABLE');
+      expect(valueMeta.error.message).to.include('(UNTERMINATED_VARIABLE)');
+      expect(valueMeta.error.message).to.not.include('leaked-secret-marker');
+      expect(valueMeta.error.message).to.not.include('${sourceDirect');
     });
 
     it('should error on invalid source resolution resolt', () => {
@@ -497,6 +510,7 @@ describe('test/unit/lib/configuration/variables/resolve.test.js', () => {
         'propertyDeepCircularC',
         'propertyRoot',
         'resolvesResultVariablesStringInvalid',
+        'resolvesResultConcatInvalid',
         'infiniteDeepVariablesConcat',
         'resolvesVariablesInvalid1',
         'resolvesVariablesInvalid2',
