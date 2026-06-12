@@ -88,6 +88,7 @@ This repository contains the following differences with the original Serverless 
 - [Resources](./docs/guides/resources.md)
 - [Composing services](./docs/guides/compose.md)
 - [Workflow Tips](./docs/guides/workflow.md)
+- [Security Model](./docs/guides/security.md)
 - [Serverless.yml Reference](./docs/guides/serverless.yml.md)
 
 # Function events
