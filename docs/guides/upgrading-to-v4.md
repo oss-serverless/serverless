@@ -109,7 +109,7 @@ Plugin entries in `serverless.yml` are now validated when osls loads the service
 
 Versioned plugin configuration entries such as `example-osls-plugin@1.2.3` now fail with `INVALID_PLUGIN_REFERENCE`; pin plugin versions in `package.json` instead. Non-string entries also fail with `INVALID_PLUGIN_REFERENCE`. Local plugin paths that escape the service directory, such as `./../plugin`, fail with `INVALID_LOCAL_PLUGIN_PATH`.
 
-The legacy `plugins.localPath` option is still supported, but module names loaded from that directory must use npm package-name syntax. If you previously loaded uppercase local plugin names such as `ServicePluginMock1` through `.serverless_plugins` or `plugins.localPath`, rename them to lowercase npm-style names or reference them with explicit `./` local paths.
+The legacy `plugins.localPath` option is still supported, but module names loaded from that directory must use npm package-name syntax. If you previously loaded uppercase local plugin names such as `MyPlugin` through `.serverless_plugins` or `plugins.localPath`, rename them to lowercase npm-style names or reference them with explicit `./` local paths.
 
 `serverless --help` and the `plugin` management commands skip invalid entries with a warning, so you can still inspect the service and fix the configuration.
 
