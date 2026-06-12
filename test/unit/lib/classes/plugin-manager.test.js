@@ -684,6 +684,40 @@ describe('PluginManager', () => {
         ServerlessError
       );
     });
+
+    it('should throw an error when trying to load invalid plugins entries', () => {
+      const servicePlugins = ['serverless-webpack@1.2.3', servicePluginMock1Name];
+
+      return expect(pluginManager.loadAllPlugins(servicePlugins)).to.be.rejected.then((error) => {
+        expect(error).to.have.property('code', 'INVALID_PLUGIN_REFERENCE');
+      });
+    });
+
+    it('should not throw error when trying to load invalid plugins entries with help flag', async () => {
+      const servicePlugins = ['serverless-webpack@1.2.3', servicePluginMock1Name];
+
+      pluginManager.setCliOptions({ help: true });
+
+      resolveInput.clear();
+      return overrideArgv({ args: ['serverless', '--help'] }, async () => {
+        await pluginManager.loadAllPlugins(servicePlugins);
+
+        expect(
+          pluginManager.plugins.some((plugin) => plugin instanceof ServicePluginMock1)
+        ).to.equal(true);
+      });
+    });
+
+    it('should not throw error when running the plugin commands and plugins entries are invalid', async () => {
+      const servicePlugins = ['serverless-webpack@1.2.3', servicePluginMock1Name];
+      pluginManager.setCliCommands(['plugin']);
+
+      await pluginManager.loadAllPlugins(servicePlugins);
+
+      expect(pluginManager.plugins.some((plugin) => plugin instanceof ServicePluginMock1)).to.equal(
+        true
+      );
+    });
   });
 
   describe('#resolveServicePlugins()', () => {
@@ -793,6 +827,15 @@ describe('PluginManager', () => {
       expect(() => pluginManager.parsePluginsObject([{}]))
         .to.throw()
         .with.property('code', 'INVALID_PLUGIN_REFERENCE');
+    });
+
+    it('drops invalid entries when tolerateInvalidEntries is set', () => {
+      const result = pluginManager.parsePluginsObject(
+        ['serverless-webpack@1.2.3', servicePluginMock1Name, './../plugin'],
+        { tolerateInvalidEntries: true }
+      );
+
+      expect(result.modules).to.deep.equal([servicePluginMock1Name]);
     });
   });
 
