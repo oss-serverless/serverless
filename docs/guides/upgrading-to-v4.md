@@ -168,6 +168,37 @@ All AWS requests now go through AWS SDK v3, which changes retry, concurrency, ti
 - **STS endpoints.** Security Token Service calls now use the regional endpoint (`sts.<region>.amazonaws.com`) instead of the global one, and `AWS_STS_REGIONAL_ENDPOINTS` is ignored. If your network egress rules pin `sts.amazonaws.com`, allow the regional endpoints or set `AWS_ENDPOINT_URL_STS=https://sts.amazonaws.com`.
 - **Endpoint overrides are now honored.** `AWS_ENDPOINT_URL`, `AWS_ENDPOINT_URL_<SERVICE>`, and the profile `endpoint_url` setting apply to every AWS call osls makes. This enables LocalStack-style workflows without plugins, but also means a leftover `AWS_ENDPOINT_URL` export in your shell silently redirects real deploys, so check your environment if requests go somewhere unexpected.
 
+### YAML parser external `$ref` resolution is restricted by default (plugin authors)
+
+Plugins that call `serverless.yamlParser.parse(filePath)` to parse additional YAML files now get restricted external `$ref` loading by default. File references are limited to the parsed document's directory, and HTTP references to local, private, link-local, reserved, multicast, metadata, and internal hosts are blocked. Blocked references fail with `YAML_REF_ACCESS_DENIED`.
+
+These options are controlled by the plugin or other code that calls `serverless.yamlParser.parse()`, not by `serverless.yml`. If an end user sees this error, the plugin needs to pass explicit `externalRefs` options, or the project needs to stay on osls v3 until the plugin is updated.
+
+**Before (v3):**
+
+```js
+const schema = await this.serverless.yamlParser.parse('schema.yml');
+```
+
+**After (v4, trusted input):**
+
+```js
+const schema = await this.serverless.yamlParser.parse('schema.yml', {
+  externalRefs: {
+    file: {
+      allowedRoots: null,
+    },
+    http: {
+      allowUnsafeUrls: true,
+    },
+  },
+});
+```
+
+The option containers must be objects. `externalRefs: null`, `externalRefs.file: null`, and `externalRefs.http: null` now fail with `YAML_REF_OPTIONS_ERROR`; omit them to use the v4 defaults. `externalRefs.file.allowedRoots: null` remains the explicit unrestricted-file opt-out.
+
+See [Parsing YAML files](./plugins/creating-plugins.md#parsing-yaml-files).
+
 ### Plugin custom variables: `configurationVariablesSources` only
 
 Plugins that extend variable resolution via the old `variableResolvers` API will fail with `OLD_VARIABLE_RESOLVER_NOT_SUPPORTED`. Migrate to `configurationVariablesSources`.

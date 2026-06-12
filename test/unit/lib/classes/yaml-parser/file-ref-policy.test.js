@@ -26,13 +26,49 @@ describe('yaml-parser/file-ref-policy', () => {
     fs.writeFileSync(filePath, 'foo: bar\n');
   };
 
-  it('allows file refs by default for v3 compatibility', async () => {
+  it('limits file refs to the document directory by default', async () => {
     const tmpDirPath = getTmpDirPath();
-    const options = await normalizeFileRefOptions(tmpDirPath);
+    const serviceDirPath = path.join(tmpDirPath, 'service');
+    const insidePath = path.join(serviceDirPath, 'ref.yml');
+    const outsidePath = path.join(tmpDirPath, 'outside.yml');
 
-    await expect(
-      assertFileRefAllowed(pathToFileURL(path.join(tmpDirPath, 'outside.yml')).href, options)
-    ).to.be.fulfilled;
+    writeFile(insidePath);
+    writeFile(outsidePath);
+
+    const options = await normalizeFileRefOptions(serviceDirPath);
+
+    await expect(assertFileRefAllowed(pathToFileURL(insidePath).href, options)).to.be.fulfilled;
+    await expectAccessDenied(assertFileRefAllowed(pathToFileURL(outsidePath).href, options));
+  });
+
+  it('allows file refs outside the document directory when roots are explicitly unrestricted', async () => {
+    const tmpDirPath = getTmpDirPath();
+    const serviceDirPath = path.join(tmpDirPath, 'service');
+    const outsidePath = path.join(tmpDirPath, 'outside.yml');
+
+    writeFile(path.join(serviceDirPath, 'serverless.yml'));
+    writeFile(outsidePath);
+
+    const options = await normalizeFileRefOptions(serviceDirPath, { allowedRoots: null });
+
+    await expect(assertFileRefAllowed(pathToFileURL(outsidePath).href, options)).to.be.fulfilled;
+  });
+
+  it('treats undefined allowed roots as omitted', async () => {
+    const tmpDirPath = getTmpDirPath();
+    const serviceDirPath = path.join(tmpDirPath, 'service');
+    const insidePath = path.join(serviceDirPath, 'ref.yml');
+    const outsidePath = path.join(tmpDirPath, 'outside.yml');
+
+    writeFile(insidePath);
+    writeFile(outsidePath);
+
+    const options = await normalizeFileRefOptions(serviceDirPath, {
+      allowedRoots: undefined,
+    });
+
+    await expect(assertFileRefAllowed(pathToFileURL(insidePath).href, options)).to.be.fulfilled;
+    await expectAccessDenied(assertFileRefAllowed(pathToFileURL(outsidePath).href, options));
   });
 
   it('allows file refs inside configured roots', async () => {
