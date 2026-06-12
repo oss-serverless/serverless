@@ -18,6 +18,7 @@ serverless invoke local --function functionName
 - `--raw`: By default, your input `data` and `context` strings are parsed as a JSON object. Set this option if you want them to be treated as raw strings instead.
 
 * `--env` or `-e` String representing an environment variable to set when invoking your function, in the form `<name>=<value>`. Can be repeated for more than one environment variable.
+* `--preserve-runtime-env` Preserve Java/Ruby runtime environment variables (`JAVA_TOOL_OPTIONS`, `_JAVA_OPTIONS`, `JDK_JAVA_OPTIONS`, `RUBYOPT`, `RUBYLIB`, `BUNDLE_GEMFILE`, `BUNDLE_PATH`). By default, these variables are removed before spawning Java/Ruby local runtimes.
 * `--docker` Enable docker support for NodeJS/Python/Ruby/Java. Enabled by default for other
   runtimes.
 * `--docker-arg` Pass additional arguments to docker run command when `--docker` is option used. e.g. `--docker-arg '-p 9229:9229' --docker-arg '-v /var:/host_var'`

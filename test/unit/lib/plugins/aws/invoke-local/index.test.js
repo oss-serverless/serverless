@@ -86,8 +86,6 @@ describe('AwsInvokeLocal', () => {
   let provider;
   let stdinStub;
   let spawnExtStub;
-  let writeChildStub;
-  let endChildStub;
 
   beforeEach(() => {
     options = {
@@ -95,18 +93,10 @@ describe('AwsInvokeLocal', () => {
       region: 'us-east-1',
       function: 'first',
     };
-    endChildStub = sinon.stub();
-    writeChildStub = sinon.stub();
     spawnExtStub = sinon.stub().callsFake(() => {
       const result = Promise.resolve({ stdoutBuffer: Buffer.from('Mocked output') });
       result.stderr = new EventEmitter().on('data', () => {});
       result.stdout = new EventEmitter().on('data', () => {});
-      result.child = {
-        stdin: {
-          write: writeChildStub,
-          end: endChildStub,
-        },
-      };
       return result;
     });
 
