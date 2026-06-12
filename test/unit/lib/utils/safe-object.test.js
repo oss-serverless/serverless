@@ -5,6 +5,7 @@ const { expect } = require('chai');
 const {
   createRegistry,
   getOwnByPath,
+  getReachableByPath,
   hasOwn,
   safeSet,
   safeShallowAssign,
@@ -157,5 +158,28 @@ describe('safe-object', () => {
     expect(getOwnByPath({ nested: {} }, ['nested', 'constructor', 'name'])).to.equal(undefined);
     expect(getOwnByPath({ nested: null }, 'nested.value')).to.equal(undefined);
     expect(getOwnByPath({ nested: 5 }, 'nested.value')).to.equal(undefined);
+  });
+
+  it('follows Proxy virtual properties for safe keys when traversing reachable paths', () => {
+    const source = {
+      proxy: new Proxy(
+        { own: 'own-value' },
+        {
+          get(target, key) {
+            if (key === 'virtual') return { nested: 'proxy-virtual' };
+            return target[key];
+          },
+        }
+      ),
+    };
+
+    expect(getReachableByPath(source, 'proxy.virtual.nested')).to.equal('proxy-virtual');
+    expect(getReachableByPath(source, ['proxy', 'own'])).to.equal('own-value');
+    expect(getReachableByPath(source, 'proxy.missing')).to.equal(undefined);
+    expect(getReachableByPath(source, ['proxy', 'constructor', 'name'])).to.equal(undefined);
+    expect(getReachableByPath({ nested: {} }, ['nested', 'constructor', 'name'])).to.equal(
+      undefined
+    );
+    expect(getReachableByPath({ nested: null }, 'nested.value')).to.equal(undefined);
   });
 });
