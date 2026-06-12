@@ -176,6 +176,16 @@ events:
 
 See [Alexa Skill](../events/alexa-skill.md).
 
+### Function `condition` now applies to generated companion resources
+
+In v3, a function's `condition` was applied only to the `AWS::Lambda::Function` resource itself. In v4, the companion resources that the core functions compiler generates for a function — version, alias, Lambda Function URL, event invoke config (async destinations), and the function's log group — inherit the function's `condition`.
+
+- The first v4 deploy updates these resources in place to attach the condition. No action is needed while the condition evaluates to true.
+- When the condition evaluates to false on an update, CloudFormation now deletes the companion resources too, **including the function's log group and all of its retained log events**. This matches what happens when the function is removed from the configuration. To preserve logs across condition flips, override the generated log group with `DeletionPolicy: Retain` (see [serverless.yml](./serverless.yml.md)).
+- Resources generated for `events` (Lambda permissions, subscriptions, rules, API Gateway resources, and so on) still do **not** inherit the condition, so combining `condition` with `events` can fail to deploy when the condition is false.
+
+Packaging also now fails fast with `EVENT_INVOKE_CONFIG_CONDITIONAL_DESTINATION` when a function routes async destinations (`destinations.onSuccess` / `destinations.onFailure`) to another function in the service that has a different `condition`. In v3 this compiled into a template that could fail at deploy time when the target's condition evaluated to false. Apply the same condition to both functions or remove the destination.
+
 ### `logs` and `metrics` time options are parsed strictly
 
 The `--startTime` option of `serverless logs` and the `--startTime` / `--endTime` options of `serverless metrics` are now parsed by a single strict parser:
@@ -277,10 +287,11 @@ Declare any `@aws-sdk/client-*` packages your plugin imports in its own dependen
 
 See [AWS plugins](./plugins/creating-plugins.md#aws-plugins) for the full plugin-facing AWS API. The [credential resolution changes](#aws-credential-resolution-changes) above apply to plugin-created clients as well.
 
-### Bundled `open` and `punycode` packages removed (plugin authors)
+### Bundled utility packages removed (plugin authors)
 
 - The internal `lib/utils/open-browser.js` module is removed, along with the [`open`](https://www.npmjs.com/package/open) package it wrapped. It was unused by osls and never part of the public plugin API. If your plugin deep-required it, depend on `open` directly.
 - osls no longer ships the userland [`punycode`](https://www.npmjs.com/package/punycode) package, and no longer aliases `require('punycode')` to it. Code that requires `punycode` now gets the deprecated Node.js builtin, which prints a `DEP0040` deprecation warning on Node.js 22+. If your plugin (or its dependencies) needs punycode, declare the userland package in its dependencies and require it as `punycode/` (with the trailing slash) so it takes precedence over the builtin.
+- The `cachedir`, `require-from-string`, and `object-hash` packages are no longer dependencies of osls; they were replaced by small internal implementations (cache directory locations are unchanged). The `dayjs` dependency was also removed, as part of the strict `logs` / `metrics` time parsing change above. If your plugin required any of these packages without declaring them — relying on npm hoisting to find the copy osls installed — add them to your plugin's own dependencies.
 
 The `@serverless/utils/config` and `@serverless/utils/log` compatibility aliases are unaffected.
 
