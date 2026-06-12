@@ -1,6 +1,6 @@
 {
   "name": "osls",
-  "version": "3.40.1",
+  "version": "4.0.0-dev",
   "description": "osls CLI for deploying serverless applications",
   "preferGlobal": true,
   "homepage": "https://github.com/oss-serverless/osls",
