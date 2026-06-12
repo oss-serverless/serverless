@@ -199,6 +199,28 @@ describe('YamlParser', () => {
       });
     });
 
+    it('should leave missing external refs untouched when file roots are restricted', async () => {
+      const tmpFilePath = getTmpFilePath('missing-external-restricted.yml');
+
+      serverless.utils.writeFileSync(tmpFilePath, {
+        main: {
+          $ref: './missing.yml',
+          extra: 'kept',
+        },
+      });
+
+      return expect(
+        serverless.yamlParser.parse(tmpFilePath, {
+          externalRefs: { file: { allowedRoots: ['.'] } },
+        })
+      ).to.eventually.deep.equal({
+        main: {
+          $ref: './missing.yml',
+          extra: 'kept',
+        },
+      });
+    });
+
     it('should keep nested missing refs untouched while resolving the rest of an external file', async () => {
       const tmpDirPath = getTmpDirPath();
 
