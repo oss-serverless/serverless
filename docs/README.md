@@ -18,6 +18,7 @@
 - [Resources](./guides/resources.md)
 - [Composing services](./guides/compose.md)
 - [Workflow Tips](./guides/workflow.md)
+- [Security Model](./guides/security.md)
 - [Serverless.yml Reference](./guides/serverless.yml.md)
 
 # Function events
