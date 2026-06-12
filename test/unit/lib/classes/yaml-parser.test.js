@@ -392,7 +392,7 @@ describe('YamlParser', () => {
         .to.equal('bar');
     });
 
-    it('should allow remote HTTP refs', async () => {
+    it('should allow remote HTTP refs when unsafe URLs are explicitly allowed', async () => {
       const tmpFilePath = getTmpFilePath('remote-ref.yml');
       const server = http.createServer((req, res) => {
         if (req.url === '/ref.yml') {
@@ -415,7 +415,9 @@ describe('YamlParser', () => {
       });
 
       try {
-        const result = await serverless.yamlParser.parse(tmpFilePath);
+        const result = await serverless.yamlParser.parse(tmpFilePath, {
+          externalRefs: { http: { allowUnsafeUrls: true } },
+        });
 
         expect(result).to.have.nested.property('main.foo').to.equal('bar');
       } finally {
@@ -430,9 +432,13 @@ describe('YamlParser', () => {
   });
 
   describe('#parse() - external ref policy', () => {
-    const expectAccessDenied = (promise) =>
+    const expectAccessDenied = (promise, messageIncludes = []) =>
       expect(promise).to.be.rejected.then((err) => {
         expect(err.code).to.equal('YAML_REF_ACCESS_DENIED');
+
+        for (const text of messageIncludes) {
+          expect(err.message).to.include(text);
+        }
       });
 
     const listen = (server, host = '127.0.0.1') =>
@@ -446,7 +452,7 @@ describe('YamlParser', () => {
         })
       );
 
-    it('passes HTTP policy options to external ref loading', async () => {
+    it('blocks unsafe HTTP refs by default', async () => {
       const tmpFilePath = getTmpFilePath('blocked-local-http-ref.yml');
       let wasRequested = false;
       const server = http.createServer((req, res) => {
@@ -463,11 +469,10 @@ describe('YamlParser', () => {
       });
 
       try {
-        await expectAccessDenied(
-          serverless.yamlParser.parse(tmpFilePath, {
-            externalRefs: { http: { allowUnsafeUrls: false } },
-          })
-        );
+        await expectAccessDenied(serverless.yamlParser.parse(tmpFilePath), [
+          'yamlParser.parse',
+          'externalRefs.http.allowedUnsafeHosts',
+        ]);
         expect(wasRequested).to.equal(false);
       } finally {
         await close(server);
@@ -489,7 +494,7 @@ describe('YamlParser', () => {
       expect(result).to.have.nested.property('main.foo').to.equal('bar');
     });
 
-    it('throws access denied for file refs outside configured roots', async () => {
+    it('blocks file refs outside the root document directory by default', async () => {
       const tmpDirPath = getTmpDirPath();
       const serviceDirPath = path.join(tmpDirPath, 'service');
       const outsidePath = path.join(tmpDirPath, 'outside.yml');
@@ -498,11 +503,26 @@ describe('YamlParser', () => {
       serverless.utils.writeFileSync(outsidePath, { foo: 'bar' });
       serverless.utils.writeFileSync(testPath, { main: { $ref: '../outside.yml' } });
 
-      await expectAccessDenied(
-        serverless.yamlParser.parse(testPath, {
-          externalRefs: { file: { allowedRoots: ['.'] } },
-        })
-      );
+      await expectAccessDenied(serverless.yamlParser.parse(testPath), [
+        'yamlParser.parse',
+        'externalRefs.file.allowedRoots',
+      ]);
+    });
+
+    it('allows file refs outside the root document directory when roots are explicitly unrestricted', async () => {
+      const tmpDirPath = getTmpDirPath();
+      const serviceDirPath = path.join(tmpDirPath, 'service');
+      const outsidePath = path.join(tmpDirPath, 'outside.yml');
+      const testPath = path.join(serviceDirPath, 'test.yml');
+
+      serverless.utils.writeFileSync(outsidePath, { foo: 'bar' });
+      serverless.utils.writeFileSync(testPath, { main: { $ref: '../outside.yml' } });
+
+      const result = await serverless.yamlParser.parse(testPath, {
+        externalRefs: { file: { allowedRoots: null } },
+      });
+
+      expect(result).to.have.nested.property('main.foo').to.equal('bar');
     });
 
     it('enforces file allow-list policy for nested external refs', async () => {
@@ -649,6 +669,41 @@ describe('YamlParser', () => {
               },
             },
           })
+        );
+      } finally {
+        await close(server);
+      }
+    });
+
+    it('enforces default file policy for refs nested in HTTP documents', async () => {
+      const tmpDirPath = getTmpDirPath();
+      const serviceDirPath = path.join(tmpDirPath, 'service');
+      const outsidePath = path.join(tmpDirPath, 'outside.yml');
+      const testPath = path.join(serviceDirPath, 'test.yml');
+      const server = http.createServer((req, res) => {
+        res.writeHead(200, { 'Content-Type': 'application/yaml' });
+        res.end(`nested:\n  $ref: ${pathToFileURL(outsidePath).href}\n`);
+      });
+
+      serverless.utils.writeFileSync(outsidePath, { foo: 'bar' });
+
+      await listen(server);
+      const { port } = server.address();
+
+      serverless.utils.writeFileSync(testPath, {
+        main: { $ref: `http://127.0.0.1:${port}/ref.yml` },
+      });
+
+      try {
+        await expectAccessDenied(
+          serverless.yamlParser.parse(testPath, {
+            externalRefs: {
+              http: {
+                allowedUnsafeHosts: [`127.0.0.1:${port}`],
+              },
+            },
+          }),
+          ['yamlParser.parse', 'externalRefs.file.allowedRoots']
         );
       } finally {
         await close(server);

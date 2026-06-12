@@ -17,12 +17,72 @@ describe('yaml-parser/external-ref-options', () => {
     expect(fn).to.throw(Error).with.property('code', 'YAML_REF_OPTIONS_ERROR');
   };
 
-  it('defaults to legacy-compatible external ref behavior', async () => {
-    const options = await normalizeExternalRefOptions(path.join(getTmpDirPath(), 'serverless.yml'));
+  it('defaults to safe external ref behavior', async () => {
+    const yamlFilePath = path.join(getTmpDirPath(), 'serverless.yml');
+    const options = await normalizeExternalRefOptions(yamlFilePath);
+
+    expect(options.file.allowedRoots.map((root) => root.path)).to.deep.equal([
+      path.dirname(yamlFilePath),
+    ]);
+    expect(options.http).to.deep.equal({
+      allowUnsafeUrls: false,
+      allowedUnsafeHosts: [],
+    });
+  });
+
+  it('allows explicit legacy-compatible external ref behavior', async () => {
+    const options = await normalizeExternalRefOptions(
+      path.join(getTmpDirPath(), 'serverless.yml'),
+      {
+        externalRefs: {
+          file: { allowedRoots: null },
+          http: { allowUnsafeUrls: true },
+        },
+      }
+    );
 
     expect(options.file.allowedRoots).to.equal(null);
     expect(options.http).to.deep.equal({
       allowUnsafeUrls: true,
+      allowedUnsafeHosts: [],
+    });
+  });
+
+  it('uses safe defaults for empty external ref option objects', async () => {
+    const yamlFilePath = path.join(getTmpDirPath(), 'serverless.yml');
+    const options = await normalizeExternalRefOptions(yamlFilePath, {
+      externalRefs: {
+        file: {},
+        http: {},
+      },
+    });
+
+    expect(options.file.allowedRoots.map((root) => root.path)).to.deep.equal([
+      path.dirname(yamlFilePath),
+    ]);
+    expect(options.http).to.deep.equal({
+      allowUnsafeUrls: false,
+      allowedUnsafeHosts: [],
+    });
+  });
+
+  it('uses safe defaults for undefined option leaves', async () => {
+    const yamlFilePath = path.join(getTmpDirPath(), 'serverless.yml');
+    const options = await normalizeExternalRefOptions(yamlFilePath, {
+      externalRefs: {
+        file: { allowedRoots: undefined },
+        http: {
+          allowUnsafeUrls: undefined,
+          allowedUnsafeHosts: undefined,
+        },
+      },
+    });
+
+    expect(options.file.allowedRoots.map((root) => root.path)).to.deep.equal([
+      path.dirname(yamlFilePath),
+    ]);
+    expect(options.http).to.deep.equal({
+      allowUnsafeUrls: false,
       allowedUnsafeHosts: [],
     });
   });
@@ -65,6 +125,20 @@ describe('yaml-parser/external-ref-options', () => {
   it('rejects invalid root options', async () => {
     await expect(
       normalizeExternalRefOptions(path.join(getTmpDirPath(), 'serverless.yml'), null)
+    ).to.be.rejected.then(expectOptionsError);
+  });
+
+  it('rejects null where option objects are expected', async () => {
+    const yamlFilePath = path.join(getTmpDirPath(), 'serverless.yml');
+
+    await expect(
+      normalizeExternalRefOptions(yamlFilePath, { externalRefs: null })
+    ).to.be.rejected.then(expectOptionsError);
+    await expect(
+      normalizeExternalRefOptions(yamlFilePath, { externalRefs: { file: null } })
+    ).to.be.rejected.then(expectOptionsError);
+    await expect(
+      normalizeExternalRefOptions(yamlFilePath, { externalRefs: { http: null } })
     ).to.be.rejected.then(expectOptionsError);
   });
 
@@ -119,7 +193,9 @@ describe('yaml-parser/external-ref-options', () => {
 
   it('rejects invalid HTTP options', () => {
     expectSyncOptionsError(() => normalizeHttpRefOptions([]));
+    expectSyncOptionsError(() => normalizeHttpRefOptions({ allowUnsafeUrls: null }));
     expectSyncOptionsError(() => normalizeHttpRefOptions({ allowUnsafeUrls: 'false' }));
+    expectSyncOptionsError(() => normalizeHttpRefOptions({ allowedUnsafeHosts: null }));
     expectSyncOptionsError(() => normalizeHttpRefOptions({ allowedUnsafeHosts: [true] }));
   });
 });
