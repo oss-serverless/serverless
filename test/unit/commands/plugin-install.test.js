@@ -47,13 +47,16 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
   });
   const pluginName = 'serverless-plugin-1';
 
-  const expectInstallSpawn = (serviceDir, packageSpec) => {
-    expect(spawnFake.firstCall.args[1].slice(-4)).to.deep.equal([
+  const expectInstallSpawn = (serviceDir, packageSpec, { allowInstallScripts = false } = {}) => {
+    const expectedArgs = [
       'install',
       '--save-dev',
+      ...(allowInstallScripts ? [] : ['--ignore-scripts']),
       '--',
       packageSpec,
-    ]);
+    ];
+
+    expect(spawnFake.firstCall.args[1].slice(-expectedArgs.length)).to.deep.equal(expectedArgs);
     expect(spawnFake.firstCall.args[2]).to.deep.equal({
       cwd: serviceDir,
       stdio: 'pipe',
@@ -163,12 +166,41 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
     });
   });
 
+  describe('with invalid plugin version', () => {
+    for (const inputName of [`${pluginName}@1.0.0;id`, `${pluginName}@"^1.60.0 || 2"`]) {
+      it(`rejects ${JSON.stringify(inputName)} before installing`, async () => {
+        const fixture = await setupProgrammaticFixture('function');
+        const configuration = fixture.serviceConfig;
+        const serviceDir = fixture.servicePath;
+        const configurationFilePath = await resolveConfigurationPath({
+          cwd: serviceDir,
+        });
+        const configurationFilename = configurationFilePath.slice(serviceDir.length + 1);
+        const originalConfigurationText = await fsp.readFile(configurationFilePath, 'utf8');
+
+        await expect(
+          installPlugin({
+            configuration,
+            serviceDir,
+            configurationFilename,
+            options: {
+              name: inputName,
+            },
+          })
+        ).to.be.eventually.rejected.and.have.property('code', 'INVALID_PLUGIN_VERSION');
+
+        expect(spawnFake).to.not.have.been.called;
+        expect(await fsp.readFile(configurationFilePath, 'utf8')).to.equal(
+          originalConfigurationText
+        );
+      });
+    }
+  });
+
   describe('with package specs that require argv boundaries', () => {
     for (const [inputName, expectedPackageSpec] of [
       ['@scope/serverless-plugin-1', '@scope/serverless-plugin-1@latest'],
       [`${pluginName}@^1.0.0 || 2`, `${pluginName}@^1.0.0 || 2`],
-      [`${pluginName}@1.0.0;id`, `${pluginName}@1.0.0;id`],
-      [`${pluginName}@"^1.60.0 || 2"`, `${pluginName}@^1.60.0 || 2`],
     ]) {
       it(`passes ${JSON.stringify(expectedPackageSpec)} as one npm argv element`, async () => {
         const fixture = await setupProgrammaticFixture('function');
@@ -190,6 +222,31 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
         expect(spawnFake.firstCall.args[2]).to.not.have.property('shell');
       });
     }
+  });
+
+  describe('with install scripts explicitly allowed', () => {
+    it('omits --ignore-scripts', async () => {
+      const fixture = await setupProgrammaticFixture('function');
+      const configuration = fixture.serviceConfig;
+      const serviceDir = fixture.servicePath;
+      const configurationFilePath = await resolveConfigurationPath({
+        cwd: serviceDir,
+      });
+      const configurationFilename = configurationFilePath.slice(serviceDir.length + 1);
+
+      await installPlugin({
+        configuration,
+        serviceDir,
+        configurationFilename,
+        options: {
+          'name': pluginName,
+          'allow-install-scripts': true,
+        },
+      });
+
+      expectInstallSpawn(serviceDir, `${pluginName}@latest`, { allowInstallScripts: true });
+      expect(spawnFake.firstCall.args[1]).to.not.include('--ignore-scripts');
+    });
   });
 
   describe('with JSON configuration', () => {

@@ -12,8 +12,8 @@ const yamlAstParser = require('../lib/utils/yaml-ast-parser');
 const npmCommandDeferred = require('../lib/utils/npm-command-deferred');
 const { readJson, writeJson } = require('../lib/utils/fs/json-file');
 const {
-  getPluginInfo,
   getServerlessFilePath,
+  parsePluginInstallSpec,
   validate,
 } = require('../lib/commands/plugin-management');
 
@@ -23,12 +23,20 @@ module.exports = async ({ configuration, serviceDir, configurationFilename, opti
   const commandRunStartTime = Date.now();
   validate({ serviceDir });
 
-  const pluginInfo = getPluginInfo(options.name);
+  const pluginInfo = parsePluginInstallSpec(options.name);
   const pluginName = pluginInfo.name;
-  const pluginVersion = pluginInfo.version || 'latest';
+  const pluginVersion = pluginInfo.version;
   const configurationFilePath = getServerlessFilePath({ serviceDir, configurationFilename });
 
-  const context = { configuration, serviceDir, configurationFilePath, pluginName, pluginVersion };
+  const context = {
+    configuration,
+    serviceDir,
+    configurationFilePath,
+    pluginName,
+    pluginVersion,
+    installSpec: pluginInfo.installSpec,
+    allowInstallScripts: Boolean(options['allow-install-scripts']),
+  };
   mainProgress.notice(
     `Installing plugin "${pluginName}${pluginVersion === 'latest' ? '' : `@${pluginVersion}`}"`,
     { isMainEvent: true }
@@ -51,9 +59,8 @@ module.exports = async ({ configuration, serviceDir, configurationFilename, opti
   );
 };
 
-const installPlugin = async ({ serviceDir, pluginName, pluginVersion }) => {
-  const pluginFullName = `${pluginName}@${pluginVersion}`;
-  await npmInstall(pluginFullName, { serviceDir });
+const installPlugin = async ({ serviceDir, installSpec, allowInstallScripts }) => {
+  await npmInstall(installSpec, { serviceDir, allowInstallScripts });
 };
 
 const addPluginToServerlessFile = async ({ configurationFilePath, pluginName }) => {
@@ -122,10 +129,16 @@ const addPluginToServerlessFile = async ({ configurationFilePath, pluginName }) 
   );
 };
 
-const npmInstall = async (name, { serviceDir }) => {
+const npmInstall = async (name, { serviceDir, allowInstallScripts }) => {
   const { command, args } = await npmCommandDeferred;
+  const installArgs = ['install', '--save-dev'];
+
+  if (!allowInstallScripts) {
+    installArgs.push('--ignore-scripts');
+  }
+
   try {
-    await spawn(command, [...args, 'install', '--save-dev', '--', name], {
+    await spawn(command, [...args, ...installArgs, '--', name], {
       cwd: serviceDir,
       stdio: 'pipe',
     });

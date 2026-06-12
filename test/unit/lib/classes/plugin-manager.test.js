@@ -137,6 +137,11 @@ describe('PluginManager', () => {
 
   class ServicePluginMock2 {}
 
+  const servicePluginMock1Name = 'service-plugin-mock-1';
+  const servicePluginMock2Name = 'service-plugin-mock-2';
+  const servicePluginMock3Name = 'service-plugin-mock-3';
+  const brokenPluginMockName = 'broken-plugin-mock';
+
   const brokenPluginError = new Error('Broken plugin');
   class BrokenPluginMock {
     constructor() {
@@ -385,9 +390,9 @@ describe('PluginManager', () => {
 
   const resolveStub = (directory, pluginPath) => {
     switch (pluginPath) {
-      case 'BrokenPluginMock':
-      case 'ServicePluginMock1':
-      case 'ServicePluginMock2':
+      case brokenPluginMockName:
+      case servicePluginMock1Name:
+      case servicePluginMock2Name:
         return pluginPath;
       case './RelativePath/ServicePluginMock2':
         return `${serviceDir}/RelativePath/ServicePluginMock2`;
@@ -593,9 +598,9 @@ describe('PluginManager', () => {
 
   describe('#loadAllPlugins()', () => {
     beforeEach(() => {
-      servicePluginMocks.set('ServicePluginMock1', ServicePluginMock1);
-      servicePluginMocks.set('ServicePluginMock2', ServicePluginMock2);
-      servicePluginMocks.set('BrokenPluginMock', BrokenPluginMock);
+      servicePluginMocks.set(servicePluginMock1Name, ServicePluginMock1);
+      servicePluginMocks.set(servicePluginMock2Name, ServicePluginMock2);
+      servicePluginMocks.set(brokenPluginMockName, BrokenPluginMock);
     });
 
     it('should load only core plugins when no service plugins are given', async () => {
@@ -608,7 +613,7 @@ describe('PluginManager', () => {
     });
 
     it('should load all plugins when service plugins are given', async () => {
-      const servicePlugins = ['ServicePluginMock1', 'ServicePluginMock2'];
+      const servicePlugins = [servicePluginMock1Name, servicePluginMock2Name];
       await pluginManager.loadAllPlugins(servicePlugins);
 
       expect(pluginManager.plugins.some((plugin) => plugin instanceof ServicePluginMock1)).to.equal(
@@ -623,7 +628,7 @@ describe('PluginManager', () => {
     });
 
     it('should load all plugins in the correct order', async () => {
-      const servicePlugins = ['ServicePluginMock1', 'ServicePluginMock2'];
+      const servicePlugins = [servicePluginMock1Name, servicePluginMock2Name];
 
       await pluginManager.loadAllPlugins(servicePlugins);
 
@@ -642,7 +647,7 @@ describe('PluginManager', () => {
     });
 
     it('should throw an error when trying to load unknown plugin', () => {
-      const servicePlugins = ['ServicePluginMock3', 'ServicePluginMock1'];
+      const servicePlugins = [servicePluginMock3Name, servicePluginMock1Name];
 
       return expect(pluginManager.loadAllPlugins(servicePlugins)).to.be.rejectedWith(
         ServerlessError
@@ -650,7 +655,7 @@ describe('PluginManager', () => {
     });
 
     it('should not throw error when trying to load unknown plugin with help flag', async () => {
-      const servicePlugins = ['ServicePluginMock3', 'ServicePluginMock1'];
+      const servicePlugins = [servicePluginMock3Name, servicePluginMock1Name];
 
       pluginManager.setCliOptions({ help: true });
 
@@ -663,7 +668,7 @@ describe('PluginManager', () => {
     });
 
     it('should pass through an error when plugin load fails', () => {
-      const servicePlugins = ['BrokenPluginMock'];
+      const servicePlugins = [brokenPluginMockName];
 
       return expect(pluginManager.loadAllPlugins(servicePlugins)).to.be.rejectedWith(
         brokenPluginError
@@ -671,7 +676,7 @@ describe('PluginManager', () => {
     });
 
     it('should not throw error when running the plugin commands and given plugins does not exist', () => {
-      const servicePlugins = ['ServicePluginMock3'];
+      const servicePlugins = [servicePluginMock3Name];
       const cliCommandsMock = ['plugin'];
       pluginManager.setCliCommands(cliCommandsMock);
 
@@ -683,13 +688,13 @@ describe('PluginManager', () => {
 
   describe('#resolveServicePlugins()', () => {
     beforeEach(() => {
-      servicePluginMocks.set('ServicePluginMock1', ServicePluginMock1);
+      servicePluginMocks.set(servicePluginMock1Name, ServicePluginMock1);
       // Plugins loaded via a relative path should be required relative to the service path
       servicePluginMocks.set(`${serviceDir}/RelativePath/ServicePluginMock2`, ServicePluginMock2);
     });
 
     it('should resolve the service plugins', async () => {
-      const servicePlugins = ['ServicePluginMock1', './RelativePath/ServicePluginMock2'];
+      const servicePlugins = [servicePluginMock1Name, './RelativePath/ServicePluginMock2'];
       expect(await pluginManager.resolveServicePlugins(servicePlugins)).to.deep.equal([
         ServicePluginMock1,
         ServicePluginMock2,
@@ -716,7 +721,7 @@ describe('PluginManager', () => {
     };
 
     it('should parse array object', () => {
-      const servicePlugins = ['ServicePluginMock1', 'ServicePluginMock2'];
+      const servicePlugins = [servicePluginMock1Name, servicePluginMock2Name];
 
       parsePluginsObjectAndVerifyResult(servicePlugins, {
         modules: servicePlugins,
@@ -726,7 +731,7 @@ describe('PluginManager', () => {
 
     it('should parse plugins object', () => {
       const servicePlugins = {
-        modules: ['ServicePluginMock1', 'ServicePluginMock2'],
+        modules: [servicePluginMock1Name, servicePluginMock2Name],
         localPath: './myplugins',
       };
 
@@ -756,7 +761,7 @@ describe('PluginManager', () => {
 
     it('should parse plugins object if localPath is not correct', () => {
       const servicePlugins = {
-        modules: ['ServicePluginMock1', 'ServicePluginMock2'],
+        modules: [servicePluginMock1Name, servicePluginMock2Name],
         localPath: {},
       };
 
@@ -764,6 +769,30 @@ describe('PluginManager', () => {
         modules: servicePlugins.modules,
         localPath: path.join(serverless.serviceDir, '.serverless_plugins'),
       });
+    });
+
+    it('rejects versioned package specs', () => {
+      expect(() => pluginManager.parsePluginsObject(['serverless-webpack@1.2.3']))
+        .to.throw()
+        .with.property('code', 'INVALID_PLUGIN_REFERENCE');
+    });
+
+    it('rejects local plugin paths that escape the service directory', () => {
+      expect(() => pluginManager.parsePluginsObject(['./../plugin']))
+        .to.throw()
+        .with.property('code', 'INVALID_LOCAL_PLUGIN_PATH');
+    });
+
+    it('preserves local plugin paths inside the service directory', () => {
+      expect(pluginManager.parsePluginsObject(['./plugins/local-plugin']).modules).to.deep.equal([
+        './plugins/local-plugin',
+      ]);
+    });
+
+    it('rejects non-string plugin entries', () => {
+      expect(() => pluginManager.parsePluginsObject([{}]))
+        .to.throw()
+        .with.property('code', 'INVALID_PLUGIN_REFERENCE');
     });
   });
 
@@ -991,12 +1020,12 @@ describe('PluginManager', () => {
 
   describe('#getPlugins()', () => {
     beforeEach(() => {
-      servicePluginMocks.set('ServicePluginMock1', ServicePluginMock1);
-      servicePluginMocks.set('ServicePluginMock2', ServicePluginMock2);
+      servicePluginMocks.set(servicePluginMock1Name, ServicePluginMock1);
+      servicePluginMocks.set(servicePluginMock2Name, ServicePluginMock2);
     });
 
     it('should return all loaded plugins', async () => {
-      const servicePlugins = ['ServicePluginMock1', 'ServicePluginMock2'];
+      const servicePlugins = [servicePluginMock1Name, servicePluginMock2Name];
       await pluginManager.loadAllPlugins(servicePlugins);
 
       const plugins = pluginManager.getPlugins();

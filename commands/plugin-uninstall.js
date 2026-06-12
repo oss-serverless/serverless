@@ -11,8 +11,8 @@ const yamlAstParser = require('../lib/utils/yaml-ast-parser');
 const npmCommandDeferred = require('../lib/utils/npm-command-deferred');
 const { readJson, writeJson } = require('../lib/utils/fs/json-file');
 const {
-  getPluginInfo,
   getServerlessFilePath,
+  parsePluginUninstallSpec,
   validate,
 } = require('../lib/commands/plugin-management');
 
@@ -22,7 +22,7 @@ module.exports = async ({ configuration, serviceDir, configurationFilename, opti
   const commandRunStartTime = Date.now();
   validate({ serviceDir });
 
-  const pluginInfo = getPluginInfo(options.name);
+  const pluginInfo = parsePluginUninstallSpec(options.name);
   const pluginName = pluginInfo.name;
   const configurationFilePath = getServerlessFilePath({ serviceDir, configurationFilename });
 

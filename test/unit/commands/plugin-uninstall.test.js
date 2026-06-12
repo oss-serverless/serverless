@@ -143,6 +143,40 @@ describe('test/unit/commands/plugin-uninstall.test.js', async () => {
     });
   });
 
+  describe('with versioned package spec', () => {
+    it('rejects before uninstalling or updating the configuration file', async () => {
+      const fixture = await setupProgrammaticFixture('function', {
+        configExt: {
+          plugins: [pluginName],
+        },
+      });
+
+      const configuration = fixture.serviceConfig;
+      const fixtureServiceDir = fixture.servicePath;
+      const fixtureConfigurationPath = await resolveConfigurationPath({
+        cwd: fixtureServiceDir,
+      });
+      const configurationFilename = fixtureConfigurationPath.slice(fixtureServiceDir.length + 1);
+      const originalConfigurationText = await fsp.readFile(fixtureConfigurationPath, 'utf8');
+
+      await expect(
+        uninstallPlugin({
+          configuration,
+          serviceDir: fixtureServiceDir,
+          configurationFilename,
+          options: {
+            name: `${pluginName}@1.2.3`,
+          },
+        })
+      ).to.be.eventually.rejected.and.have.property('code', 'INVALID_PLUGIN_UNINSTALL_SPEC');
+
+      expect(spawnFake).to.not.have.been.called;
+      expect(await fsp.readFile(fixtureConfigurationPath, 'utf8')).to.equal(
+        originalConfigurationText
+      );
+    });
+  });
+
   describe('with JSON configuration', () => {
     it('removes a plugin from array-form plugins', async () => {
       const fixture = await setupProgrammaticFixture('function');
