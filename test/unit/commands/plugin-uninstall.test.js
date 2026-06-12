@@ -10,7 +10,6 @@ const resolveConfigurationPath = require('../../../lib/cli/resolve-configuration
 const cloudformationSchema = require('../../../lib/utils/serverless-utils/cloudformation-schema');
 const { expect } = require('chai');
 
-const npmCommand = 'npm';
 const pluginName = 'serverless-plugin-1';
 const spawnFake = sinon.fake();
 const uninstallPlugin = proxyquire('../../../commands/plugin-uninstall', {
@@ -81,10 +80,16 @@ describe('test/unit/commands/plugin-uninstall.test.js', async () => {
   });
 
   it('should uninstall plugin', () => {
-    const firstCall = spawnFake.firstCall;
-    const command = [firstCall.args[0], ...firstCall.args[1]].join(' ');
-    const expectedCommand = `${npmCommand} uninstall --save-dev ${pluginName}`;
-    expect(command).to.have.string(expectedCommand);
+    expect(spawnFake.firstCall.args[1].slice(-4)).to.deep.equal([
+      'uninstall',
+      '--save-dev',
+      '--',
+      pluginName,
+    ]);
+    expect(spawnFake.firstCall.args[2]).to.deep.equal({
+      cwd: serviceDir,
+      stdio: 'pipe',
+    });
   });
 
   it('should remove plugin from serverless file', async () => {
