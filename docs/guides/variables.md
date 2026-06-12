@@ -497,7 +497,7 @@ functions:
       - schedule: ${file(./scheduleConfig.js):rate} # Reference a specific module
 ```
 
-Address resolution follows the value's own properties. If a JS file exports (or its resolver function returns) a `Proxy`-backed object, address segments are resolved through the proxy's `get` handler instead. The keys `__proto__`, `prototype` and `constructor` are only followed when they are own properties of the value, so an address can never traverse into prototype internals.
+Address resolution follows the value's own properties. If a JS file exports (or its resolver function returns) a `Proxy`-backed object, address segments are resolved through the proxy's `get` handler instead. The keys `__proto__`, `prototype` and `constructor` are only followed when they are own properties of the value, so an address can never traverse into prototype internals. This proxy-aware resolution applies to `file(...)` addresses only — when the same value is reached another way (for example via a `${self:...}` reference into a property that was populated from a `${file(...)}` variable, or via `serverless print --path`), only own properties are followed.
 
 ### Exporting a function
 
