@@ -103,7 +103,7 @@ const removePluginFromServerlessFile = async ({ configurationFilePath, pluginNam
 const npmUninstall = async (name, { serviceDir }) => {
   const { command, args } = await npmCommandDeferred;
   try {
-    await spawn(command, [...args, 'uninstall', '--save-dev', name], {
+    await spawn(command, [...args, 'uninstall', '--save-dev', '--', name], {
       cwd: serviceDir,
       stdio: 'pipe',
     });

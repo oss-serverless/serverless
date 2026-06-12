@@ -10,8 +10,6 @@ const resolveConfigurationPath = require('../../../lib/cli/resolve-configuration
 const cloudformationSchema = require('../../../lib/utils/serverless-utils/cloudformation-schema');
 const { expect } = require('chai');
 
-const npmCommand = 'npm';
-
 const writeRawConfiguration = async (serviceDir, rawYaml) => {
   const configurationFilePath = await resolveConfigurationPath({
     cwd: serviceDir,
@@ -49,6 +47,19 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
   });
   const pluginName = 'serverless-plugin-1';
 
+  const expectInstallSpawn = (serviceDir, packageSpec) => {
+    expect(spawnFake.firstCall.args[1].slice(-4)).to.deep.equal([
+      'install',
+      '--save-dev',
+      '--',
+      packageSpec,
+    ]);
+    expect(spawnFake.firstCall.args[2]).to.deep.equal({
+      cwd: serviceDir,
+      stdio: 'pipe',
+    });
+  };
+
   afterEach(() => {
     spawnFake.resetHistory();
   });
@@ -77,10 +88,7 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
     });
 
     it('should install plugin', () => {
-      const firstCall = spawnFake.firstCall;
-      const command = [firstCall.args[0], ...firstCall.args[1]].join(' ');
-      const expectedCommand = `${npmCommand} install --save-dev ${pluginName}`;
-      expect(command).to.have.string(expectedCommand);
+      expectInstallSpawn(serviceDir, `${pluginName}@latest`);
     });
 
     it('should add plugin to serverless file', async () => {
@@ -153,6 +161,35 @@ describe('test/unit/commands/plugin-install.test.js', async () => {
       expect(spawnFake).to.not.have.been.called;
       expect(await fsp.readFile(configurationFilePath, 'utf8')).to.equal(originalConfigurationText);
     });
+  });
+
+  describe('with package specs that require argv boundaries', () => {
+    for (const [inputName, expectedPackageSpec] of [
+      ['@scope/serverless-plugin-1', '@scope/serverless-plugin-1@latest'],
+      [`${pluginName}@^1.0.0 || 2`, `${pluginName}@^1.0.0 || 2`],
+      [`${pluginName}@1.0.0;id`, `${pluginName}@1.0.0;id`],
+      [`${pluginName}@"^1.60.0 || 2"`, `${pluginName}@^1.60.0 || 2`],
+    ]) {
+      it(`passes ${JSON.stringify(expectedPackageSpec)} as one npm argv element`, async () => {
+        const fixture = await fixturesEngine.setup('function');
+        const configuration = fixture.serviceConfig;
+        const serviceDir = fixture.servicePath;
+        const configurationFilePath = await resolveConfigurationPath({
+          cwd: serviceDir,
+        });
+        const configurationFilename = configurationFilePath.slice(serviceDir.length + 1);
+
+        await installPlugin({
+          configuration,
+          serviceDir,
+          configurationFilename,
+          options: { name: inputName },
+        });
+
+        expectInstallSpawn(serviceDir, expectedPackageSpec);
+        expect(spawnFake.firstCall.args[2]).to.not.have.property('shell');
+      });
+    }
   });
 
   describe('with JSON configuration', () => {
