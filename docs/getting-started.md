@@ -7,7 +7,7 @@ Get started with the osls open-source CLI and Amazon Web Services in minutes.
 Install `osls` module via NPM:
 
 ```bash
-npm install -g osls
+npm install -g osls@3
 ```
 
 _Requires Node.js `^20.19.0 || ^22.13.0 || >=24`. If you don’t already have a supported Node.js version on your machine, [install it first](https://nodejs.org/)._

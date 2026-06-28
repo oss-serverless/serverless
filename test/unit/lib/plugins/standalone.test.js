@@ -52,7 +52,7 @@ describe('test/unit/lib/plugins/standalone.test.js', () => {
     }
 
     expect(error).to.have.property('code', 'STANDALONE_UPGRADE_COMMAND_DEPRECATED');
-    expect(error.message).to.include('npm install -g osls@latest');
+    expect(error.message).to.include('npm install -g osls@3');
     expect(globalThis.fetch).to.not.have.been.called;
   });
 

@@ -41,7 +41,7 @@ Removal target: osls v4.0.0
 The standalone `sls upgrade` command no longer updates osls and is scheduled for removal in osls v4.0.0. Use npm to upgrade osls instead:
 
 ```sh
-npm install -g osls@latest
+npm install -g osls@3
 ```
 
 <a name="STANDALONE_UNINSTALL_COMMAND_DEPRECATED"><div>&nbsp;</div></a>
