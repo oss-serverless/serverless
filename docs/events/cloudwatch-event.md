@@ -1,11 +1,13 @@
 # CloudWatch Event
 
+[CloudWatch Events](https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/WhatIsCloudWatchEvents.html) (now part of [Amazon EventBridge](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-what-is.html)) deliver a near real-time stream of system events that describe changes in AWS resources. osls can wire a `cloudwatchEvent` rule to a Lambda function so that the function runs whenever a matching event occurs. For new projects, consider the [`eventBridge`](event-bridge.md) event source instead.
+
 ## Simple event definition
 
 This will enable your Lambda function to be called by an EC2 event rule.
 Please check the page of [Event Types for CloudWatch Events](http://docs.aws.amazon.com/AmazonCloudWatch/latest/events/EventTypes.html).
 
-```yml
+```yaml
 functions:
   myCloudWatch:
     handler: myCloudWatch.handler
@@ -27,7 +29,7 @@ functions:
 
 This will create and attach a disabled `cloudwatchEvent` event for the `myCloudWatch` function.
 
-```yml
+```yaml
 functions:
   myCloudWatch:
     handler: myCloudWatch.handler
@@ -48,7 +50,7 @@ functions:
 
 You can specify input values ​​to the Lambda function.
 
-```yml
+```yaml
 functions:
   myCloudWatch:
     handler: myCloudWatch.handler
@@ -96,7 +98,7 @@ functions:
 
 You can also specify a CloudWatch Event description.
 
-```yml
+```yaml
 functions:
   myCloudWatch:
     handler: myCloudWatch.handler
@@ -117,7 +119,7 @@ functions:
 
 You can also specify a CloudWatch Event name. Keep in mind that the name must begin with a letter; contain only ASCII letters, digits, and hyphens; and not end with a hyphen or contain two consecutive hyphens. More information [here](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-name.html).
 
-```yml
+```yaml
 functions:
   myCloudWatch:
     handler: myCloudWatch.handler
@@ -133,3 +135,7 @@ functions:
               state:
                 - pending
 ```
+
+---
+
+[← All Events](./README.md) · [Docs Home](../README.md)

@@ -1,11 +1,3 @@
-<!--
-title: osls Commands - AWS Lambda - Generate Event
-menuText: generate event
-menuOrder: 21
-description: Generate sample Lambda function event payload
-layout: Doc
--->
-
 # AWS - Generate Event
 
 Creates sample Lambda function payloads for different types of events.
@@ -54,3 +46,7 @@ osls generate-event -t aws:kinesis -b '{"foo": "bar"}'
 ```bash
 osls generate-event -t aws:sqs > event.json
 ```
+
+---
+
+[← All Commands](./README.md) · [Docs Home](../README.md)

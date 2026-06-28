@@ -51,3 +51,7 @@ osls metrics --function hello \
 ```
 
 Displays all `hello` function metrics for the time between January 1, 2016 and January 2, 2016.
+
+---
+
+[← All Commands](./README.md) · [Docs Home](../README.md)

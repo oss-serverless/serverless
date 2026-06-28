@@ -1,10 +1,21 @@
 # Plugins
 
-A plugin is custom JavaScript code that extends Serverless with new features.
+A plugin is custom JavaScript code that extends osls with new features.
 
-If you or your organization have a specific workflow, install a pre-written plugin or write one to customize Serverless to your needs.
+If you or your organization have a specific workflow, install a pre-written plugin or write one to customize osls to your needs.
 
 Since osls is a group of "core" plugins, custom plugins are written exactly the same way as core plugins. Learn more about [creating a custom plugin](creating-plugins.md).
+
+## Authoring plugins
+
+These guides cover how to write your own plugins:
+
+- [Creating custom plugins](creating-plugins.md) — plugin structure, lifecycle hooks, and the `serverless` instance.
+- [Custom commands](custom-commands.md) — define new CLI commands, options, and sub-commands.
+- [Custom variables](custom-variables.md) — register new `${...}` variable sources.
+- [Extending the configuration schema](custom-configuration.md) — validate and add custom `serverless.yml` syntax.
+- [Extending and overriding configuration](extending-configuration.md) — programmatically set resolved configuration values.
+- [CLI output in plugins](cli-output.md) — log messages, progress, errors, and command output.
 
 > **Security note:** Plugins are JavaScript code that osls loads and executes. Treat configured plugins, local plugin paths, and `plugins.localPath` as trusted code. Do not run osls commands against untrusted projects, templates, or pull requests that configure plugins.
 
@@ -16,7 +27,7 @@ Plugins are installed per service. They are not applied globally.
 
 To install a plugin, run the following command in a service directory:
 
-```
+```bash
 osls plugin install -n example-osls-plugin
 ```
 
@@ -28,13 +39,13 @@ npm lifecycle scripts are ignored by default during plugin install. If you trust
 
 You can also install the plugin manually via NPM:
 
-```
+```bash
 npm install --save-dev example-osls-plugin
 ```
 
 and then register it in `serverless.yml` in the `plugins` section:
 
-```yml
+```yaml
 # serverless.yml file
 
 plugins:
@@ -45,7 +56,7 @@ The `plugins` section accepts bare npm package names and explicit local plugin p
 
 Some plugins require extra configuration. The `custom` section in `serverless.yml` is where you can add extra configuration for plugins (the plugin's documentation will tell you if you need to add anything there):
 
-```yml
+```yaml
 plugins:
   - example-osls-plugin
 
@@ -67,7 +78,7 @@ tree.
 
 If you are working on a plugin, or have a plugin that is just designed for one project, it can be loaded from local files:
 
-```yml
+```yaml
 plugins:
   - ./local-directory/example-osls-plugin
 ```
@@ -81,7 +92,7 @@ The legacy object form can also set `plugins.localPath` to change where non-rela
 
 Keep in mind that the order you define your plugins matters. osls loads all the core plugins, and then the custom plugins in the order you've defined them.
 
-```yml
+```yaml
 # serverless.yml
 
 plugins:

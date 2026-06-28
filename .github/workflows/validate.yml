@@ -51,6 +51,9 @@ jobs:
       - name: Validate lint rules
         run: npm run lint:updated
 
+      - name: Validate docs coverage
+        run: node scripts/check-docs-coverage.js
+
       - name: Packaging tests
         run: npm run integration-test-run-package
 

@@ -2,7 +2,7 @@
 
 In the following example we create a new SNS topic with the name `dispatch` which is bound to the `dispatcher` function. The function will be called every time a message is sent to the `dispatch` topic.
 
-```yml
+```yaml
 functions:
   dispatcher:
     handler: dispatcher.dispatch
@@ -12,7 +12,7 @@ functions:
 
 You're also able to add the same SNS topic to multiple functions:
 
-```yml
+```yaml
 functions:
   dispatcher:
     handler: dispatcher.dispatch
@@ -30,7 +30,7 @@ This will run both functions for a message sent to the dispatch topic.
 
 If an `arn:` is specified, osls will give permission to the topic to invoke the function and subscribe the function to the topic.
 
-```yml
+```yaml
 functions:
   dispatcher:
     handler: dispatcher.dispatch
@@ -38,7 +38,7 @@ functions:
       - sns: arn:xxx
 ```
 
-```yml
+```yaml
 functions:
   dispatcher:
     handler: dispatcher.dispatch
@@ -50,7 +50,7 @@ functions:
 Or with intrinsic CloudFormation function like `Fn::Join`, `Fn::GetAtt`, or `Fn::Ref` (or their shorthand counterparts).
 **Note:** The arn can be in a different region to enable cross region invocation
 
-```yml
+```yaml
 functions:
   dispatcher:
     handler: dispatcher.dispatch
@@ -68,7 +68,7 @@ functions:
 
 If your SNS topic doesn't yet exist but is defined in the serverless.yml file you're editing, you'll need to use `Fn::Ref` or `!Ref` to get the ARN. Do not build a string as in the above example!
 
-```yml
+```yaml
 functions:
   dispatcher:
     handler: dispatcher.dispatch
@@ -87,7 +87,7 @@ resources:
 
 **Note:** If an `arn` string is specified but not a `topicName`, the last substring starting with `:` will be extracted as the `topicName`. If an `arn` object is specified, `topicName` must be specified as a string, used only to name the underlying Cloudformation mapping resources. You can take advantage of this behavior when subscribing to multiple topics with the same name in different regions/accounts to avoid collisions between Cloudformation resource names.
 
-```yml
+```yaml
 functions:
   hello:
     handler: handler.run
@@ -106,7 +106,7 @@ This event definition ensures that the `aggregator` function gets called every t
 `aggregate` topic. `Data aggregation pipeline` will be shown in the AWS console so that the user can understand what the
 SNS topic is used for.
 
-```yml
+```yaml
 functions:
   aggregator:
     handler: aggregator.handler
@@ -120,7 +120,7 @@ functions:
 
 This event definition creates an SNS topic which subscription uses a filter policy. The filter policy filters out messages that don't have attribute key `pet` with value `dog` or `cat`.
 
-```yml
+```yaml
 functions:
   pets:
     handler: pets.handler
@@ -142,7 +142,7 @@ This event definition specifies the scope for a filter policy by setting it to o
 
 Note: If no filter policy scope is defined for an existing filter policy, the scope defaults to MessageAttributes. For more information, see [SNS Message Filtering](https://docs.aws.amazon.com/sns/latest/dg/sns-message-filtering.html).
 
-```yml
+```yaml
 functions:
   pets:
     handler: pets.handler
@@ -160,7 +160,7 @@ functions:
 
 This event definition creates an SNS topic that sends messages to a Dead Letter Queue (defined by its ARN) when the associated lambda is not available. In this example, messages that aren't delivered to the `dispatcher` Lambda (because the lambda service is down or unresponsive) will end in `myDLQ`.
 
-```yml
+```yaml
 functions:
   dispatcher:
     handler: dispatcher.handler
@@ -173,7 +173,7 @@ functions:
 
 To define the Dead Letter Queue, you can alternatively use the the resource name with `deadLetterTargetRef`
 
-```yml
+```yaml
 functions:
   dispatcher:
     handler: dispatcher.handler
@@ -194,7 +194,7 @@ resources:
 Or if you want to use values from other stacks, you can
 also use `deadLetterTargetImport` to define the DLQ url and arn with exported values
 
-```yml
+```yaml
 functions:
   dispatcher:
     handler: dispatcher.handler
@@ -206,3 +206,7 @@ functions:
               arn: MyShared-DLQArn
               url: MyShared-DLQUrl
 ```
+
+---
+
+[← All Events](./README.md) · [Docs Home](../README.md)

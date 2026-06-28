@@ -6,6 +6,7 @@ Creating a custom plugin lets you:
 - [Define new CLI commands](custom-commands.md)
 - [Define new variable sources](custom-variables.md)
 - [Extend the `serverless.yml` syntax](custom-configuration.md)
+- [Extend and override the resolved configuration](extending-configuration.md)
 - [Write extra information to the CLI output](cli-output.md)
 - Add support for new cloud providers
 
@@ -76,8 +77,6 @@ Additionally, for each event an additional `before` and `after` event is created
 - `deploy:deploy`
 - `after:deploy:deploy`
 
-The `initialize` event is shared across all CLI commands and runs when the CLI starts.
-
 Plugins can "hook" into existing lifecycle events to add behavior to commands like `deploy`, `package`, etc. via the `hooks` helper:
 
 ```javascript
@@ -107,6 +106,56 @@ class MyPlugin {
 
 module.exports = MyPlugin;
 ```
+
+### Global hooks
+
+A few hooks are not tied to a specific command and run for every CLI invocation:
+
+- `initialize` runs when the CLI starts, before the command's own lifecycle events.
+- `finalize` runs after a command completes successfully (it is skipped when the command throws).
+- `error` runs when a command throws. The hook receives the thrown exception as its only
+  argument. The `error` hook **must not throw**: if it does, osls only logs a warning and
+  still re-throws the original command exception, so the original failure is never masked.
+
+```javascript
+class MyPlugin {
+  constructor() {
+    this.hooks = {
+      initialize: () => this.init(),
+      finalize: () => this.cleanup(),
+      error: (commandException) => this.onError(commandException),
+    };
+  }
+
+  onError(commandException) {
+    // Inspect or report the failure, but never throw from here.
+    console.log('Command failed:', commandException.message);
+  }
+}
+```
+
+### Hookable lifecycle events
+
+Every command exposes an ordered list of `lifecycleEvents`. The fully qualified event name is
+`command:event` (for example `package:createDeploymentArtifacts`), and each event also gets the
+`before:` and `after:` variants described above.
+
+The public `package` and `deploy` commands expose these lifecycle events:
+
+- `package`: `cleanup`, `initialize`, `setupProviderConfiguration`, `createDeploymentArtifacts`,
+  `compileLayers`, `compileFunctions`, `compileEvents`, `finalize`
+- `deploy`: `deploy`, `finalize`
+
+To run logic at the right point during an AWS deployment, plugins commonly hook the internal
+`aws:*` events that the core AWS plugins spawn from those commands, for example:
+
+- `aws:deploy:deploy:createStack`
+- `aws:deploy:deploy:uploadArtifacts`
+- `aws:deploy:deploy:updateStack`
+- `aws:deploy:finalize:cleanup`
+
+Use the `before:`/`after:` prefixes to run just before or just after any of these events, for
+example `before:package:createDeploymentArtifacts` or `after:deploy:deploy`.
 
 Plugins can also create their own commands (with their own lifecycle events): read the [Custom commands documentation](custom-commands.md).
 

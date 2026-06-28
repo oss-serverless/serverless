@@ -1,10 +1,6 @@
-<!--
-title: Resolution of environment variables
-menuText: Resolution of environment variables
-layout: Doc
--->
+# Loading .env files
 
-# Resolution of environment variables
+> **Looking for runtime environment variables?** This page only covers loading local `.env` files for use during osls commands — it does **not** set environment variables on your deployed Lambda functions. To configure variables in the function runtime, see [Environment Variables in the Functions guide](./functions.md#environment-variables). To reference machine environment variables inside `serverless.yml`, see the [`${env:}` source in the Variables guide](./variables.md#referencing-environment-variables).
 
 To automatically load environment variables from `.env` files (with the help of the [dotenv](https://www.npmjs.com/package/dotenv) package), set `useDotenv: true` in `serverless.yml`:
 

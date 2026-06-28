@@ -11,7 +11,7 @@ Deploying multiple services in a monorepository is a very common pattern across 
 
 Assuming you have an application containing multiple services, for example:
 
-```
+```text
 my-app/
   service-a/
     src/
@@ -227,7 +227,7 @@ The [osls security model](./security.md) applies to Compose as well, with a few 
 
 The outputs of a service are stored locally (in the `.serverless/` directory). If a colleague deployed changes that changed the outputs of a service, you can refresh your local state via the `refresh-outputs` command:
 
-```
+```bash
 osls refresh-outputs
 ```
 

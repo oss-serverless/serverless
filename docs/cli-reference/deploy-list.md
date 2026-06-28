@@ -24,3 +24,7 @@ osls deploy list
 ```bash
 osls deploy list functions
 ```
+
+---
+
+[← All Commands](./README.md) · [Docs Home](../README.md)

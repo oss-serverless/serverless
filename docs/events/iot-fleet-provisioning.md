@@ -1,10 +1,12 @@
 # IoT Fleet Provisioning
 
+AWS IoT fleet provisioning lets you register large numbers of devices from a shared provisioning template. osls wires a Lambda function as the template's [pre-provisioning hook](https://docs.aws.amazon.com/iot/latest/developerguide/pre-provisioning-hook.html), which AWS invokes to validate each device before it is provisioned. See the [AWS IoT fleet provisioning documentation](https://docs.aws.amazon.com/iot/latest/developerguide/provision-wo-cert.html).
+
 ## Simple event definition
 
 This will create an [IoT Provisioning Template](https://docs.aws.amazon.com/iot/latest/developerguide/provision-template.html) with a [pre-provision hook](https://docs.aws.amazon.com/iot/latest/developerguide/pre-provisioning-hook.html) lambda. Both `templateBody` and `provisioningRoleArn` are required fields.
 
-```yml
+```yaml
 functions:
   smartHomeValidation:
     handler: smartHomeValidation.handler
@@ -22,7 +24,7 @@ functions:
 
 This will disable the template.
 
-```yml
+```yaml
 functions:
   smartHomeValidation:
     handler: smartHomeValidation.handler
@@ -37,7 +39,7 @@ functions:
 
 Created template name can be enforced using the `templateName` property.
 
-```yml
+```yaml
 functions:
   smartHomeValidation:
     handler: smartHomeValidation.handler
@@ -47,3 +49,7 @@ functions:
           templateBody: ${file(template.json)}
           provisioningRoleArn: arn:aws:iam::12345678910:role/provisioning-role
 ```
+
+---
+
+[← All Events](./README.md) · [Docs Home](../README.md)

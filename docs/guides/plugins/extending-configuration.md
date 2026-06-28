@@ -3,8 +3,8 @@
 Plugins can extend and override the internal configuration.
 
 To do so, plugins may use the `serverless.extendConfiguration(...)` method.
-This is only allowed at pre-init stage of serverless.
-The method also takes care of resolving all variables in the given value. But it **does not validate you input** nor the target. Improper usage can cause serverless to fail.
+This is only allowed at the pre-init stage of osls.
+The method also takes care of resolving all variables in the given value. But it **does not validate your input** nor the target. Improper usage can cause osls to fail.
 
 The `serverless.extendConfiguration(configurationPathKeys, value)` method takes two arguments.
 

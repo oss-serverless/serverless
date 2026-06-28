@@ -7,7 +7,7 @@ layers](https://aws.amazon.com/blogs/aws/new-for-aws-lambda-use-any-programming-
 
 All of the Lambda layers in your serverless service can be found in `serverless.yml` under the `layers` property.
 
-```yml
+```yaml
 # serverless.yml
 service: myService
 
@@ -33,7 +33,7 @@ layers:
 
 You can add up to 5 layers as you want within this property.
 
-```yml
+```yaml
 # serverless.yml
 
 service: myService
@@ -53,7 +53,7 @@ layers:
 
 Your layers can either inherit their packaging settings from the global `package` property.
 
-```yml
+```yaml
 # serverless.yml
 service: myService
 
@@ -71,7 +71,7 @@ layers:
 
 Or you can specify them at the layer level.
 
-```yml
+```yaml
 # serverless.yml
 service: myService
 
@@ -90,7 +90,7 @@ Keep in mind that all patterns (even when inherited from the service config) are
 
 You can also specify a prebuilt archive to create your layer. When you do this, you do not need to specify the `path` element of your layer.
 
-```yml
+```yaml
 # serverless.yml
 service: myService
 
@@ -107,7 +107,7 @@ layers:
 
 You can make your layers usable by other accounts by setting the `allowedAccounts` property:
 
-```yml
+```yaml
 # serverless.yml
 service: myService
 
@@ -124,7 +124,7 @@ layers:
 
 Another example, making the layer publicly accessible:
 
-```yml
+```yaml
 # serverless.yml
 service: myService
 
@@ -142,7 +142,7 @@ layers:
 
 Using the `layers` configuration key in a function makes it possible for your layer with a function
 
-```yml
+```yaml
 functions:
   hello:
     handler: handler.hello
@@ -155,7 +155,7 @@ in the CloudFormation template will be your layer name
 [TitleCased](https://en.wikipedia.org/wiki/Letter_case#Title_Case) (without spaces) and have
 `LambdaLayer` appended to the end. EG:
 
-```yml
+```yaml
 layers:
   test:
     path: layer
@@ -168,7 +168,7 @@ functions:
 
 You can also configure layers at the service level. EG:
 
-```yml
+```yaml
 # serverless.yml
 service: myService
 

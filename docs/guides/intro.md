@@ -55,7 +55,7 @@ A service is the CLI's unit of organization. You can think of it as a project fi
 
 A service is configured via a `serverless.yml` file where you define your functions, events and AWS resources to deploy. It looks like this:
 
-```yml
+```yaml
 service: users
 
 functions: # Your "Functions"
@@ -132,7 +132,7 @@ For the sake of simplicity, most examples in the documentation refer to the `ser
 
 You can overwrite or extend the functionality of the CLI using plugins. Every `serverless.yml` can contain a `plugins:` property, which features multiple plugins.
 
-```yml
+```yaml
 # serverless.yml
 
 plugins:
@@ -140,4 +140,4 @@ plugins:
   - serverless-secrets
 ```
 
-[Learn more about plugins](./plugins)
+[Learn more about plugins](./plugins/README.md)

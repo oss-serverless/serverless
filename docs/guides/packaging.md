@@ -16,6 +16,17 @@ However, you can also use the --package option to add a destination path and osl
 osls package --package my-artifacts
 ```
 
+The same destination can be set in configuration with the `package.path` property, so the artifact directory is consistent across runs without passing the flag every time:
+
+```yaml
+package:
+  path: my-artifacts
+```
+
+A later `osls deploy --package my-artifacts` (or a deploy run with `package.path` set) skips the build step and deploys the pre-built artifacts. This `package` → `deploy --package` split is the recommended pattern for CI/CD pipelines; see the [CI/CD guide](./cicd.md) for a full walkthrough, including the requirement that the stage and region used to package match those used to deploy.
+
+You can also pass `--minify-template` to `osls package` or `osls deploy` to strip whitespace from the generated CloudFormation template, which helps stay under CloudFormation's template-size limits for large services.
+
 ## Package Configuration
 
 Sometimes you might like to have more control over your function artifacts and how they are packaged.
@@ -27,7 +38,7 @@ You can use the `package` and `patterns` configuration for more control over the
 Patterns allows you to define globs that will be excluded / included from the resulting artifact. If you wish to exclude files you can use a glob pattern prefixed with `!` such as `!exclude-me/**`.
 osls will run the glob patterns in order so you can always re-include previously excluded files and directories.
 
-By default, serverless will exclude the following patterns:
+By default, osls will exclude the following patterns:
 
 - .git/\*\*
 - .gitignore
@@ -43,7 +54,7 @@ and the serverless configuration file being used (i.e. `serverless.yml`). In add
 
 Exclude all node_modules but then re-include a specific modules (in this case node-fetch) using `exclude` exclusively
 
-```yml
+```yaml
 package:
   patterns:
     - '!node_modules/**'
@@ -52,7 +63,7 @@ package:
 
 Exclude all files but `handler.js`
 
-```yml
+```yaml
 package:
   patterns:
     - '!src/**'
@@ -61,7 +72,7 @@ package:
 
 **Note:** Don't forget to use the correct glob syntax if you want to exclude directories
 
-```yml
+```yaml
 package:
   patterns:
     - '!tmp/**'
@@ -79,7 +90,7 @@ The artifact option is especially useful in case your development environment al
 
 #### Service package
 
-```yml
+```yaml
 service: my-service
 package:
   artifact: path/to/my-artifact.zip
@@ -89,7 +100,7 @@ package:
 
 You can also use this to package functions individually:
 
-```yml
+```yaml
 service: my-service
 
 package:
@@ -112,7 +123,7 @@ Artifacts can also be fetched from a remote S3 bucket. In this case you just nee
 
 ##### Service package
 
-```yml
+```yaml
 service: my-service
 
 package:
@@ -121,7 +132,7 @@ package:
 
 ##### Individual function packages
 
-```yml
+```yaml
 service: my-service
 
 package:
@@ -140,7 +151,7 @@ If you want even more controls over your functions for deployment you can config
 
 Then for every function you can use the same `patterns` or `artifact` config options as you can service wide. The `patterns` option will be merged with the service wide options to create one `patterns` config per function during packaging.
 
-```yml
+```yaml
 service: my-service
 package:
   individually: true
@@ -162,7 +173,7 @@ functions:
 
 You can also select which functions to be packaged separately, and have the rest use the service package by setting the `individually` flag at the function level:
 
-```yml
+```yaml
 service: my-service
 functions:
   hello:
@@ -181,7 +192,20 @@ This ensures that only the production relevant packages and modules are included
 
 You can opt-out of automatic dev dependency exclusion by setting the `excludeDevDependencies` package config to `false`:
 
-```yml
+```yaml
 package:
   excludeDevDependencies: false
 ```
+
+### Pruning previous deployment artifacts
+
+Each deployment uploads its artifacts to the deployment bucket. To avoid that bucket growing unbounded, osls prunes older deployment artifacts after a successful deploy, keeping the 5 most recent deployments by default. You can change how many previous deployments are retained with the `maxPreviousDeploymentArtifacts` property under `provider.deploymentBucket`:
+
+```yaml
+provider:
+  name: aws
+  deploymentBucket:
+    maxPreviousDeploymentArtifacts: 10 # default is 5
+```
+
+Set it to a higher value if you need to keep more rollback targets, or to `0` to retain only the current deployment.

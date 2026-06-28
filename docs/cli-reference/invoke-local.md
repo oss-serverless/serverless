@@ -14,7 +14,7 @@ osls invoke local --function functionName
 - `--path` or `-p`: The path to a JSON file holding input data to be passed to the invoked function as the `event`. Relative paths are resolved from the root directory of the service. Absolute paths are also accepted.
 - `--data` or `-d`: String containing data to be passed as an event to your function. Keep in mind that if you pass both `--path` and `--data`, the data included in the `--path` file will overwrite the data you passed with the `--data` flag.
 - `--contextPath` or `-x`: The path to a JSON file holding input context to be passed to the invoked function. Relative paths are resolved from the root directory of the service. Absolute paths are also accepted.
-- `--context` or `-c`: String containing data to be passed as a context to your function. You can use this to overwrite specific parts of the default fake AWS context. As with `--data`, context included in `--contextPath` will overwrite the context you passed with `--context` flag.
+- `--context`: String containing data to be passed as a context to your function. You can use this to overwrite specific parts of the default fake AWS context. As with `--data`, context included in `--contextPath` will overwrite the context you passed with `--context` flag.
 - `--raw`: By default, your input `data` and `context` strings are parsed as a JSON object. Set this option if you want them to be treated as raw strings instead.
 
 * `--env` or `-e` String representing an environment variable to set when invoking your function, in the form `<name>=<value>`. Can be repeated for more than one environment variable.
@@ -106,7 +106,7 @@ osls invoke local -f functionName \
 
 When using [AWS CloudFormation intrinsic functions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference.html) as environment variables value, **only Fn::ImportValue and Ref** will be automatically resolved for function invocation. Other intrinsic functions use will result in the corresponding configuration object passed in the function as environment variable.
 
-```yml
+```yaml
 functions:
   functionName:
     handler: handler.main
@@ -138,7 +138,7 @@ They _will not_ be set during the parsing of the `serverless.yml` file.
 
 ## Resource permissions
 
-Lambda functions assume an _IAM role_ during execution: the framework creates this role, and set all the permission provided in the `provider.iam.role.statements` section of `serverless.yml`.
+Lambda functions assume an _IAM role_ during execution: osls creates this role, and set all the permission provided in the `provider.iam.role.statements` section of `serverless.yml`.
 
 Unless you explicitly state otherwise, every call to the AWS SDK inside the lambda function is made using this role (a temporary pair of key / secret is generated and set by AWS as environment variables, `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`).
 
@@ -150,3 +150,7 @@ Take a look to the official AWS documentation (in this particular instance, for 
 - [http://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/loading-node-credentials-lambda.html](http://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/loading-node-credentials-lambda.html)
 
 Whatever approach you decide to implement, **be aware**: the set of permissions might be (and probably is) different, so you won't have an exact simulation of the _real_ IAM policy in place.
+
+---
+
+[← All Commands](./README.md) · [Docs Home](../README.md)

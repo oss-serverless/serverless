@@ -35,7 +35,8 @@ serverRootCaCertificate: arn:aws:secretsmanager:us-east-1:01234567890:secret:Ser
 vpcSubnet:
   - subnet-0011001100
   - subnet-0022002200
-vpcSecurityGroup: sg-0123456789
+vpcSecurityGroup:
+  - sg-0123456789
 ```
 
 For more information see:
@@ -54,7 +55,7 @@ For more information see:
 
 In the following example, we specify that the `compute` function should be triggered whenever there are new messages available to consume from Kafka topic `MySelfManagedKafkaTopic` from self-hosted cluster at `xyz.com`. The cluster has been authenticated using SASL/SCRAM, the credentials are stored at secret `MyBrokerSecretName`
 
-```yml
+```yaml
 functions:
   compute:
     handler: handler.compute
@@ -73,7 +74,7 @@ functions:
 
 In this example, the lambda event source is a self-managed Apache kafka cluster authenticated via mTLS. The value of `clientCertificateTlsAuth` is an arn of a secret containing the client certificate and privatekey required for the mTLS handshake. The value of `serverRootCaCertificate` is an arn of a secret containing the Certificate Authority (CA) Certificate. This is optional, you only need to provide if your cluster requires it.
 
-```yml
+```yaml
 functions:
   compute:
     handler: handler.compute
@@ -93,7 +94,7 @@ functions:
 
 You can also specify VPC configurations for your event source. The values will be automatically transformed into their corresponding URI values, so it not required to specify the URI prefix. For example, `subnet-0011001100` will be automatically mapped to the value `subnet:subnet-0011001100`.
 
-```yml
+```yaml
 functions:
   compute:
     handler: handler.compute
@@ -103,7 +104,8 @@ functions:
             vpcSubnet:
               - subnet-0011001100
               - subnet-0022002200
-            vpcSecurityGroup: sg-0123456789
+            vpcSecurityGroup:
+              - sg-0123456789
           topic: mytopic
           bootstrapServers:
             - abc3.xyz.com:9092
@@ -116,7 +118,7 @@ The `kafka` event also supports `enabled` parameter, which is used to control if
 
 In the following example, we specify that the `compute` function's `kafka` event should be disabled.
 
-```yml
+```yaml
 functions:
   compute:
     handler: handler.compute
@@ -137,7 +139,7 @@ This configuration allows to filter events before they are passed to a Lambda fu
 
 The following example demonstrates using this property to only process records that are published in the Kafka cluster where field `eventName` is equal to `INSERT`.
 
-```yml
+```yaml
 functions:
   compute:
     handler: handler.compute
@@ -160,7 +162,7 @@ By default, Lambda discards oversized records (> 6MB) and records that fail all 
 Configuring an on-failure destination ensures that you don't lose data when your Lambda function encounters errors.
 For more information, see [capturing discarded batches for a self-managed Apache Kafka event source](https://docs.aws.amazon.com/lambda/latest/dg/with-kafka-on-failure.html)
 
-```yml
+```yaml
 functions:
   compute:
     handler: handler.compute
@@ -185,7 +187,7 @@ When `startingPosition` is configured as `AT_TIMESTAMP`, `startingPositionTimest
 
 In the following example, we specify that the `compute` function should have a `kafka` event configured with `batchSize` of 1000, `maximumBatchingWindow` of 30 seconds and `startingPosition` equal to `LATEST`.
 
-```yml
+```yaml
 functions:
   compute:
     handler: handler.compute
@@ -206,7 +208,7 @@ functions:
 
 You can set the `provisionedPollerConfig` to configure your Kafka event source to be in provisioned mode. A `minimumPollers` must be configured from 1 to 200 and a `maximumPollers` from 1 to 2000.
 
-```yml
+```yaml
 functions:
   compute:
     handler: handler.compute
@@ -222,3 +224,7 @@ functions:
             minimumPollers: 1
             maximumPollers: 10
 ```
+
+---
+
+[← All Events](./README.md) · [Docs Home](../README.md)

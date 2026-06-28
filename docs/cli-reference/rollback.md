@@ -13,10 +13,11 @@ If `timestamp` is not specified, the CLI will show your existing deployments.
 - `--timestamp` or `-t` The deployment you want to rollback to.
 - `--verbose` Shows any Stack Output.
 
-## Provided lifecycle events
+## What rollback restores
 
-- `rollback:initialize`
-- `rollback:rollback`
+`osls rollback` redeploys the CloudFormation template and code artifacts from a previous deployment, returning your infrastructure and function code to that point in time. It does **not** roll back data: changes to DynamoDB tables, S3 objects, RDS databases, or any other stateful resource are not reverted.
+
+Rollback only works while the target deployment's artifacts still exist in the deployment bucket. osls keeps the most recent deployments and prunes older ones (the last `5` by default, configurable via `provider.deploymentBucket.maxPreviousDeploymentArtifacts`). Once a deployment's artifacts have been pruned, you can no longer roll back to it.
 
 ## Examples
 
@@ -26,43 +27,47 @@ At first you want to run `osls deploy list` to show your existing deployments. T
 
 **Example:**
 
-```
+```bash
 $ osls deploy list
-Serverless: Listing deployments:
-Serverless: -------------
-Serverless: Timestamp: 1476790110568
-Serverless: Datetime: 2016-10-18T11:28:30.568Z
-Serverless: Files:
-Serverless: - compiled-cloudformation-template.json
-Serverless: - mail-service.zip
-Serverless: -------------
-Serverless: Timestamp: 1476889476243
-Serverless: Datetime: 2016-10-19T15:04:36.243Z
-Serverless: Files:
-Serverless: - compiled-cloudformation-template.json
-Serverless: - mail-service.zip
-Serverless: -------------
-Serverless: Timestamp: 1476893957131
-Serverless: Datetime: 2016-10-19T16:19:17.131Z
-Serverless: Files:
-Serverless: - compiled-cloudformation-template.json
-Serverless: - mail-service.zip
-Serverless: -------------
-Serverless: Timestamp: 1476895175540
-Serverless: Datetime: 2016-10-19T16:39:35.540Z
-Serverless: Files:
-Serverless: - compiled-cloudformation-template.json
-Serverless: - mail-service.zip
-Serverless: -------------
-Serverless: Timestamp: 1476993293402
-Serverless: Datetime: 2016-10-20T19:54:53.402Z
-Serverless: Files:
-Serverless: - compiled-cloudformation-template.json
-Serverless: - mail-service.zip
+Listing deployments:
+-------------
+Timestamp: 1476790110568
+Datetime: 2016-10-18T11:28:30.568Z
+Files:
+- compiled-cloudformation-template.json
+- mail-service.zip
+-------------
+Timestamp: 1476889476243
+Datetime: 2016-10-19T15:04:36.243Z
+Files:
+- compiled-cloudformation-template.json
+- mail-service.zip
+-------------
+Timestamp: 1476893957131
+Datetime: 2016-10-19T16:19:17.131Z
+Files:
+- compiled-cloudformation-template.json
+- mail-service.zip
+-------------
+Timestamp: 1476895175540
+Datetime: 2016-10-19T16:39:35.540Z
+Files:
+- compiled-cloudformation-template.json
+- mail-service.zip
+-------------
+Timestamp: 1476993293402
+Datetime: 2016-10-20T19:54:53.402Z
+Files:
+- compiled-cloudformation-template.json
+- mail-service.zip
 
 $ osls rollback -t 1476893957131
-Serverless: Updating Stack...
-Serverless: Checking Stack update progress...
+Updating Stack...
+Checking Stack update progress...
 .....
-Serverless: Stack update finished...
+Stack update finished...
 ```
+
+---
+
+[← All Commands](./README.md) · [Docs Home](../README.md)

@@ -12,10 +12,6 @@ osls config credentials --provider provider --key key --secret secret
 - `--profile` or `-n` The name of the profile which should be created.
 - `--overwrite` or `-o` Overwrite the profile if it exists.
 
-## Provided lifecycle events
-
-- `config:credentials:config`
-
 ## Examples
 
 ### Configure the `default` profile
@@ -52,3 +48,7 @@ osls config credentials \
 This example overwrite `custom-profile` profile with the `aws_access_key_id` of `1234` and the `aws_secret_access_key` of `5678`.
 
 If the profile does not exist, it will be added anyway.
+
+---
+
+[← All Commands](./README.md) · [Docs Home](../README.md)

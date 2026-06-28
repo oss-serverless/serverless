@@ -1,10 +1,12 @@
 # IoT
 
+AWS IoT lets you invoke a Lambda function in response to messages published to the AWS IoT message broker. osls creates an [IoT topic rule](https://docs.aws.amazon.com/iot/latest/developerguide/iot-rules.html) whose SQL statement selects matching MQTT messages and invokes your function. See the [AWS IoT documentation](https://docs.aws.amazon.com/iot/latest/developerguide/what-is-aws-iot.html).
+
 ## Simple event definition
 
 This will enable your Lambda function to be called by an AWS IoT rule.
 
-```yml
+```yaml
 functions:
   myIoT:
     handler: myIoT.handler
@@ -19,7 +21,7 @@ functions:
 
 This will create and attach a disabled `iot` event for the `myIoT` function.
 
-```yml
+```yaml
 functions:
   myIoT:
     handler: myIoT.handler
@@ -33,7 +35,7 @@ functions:
 
 Name and Description can be specified with the help of the `name` and `description` properties.
 
-```yml
+```yaml
 functions:
   myIoT:
     handler: myIoT.handler
@@ -48,7 +50,7 @@ functions:
 
 [SQL Versions](http://docs.aws.amazon.com/iot/latest/developerguide/iot-rule-sql-version.html) can be specified for an `iot` event. However the `sqlVersion` is not a required property.
 
-```yml
+```yaml
 functions:
   myIoT:
     handler: myIoT.handler
@@ -57,3 +59,7 @@ functions:
           sql: "SELECT * FROM 'some_topic'"
           sqlVersion: 'beta'
 ```
+
+---
+
+[← All Events](./README.md) · [Docs Home](../README.md)

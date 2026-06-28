@@ -6,7 +6,7 @@ The ARN for the queue can be specified as a string, the reference to the ARN of 
 
 **Note:** The `sqs` event will hook up your existing SQS Queue to a Lambda function. osls won't create a new queue for you.
 
-```yml
+```yaml
 functions:
   compute:
     handler: handler.compute
@@ -43,7 +43,7 @@ You can set `functionResponseType` to `ReportBatchItemFailures` to let your func
 
 Check [AWS documentation](https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html) for more details.
 
-```yml
+```yaml
 functions:
   compute:
     handler: handler.compute
@@ -63,7 +63,7 @@ For more details and examples of filter patterns, please see the [AWS event filt
 
 Note: osls only sets this property if you explicitly add it to the `sqs` configuration (see an example below). The following example will only process records where field `a` is equal to 1 or 2.
 
-```yml
+```yaml
 functions:
   onlyOneOrTwo:
     handler: handler.preprocess
@@ -80,7 +80,7 @@ The maximum concurrency setting limits the number of concurrent instances of the
 
 For more details, see the [AWS SQS max concurrency documentation](https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html#events-sqs-max-concurrency).
 
-```yml
+```yaml
 functions:
   onlyOneOrTwo:
     handler: handler.preprocess
@@ -88,6 +88,20 @@ functions:
       - sqs:
           arn: arn:aws:sqs:region:XXXXXX:myQueue
           maximumConcurrency: 250
+```
+
+## Enabling and disabling the event source
+
+The `enabled` property toggles the `Enabled` flag of the underlying event source mapping. It defaults to `true`; set it to `false` to deploy the mapping in a paused state, so Lambda stops polling the queue and processing messages until you re-enable it.
+
+```yaml
+functions:
+  compute:
+    handler: handler.compute
+    events:
+      - sqs:
+          arn: arn:aws:sqs:region:XXXXXX:myQueue
+          enabled: false
 ```
 
 ## IAM Permissions
@@ -100,7 +114,7 @@ The examples above show how to consume messages from an existing SQS queue. To c
 
 [Lift](https://github.com/getlift/lift) is a plugin that simplifies deploying pieces of applications via "[constructs](https://github.com/getlift/lift#constructs)". Lift can be installed via:
 
-```
+```bash
 osls plugin install -n serverless-lift
 ```
 
@@ -124,3 +138,7 @@ The `queue` construct deploys:
 - An SQS "[dead letter queue](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html)": this queue stores all the messages that failed to be processed.
 
 Read the [`queue` construct documentation](https://github.com/getlift/lift/blob/master/docs/queue.md) to find a complete example with code, and to learn how to configure the batch size, retries and other options.
+
+---
+
+[← All Events](./README.md) · [Docs Home](../README.md)

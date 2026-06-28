@@ -1,4 +1,4 @@
-# Plugin Search
+# AWS - Plugin Search
 
 Search for a specific plugin based on a search query. Connected to the [Serverless plugin registry](https://github.com/serverless/plugins).
 
@@ -10,10 +10,6 @@ osls plugin search --query query
 
 - `--query` or `-q` The query you want to use for your search. **Required**.
 
-## Provided lifecycle events
-
-- `plugin:search:search`
-
 ## Examples
 
 ### Search for a `sqs` plugin
@@ -21,3 +17,7 @@ osls plugin search --query query
 ```bash
 osls plugin search --query sqs
 ```
+
+---
+
+[← All Commands](./README.md) · [Docs Home](../README.md)

@@ -1,4 +1,4 @@
-# Print
+# AWS - Print
 
 Print your `serverless.yml` config file with all variables resolved.
 
@@ -14,15 +14,15 @@ osls print
 
 ## Options
 
-- `format` Print configuration in given format ("yaml", "json", "text"). Default: yaml
-- `path` Period-separated path to print a sub-value (eg: "provider.name")
-- `transform` Transform-function to apply to the value (currently only "keys" is supported)
+- `--format` Print configuration in given format ("yaml", "json", "text"). Default: yaml
+- `--path` Period-separated path to print a sub-value (eg: "provider.name")
+- `--transform` Transform-function to apply to the value (currently only "keys" is supported)
 
-## Examples:
+## Examples
 
 Assuming you have the following config file:
 
-```yml
+```yaml
 service: my-service
 
 custom:
@@ -77,3 +77,7 @@ And this prints all function names:
 ```bash
 osls print --path functions --transform keys --format text
 ```
+
+---
+
+[← All Commands](./README.md) · [Docs Home](../README.md)

@@ -27,10 +27,6 @@ osls create \
 - `--path` or `-p` The path where the service should be created.
 - `--name` or `-n` The name of the service in `serverless.yml`. If `--path` is omitted, osls also uses this as the target directory name.
 
-## Provided lifecycle events
-
-- `create:create`
-
 ## Examples
 
 ### Creating a named service in a new directory using a local template
@@ -58,3 +54,7 @@ osls create \
 This will download the template into the `my-new-service` directory. If `--name` is provided, the copied template's service name will be renamed to `my-new-service`. If `--name` is omitted, the service name defaults to the target directory's final path segment.
 
 When using a local template, if neither `--path` nor `--name` is provided, osls will create a new directory named after the local template folder and preserve the template's existing service name.
+
+---
+
+[← All Commands](./README.md) · [Docs Home](../README.md)

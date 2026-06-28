@@ -4,7 +4,7 @@ Simply put, events are the things that trigger your functions to run.
 
 If you are using AWS as your provider, all `events` in the service are anything in AWS that can trigger an AWS Lambda function, like an S3 bucket upload, an SNS topic, and HTTP endpoints created via API Gateway.
 
-[View the AWS events section for a list of supported events](../events)
+[View the AWS events section for a list of supported events](../events/README.md)
 
 Upon deployment, osls will deploy any infrastructure required for an event (e.g., an API Gateway endpoint) and configure your `function` to listen to it.
 
@@ -19,7 +19,7 @@ Reference](./resources.md#aws-cloudformation-resource-reference) section on the
 
 Events belong to each Function and can be found in the `events` property in `serverless.yml`.
 
-```yml
+```yaml
 # 'functions' in serverless.yml
 functions:
   createUser: # Function name
@@ -34,7 +34,7 @@ The `events` property is an array, because it's possible for functions to be tri
 
 You can set multiple Events per Function, as long as that is supported by AWS.
 
-```yml
+```yaml
 # 'functions' in serverless.yml
 functions:
   createUser: # Function name
@@ -47,13 +47,13 @@ functions:
 
 ## Types
 
-osls supports all of the AWS Lambda events and more. Instead of listing them here, we've put them in a separate section, since they have a lot of configurations and functionality. [Check out the events section for more information.](../events)
+osls supports a wide range of AWS Lambda event sources. Instead of listing them here, we've put them in a separate section, since they have a lot of configurations and functionality. [Check out the events section for more information.](../events/README.md)
 
 ## PathParameters
 
 HTTP events can be configured to pass in path parameters to your lambda function. [See the API Gateway event for more details.](../events/apigateway.md#request-parameters)
 
-```yml
+```yaml
 # 'functions' in serverless.yml
 functions:
   createUser: # Function name

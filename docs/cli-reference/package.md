@@ -1,4 +1,4 @@
-# AWS - package
+# AWS - Package
 
 The `osls package` command packages your entire infrastructure into the `.serverless` directory by default and make it ready for deployment. You can specify another packaging directory by passing the `--package` option.
 
@@ -11,6 +11,7 @@ osls package
 - `--stage` or `-s` The stage in your service that you want to deploy to.
 - `--region` or `-r` The region in that stage that you want to deploy to.
 - `--package` or `-p` path to the custom packaging directory you want.
+- `--minify-template` Minify the CloudFormation template for AWS packages.
 
 ## Examples
 
@@ -38,3 +39,7 @@ osls package --package /path/to/package/directory
 ```
 
 This example packages your service using the default stage and region and output the generated package into the custom path you provided at `/path/to/package/directory`.
+
+---
+
+[← All Commands](./README.md) · [Docs Home](../README.md)

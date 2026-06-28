@@ -10,7 +10,7 @@ Parameters can be defined in `serverless.yml` or passed via CLI with `--param="<
 
 Parameters can be passed directly via CLI `--param` flag, following the pattern `--param="<key>=<value>"`:
 
-```
+```bash
 osls deploy --param="domain=myapp.com" --param="key=value"
 ```
 
@@ -67,3 +67,8 @@ Here is the priority used to resolve a `${param:XXX}` variable:
 - If not found, throw an error, or use the fallback value if one was provided: `${param:XXX, 'default value'}`
 
 This is especially useful in development when deploying to ephemeral stages (e.g. "feature-x"). The stage might not have any parameter, therefore it will default to the parameters set on the service. However, in other stages, like "prod", or "staging", you may override the service-level parameters with stage-level parameters to use values unique to that stage.
+
+## See also
+
+- [Referencing parameters](./variables.md#referencing-parameters) in the Variables guide for more on the `${param:XXX}` source.
+- [Common Options](../cli-reference/README.md#common-options) in the CLI Reference for the `--param` flag.

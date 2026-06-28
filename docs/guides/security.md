@@ -18,3 +18,8 @@ Variable sources such as `${ssm:...}` and `${env:...}` resolve to plain strings 
 - Verbose and debug output may include resolved values. Treat retained CI logs of osls runs as potentially secret-bearing.
 
 Where possible, prefer passing secrets to functions at runtime (for example, reading from SSM or Secrets Manager inside the function) over resolving them into the configuration at deploy time.
+
+## See also
+
+- [Reference Variables using the SSM Parameter Store](./variables.md#reference-variables-using-the-ssm-parameter-store) and [AWS Secrets Manager](./variables.md#reference-variables-using-aws-secrets-manager) — resolving secrets from AWS at deploy time.
+- [Secrets using environment variables and KMS](./functions.md#secrets-using-environment-variables-and-kms) — encrypting secrets stored in function environment variables.
