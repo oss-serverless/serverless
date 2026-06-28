@@ -568,7 +568,11 @@ functions:
               Fn::GetAtt:
                 - CognitoUserPool
                 - Arn
----
+```
+
+Then define the referenced Cognito user pool in `resources`:
+
+```yml
 resources:
   Resources:
     CognitoUserPool:

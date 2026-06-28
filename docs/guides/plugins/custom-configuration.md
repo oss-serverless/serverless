@@ -42,7 +42,7 @@ module.exports = MyPlugin;
 
 Any additional configuration defined by plugins in `serverless.yml` must come with validation rules.
 
-osls uses JSON schema validation backed by [the AJV library](https://github.com/ajv-validator/ajv). You can extend [the base schema](/lib/configSchema/index.js) in plugins via:
+osls uses JSON schema validation backed by [the AJV library](https://github.com/ajv-validator/ajv). You can extend [the base schema](/lib/config-schema.js) in plugins via:
 
 - `defineTopLevelProperty`
 - `defineCustomProperties`
@@ -77,7 +77,7 @@ functions:
           customProperty: foobar # <-- use defineFunctionEventProperties
 ```
 
-We'll walk though those helpers. You may also want to check out examples from [helpers tests](tests/fixtures/configSchemaExtensions/test-plugin.js)
+We'll walk though those helpers. You may also want to check out examples from [helpers tests](/test/fixtures/programmatic/config-schema-extensions/test-plugin.js)
 
 ### Top-level properties via `defineTopLevelProperty`
 

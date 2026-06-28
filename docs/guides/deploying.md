@@ -97,7 +97,8 @@ This deployment method does not touch your AWS CloudFormation Stack. Instead, it
 serverless deploy function --function myFunction
 ```
 
--**Note:** You can always enforce a deployment using the `--force` option. -**Note:** You can use `--update-config` to change only Lambda configuration without deploying code.
+- **Note:** You can always enforce a deployment using the `--force` option.
+- **Note:** You can use `--update-config` to change only Lambda configuration without deploying code.
 
 ### How It Works
 
