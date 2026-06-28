@@ -286,6 +286,11 @@ describe('test/unit/scripts/serverless.test.js', () => {
     expect(output).to.include('serverless <command> <options>');
   });
 
+  it('should print general help to stdout without arguments', async () => {
+    const output = String((await spawn('node', [serverlessPath])).stdoutBuffer);
+    expect(output).to.include('serverless <command> <options>');
+  });
+
   it('should print command --help to stdout', async () => {
     const output = String((await spawn('node', [serverlessPath, 'deploy', '--help'])).stdoutBuffer);
     expect(output).to.include('deploy');
