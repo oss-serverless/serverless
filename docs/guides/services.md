@@ -193,7 +193,7 @@ If you already have a service, and would prefer to lock down the osls version us
 
 ```bash
 # from within a service
-npm install osls --save-dev
+npm install osls@4 --save-dev
 ```
 
 ### Invoking the CLI locally

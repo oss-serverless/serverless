@@ -9,7 +9,7 @@ osls v4 is a major release with internal upgrades and new capabilities:
 
 ## osls vs Serverless Framework
 
-This guide is for upgrading the **`osls`** CLI (`npm install osls`), not [Serverless Framework](https://github.com/serverless/serverless). Both projects use "v3" and "v4" version numbers, but they are **different projects**.
+This guide is for upgrading the **`osls`** CLI (`npm install osls@4`), not [Serverless Framework](https://github.com/serverless/serverless). Both projects use "v3" and "v4" version numbers, but they are **different projects**.
 
 **History (osls v3):** osls v3 began as a fork of Serverless Framework v3. The repo was `oss-serverless/serverless` on GitHub and `osls` in npm. For clarity, the GitHub repo has been renamed to `oss-serverless/osls` to match.
 
