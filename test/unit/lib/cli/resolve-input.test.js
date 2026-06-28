@@ -135,6 +135,24 @@ describe('test/unit/lib/cli/resolve-input.test.js', () => {
   });
 
   describe('isHelpRequest', () => {
+    it('should recognize no arguments', async () => {
+      resolveInput.clear();
+      const data = overrideArgv(
+        {
+          args: ['serverless'],
+        },
+        () => resolveInput()
+      );
+      expect(data).to.deep.equal({
+        commandSchema: commandsSchema.get(''),
+        command: '',
+        commands: [],
+        options: {},
+        isHelpRequest: true,
+        commandsSchema,
+      });
+    });
+
     it('should not mark regular command', async () => {
       resolveInput.clear();
       const data = overrideArgv(

@@ -29,10 +29,10 @@ A handy list of commands to use when developing with osls.
 
 ##### Create A Service:
 
-Creates a new Service
+Creates a new service from a local template directory
 
 ```bash
-serverless create -p [TARGET DIRECTORY] --template-url [TEMPLATE URL]
+serverless create -p [TARGET DIRECTORY] --template-path [LOCAL TEMPLATE DIRECTORY]
 ```
 
 ##### Install A Service
