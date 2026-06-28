@@ -1,15 +1,28 @@
 # Cognito User Pool
 
-## Valid Triggers
+An [Amazon Cognito User Pool](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-identity-pools.html) is a user directory that handles sign-up and sign-in for your applications. osls can wire a `cognitoUserPool` event to a Lambda function so that Cognito invokes the function at a chosen point in the user lifecycle (a "trigger").
 
 osls supports all Cognito User Pool Triggers as specified [here][aws-triggers-list]. Use [this guide][aws-triggers-guide] to understand
 the event objects that will be passed to your function.
+
+Contents:
+
+- [Simple event definition](#simple-event-definition)
+- [Multiple pools event definitions](#multiple-pools-event-definitions)
+- [Special Trigger Considerations](#special-trigger-considerations)
+  - [Custom Sender Triggers](#custom-sender-triggers)
+  - [Custom Sender Triggers Handlers](#custom-sender-triggers-handlers)
+  - [PreTokenGeneration Trigger](#pretokengeneration-trigger)
+  - [Custom Message Trigger Handlers](#custom-message-trigger-handlers)
+- [Using existing pools](#using-existing-pools)
+- [Overriding a generated User Pool](#overriding-a-generated-user-pool)
+- [Forcing deploying of triggers](#forcing-deploying-of-triggers)
 
 ## Simple event definition
 
 This will create a Cognito User Pool with the specified name. You can reference the same pool multiple times.
 
-```yml
+```yaml
 functions:
   preSignUp:
     handler: preSignUp.handler
@@ -29,7 +42,7 @@ functions:
 
 This will create multiple Cognito User Pools with their specified names:
 
-```yml
+```yaml
 functions:
   preSignUpForPool1:
     handler: preSignUp.handler
@@ -47,7 +60,7 @@ functions:
 
 You can also deploy the same function for different user pools:
 
-```yml
+```yaml
 functions:
   preSignUp:
     handler: preSignUp.handler
@@ -68,7 +81,7 @@ There are two types of Custom Sender Triggers, `CustomSMSSender` and `CustomEmai
 
 In order to use these triggers, you must supply a `kmsKeyId` and (optionally) the `lambdaVersion` of the function. Only 1 `kmsKeyId` can be supplied per Cognito User Pool.
 
-```yml
+```yaml
 functions:
   customSMSSenderFunction:
     handler: customSMSSender.handler
@@ -146,7 +159,7 @@ async function handler(event) {
 
 The PreTokenGeneration trigger supports multiple lambda versions for enhanced token customization:
 
-```yml
+```yaml
 functions:
   preTokenGenerationV1:
     handler: preToken.handler
@@ -222,7 +235,7 @@ functions:
 
 A Cognito User Pool created by an event can be overridden by using the [logical resource name](../guides/resources.md#aws-cloudformation-resource-reference) in `Resources`:
 
-```yml
+```yaml
 functions:
   preSignUp:
     handler: preSignUpForPool1.handler
@@ -247,7 +260,7 @@ resources:
 
 A Cognito User Pool with triggers attached may not be correctly updated by AWS Cloudformation on subsequent deployments. To circumvent this issue you can use the `forceDeploy` flag which will try to force Cloudformation to update the triggers no matter what. This flag has to be used in conjunction with the `existing: true` flag.
 
-```yml
+```yaml
 functions:
   preSignUp:
     handler: preSignUp.handler
@@ -261,3 +274,7 @@ functions:
 
 [aws-triggers-guide]: http://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-identity-pools-working-with-aws-lambda-triggers.html
 [aws-triggers-list]: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-cognito-userpool-lambdaconfig.html
+
+---
+
+[← All Events](./README.md) · [Docs Home](../README.md)

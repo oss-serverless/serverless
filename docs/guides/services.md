@@ -4,7 +4,7 @@ A service, aka a project, is the CLI's unit of organization.
 
 A service is configured via a `serverless.yml` file where you define your functions, the events that trigger them, and the AWS resources to deploy. For example:
 
-```yml
+```yaml
 service: users
 
 provider:
@@ -79,7 +79,7 @@ Each `service` configuration is managed in the `serverless.yml` file. The main r
 
 You can see the name of the service, the provider configuration and the first function inside the `functions` definition which points to the `handler.js` file. Any further service configuration will be done in this file.
 
-```yml
+```yaml
 # serverless.yml
 service: users
 
@@ -133,7 +133,7 @@ Deployment defaults to `dev` stage and `us-east-1` region on AWS. You can deploy
 osls deploy --stage prod --region us-east-1
 ```
 
-Check out the [deployment guide](./deploying.md) to learn more about deployments and how they work. Or, check out the [`deploy` command reference](../cli-reference/deploy) to see all the options available.
+Check out the [deployment guide](./deploying.md) to learn more about deployments and how they work. Or, check out the [`deploy` command reference](../cli-reference/deploy.md) to see all the options available.
 
 ## Removal
 
@@ -145,7 +145,7 @@ The removal process will only remove the service on your provider's infrastructu
 
 osls is usually installed globally via `npm install -g osls@4`. This way you have the osls CLI available for all your services.
 
-Installing tools globally has the downside that the version can't be pinned inside package.json. This can lead to issues if you upgrade osls, but your colleagues or CI system don't. You can now use a new feature in your `serverless.yml` which is available only in the latest version without worrying that your CI system will deploy with an old osls version.
+Installing tools globally has the downside that the version can't be pinned inside `package.json`. This can lead to issues if you upgrade osls, but your colleagues or CI system don't. To guard against this, you can pin the expected osls version in your `serverless.yml` so a mismatched version fails fast instead of deploying unexpectedly.
 
 ### Pinning a Version
 
@@ -155,10 +155,10 @@ To configure version pinning define a `frameworkVersion` property in your `serve
 
 #### Exact Version
 
-```yml
+```yaml
 # serverless.yml
 
-frameworkVersion: '2.1.0'
+frameworkVersion: '4.0.0'
 
 service: users
 
@@ -172,10 +172,10 @@ provider:
 
 #### Version Range
 
-```yml
+```yaml
 # serverless.yml
 
-frameworkVersion: "^2.1.0" # >=2.1.0 && <3.0.0
+frameworkVersion: '^4.0.0' # >=4.0.0 && <5.0.0
 
 service: users
 

@@ -90,6 +90,7 @@
     "sinon-chai": "^4.0.1"
   },
   "scripts": {
+    "docs-check": "node scripts/check-docs-coverage.js",
     "integration-test-run-package": "mocha --config test/mocha/package.cjs \"test/integration-package/**/*.tests.js\"",
     "lint": "eslint .",
     "lint:updated": "pipe-git-updated --ext=cjs --ext=js --ext=mjs --base=4.x -- eslint",

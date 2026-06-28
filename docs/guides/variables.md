@@ -8,14 +8,12 @@ They are especially useful when providing secrets for your service to use and wh
 
 To use variables, you will need to reference values enclosed in `${}` brackets.
 
-```yml
+```yaml
 # serverless.yml file
 yamlKeyXYZ: ${variableSource} # see list of current variable sources below
 # this is an example of providing a default value as the second parameter
 otherYamlKey: ${variableSource, defaultValue}
 ```
-
-You can define your own variable syntax (regex) if it conflicts with CloudFormation's syntax.
 
 **Note:** You can only use variables in `serverless.yml` property **values**, not property keys. So you can't use variables to generate dynamic logical IDs in the custom resources section for example.
 
@@ -29,6 +27,7 @@ You can define your own variable syntax (regex) if it conflicts with CloudFormat
 - [External YAML/JSON files](#reference-properties-in-other-files)
 - [Variables from S3](#referencing-s3-objects)
 - [Variables from AWS SSM Parameter Store](#reference-variables-using-the-ssm-parameter-store)
+- [AWS-specific variables (`${aws:}` pseudo-parameters)](#referencing-aws-specific-variables)
 - [Variables from AWS Secrets Manager](#reference-variables-using-aws-secrets-manager)
 - [CloudFormation stack outputs](#reference-cloudformation-outputs)
 - [Properties exported from Javascript files (sync or async)](#reference-variables-in-javascript-files)
@@ -41,7 +40,7 @@ You can also **Recursively reference properties** with the variable system. This
 
 For example:
 
-```yml
+```yaml
 provider:
   name: aws
   environment:
@@ -65,7 +64,7 @@ If no `--stage` flag is provided, the fallback `dev` will be used and result in 
 
 To self-reference properties in `serverless.yml`, use the `${self:someProperty}` syntax in your `serverless.yml`. `someProperty` can contain the empty string for a top-level self-reference or a dotted attribute reference to any depth of attribute, so you can go as shallow or deep in the object tree as you want.
 
-```yml
+```yaml
 service: new-service
 provider: aws
 custom:
@@ -95,6 +94,8 @@ resources:
 
 In the above example you're setting a global schedule for all functions by referencing the `globalSchedule` property in the same `serverless.yml` file. This way, you can easily change the schedule for all functions whenever you like.
 
+The top-level `custom` block is a free-form section of `serverless.yml` reserved for your own configuration. osls does not interpret its contents, so it is the conventional place to define reusable values (and plugin settings) that you then reference elsewhere with `${self:custom.someKey}`. Centralizing values such as table names, schedules, or stage-specific settings under `custom` keeps them in one place and avoids repetition.
+
 ## Referencing osls Core Variables
 
 osls initializes core variables which are used internally by the CLI itself. Those values are exposed via the osls variable system and can be reused with the `{sls:}` variable prefix.
@@ -105,7 +106,7 @@ The following variables are available:
 
 A random id which will be generated whenever the osls CLI is run. This value can be used when predictable random variables are required.
 
-```yml
+```yaml
 service: new-service
 provider: aws
 
@@ -129,7 +130,7 @@ To reference environment variables, use the `${env:SOME_VAR}` syntax in your `se
 
 Keep in mind that sensitive information which is provided through environment variables can be written into less protected or publicly accessible build logs, CloudFormation templates, et cetera.
 
-```yml
+```yaml
 service: new-service
 provider: aws
 functions:
@@ -161,7 +162,7 @@ Read all about parameters in the [Parameters documentation](./parameters.md).
 
 To reference CLI options that you passed, use the `${opt:<option>}` syntax in your `serverless.yml` configuration file. It is valid to use the empty string in place of `<option>`. This looks like "`${opt:}`" and the result of declaring this in your `serverless.yml` is to embed the complete `options` object (i.e. all the command line options from your `serverless` command).
 
-```yml
+```yaml
 service: new-service
 provider: aws
 functions:
@@ -179,7 +180,7 @@ In the above example, you're dynamically adding a prefix to the function names b
 
 You can reference CloudFormation stack output values as the source of your variables to use in your service with the `cf:stackName.outputKey` syntax. For example:
 
-```yml
+```yaml
 service: new-service
 provider: aws
 functions:
@@ -195,7 +196,7 @@ In that case, osls will fetch the values of those `functionPrefix` outputs from 
 
 You can add such custom output to CloudFormation stack. For example:
 
-```yml
+```yaml
 service: another-service
 provider:
   name: aws
@@ -222,7 +223,7 @@ resources:
 
 You can also reference CloudFormation stack in another regions with the `cf(REGION):stackName.outputKey` syntax. For example:
 
-```yml
+```yaml
 service: new-service
 provider: aws
 functions:
@@ -236,7 +237,7 @@ functions:
 
 You can reference [CloudFormation stack outputs export values](http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/outputs-section-structure.html) as well. For example:
 
-```yml
+```yaml
 # Make sure you set export value in StackA.
 
   Outputs:
@@ -258,7 +259,7 @@ provider:
 
 You can reference S3 values as the source of your variables to use in your service with the `s3:bucketName/key` syntax. For example:
 
-```yml
+```yaml
 service: new-service
 provider: aws
 functions:
@@ -272,9 +273,11 @@ Buckets from all regions can be used without any additional specification due to
 
 ## Reference Variables using the SSM Parameter Store
 
+SSM Parameter Store (along with [Secrets Manager](#reference-variables-using-aws-secrets-manager) below) is the recommended way to keep secrets out of your `serverless.yml`. For broader guidance on handling secrets, see the [Security guide](./security.md) and the [KMS encryption notes in the Functions guide](./functions.md#kms-keys).
+
 You can reference SSM Parameters as the source of your variables with the `ssm:/path/to/param` syntax. For example:
 
-```yml
+```yaml
 service: ${ssm:/path/to/service/id}-service
 provider:
   name: aws
@@ -288,7 +291,7 @@ In the above example, the value for the SSM Parameters will be looked up and use
 
 You can also reference SSM Parameters in another region with the `ssm(REGION):/path/to/param` syntax. For example:
 
-```yml
+```yaml
 service: ${ssm(us-west-2):/path/to/service/id}-service
 provider:
   name: aws
@@ -308,7 +311,7 @@ The following variables are available:
 
 Account ID of you AWS Account, based on the AWS Credentials that you have configured.
 
-```yml
+```yaml
 service: new-service
 provider:
   name: aws
@@ -337,9 +340,9 @@ In order to get the encrypted content, you can pass `noDecrypt` instruction into
 
 ## Reference Variables using AWS Secrets Manager
 
-Variables in [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/) can be referenced [using SSM](https://docs.aws.amazon.com/systems-manager/latest/userguide/integration-ps-secretsmanager.html), just use the `ssm:/aws/reference/secretsmanager/secret_ID_in_Secrets_Manager` syntax. For example:
+Variables in [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/) can be referenced [using SSM](https://docs.aws.amazon.com/systems-manager/latest/userguide/integration-ps-secretsmanager.html), just use the `ssm:/aws/reference/secretsmanager/secret_ID_in_Secrets_Manager` syntax. See the [Security guide](./security.md) and the [Functions guide KMS notes](./functions.md#kms-keys) for related guidance on protecting secrets. For example:
 
-```yml
+```yaml
 service: new-service
 provider: aws
 functions:
@@ -368,7 +371,7 @@ If the above secret `secret_ID_in_Secrets_Manager` is something like below,
 
 variables will be resolved like
 
-```yml
+```yaml
 service: new-service
 provider: aws
 functions:
@@ -388,7 +391,7 @@ custom:
 
 Same `StringList` type parameters are automatically detected and resolved to array form. (Note: you can turn off resolution to array by passing `raw` instruction into variable as: `${ssm(raw):/path/to/stringlistparam}`, if you need to also pass custom region, put it first as: `${ssm(eu-west-1, raw):/path/to/stringlistparam}`)
 
-```yml
+```yaml
 service: new-service
 provider: aws
 functions:
@@ -407,12 +410,12 @@ To reference properties in other JSON files use the `${file(./myFile.json):someP
 
 Here's an example:
 
-```yml
+```yaml
 # myCustomFile.yml
 globalSchedule: rate(10 minutes)
 ```
 
-```yml
+```yaml
 # serverless.yml
 service: new-service
 provider: aws
@@ -430,7 +433,7 @@ functions:
 
 In the above example, you're referencing the entire `myCustomFile.yml` file in the `custom` property. You need to pass the path relative to your service directory. You can also request specific properties in that file as shown in the `schedule` property. It's completely recursive and you can go as deep as you want. Additionally you can request properties that contain arrays from either YAML or JSON reference files. Here's a YAML example for an events array:
 
-```yml
+```yaml
 myevents:
   - schedule:
       rate: rate(1 minute)
@@ -452,7 +455,7 @@ and for JSON:
 
 In your `serverless.yml`, depending on the type of your source file, either have the following syntax for YAML:
 
-```yml
+```yaml
 functions:
   hello:
     handler: handler.hello
@@ -461,7 +464,7 @@ functions:
 
 or for a JSON reference file use this syntax:
 
-```yml
+```yaml
 functions:
   hello:
     handler: handler.hello
@@ -485,7 +488,7 @@ e.g.
 module.exports.rate = 'rate(10 minutes)';
 ```
 
-```yml
+```yaml
 # serverless.yml
 service: new-service
 provider: aws
@@ -533,7 +536,7 @@ module.exports = async ({ options, resolveVariable }) => {
 
 It is possible to reference the resolver's returned value:
 
-```yml
+```yaml
 # serverless.yml
 service: new-service
 
@@ -542,7 +545,7 @@ custom: ${file(./config.js)}
 
 Or a single property (if the resolver returned an object):
 
-```yml
+```yaml
 # serverless.yml
 service: new-service
 
@@ -554,7 +557,7 @@ custom:
 
 Adding many custom resources to your `serverless.yml` file could bloat the whole file, so you can use the osls variable syntax to split this up.
 
-```yml
+```yaml
 resources:
   Resources: ${file(cloudformation-resources.json)}
 ```
@@ -563,7 +566,7 @@ The corresponding resources which are defined inside the `cloudformation-resourc
 
 In order to use multiple resource files combined with resources inside the `serverless.yml` you can use an array.
 
-```yml
+```yaml
 resources:
   - Resources:
       ApiGatewayRestApi:
@@ -580,7 +583,7 @@ resources:
 
 Each of your cloudformation files has to start with a `Resources` entity
 
-```yml
+```yaml
 Resources:
   Type: 'AWS::S3::Bucket'
   Properties:
@@ -591,7 +594,7 @@ Resources:
 
 The osls variable system allows you to nest variable references within each other for ultimate flexibility. So you can reference certain variables based on other variables. Here's an example:
 
-```yml
+```yaml
 service: new-service
 provider: aws
 custom:
@@ -610,7 +613,7 @@ osls gives you an intuitive way to reference multiple variables as a fallback st
 
 For example, if you want to reference the stage you're deploying to, but you don't want to keep on providing the `stage` option in the CLI. What you can do in `serverless.yml` is:
 
-```yml
+```yaml
 service: new-service
 provider:
   name: aws
@@ -636,7 +639,7 @@ In some cases, a parameter expect a `true` or `false` boolean value. If you are 
 
 To ensure a boolean value is returned, read the string variable value as a boolean value. For example:
 
-```yml
+```yaml
 provider:
   tracing:
     apiGateway: ${strToBool(${ssm:API_GW_DEBUG_ENABLED})}

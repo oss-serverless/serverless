@@ -10,7 +10,7 @@ You can also create function-specific roles to customize permissions per functio
 
 All IAM-related properties of provider are grouped under `iam` property:
 
-```yml
+```yaml
 provider:
   iam:
     role:
@@ -29,7 +29,7 @@ provider:
 
 Note that `provider.iam.role` can be either an object like in example above, or custom role arn:
 
-```yml
+```yaml
 provider:
   iam:
     role: arn:aws:iam::123456789012:role/execution-role
@@ -41,7 +41,7 @@ By default, one IAM Role is shared by all the Lambda functions in your service. 
 
 To add permissions to this role, add IAM statements in `provider.iam.role.statements`. These will be merged into the generated policy. As those statements will be merged into the CloudFormation template, you can use `Join`, `Ref` or any other CloudFormation method or feature.
 
-```yml
+```yaml
 service: new-service
 
 provider:
@@ -64,7 +64,7 @@ provider:
 
 Alongside `provider.iam.role.statements` managed policies can also be added to this service-wide Role, define managed policies in `provider.iam.role.managedPolicies`. These will also be merged into the generated IAM Role so you can use `Join`, `Ref` or any other CloudFormation method or feature here too.
 
-```yml
+```yaml
 service: new-service
 
 provider:
@@ -81,7 +81,7 @@ provider:
 
 By default, it uses the following naming convention:
 
-```yml
+```yaml
   'Fn::Join': [
     '-',
     [
@@ -95,7 +95,7 @@ By default, it uses the following naming convention:
 
 In order to override default name set `provider.iam.role.name` value:
 
-```yml
+```yaml
 service: new-service
 
 provider:
@@ -110,7 +110,7 @@ By default, it will use a path of: `/`
 
 This can be overridden by setting `provider.iam.role.path`:
 
-```yml
+```yaml
 service: new-service
 
 provider:
@@ -135,7 +135,7 @@ Here are some examples of using these capabilities to specify Lambda roles.
 
 ### One Custom IAM Role For All Functions
 
-```yml
+```yaml
 service: new-service
 
 provider:
@@ -162,7 +162,7 @@ resources:
       Type: AWS::IAM::Role
       Properties:
         Path: /my/default/path/
-        RoleName: MyDefaultRole # required if you want to use 'osls deploy --function' later on
+        RoleName: MyDefaultRole # required if you want to use 'osls deploy function' later on
         AssumeRolePolicyDocument:
           Version: '2012-10-17'
           Statement:
@@ -208,7 +208,7 @@ It is possible to create one IAM role for each function.
 
 To achieve this, either use the [`serverless-iam-roles-per-function` plugin](https://www.serverless.com/plugins/serverless-iam-roles-per-function), or configure AWS resources manually as shown below:
 
-```yml
+```yaml
 service: new-service
 
 provider:
@@ -308,7 +308,7 @@ resources:
 
 ### A Custom Default Role & Custom Function Roles
 
-```yml
+```yaml
 service: new-service
 
 provider:

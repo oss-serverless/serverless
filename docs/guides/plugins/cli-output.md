@@ -131,6 +131,16 @@ To throw a **user error** and have it properly formatted, use the osls error cla
 throw new serverless.classes.Error('Invalid configuration in X');
 ```
 
+The error class accepts an optional second argument, a machine-readable `code`, which is
+attached to the thrown error and surfaced in the CLI output:
+
+```js
+throw new serverless.classes.Error('Invalid configuration in X', 'MY_PLUGIN_INVALID_CONFIG');
+```
+
+Prefix the code with your plugin name (for example `MY_PLUGIN_*` or `OFFLINE_*`) so it stays
+unique and easy to attribute across plugins.
+
 All other errors are considered programmer errors by default (and are properly formatted in the CLI output as well).
 
 **Best practices:**
@@ -199,7 +209,7 @@ serverless.addServiceOutputSection('my section', 'content');
 
 The example above will be displayed as:
 
-```
+```text
 $ osls info
 functions:
   ...
@@ -214,7 +224,7 @@ serverless.addServiceOutputSection('my section', ['line 1', 'line 2']);
 
 The example above will be displayed as:
 
-```
+```text
 $ osls info
 functions:
   ...

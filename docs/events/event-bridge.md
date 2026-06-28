@@ -6,7 +6,7 @@ EventBridge resources are provisioned with native CloudFormation support. The `e
 
 ## Setting up a scheduled event
 
-```yml
+```yaml
 functions:
   myFunction:
     handler: index.handler
@@ -21,7 +21,7 @@ functions:
 
 **Note:** `eventBridge` events are enabled by default. Use `enabled: false` to disable the rule.
 
-```yml
+```yaml
 functions:
   myFunction:
     handler: index.handler
@@ -39,7 +39,7 @@ functions:
 
 A description can also be specified. These are not required properties.
 
-```yml
+```yaml
 functions:
   myFunction:
     handler: index.handler
@@ -54,7 +54,7 @@ functions:
 
 ## Setting up event pattern matching
 
-```yml
+```yaml
 functions:
   myFunction:
     handler: index.handler
@@ -72,7 +72,7 @@ functions:
 
 Here is an example that uses "[prefix matching](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns-content-based-filtering.html#eb-filtering-prefix-matching)" to filter EventBridge events produced by S3 (the bucket must have the [EventBridge notification enabled](https://docs.aws.amazon.com/AmazonS3/latest/userguide/enable-event-notifications-eventbridge.html)):
 
-```yml
+```yaml
 functions:
   myFunction:
     handler: index.handler
@@ -92,6 +92,24 @@ functions:
                   - prefix: 'uploads/'
 ```
 
+You can also use the `$or` operator to match an event when any one of several patterns is satisfied. Provide a list of pattern objects under `$or`; the rule matches if the event matches at least one of them. See the [AWS documentation on `$or` matching](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns-matching.html#eb-filtering-or-matching).
+
+```yaml
+functions:
+  myFunction:
+    handler: index.handler
+    events:
+      - eventBridge:
+          pattern:
+            source:
+              - aws.cloudwatch
+            $or:
+              - metricName:
+                  - CPUUtilization
+              - namespace:
+                  - AWS/EC2
+```
+
 ## Using a different Event Bus
 
 The `eventBridge` event source will use the `default` event bus (the one AWS uses internally) when none is explicitly specified.
@@ -100,7 +118,7 @@ osls will create the `eventBus` for you if you provide a name for it. Otherwise,
 
 ### Creating an event bus
 
-```yml
+```yaml
 functions:
   myFunction:
     handler: index.handler
@@ -118,7 +136,7 @@ If you want to reuse an existing event bus, you can define it with literal `arn`
 
 Using literal `arn`:
 
-```yml
+```yaml
 - eventBridge:
     eventBus: arn:aws:events:us-east-1:12345:event-bus/custom-private-events
     pattern:
@@ -132,7 +150,7 @@ Using literal `arn`:
 
 Using reference to event bus' name via `GetAtt` CF intrinsic function:
 
-```yml
+```yaml
 - eventBridge:
     eventBus: !GetAtt EventBusResource.Name
     pattern:
@@ -148,7 +166,7 @@ _Note_: It is not possible to reference event bus ARN with CF intrinsic function
 
 Using reference to event bus' name via `Ref` CF intrinsic functions:
 
-```yml
+```yaml
 - eventBridge:
     eventBus: !Ref EventBusResource
     pattern:
@@ -164,7 +182,7 @@ Using reference to event bus' name via `Ref` CF intrinsic functions:
 
 You can specify different input types which will produce different input values ​​for the Lambda function.
 
-```yml
+```yaml
 functions:
   myFunction:
     handler: index.handler
@@ -212,7 +230,7 @@ functions:
 
 DeadLetterQueueArn is not available for custom resources, only for native CloudFormation.
 
-```yml
+```yaml
 functions:
   myFunction:
     handler: index.handler
@@ -232,7 +250,7 @@ functions:
 
 RetryPolicy is not available for custom resources, only for native CloudFormation.
 
-```yml
+```yaml
 functions:
   myFunction:
     handler: index.handler
@@ -250,3 +268,7 @@ functions:
             maximumEventAge: 3600
             maximumRetryAttempts: 3
 ```
+
+---
+
+[← All Events](./README.md) · [Docs Home](../README.md)

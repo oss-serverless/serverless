@@ -1,4 +1,4 @@
-# AWS - deploy
+# AWS - Deploy
 
 The `osls deploy` command deploys your entire service via CloudFormation. Run this command when you have made infrastructure changes (i.e., you edited `serverless.yml`). Use `osls deploy function -f myFunction` when you have made code changes and you want to quickly upload your updated code to AWS Lambda or just change function configuration.
 
@@ -14,14 +14,16 @@ osls deploy
 - `--package` or `-p` path to a pre-packaged directory and skip packaging step.
 - `--verbose` Shows all stack events during deployment, and display any Stack Output.
 - `--force` Forces a deployment to take place.
-- `--function` or `-f` Invoke `deploy function` (see above). Convenience shortcut - cannot be used with `--package`.
 - `--conceal` Hides secrets from the output (e.g. API Gateway key values).
+- `--minify-template` Minify the CloudFormation template.
 - `--aws-s3-accelerate` Enables S3 Transfer Acceleration making uploading artifacts much faster. You can read more about it [here](http://docs.aws.amazon.com/AmazonS3/latest/dev/transfer-acceleration.html). It requires additional `s3:PutAccelerateConfiguration` permissions. **Note: When using Transfer Acceleration, additional data transfer charges may apply.**
 - `--no-aws-s3-accelerate` Explicitly disables S3 Transfer Acceleration. It also requires additional `s3:PutAccelerateConfiguration` permissions.
 
+To deploy a single function without CloudFormation, use [`osls deploy function -f <name>`](./deploy-function.md) instead. The `deploy` command does not accept a `--function` option in osls v4.
+
 ## Artifacts
 
-After the `osls deploy` command runs, the framework runs `osls package` in the background first then deploys the generated package.
+After the `osls deploy` command runs, osls runs `osls package` in the background first then deploys the generated package.
 
 ## Examples
 
@@ -58,3 +60,7 @@ With this example, the packaging step will be skipped and the CLI will start dep
 ```bash
 SLS_AWS_MONITORING_FREQUENCY=10000 osls deploy
 ```
+
+---
+
+[← All Commands](./README.md) · [Docs Home](../README.md)

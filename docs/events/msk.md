@@ -11,7 +11,7 @@ In order to configure `msk` event, you have to provide two required properties: 
 
 The ARN for the MSK cluster can be specified as a string, the reference to the ARN resource by a logical ID, or the import of an ARN that was exported by a different service or CloudFormation stack.
 
-```yml
+```yaml
 functions:
   compute:
     handler: handler.compute
@@ -38,7 +38,7 @@ When `startingPosition` is configured as `AT_TIMESTAMP`, `startingPositionTimest
 
 In the following example, we specify that the `compute` function should have an `msk` event configured with `batchSize` of 1000, `maximumBatchingWindow` to 30 seconds and `startingPosition` equal to `LATEST`.
 
-```yml
+```yaml
 functions:
   compute:
     handler: handler.compute
@@ -57,7 +57,7 @@ Optionally, you can provide the following properties:
 
 For example:
 
-```yml
+```yaml
 functions:
   compute:
     handler: handler.compute
@@ -77,7 +77,7 @@ The `msk` event also supports `enabled` parameter, which is used to control if t
 
 In the following example, we specify that the `compute` function's `msk` event should be disabled.
 
-```yml
+```yaml
 functions:
   compute:
     handler: handler.compute
@@ -92,7 +92,7 @@ functions:
 
 In order to authenticate to the `msk` you can set the `saslScram512`, which sets the authentication protocol.
 
-```yml
+```yaml
 functions:
   compute:
     handler: handler.compute
@@ -111,7 +111,7 @@ For more details and examples of filter patterns, please see the [AWS event filt
 
 Note: osls only sets this property if you explicitly add it to the `msk` configuration (see an example below). The following example will only process records that are published in the MSK cluster where field `a` is equal to 1 or 2.
 
-```yml
+```yaml
 functions:
   compute:
     handler: handler.compute
@@ -130,8 +130,7 @@ AWS recently added support for directly controlling the polling configuration fo
 
 Note: at least one of `minimumPollers` or `maximumPollers` must be provided.
 
-```yml
----
+```yaml
 functions:
   compute:
     handler: handler.compute
@@ -147,3 +146,7 @@ functions:
 ## IAM Permissions
 
 osls will automatically configure the minimum set of IAM permissions for you. However, you can still add additional permissions if you need to. Read the official [AWS documentation](https://docs.aws.amazon.com/lambda/latest/dg/with-msk.html) for more information about IAM permissions for MSK events.
+
+---
+
+[← All Events](./README.md) · [Docs Home](../README.md)

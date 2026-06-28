@@ -2,11 +2,38 @@
 
 If you are using AWS as a provider, all _functions_ inside the service are AWS Lambda functions.
 
+## Contents
+
+- [Configuration](#configuration)
+- [Supported runtimes](#supported-runtimes)
+- [Permissions](#permissions)
+- [Lambda Function URLs](#lambda-function-urls)
+- [Referencing container image as a target](#referencing-container-image-as-a-target)
+- [Instruction set architecture](#instruction-set-architecture)
+- [Runtime Management](#runtime-management)
+- [SnapStart](#snapstart)
+- [AWS Lambda Durable Functions](#aws-lambda-durable-functions)
+- [Recursive Loop Detection](#recursive-loop-detection)
+- [VPC Configuration](#vpc-configuration)
+- [Environment Variables](#environment-variables)
+- [Tags](#tags)
+- [Layers](#layers)
+- [Log Group Resources](#log-group-resources)
+- [Versioning Deployed Functions](#versioning-deployed-functions)
+- [Conditional deployment & explicit dependencies](#conditional-deployment--explicit-dependencies)
+- [Dead Letter Queue (DLQ)](#dead-letter-queue-dlq)
+- [KMS Keys](#kms-keys)
+- [AWS X-Ray Tracing](#aws-x-ray-tracing)
+- [Asynchronous invocation](#asynchronous-invocation)
+- [EFS Configuration](#efs-configuration)
+- [Ephemeral storage](#ephemeral-storage)
+- [Logging Configuration](#logging-configuration)
+
 ## Configuration
 
 All of the Lambda functions in your serverless service can be found in `serverless.yml` under the `functions` property.
 
-```yml
+```yaml
 # serverless.yml
 service: myService
 
@@ -51,7 +78,7 @@ module.exports.functionOne = async (event) => {};
 
 You can add as many functions as you want within this property.
 
-```yml
+```yaml
 # serverless.yml
 
 service: myService
@@ -72,7 +99,7 @@ functions:
 
 Your functions can either inherit their settings from the `provider` property.
 
-```yml
+```yaml
 # serverless.yml
 service: myService
 
@@ -88,7 +115,7 @@ functions:
 
 Or you can specify properties at the function level.
 
-```yml
+```yaml
 # serverless.yml
 service: myService
 
@@ -104,7 +131,7 @@ functions:
 
 You can specify an array of functions, which is useful if you separate your functions in to different files:
 
-```yml
+```yaml
 # serverless.yml
 ---
 functions:
@@ -112,7 +139,7 @@ functions:
   - ${file(./bar-functions.yml)}
 ```
 
-```yml
+```yaml
 # foo-functions.yml
 getFoo:
   handler: handler.foo
@@ -120,11 +147,24 @@ deleteFoo:
   handler: handler.foo
 ```
 
+## Supported runtimes
+
+The `runtime` property (set at `provider.runtime` or per function) accepts a fixed set of identifiers that map to the [AWS Lambda runtimes](https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html). The supported identifiers, grouped by language, are:
+
+- **Node.js:** `nodejs20.x`, `nodejs22.x`, `nodejs24.x`
+- **Python:** `python3.10`, `python3.11`, `python3.12`, `python3.13`, `python3.14`
+- **Java:** `java8.al2`, `java11`, `java17`, `java21`, `java25`
+- **Ruby:** `ruby3.3`, `ruby3.4`, `ruby4.0`
+- **.NET:** `dotnet8`, `dotnet9`, `dotnet10`
+- **Custom (OS-only):** `provided.al2`, `provided.al2023`
+
+Use `provided.al2` or `provided.al2023` together with [Lambda Layers](#layers) to ship your own custom runtime. Any other value is rejected during schema validation.
+
 ## Permissions
 
 Every AWS Lambda function needs permission to interact with other AWS infrastructure resources within your account. These permissions are set via an AWS IAM Role. You can set permission policy statements within this role via the `provider.iam.role.statements` property.
 
-```yml
+```yaml
 # serverless.yml
 service: myService
 
@@ -153,7 +193,7 @@ functions:
 
 Another example:
 
-```yml
+```yaml
 # serverless.yml
 service: myService
 provider:
@@ -185,7 +225,7 @@ functions:
 
 You can also use an existing IAM role by adding your IAM Role ARN in the `iam.role` property. For example:
 
-```yml
+```yaml
 # serverless.yml
 service: new-service
 provider:
@@ -315,7 +355,7 @@ When `uri` is defined for an image, `buildArgs`, `buildOptions`, `cacheFrom`, an
 
 Example configuration
 
-```yml
+```yaml
 service: service-name
 provider:
   name: aws
@@ -341,7 +381,7 @@ Both `handler` and `runtime` properties are not supported when `image` is used.
 
 Example configuration:
 
-```yml
+```yaml
 service: service-name
 provider:
   name: aws
@@ -361,7 +401,7 @@ It is also possible to provide additional image configuration via `workingDirect
 
 Example configuration:
 
-```yml
+```yaml
 service: service-name
 provider:
   name: aws
@@ -399,7 +439,7 @@ By default, Lambda functions are run by 64-bit x86 architecture CPUs. However, [
 
 To switch all functions to AWS Graviton2 processor, configure `architecture` at `provider` level as follows:
 
-```yml
+```yaml
 provider:
   ...
   architecture: arm64
@@ -422,7 +462,7 @@ If you wish to keep `runtimeManagement` set to `auto`, that's the default so you
 
 To configure runtime management for all functions, configure `runtimeManagement` at `provider` level as follows:
 
-```yml
+```yaml
 provider:
   ...
   runtimeManagement: onFunctionUpdate
@@ -430,7 +470,7 @@ provider:
 
 To toggle instruction set architecture per function individually, set it directly at `functions[]` context:
 
-```yml
+```yaml
 functions:
   hello:
     ...
@@ -518,7 +558,7 @@ functions:
 
 You can add VPC configuration to a specific function in `serverless.yml` by adding a `vpc` object property in the function configuration. This object should contain the `securityGroupIds` and `subnetIds` array properties needed to construct VPC for this function. Here's an example configuration:
 
-```yml
+```yaml
 # serverless.yml
 service: service-name
 provider: aws
@@ -537,7 +577,7 @@ functions:
 
 Or if you want to apply VPC configuration to all functions in your service, you can add the configuration to the higher level `provider` object, and overwrite these service level config at the function level. For example:
 
-```yml
+```yaml
 # serverless.yml
 service: service-name
 provider:
@@ -568,7 +608,7 @@ Then, when you run `osls deploy`, VPC configuration will be deployed along with 
 
 If you have a provider VPC set but wish to have specific functions with no VPC, you can set the `vpc` value for these functions to `~` (null). For example:
 
-```yml
+```yaml
 # serverless.yml
 service: service-name
 provider:
@@ -602,7 +642,7 @@ In order for other services such as Kinesis streams to be made available, a NAT 
 
 Alternatively to setting up a NAT Gateway, you can also use an [egress-only internet gateway](https://docs.aws.amazon.com/vpc/latest/userguide/egress-only-internet-gateway.html) and allow your functions in a VPC to access the internet or other AWS services via IPv6. This eliminates the need for a NAT Gateway, reducing costs and simplifying architecture. In this case, VPC-configured Lambda functions can be allowed to access the internet using egress-only internet gateway by adding a `ipv6AllowedForDualStack` option to either the functions VPC specification:
 
-```yml
+```yaml
 # serverless.yml
 service: service-name
 provider: aws
@@ -622,7 +662,7 @@ functions:
 
 Or if you want to apply VPC configuration to all functions in your service, you can add the configuration to the higher level `provider` object, and overwrite these service level config at the function level. For example:
 
-```yml
+```yaml
 # serverless.yml
 service: service-name
 provider:
@@ -645,7 +685,7 @@ For more information, please check [Announcing AWS Lambda’s support for Intern
 
 You can add environment variable configuration to a specific function in `serverless.yml` by adding an `environment` object property in the function configuration. This object should contain a key-value pairs of string to string:
 
-```yml
+```yaml
 # serverless.yml
 service: service-name
 provider: aws
@@ -659,7 +699,7 @@ functions:
 
 Or if you want to apply environment variable configuration to all functions in your service, you can add the configuration to the higher level `provider` object. Environment variables configured at the function level are merged with those at the provider level, so your function with specific environment variables will also have access to the environment variables defined at the provider level. If an environment variable with the same key is defined at both the function and provider levels, the function-specific value overrides the provider-level default value. For example:
 
-```yml
+```yaml
 # serverless.yml
 service: service-name
 provider:
@@ -688,7 +728,7 @@ Using the `tags` configuration makes it possible to add `key` / `value` tags to 
 
 Those tags will appear in your AWS console and make it easier for you to group functions by tag or find functions with a common tag.
 
-```yml
+```yaml
 functions:
   hello:
     handler: handler.hello
@@ -698,7 +738,7 @@ functions:
 
 Or if you want to apply tags configuration to all functions in your service, you can add the configuration to the higher level `provider` object. Tags configured at the function level are merged with those at the provider level, so your function with specific tags will get the tags defined at the provider level. If a tag with the same key is defined at both the function and provider levels, the function-specific value overrides the provider-level default value. For example:
 
-```yml
+```yaml
 # serverless.yml
 service: service-name
 provider:
@@ -729,7 +769,7 @@ Real-world use cases where tagging your functions is helpful include:
 Using the `layers` configuration makes it possible for your function to use
 [Lambda Layers](https://aws.amazon.com/blogs/aws/new-for-aws-lambda-use-any-programming-language-and-share-common-components/)
 
-```yml
+```yaml
 functions:
   hello:
     handler: handler.hello
@@ -752,7 +792,7 @@ You can also specify the duration for CloudWatch log retention by setting `logRe
 
 You can specify the DataProtectionPolicy for the LogGroup by setting `logDataProtectionPolicy`. On how to define the policy consult the [aws docs](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/mask-sensitive-log-data-start.html).
 
-```yml
+```yaml
 functions:
   hello:
     handler: handler.hello
@@ -772,14 +812,26 @@ Older versions are not removed automatically unless you enable `provider.pruneFu
 
 To turn off function versioning, set the provider-level option `versionFunctions`. `pruneFunctionVersions` cannot be used when `versionFunctions` is `false`, unless the only functions publishing versions are durable: at least one function configures `durableConfig` and no other function sets `versionFunction: true`. Functions configured with `durableConfig` are always skipped by function pruning, so in this configuration only layer versions are pruned.
 
-```yml
+```yaml
 provider:
   versionFunctions: false
 ```
 
+You can also override this on a per-function basis with the function-level `versionFunction` property (note the singular form). This is useful when you have disabled versioning at the provider level but still want versions published for a specific function:
+
+```yaml
+provider:
+  versionFunctions: false
+
+functions:
+  hello:
+    handler: handler.hello
+    versionFunction: true # publish versions for this function only
+```
+
 Enable automatic pruning after deploy:
 
-```yml
+```yaml
 provider:
   pruneFunctionVersions: true # keeps 10 versions (default)
   # pruneFunctionVersions:
@@ -787,6 +839,42 @@ provider:
 ```
 
 `number` is how many of the newest versions to keep; the currently-deployed version is always retained. Replicated Lambda@Edge versions that AWS will not delete are skipped with a warning rather than failing the deploy.
+
+## Conditional deployment & explicit dependencies
+
+You can attach a CloudFormation [Condition](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/conditions-section-structure.html) to a function with the `condition` property, and declare explicit CloudFormation [DependsOn](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-dependson.html) relationships with the `dependsOn` property.
+
+```yaml
+functions:
+  hello:
+    handler: handler.hello
+    # References a condition defined under resources.Conditions
+    condition: ShouldDeployHello
+    # Force CloudFormation to create these resources first
+    dependsOn:
+      - MyThing
+      - MyOtherThing
+
+resources:
+  Conditions:
+    ShouldDeployHello:
+      Fn::Equals:
+        - ${sls:stage}
+        - prod
+```
+
+The `condition` is applied to the function and the companion resources generated by the core functions compiler (the function version, alias, function URL, and event invoke config) as well as the function's log group.
+
+> **Warning:** When the condition evaluates to `false` on an update, CloudFormation deletes the function's log group **including all retained log events** — the same behavior as removing the function from the configuration. To preserve logs across condition flips, override the generated log group with a `Retain` deletion policy:
+>
+> ```yaml
+> resources:
+>   Resources:
+>     HelloLogGroup:
+>       DeletionPolicy: Retain
+> ```
+>
+> A retained physical log group must be manually deleted or imported before the condition can flip back to `true`. Note also that resources generated for `events` (Lambda permissions, subscriptions, rules, API Gateway resources, etc.) do **not** inherit this condition, so combining `condition` with `events` can fail to deploy when the condition is false.
 
 ## Dead Letter Queue (DLQ)
 
@@ -800,7 +888,7 @@ You can setup a dead letter queue for your serverless functions with the help of
 
 The SNS topic needs to be created beforehand and provided as an `arn` on the function level.
 
-```yml
+```yaml
 service: service
 
 provider:
@@ -825,7 +913,7 @@ AWS Lambda uses [AWS Key Management Service (KMS)](https://aws.amazon.com/kms/) 
 
 The `kmsKeyArn` config variable enables you a way to define your own KMS key which should be used for encryption.
 
-```yml
+```yaml
 service:
   name: service-name
 
@@ -849,11 +937,13 @@ functions:
 
 When storing secrets in environment variables, AWS [strongly suggests](http://docs.aws.amazon.com/lambda/latest/dg/env_variables.html#env-storing-sensitive-data) encrypting sensitive information. AWS provides a [tutorial](http://docs.aws.amazon.com/lambda/latest/dg/tutorial-env_console.html) on using KMS for this purpose.
 
+For more on handling secrets safely — including resolving values from SSM Parameter Store and AWS Secrets Manager at deploy time — see the [Security guide](./security.md) and the [`${ssm:}` / `${aws:}` variable sources](./variables.md).
+
 ## AWS X-Ray Tracing
 
 You can enable [AWS X-Ray Tracing](https://docs.aws.amazon.com/xray/latest/devguide/aws-xray.html) on your Lambda functions through the optional `tracing` config variable:
 
-```yml
+```yaml
 service: myService
 
 provider:
@@ -865,7 +955,7 @@ provider:
 
 You can also set this variable on a per-function basis. This will override the provider level setting if present:
 
-```yml
+```yaml
 functions:
   hello:
     handler: handler.hello
@@ -885,7 +975,7 @@ When intention is to invoke function asynchronously you may want to configure fo
 
 Target can be the other lambdas you also deploy with a service or other qualified target (externally managed lambda, EventBridge event bus, SQS queue or SNS topic) which you can address via its ARN or reference
 
-```yml
+```yaml
 functions:
   asyncHello:
     handler: handler.asyncHello
@@ -909,7 +999,7 @@ functions:
 
 The top-level `functions[].maximumRetryAttempts` setting is not supported for durable functions because Lambda asynchronous retry attempts do not apply to durable executions. Use retry strategies in the AWS Durable Execution SDK for durable workflow steps. Event source mapping retry settings are separate and remain available where AWS supports them.
 
-```yml
+```yaml
 functions:
   asyncHello:
     handler: handler.asyncHello
@@ -921,7 +1011,7 @@ functions:
 
 You can use [Amazon EFS with Lambda](https://docs.aws.amazon.com/lambda/latest/dg/services-efs.html) by adding a `fileSystemConfig` property in the function configuration in `serverless.yml`. `fileSystemConfig` should be an object that contains the `arn` and `localMountPath` properties. The `arn` property should reference an existing EFS Access Point, where the `localMountPath` should specify the absolute path under which the file system will be mounted. Here's an example configuration:
 
-```yml
+```yaml
 # serverless.yml
 service: service-name
 provider: aws
@@ -945,7 +1035,7 @@ By default, Lambda [allocates 512 MB of ephemeral storage](https://docs.aws.amaz
 
 You can increase its size via the `ephemeralStorageSize` property. It should be a numerical value in MBs, between 512 and 10240.
 
-```yml
+```yaml
 functions:
   helloEphemeral:
     handler: handler.handler
@@ -958,7 +1048,7 @@ functions:
 
 This can be configured at the provider level (applies to all functions) or individually per function:
 
-```yml
+```yaml
 # Provider-level configuration (applies to all functions)
 provider:
   logs:

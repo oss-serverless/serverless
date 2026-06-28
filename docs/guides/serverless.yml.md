@@ -1,17 +1,27 @@
 # Serverless.yml Reference
 
-Here is a list of all available properties in `serverless.yml` when the provider is set to `aws`.
+This page lists the `serverless.yml` properties available when the provider is set to `aws`. The provider-level `apiGateway`, `httpApi`, and `websocket` service-settings blocks are summarized here; the full set of event-level options for those integrations lives on the dedicated event pages ([REST API Gateway](../events/apigateway.md), [HTTP API](../events/http-api.md), [Websocket](../events/websocket.md)).
+
+## Contents
+
+- [Root properties](#root-properties)
+- [Provider](#provider)
+- [Package](#package)
+- [Functions](#functions)
+- [Lambda events](#lambda-events)
+- [Function layers](#function-layers)
+- [AWS Resources](#aws-resources)
 
 ## Root properties
 
-```yml
+```yaml
 # serverless.yml
 
 # Service name
 service: myservice
 
-# osls version constraint (semver constraint): '3', '^2.33'
-frameworkVersion: '3'
+# osls version constraint (semver constraint): '4'
+frameworkVersion: '4'
 
 # Configuration validation: 'error' (fatal error), 'warn' (logged to the output) or 'off' (default: error)
 # See the docs
@@ -32,7 +42,7 @@ disabledDeprecations:
 
 Learn more about stage parameters in the [Parameters documentation](./parameters.md).
 
-```yml
+```yaml
 # serverless.yml
 
 # Stage parameters
@@ -49,7 +59,7 @@ params:
 
 ### General settings
 
-```yml
+```yaml
 # serverless.yml
 
 provider:
@@ -57,6 +67,7 @@ provider:
   # Default stage (default: dev)
   stage: dev
   # Default region (default: us-east-1)
+  # Validated against a closed enum of supported AWS regions; an unknown region fails configuration validation.
   region: us-east-1
   # The AWS profile to use to deploy (default: "default" profile)
   profile: production
@@ -97,7 +108,7 @@ provider:
 
 Some function settings can be defined for all functions inside the `provider` key:
 
-```yml
+```yaml
 # serverless.yml
 
 provider:
@@ -121,6 +132,10 @@ provider:
     Name: data-protection-policy
   # KMS key ARN to use for encryption for all functions
   kmsKeyArn: arn:aws:kms:us-east-1:XXXXXX:key/some-hash
+  # Lambda layer ARNs attached to every function in the service (provider-level default).
+  # Distinct from top-level `layers` definitions and function-level `layers`.
+  layers:
+    - arn:aws:lambda:us-east-1:XXXXXX:layer:my-layer:1
   # Use function versioning (enabled by default)
   versionFunctions: false
   # After a full service deploy, delete older Lambda function and layer versions (disabled by default)
@@ -145,9 +160,9 @@ provider:
   deploymentPrefix: serverless
   # Configure the S3 bucket used by osls to deploy code packages to Lambda
   deploymentBucket:
-    # Name of an existing bucket to use (default: created by serverless)
+    # Name of an existing bucket to use (default: created by osls)
     name: com.serverless.${self:provider.region}.deploys
-    # On deployment, serverless prunes artifacts older than this limit (default: 5)
+    # On deployment, osls prunes artifacts older than this limit (default: 5)
     maxPreviousDeploymentArtifacts: 10
     # Prevents public access via ACLs or bucket policies (default: false)
     # Note: the deployment bucket is not public by default. These are additional ACLs.
@@ -174,13 +189,17 @@ provider:
 
 The `httpApi` settings apply to [API Gateway v2 HTTP APIs](../events/http-api.md):
 
-```yml
+```yaml
 provider:
   httpApi:
     # Attach to an externally created HTTP API via its ID:
     id: xxxx
     # Set a custom name for the API Gateway API (default: ${sls:stage}-${self:service})
     name: dev-my-service
+    # Optional description for the HTTP API
+    description: My HTTP API
+    # Prefix the generated API name with the service name (default: false)
+    shouldStartNameWithService: true
     # Payload format version (note: use quotes in YAML: '1.0' or '2.0') (default: '2.0')
     payload: '2.0'
     # Disable the default 'execute-api' HTTP endpoint (default: false)
@@ -189,7 +208,9 @@ provider:
     # Enable detailed CloudWatch metrics (default: false)
     metrics: true
     # Enable CORS HTTP headers with default settings (allow all)
-    # Can be fine-tuned with specific options
+    # Can be fine-tuned with a `cors` object (allowCredentials, allowedHeaders,
+    # allowedMethods, allowedOrigins, exposedResponseHeaders, maxAge) — see
+    # ../events/http-api.md#cors-setup for the full object form
     cors: true
     authorizers:
       # JWT API authorizer
@@ -232,12 +253,15 @@ provider:
 
 The `apiGateway` settings apply to [API Gateway v1 REST APIs](../events/apigateway.md) and [websocket APIs](../events/websocket.md):
 
-```yml
+```yaml
 provider:
   # Use a custom name for the API Gateway API
   apiName: custom-api-name
-  # Endpoint type for API Gateway REST API: edge or regional (default: edge)
+  # Endpoint type for API Gateway REST API: EDGE, REGIONAL, or PRIVATE (default: edge)
   endpointType: REGIONAL
+  # IDs of VPC endpoints to associate with the REST API (for PRIVATE endpoint type)
+  vpcEndpointIds:
+    - vpce-xxxxxxxxxxxxxxxxx
   # Use a custom name for the websockets API
   websocketsApiName: custom-websockets-api-name
   # custom route selection expression
@@ -288,6 +312,10 @@ provider:
     metrics: false
     # Use `${service}-${stage}` naming for API Gateway.
     shouldStartNameWithService: false
+    # Custom name for the deployed API Gateway stage (default: the service stage)
+    stage: my-custom-stage
+    # Default integration timeout for REST API methods, in milliseconds (minimum: 50)
+    timeoutInMillis: 29000
     resourcePolicy:
       - Effect: Allow
         Principal: '*'
@@ -324,7 +352,7 @@ provider:
 
 Configure [Application Load Balancer](../events/alb.md):
 
-```yml
+```yaml
 provider:
   alb:
     # Optional prefix to prepend when generating names for target groups
@@ -414,7 +442,7 @@ provider:
 
 Configure the CloudFront distribution used for [CloudFront Lambda@Edge events](../events/cloudfront.md):
 
-```yml
+```yaml
 provider:
   cloudFront:
     cachePolicies:
@@ -449,7 +477,7 @@ provider:
 
 Configure IAM roles and permissions applied to Lambda functions ([complete documentation](./iam.md)):
 
-```yml
+```yaml
 provider:
   iam:
     # Instruct Serverless to use an existing IAM role for all Lambda functions
@@ -503,7 +531,7 @@ provider:
 
 Configure the Lambda functions to run inside a VPC ([complete documentation](./functions.md#vpc-configuration)):
 
-```yml
+```yaml
 provider:
   # Optional VPC settings
   # If you use VPC then both securityGroupIds and subnetIds are required, ipv6AllowedForDualStack is optional
@@ -521,7 +549,7 @@ provider:
 
 Configure logs for the deployed resources:
 
-```yml
+```yaml
 provider:
   logs:
     # Optional Configuration of Lambda Logging Configuration
@@ -582,7 +610,7 @@ provider:
 
 Configure the S3 buckets created for [S3 Lambda events](../events/s3.md):
 
-```yml
+```yaml
 provider:
   # If you need to configure the bucket itself, you'll need to add s3 resources to the provider configuration
   s3:
@@ -600,7 +628,7 @@ provider:
 The `osls package` or `osls deploy` commands [package the code of all functions into zip files](./packaging.md).
 These zip files are then used for deployments.
 
-```yml
+```yaml
 # serverless.yml
 
 # Optional deployment packaging configuration
@@ -616,6 +644,8 @@ package:
   # Explicitly set the package artifact to deploy (overrides native packaging behavior).
   # Local artifact paths are trusted input and may point outside the service directory.
   artifact: path/to/my-artifact.zip
+  # Base directory from which packaging patterns are resolved (default: the service directory)
+  path: ./dist
   # Automatically exclude NPM dev dependencies from the deployed package (default: true)
   excludeDevDependencies: false
 ```
@@ -624,7 +654,7 @@ package:
 
 Configure the Lambda functions to deploy ([complete documentation](./functions.md)):
 
-```yml
+```yaml
 # serverless.yml
 
 functions:
@@ -673,6 +703,10 @@ functions:
     disableLogs: false
     # Duration for CloudWatch log retention (default: forever). Overrides provider setting.
     logRetentionInDays: 14
+    # Policy defining how to monitor and mask sensitive data in this function's CloudWatch logs
+    # Policy format: https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/mask-sensitive-log-data-start.html
+    logDataProtectionPolicy:
+      Name: data-protection-policy
     tags: # Function specific tags
       foo: bar
     # VPC settings for this function
@@ -1378,7 +1412,7 @@ functions:
 
 Deploy [Lambda function layers](./layers.md):
 
-```yml
+```yaml
 # serverless.yml
 
 layers:
@@ -1410,7 +1444,7 @@ layers:
 
 [Customize the CloudFormation template](./services.md#serverlessyml), for example to deploy extra CloudFormation resource:
 
-```yml
+```yaml
 # serverless.yml
 
 # Insert raw CloudFormation (resources, outputs…) in the deployed template

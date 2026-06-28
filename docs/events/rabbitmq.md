@@ -12,7 +12,9 @@ In order to configure `rabbitmq` event, you have to provide three required prope
 - `queue` to consume messages from.
 - `arn` arn for your Amazon MQ message broker
 
-```yml
+You can optionally set `virtualHost` to the name of the RabbitMQ [virtual host](https://www.rabbitmq.com/docs/vhosts) the broker should connect through; when provided, osls emits it as a `VIRTUAL_HOST` source access configuration on the event source mapping.
+
+```yaml
 functions:
   compute:
     handler: handler.compute
@@ -29,7 +31,7 @@ The `rabbitmq` event also supports `enabled` parameter, which is used to control
 
 In the following example, we specify that the `compute` function's `rabbitmq` event should be disabled.
 
-```yml
+```yaml
 functions:
   compute:
     handler: handler.compute
@@ -47,7 +49,7 @@ functions:
 You can also specify `batchSize` of number of items to retrieve in a single batch. If not specified, this will default to `100`.
 Likewise `maximumBatchingWindow` can be set to determine the amount of time the Lambda spends gathering records before invoking the function. The default is 0, but **if you set `batchSize` to more than 10, you must set `maximumBatchingWindow` to at least 1**. The maximum is 300.
 
-```yml
+```yaml
 functions:
   compute:
     handler: handler.compute
@@ -68,7 +70,7 @@ For more details and examples of filter patterns, please see the [AWS event filt
 
 Note: osls only sets this property if you explicitly add it to the `rabbitmq` configuration (see an example below). The following example will only process records that are published to Amazon MQ for RabbitMQ where field `a` is equal to 1 or 2.
 
-```yml
+```yaml
 functions:
   compute:
     handler: handler.compute
@@ -85,3 +87,7 @@ functions:
 ## IAM Permissions
 
 osls will automatically configure the minimum set of IAM permissions for you. However, you can still add additional permissions if you need to. Read the official [AWS documentation](https://docs.aws.amazon.com/lambda/latest/dg/with-mq.html#events-mq-permissions) for more information about IAM permissions for Amazon MQ events.
+
+---
+
+[← All Events](./README.md) · [Docs Home](../README.md)

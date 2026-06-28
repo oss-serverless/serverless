@@ -34,11 +34,11 @@ osls translates all syntax in `serverless.yml` to a single AWS CloudFormation te
 
 Since osls v3, deployments are done using [CloudFormation change sets](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-updating-stacks-changesets.html). It is possible to use [CloudFormation direct deployments](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-updating-stacks-direct.html) instead.
 
-Direct deployments **are faster** and have no downsides (unless you specifically use the generated change sets). They will become the default in Serverless Framework 4.
+Direct deployments **are faster** and have no downsides (unless you specifically use the generated change sets). In osls, change sets remain the default deployment method; direct deployments are opt-in.
 
 You are encouraged to enable direct deployments via the `deploymentMethod` option:
 
-```
+```yaml
 provider:
   name: aws
   deploymentMethod: direct
@@ -48,14 +48,14 @@ provider:
 
 - Use this in your CI/CD systems, as it is the safest method of deployment.
 - You can print the progress during the deployment if you use `verbose` mode, like this:
-  ```
+  ```bash
   osls deploy --verbose
   ```
 - This method uses the AWS CloudFormation Stack Update method. CloudFormation is slow, so this method is slower. If you want to develop more quickly, use the `osls deploy function` command (described below)
 
 - This method defaults to `dev` stage and `us-east-1` region. You can change the default stage and region in your `serverless.yml` file by setting the `stage` and `region` properties inside a `provider` object as the following example shows:
 
-  ```yml
+  ```yaml
   # serverless.yml
 
   service: service-name
@@ -67,13 +67,15 @@ provider:
 
 - You can also deploy to different stages and regions by passing in flags to the command:
 
-  ```
+  ```bash
   osls deploy --stage production --region eu-central-1
   ```
 
 - You can specify your own S3 bucket which should be used to store all the deployment artifacts.
-  The `deploymentBucket` config which is nested under `provider` lets you e.g. set the `name` or the `serverSideEncryption` method for this bucket. If you don't provide your own bucket, Serverless
+  The `deploymentBucket` config which is nested under `provider` lets you e.g. set the `name` or the `serverSideEncryption` method for this bucket. If you don't provide your own bucket, osls
   will create a bucket which uses default AES256 encryption.
+
+- You can limit how many previous deployment artifacts are retained in the deployment bucket by setting `maxPreviousDeploymentArtifacts` under `deploymentBucket` config to an integer. Older artifacts beyond that count are pruned after each deployment, which also bounds how far back `osls rollback` can go.
 
 - You can specify your own S3 prefix which should be used to store all the deployment artifacts.
   The `deploymentPrefix` config which is nested under `provider` lets you set the prefix under which the deployment artifacts will be stored. If not specified, defaults to `serverless`.
@@ -87,7 +89,16 @@ provider:
 
 Check out the [deploy command docs](../cli-reference/deploy.md) for all details and options.
 
-- For information on multi-region deployments, [checkout this article](https://serverless.com/blog/build-multiregion-multimaster-application-dynamodb-global-tables).
+## Deploying to multiple regions
+
+A single service is deployed to one region per command run. To deploy the same service to several regions, run `osls deploy` once per region, overriding the region each time with the `--region` flag:
+
+```bash
+osls deploy --region us-east-1
+osls deploy --region eu-central-1
+```
+
+Each region gets its own independent CloudFormation stack, so the deployments do not interfere with one another. In CI/CD you can loop over a list of regions, or run the per-region deploys in parallel. To orchestrate several distinct services (each potentially in a different region), see [Composing services](./compose.md).
 
 ## Deploy Function
 
@@ -97,7 +108,8 @@ This deployment method does not touch your AWS CloudFormation Stack. Instead, it
 osls deploy function --function myFunction
 ```
 
--**Note:** You can always enforce a deployment using the `--force` option. -**Note:** You can use `--update-config` to change only Lambda configuration without deploying code.
+- **Note:** You can always enforce a deployment using the `--force` option.
+- **Note:** You can use `--update-config` to change only Lambda configuration without deploying code.
 
 ### How It Works
 

@@ -1,10 +1,12 @@
 # CloudWatch Log
 
+[CloudWatch Logs](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/WhatIsCloudWatchLogs.html) lets you collect and monitor log data from AWS resources and applications. With a [subscription filter](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/SubscriptionFilters.html), osls can wire a `cloudwatchLog` event to a Lambda function so that the function is invoked with log events delivered from a log group.
+
 ## Simple event definition
 
 This will enable your Lambda function to be called by a Log Stream.
 
-```yml
+```yaml
 functions:
   myCloudWatchLog:
     handler: myCloudWatchLog.handler
@@ -20,7 +22,7 @@ Here's an example how you can specify a filter rule.
 
 For more information about the filter pattern syntax, see [Filter and Pattern Syntax](http://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.html)
 
-```yml
+```yaml
 functions:
   myCloudWatchLog:
     handler: myCloudWatchLog.handler
@@ -30,11 +32,11 @@ functions:
           filter: '{$.userIdentity.type = Root}'
 ```
 
-### Example
+## Swapping log group subscriptions
 
 Update your `serverless.yml` file as follows and run `osls deploy`.
 
-```yml
+```yaml
 functions:
   hello1:
     handler: handler.hello1
@@ -48,7 +50,7 @@ functions:
 
 Next up, edit `serverless.yml` and swap out the `logGroup` names. After that run `osls deploy` again (the deployment will fail).
 
-```yml
+```yaml
 functions:
   hello1:
     handler: handler.hello1
@@ -59,3 +61,7 @@ functions:
     events:
       - cloudwatchLog: '/aws/lambda/hello1'
 ```
+
+---
+
+[← All Events](./README.md) · [Docs Home](../README.md)

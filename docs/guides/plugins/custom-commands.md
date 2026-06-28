@@ -2,7 +2,7 @@
 
 osls plugins can define custom CLI commands.
 
-These commands can then be called by users, for example: `serverless my-command`.
+These commands can then be called by users, for example: `osls my-command`.
 
 ```javascript
 class MyPlugin {
@@ -18,7 +18,7 @@ class MyPlugin {
 module.exports = MyPlugin;
 ```
 
-A CLI _Command_ that can be called by a user, e.g. `serverless foo`. A Command has no logic, but simply defines the CLI configuration (e.g. command, parameters) and the _Lifecycle Events_ for the command. Every command defines its own lifecycle events.
+A CLI _Command_ that can be called by a user, e.g. `osls foo`. A Command has no logic, but simply defines the CLI configuration (e.g. command, parameters) and the _Lifecycle Events_ for the command. Every command defines its own lifecycle events.
 
 ## Lifecycle events
 
@@ -64,8 +64,8 @@ Note that a command can define multiple events: these will be called sequentiall
 
 Commands can have CLI options:
 
-- either passed with a double dash (`--`): `serverless my-command --function functionName`.
-- or as a shortcut with a single dash (`-`): `serverless my-command -f functionName`.
+- either passed with a double dash (`--`): `osls my-command --function functionName`.
+- or as a shortcut with a single dash (`-`): `osls my-command -f functionName`.
 
 Options can be specified in the command definition. The value of the CLI option can be retrieved via the `options` parameter of the plugin:
 
@@ -103,6 +103,69 @@ class MyPlugin {
 ```
 
 If an option is not required, a `default` property can be set in the option definition.
+
+## Nested commands
+
+Commands can define sub-commands via a nested `commands` object. This mirrors how osls core
+nests `deploy function` under `deploy`:
+
+```javascript
+class MyPlugin {
+  constructor() {
+    this.commands = {
+      'my-command': {
+        usage: 'My top-level command',
+        lifecycleEvents: ['run'],
+        commands: {
+          resource: {
+            usage: 'My nested sub-command',
+            lifecycleEvents: ['run'],
+          },
+        },
+      },
+    };
+
+    this.hooks = {
+      'my-command:run': () => this.run(),
+      'my-command:resource:run': () => this.runResource(),
+    };
+  }
+}
+```
+
+The sub-command above is invoked as `osls my-command resource`, and its lifecycle event is
+namespaced under the parent: `my-command:resource:run`.
+
+## Spawning other commands
+
+A plugin can run another command's full lifecycle from within a hook via
+`serverless.pluginManager.spawn()`:
+
+```javascript
+class MyPlugin {
+  constructor(serverless) {
+    this.serverless = serverless;
+    this.hooks = {
+      'my-command:run': async () => {
+        // Run the `package` command lifecycle
+        await this.serverless.pluginManager.spawn('package');
+      },
+    };
+  }
+}
+```
+
+The command can be passed as a colon-separated string (`'deploy:function'`) or as an array of
+segments (`['deploy', 'function']`).
+
+Pass `{ terminateLifecycleAfterExecution: true }` to stop the current command's remaining
+lifecycle events once the spawned command finishes:
+
+```javascript
+await this.serverless.pluginManager.spawn('package', {
+  terminateLifecycleAfterExecution: true,
+});
+```
 
 ## Command naming
 

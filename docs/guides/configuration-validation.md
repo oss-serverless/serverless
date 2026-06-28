@@ -21,3 +21,14 @@ Add `configValidationMode` to your service configuration with one of the followi
 | error | Fail invoked command and output configuration errors. |
 | warn  | Output configuration errors in form of warnings.      |
 | off   | Suppress configuration errors.                        |
+
+For example, to downgrade validation errors to warnings, set `configValidationMode` at the top level of `serverless.yml`:
+
+```yaml
+service: myService
+
+configValidationMode: warn
+
+provider:
+  name: aws
+```

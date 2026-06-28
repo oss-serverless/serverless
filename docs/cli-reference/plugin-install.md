@@ -1,4 +1,4 @@
-# Plugin Install
+# AWS - Plugin Install
 
 Install an osls plugin and add it to the service's `plugins` array. By default, the latest version is installed.
 If you want a specific version, semver range, or npm dist-tag, specify `<pluginname>@<version>` as the name option.
@@ -24,10 +24,6 @@ osls plugin install --name 'example-osls-plugin@^1.0.0 || 2'
 
 Package aliases, git URLs, HTTP URLs, file paths, workspace specs, and tarball paths are not accepted by `plugin install`.
 
-## Provided lifecycle events
-
-- `plugin:install:install`
-
 ## Examples
 
 ### Install the `example-osls-plugin` plugin
@@ -47,3 +43,7 @@ osls plugin install --name example-osls-plugin@3.0.0-rc.2
 ```bash
 osls plugin install --name example-osls-plugin --allow-install-scripts
 ```
+
+---
+
+[← All Commands](./README.md) · [Docs Home](../README.md)

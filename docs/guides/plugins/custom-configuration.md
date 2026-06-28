@@ -42,7 +42,7 @@ module.exports = MyPlugin;
 
 Any additional configuration defined by plugins in `serverless.yml` must come with validation rules.
 
-osls uses JSON schema validation backed by [the AJV library](https://github.com/ajv-validator/ajv). You can extend [the base schema](/lib/configSchema/index.js) in plugins via:
+osls uses JSON schema validation backed by [the AJV library](https://github.com/ajv-validator/ajv). You can extend [the base schema](/lib/config-schema.js) in plugins via:
 
 - `defineTopLevelProperty`
 - `defineCustomProperties`
@@ -53,7 +53,7 @@ osls uses JSON schema validation backed by [the AJV library](https://github.com/
 
 Use the following map to know which helper suits your needs:
 
-```yml
+```yaml
 custom:
   my-plugin:
     customProperty: foobar # <-- use defineCustomProperties
@@ -77,13 +77,13 @@ functions:
           customProperty: foobar # <-- use defineFunctionEventProperties
 ```
 
-We'll walk though those helpers. You may also want to check out examples from [helpers tests](tests/fixtures/configSchemaExtensions/test-plugin.js)
+We'll walk though those helpers. You may also want to check out examples from [helpers tests](/test/fixtures/programmatic/config-schema-extensions/test-plugin.js)
 
 ### Top-level properties via `defineTopLevelProperty`
 
 If your plugin requires additional top-level properties (like `provider`, `custom`, `service`...), you can use the `defineTopLevelProperty` helper to add their definition. For example:
 
-```yml
+```yaml
 # serverless.yml
 service: my-service
 
@@ -108,9 +108,9 @@ class MyPlugin {
 }
 ```
 
-This way, if the user sets `someProperty` by mistake to `false`, Serverless would display an error:
+This way, if the user sets `someProperty` by mistake to `false`, osls would display an error:
 
-```
+```text
 Configuration error: yourPlugin.someProperty should be string
 ```
 
@@ -118,7 +118,7 @@ Configuration error: yourPlugin.someProperty should be string
 
 If your plugin depends on properties defined in the `custom:` section, you can use the `defineCustomProperties` helper. For example:
 
-```yml
+```yaml
 # serverless.yml
 
 custom:
@@ -142,9 +142,9 @@ class MyPlugin {
 }
 ```
 
-This way, if the user sets `myCustomProperty` by mistake to `false`, Serverless would display an error:
+This way, if the user sets `myCustomProperty` by mistake to `false`, osls would display an error:
 
-```
+```text
 Configuration error: custom.myCustomProperty should be string
 ```
 
@@ -152,7 +152,7 @@ Configuration error: custom.myCustomProperty should be string
 
 If your plugin adds new properties to functions, you can use the `defineFunctionProperties` helper. For example:
 
-```yml
+```yaml
 # serverless.yml
 
 functions:
@@ -178,9 +178,9 @@ class MyPlugin {
 }
 ```
 
-This way, if the user sets `anotherProperty` by mistake to `hello`, Serverless would display an error:
+This way, if the user sets `anotherProperty` by mistake to `hello`, osls would display an error:
 
-```
+```text
 Configuration error at 'functions.foo.anotherProperty': should be number
 ```
 
@@ -188,7 +188,7 @@ Configuration error at 'functions.foo.anotherProperty': should be number
 
 If your plugin adds support to a new function event, you can use the `defineFunctionEvent` helper. For example:
 
-```yml
+```yaml
 # serverless.yml
 
 functions:
@@ -219,9 +219,9 @@ class MyPlugin {
 }
 ```
 
-This way, if the user sets `anotherProp` by mistake to `some-string`, Serverless would display an error:
+This way, if the user sets `anotherProp` by mistake to `some-string`, osls would display an error:
 
-```
+```text
 Configuration error: functions.someFunc.events[0].myPluginEvent.anotherProp should be number
 ```
 
@@ -229,7 +229,7 @@ Configuration error: functions.someFunc.events[0].myPluginEvent.anotherProp shou
 
 If your plugin adds new properties to a function event, you can use the `defineFunctionEventProperties` helper. For example:
 
-```yml
+```yaml
 # serverless.yml
 
 functions:
@@ -258,9 +258,9 @@ class MyPlugin {
 }
 ```
 
-This way, if the user sets `documentation` by mistake to `false`, Serverless would display an error:
+This way, if the user sets `documentation` by mistake to `false`, osls would display an error:
 
-```
+```text
 Configuration error: functions.foo.events[0].http.documentation should be a string
 ```
 

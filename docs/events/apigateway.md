@@ -20,7 +20,9 @@ Summary:
   - [Enabling CORS](#enabling-cors)
   - [HTTP Endpoints with `AWS_IAM` Authorizers](#http-endpoints-with-aws_iam-authorizers)
   - [HTTP Endpoints with Custom Authorizers](#http-endpoints-with-custom-authorizers)
-  - [HTTP Endpoints with `operationId`](#http-endpoints-with-operationId)
+  - [HTTP Endpoints with `operationId`](#http-endpoints-with-operationid)
+  - [Using asynchronous integration](#using-asynchronous-integration)
+  - [Enabling response streaming](#enabling-response-streaming)
   - [Catching Exceptions In Your Lambda Function](#catching-exceptions-in-your-lambda-function)
   - [Setting API keys for your Rest API](#setting-api-keys-for-your-rest-api)
   - [Configuring endpoint types](#configuring-endpoint-types)
@@ -58,14 +60,10 @@ Summary:
 - [Logs](#logs)
 - [Disable Default Endpoint](#disable-default-endpoint)
 - [Providing a custom stage name](#providing-a-custom-stage-name)
+- [Custom API name scheme](#custom-api-name-scheme)
 - [Timeout](#timeout)
 
-_Are you looking for tutorials on using API Gateway? Check out the following resources:_
-
-> - [Add a custom domain for your API Gateway](https://serverless.com/blog/serverless-api-gateway-domain/)
-> - [Deploy multiple micro-services under the same domain](https://serverless.com/blog/api-gateway-multiple-services/)
-> - [Create a Node REST API with Express.js](https://serverless.com/blog/serverless-express-rest-api/)
-> - [Make a Serverless GraphQL API](https://serverless.com/blog/make-serverless-graphql-api-using-lambda-dynamodb/)
+_For deeper background on API Gateway concepts, see the [AWS API Gateway REST API developer guide](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-rest-api.html). To put your API behind a custom domain, see [Setting up custom domain names for REST APIs](https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-custom-domains.html)._
 
 To create HTTP endpoints as Event sources for your AWS Lambda Functions, use the osls AWS API Gateway Events syntax.
 
@@ -92,7 +90,7 @@ a `GET` request.
 
 Here's an example:
 
-```yml
+```yaml
 # serverless.yml
 
 functions:
@@ -122,7 +120,7 @@ module.exports.hello = async (event) => {
 
 **Note:** When the body is a JSON-Document, you must parse it yourself:
 
-```
+```js
 JSON.parse(event.body);
 ```
 
@@ -193,7 +191,7 @@ JSON.parse(event.body);
 
 Here we've defined an POST endpoint for the path `posts/create`.
 
-```yml
+```yaml
 # serverless.yml
 
 functions:
@@ -209,7 +207,7 @@ functions:
 
 To set CORS configurations for your HTTP endpoints, simply modify your event configurations as follows:
 
-```yml
+```yaml
 # serverless.yml
 
 functions:
@@ -224,7 +222,7 @@ functions:
 
 Setting `cors` to `true` assumes a default configuration which is equivalent to:
 
-```yml
+```yaml
 functions:
   hello:
     handler: handler.hello
@@ -245,9 +243,26 @@ functions:
             allowCredentials: false
 ```
 
+By default, the allowed methods (the `Access-Control-Allow-Methods` header) are `OPTIONS` plus the HTTP method of the event. To set the allowed methods explicitly, provide a `methods` array in the `cors` object (the event's own method and `OPTIONS` are always included):
+
+```yaml
+functions:
+  hello:
+    handler: handler.hello
+    events:
+      - http:
+          path: hello
+          method: get
+          cors:
+            origin: '*'
+            methods:
+              - OPTIONS
+              - GET
+```
+
 To allow multiple origins, you can use the following configuration and provide an array in the `origins` or use comma separated `origin` field:
 
-```yml
+```yaml
 functions:
   hello:
     handler: handler.hello
@@ -272,7 +287,7 @@ functions:
 
 Wildcards are accepted. The following example will match all sub-domains of example.com over http:
 
-```yml
+```yaml
 cors:
   origins:
     - http://*.example.com
@@ -281,7 +296,7 @@ cors:
 
 Please note that since you can't send multiple values for [Access-Control-Allow-Origin](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin), this configuration uses a response template to check if the request origin matches one of your provided `origins` and overrides the header with the following code:
 
-```
+```text
 #set($origin = $input.params("Origin")
 #if($origin == "http://example.com" || $origin == "http://*.amazonaws.com") #set($context.responseOverride.header.Access-Control-Allow-Origin = $origin) #end
 ```
@@ -294,7 +309,7 @@ Please note that the [Access-Control-Allow-Credentials](https://developer.mozill
 
 To enable the `Access-Control-Max-Age` preflight response header, set the `maxAge` property in the `cors` object:
 
-```yml
+```yaml
 functions:
   hello:
     handler: handler.hello
@@ -311,7 +326,7 @@ If you are using CloudFront or another CDN for your API Gateway, you may want to
 
 To enable the `Cache-Control` header on preflight response, set the `cacheControl` property in the `cors` object:
 
-```yml
+```yaml
 functions:
   hello:
     handler: handler.hello
@@ -336,7 +351,7 @@ functions:
 
 CORS header accepts single value too
 
-```yml
+```yaml
 functions:
   hello:
     handler: handler.hello
@@ -373,7 +388,7 @@ module.exports.hello = async () => {
 
 If you want to require that the caller submit the IAM user's access keys in order to be authenticated to invoke your Lambda Function, set the authorizer to `AWS_IAM` as shown in the following example:
 
-```yml
+```yaml
 functions:
   create:
     handler: posts.create
@@ -386,7 +401,7 @@ functions:
 
 Which is the short hand notation for:
 
-```yml
+```yaml
 functions:
   create:
     handler: posts.create
@@ -405,7 +420,7 @@ Custom Authorizers allow you to run an AWS Lambda Function before your targeted 
 You can enable Custom Authorizers for your HTTP endpoint by setting the Authorizer in your `http` event to another function
 in the same service, as shown in the following example:
 
-```yml
+```yaml
 functions:
   create:
     handler: posts.create
@@ -421,7 +436,7 @@ functions:
 Or, if you want to configure the Authorizer with more options, you can turn the `authorizer` property into an object as
 shown in the following example:
 
-```yml
+```yaml
 functions:
   create:
     handler: posts.create
@@ -442,7 +457,7 @@ functions:
 If the Authorizer function does not exist in your service but exists in AWS, you can provide the ARN of the Lambda
 function instead of the function name, as shown in the following example:
 
-```yml
+```yaml
 functions:
   create:
     handler: posts.create
@@ -456,7 +471,7 @@ functions:
 Or, if you want to configure the Authorizer with more options, you can turn the `authorizer` property into an object as
 shown in the following example:
 
-```yml
+```yaml
 functions:
   create:
     handler: posts.create
@@ -476,7 +491,7 @@ If permissions for the Authorizer function are managed externally (for example, 
 in a different AWS account), you can skip creating the permission for the function by setting `managedExternally: true`,
 as shown in the following example:
 
-```yml
+```yaml
 functions:
   create:
     handler: posts.create
@@ -494,7 +509,7 @@ before deploying the stack, otherwise deployment will fail.
 
 You can also use the Request Type Authorizer by setting the `type` property. In this case, your `identitySource` could contain multiple entries for your policy cache. The default `type` is 'token'.
 
-```yml
+```yaml
 functions:
   create:
     handler: posts.create
@@ -513,7 +528,7 @@ functions:
 You can also configure an existing Cognito User Pool as the authorizer, as shown
 in the following example with optional access token allowed scopes:
 
-```yml
+```yaml
 functions:
   create:
     handler: posts.create
@@ -534,7 +549,7 @@ If you want more control over which attributes are exposed as claims you
 can switch to `integration: lambda` and add the following configuration. The
 claims will be exposed at `events.cognitoPoolClaims`.
 
-```yml
+```yaml
 functions:
   create:
     handler: posts.create
@@ -552,7 +567,7 @@ functions:
 
 If you are creating the Cognito User Pool in the `resources` section of the same template, you can refer to the ARN using the `Fn::GetAtt` attribute from CloudFormation. To do so, you _must_ give your authorizer a name and specify a type of `COGNITO_USER_POOLS`:
 
-```yml
+```yaml
 functions:
   create:
     handler: posts.create
@@ -568,7 +583,11 @@ functions:
               Fn::GetAtt:
                 - CognitoUserPool
                 - Arn
----
+```
+
+Then define the referenced user pool in `resources:`:
+
+```yaml
 resources:
   Resources:
     CognitoUserPool:
@@ -580,7 +599,7 @@ resources:
 
 Include `operationId` when you want to provide a name for the method endpoint. This will set `OperationName` inside `AWS::ApiGateway::Method` accordingly. One common use case for this is customizing method names in some code generators (e.g., swagger).
 
-```yml
+```yaml
 functions:
   create:
     handler: users.create
@@ -595,7 +614,7 @@ functions:
 
 Use `async: true` when integrating a lambda function using [event invocation](https://docs.aws.amazon.com/lambda/latest/dg/API_Invoke.html#SSS-Invoke-request-InvocationType). This lets API Gateway to return immediately with a 200 status code while the lambda continues running. If not otherwise specified integration type will be `AWS`.
 
-```yml
+```yaml
 functions:
   create:
     handler: posts.create
@@ -610,7 +629,7 @@ functions:
 
 Enable response streaming for proxy integrations by setting `response.transferMode` on your `http` event:
 
-```yml
+```yaml
 functions:
   stream:
     handler: handler.stream
@@ -637,7 +656,7 @@ about the name of the key, it is recommended only to set the value and let Cloud
 
 Here's an example configuration for setting API keys for your service Rest API:
 
-```yml
+```yaml
 service: my-service
 provider:
   name: aws
@@ -676,7 +695,7 @@ Clients connecting to this Rest API will then need to set any of these API keys 
 
 You can also setup multiple usage plans for your API. In this case you need to map your usage plans to your api keys. Here's an example how this might look like:
 
-```yml
+```yaml
 service: my-service
 provider:
   name: aws
@@ -722,7 +741,7 @@ By default, osls deploys your REST API using the EDGE endpoint configuration. If
 
 Here's an example configuration for setting the endpoint configuration for your service Rest API:
 
-```yml
+```yaml
 service: my-service
 provider:
   name: aws
@@ -737,13 +756,13 @@ functions:
 
 API Gateway also supports the association of VPC endpoints if you have an API Gateway REST API using the PRIVATE endpoint configuration. This feature simplifies the invocation of a private API through the generation of the following AWS Route 53 alias:
 
-```
+```text
 https://<rest_api_id>-<vpc_endpoint_id>.execute-api.<aws_region>.amazonaws.com
 ```
 
 Here's an example configuration:
 
-```yml
+```yaml
 service: my-service
 provider:
   name: aws
@@ -761,7 +780,7 @@ This applies only to REST APIs generated from `http` events. It does not apply t
 
 For the default edge-optimized REST API endpoint, use an edge-compatible policy:
 
-```yml
+```yaml
 provider:
   name: aws
   apiGateway:
@@ -778,7 +797,7 @@ functions:
 
 For Regional or private REST APIs, set `provider.endpointType` and use a policy supported by that endpoint type:
 
-```yml
+```yaml
 provider:
   name: aws
   endpointType: REGIONAL
@@ -800,7 +819,7 @@ AWS treats policies that start with `SecurityPolicy_` as enhanced security polic
 
 When changing an API from an enhanced policy back to a legacy policy, AWS requires endpoint access mode to be unset with an empty string:
 
-```yml
+```yaml
 provider:
   name: aws
   apiGateway:
@@ -817,7 +836,7 @@ Supported security policies differ by endpoint type. See the [AWS supported secu
 
 To pass optional and required parameters to your functions, so you can use them in API Gateway tests and SDK generation, marking them as `true` will make them required, `false` will make them optional.
 
-```yml
+```yaml
 functions:
   create:
     handler: posts.create
@@ -837,7 +856,7 @@ functions:
 
 In order for path variables to work, API Gateway also needs them in the method path itself, like so:
 
-```yml
+```yaml
 functions:
   create:
     handler: posts.post_detail
@@ -853,7 +872,7 @@ functions:
 
 To map different values for request parameters, define the `required` and `mappedValue` properties of the request parameter.
 
-```yml
+```yaml
 functions:
   create:
     handler: posts.post_detail
@@ -879,7 +898,7 @@ To use request schema validation with API gateway, add the [JSON Schema](https:/
 for your content type. Since JSON Schema is represented in JSON, it's easier to include it from a
 file.
 
-```yml
+```yaml
 functions:
   create:
     handler: posts.create
@@ -894,7 +913,7 @@ functions:
 
 In addition, you can also customize created model with `name` and `description` properties.
 
-```yml
+```yaml
 functions:
   create:
     handler: posts.create
@@ -914,7 +933,7 @@ To reuse the same model across different events, you can define global models on
 In order to define global model you need to add its configuration to `provider.apiGateway.request.schemas`.
 After defining a global model, you can use it in the event by referencing it by the key. Provider models are created for `application/json` content type.
 
-```yml
+```yaml
 provider:
     ...
     apiGateway:
@@ -964,7 +983,7 @@ not blocked. Currently, API Gateway [supports](https://docs.aws.amazon.com/apiga
 
 API Gateway provides a feature for metering your API's requests and you can choose [the source of key](https://docs.aws.amazon.com/apigateway/api-reference/resource/rest-api/#apiKeySource) which is used for metering. If you want to acquire that key from the request's X-API-Key header, set option like this:
 
-```yml
+```yaml
 service: my-service
 provider:
   name: aws
@@ -980,7 +999,7 @@ functions:
 
 Another option is AUTHORIZER. If you set this, API Gateway will acquire that key from UsageIdentifierKey which is provided by custom authorizer.
 
-```yml
+```yaml
 service: my-service
 provider:
   name: aws
@@ -1080,7 +1099,7 @@ Both templates give you access to the following properties you can access with t
 However you can define and use your own request templates as follows (you can even overwrite the default request templates
 by defining a new request template for an existing content type):
 
-```yml
+```yaml
 functions:
   create:
     handler: posts.create
@@ -1101,7 +1120,7 @@ functions:
 
 If you want to map querystrings to the event object, you can use the `$input.params('hub.challenge')` syntax from API Gateway, as follows:
 
-```yml
+```yaml
 functions:
   create:
     handler: posts.create
@@ -1121,7 +1140,7 @@ If you want to spread a string into multiple lines, you can use the `>` or `|` s
 
 In order to remove one of the default request templates you just need to pass it as null, as follows:
 
-```yml
+```yaml
 functions:
   create:
     handler: posts.create
@@ -1141,7 +1160,7 @@ API Gateway provides multiple ways to handle requests where the Content-Type hea
 
 You can define this behaviour as follows (if not specified, a value of **NEVER** will be used):
 
-```yml
+```yaml
 functions:
   create:
     handler: posts.create
@@ -1177,7 +1196,7 @@ osls lets you setup custom headers and a response template for your `http` event
 
 Here's an example which shows you how you can setup a custom response header:
 
-```yml
+```yaml
 functions:
   create:
     handler: posts.create
@@ -1201,7 +1220,7 @@ as `"'max-age=120'"` means API Gateway will receive the value as `'max-age=120'`
 Sometimes you'll want to define a custom response template API Gateway should use to transform your lambdas output.
 Here's an example which will transform the return value of your lambda so that the browser renders it as HTML:
 
-```yml
+```yaml
 functions:
   create:
     handler: posts.create
@@ -1267,7 +1286,7 @@ If you specify a status code with a pattern of '' that will become the default r
 
 If you omit any default status code. A standard default 200 status code will be generated for you.
 
-```yml
+```yaml
 functions:
   create:
     handler: posts.create
@@ -1292,7 +1311,7 @@ functions:
 
 You can also create varying response templates for each code and content type by creating an object with the key as the content type
 
-```yml
+```yaml
 functions:
   create:
     handler: posts.create
@@ -1322,7 +1341,7 @@ functions:
 To set up an HTTP proxy, you'll need two CloudFormation templates, one for the endpoint (known as resource in CF), and
 one for method. These two templates will work together to construct your proxy. So if you want to set `your-app.com/serverless` as a proxy for `example.com`, you'll need the following two templates in your `serverless.yml`:
 
-```yml
+```yaml
 service: service-name
 provider: aws
 functions: ...
@@ -1369,7 +1388,7 @@ If you have an Edge Optimized or Regional API Gateway, you can access the intern
 
 We can use following configuration to have an http-proxy vpc-link integration.
 
-```yml
+```yaml
 - http:
     path: v1/repository
     method: get
@@ -1386,7 +1405,7 @@ We can use following configuration to have an http-proxy vpc-link integration.
 
 Mocks allow developers to offer simulated methods for an API, with this, responses can be defined directly, without the need for a integration backend. A simple mock response example is provided below:
 
-```yml
+```yaml
 functions:
   hello:
     handler: handler.hello
@@ -1410,7 +1429,7 @@ functions:
 
 As your application grows, you will likely need to break it out into multiple, smaller services. By default, each Serverless project generates a new API Gateway. However, you can share the same API Gateway between multiple projects by referencing its REST API ID and Root Resource ID in `serverless.yml` as follows:
 
-```yml
+```yaml
 service: service-name
 provider:
   name: aws
@@ -1425,7 +1444,7 @@ functions: ...
 
 If your application has many nested paths, you might also want to break them out into smaller services.
 
-```yml
+```yaml
 service: service-a
 provider:
   apiGateway:
@@ -1443,7 +1462,7 @@ functions:
           path: /posts
 ```
 
-```yml
+```yaml
 service: service-b
 provider:
   apiGateway:
@@ -1463,7 +1482,7 @@ functions:
 
 The above example services both reference the same parent path `/posts`. However, Cloudformation will throw an error if we try to generate an existing path resource. To avoid that, we reference the resource ID of `/posts`:
 
-```yml
+```yaml
 service: service-a
 provider:
   apiGateway:
@@ -1477,7 +1496,7 @@ provider:
 functions: ...
 ```
 
-```yml
+```yaml
 service: service-b
 provider:
   apiGateway:
@@ -1494,7 +1513,7 @@ functions: ...
 You can define more than one path resource, but by default, osls will generate them from the root resource.
 `restApiRootResourceId` is optional if a path resource isn't required for the root (`/`).
 
-```yml
+```yaml
 service: service-a
 provider:
   apiGateway:
@@ -1526,7 +1545,7 @@ functions:
 
 You can define your API Gateway resource in its own service and export the `restApiId`, `restApiRootResourceId` and `websocketApiId` using cloudformation cross-stack references.
 
-```yml
+```yaml
 service: my-api
 
 provider:
@@ -1574,7 +1593,7 @@ resources:
 This creates API gateway and then exports the `restApiId`, `rootResourceId` and `websocketApiId` values using cloudformation cross stack output.
 We will import this and reference in future services.
 
-```yml
+```yaml
 service: service-a
 
 provider:
@@ -1589,7 +1608,7 @@ provider:
 functions: service-a-functions
 ```
 
-```yml
+```yaml
 service: service-b
 
 provider:
@@ -1613,7 +1632,7 @@ You can use this method to share your API Gateway across services in same region
 Use AWS console on browser, navigate to the API Gateway console. Select your already existing API Gateway.
 Top Navbar should look like this
 
-```
+```text
     APIs>apigateway-Name (xxxxxxxxxx)>Resources>/ (yyyyyyyyyy)
 ```
 
@@ -1623,7 +1642,7 @@ Here xxxxxxxxx is your restApiId and yyyyyyyyyy the restApiRootResourceId.
 
 AWS API Gateway allows only 1 Authorizer for 1 ARN, This is okay when you use conventional serverless setup, because each stage and service will create different API Gateway. But this can cause problem when using authorizers with shared API Gateway. If we use the same authorizer directly in different services like this.
 
-```yml
+```yaml
 service: service-c
 
 provider:
@@ -1642,7 +1661,7 @@ functions:
           arn: xxxxxxxxxxxxxxxxx #cognito/custom authorizer arn
 ```
 
-```yml
+```yaml
 service: service-d
 
 provider:
@@ -1669,7 +1688,7 @@ A proper fix for this to work is using [Share Authorizer](#share-authorizer) or 
 
 Auto-created Authorizer is convenient for conventional setup. However, when you need to define your custom Authorizer, or use `COGNITO_USER_POOLS` authorizer with shared API Gateway, it is painful because of AWS limitation. Sharing Authorizer is a better way to do.
 
-```yml
+```yaml
 functions:
   createUser:
      ...
@@ -1717,7 +1736,7 @@ resources:
 
 Resource policies are policy documents that are used to control the invocation of the API. Find more use cases from the [Apigateway Resource Policies](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-resource-policies.html) documentation.
 
-```yml
+```yaml
 provider:
   name: aws
   runtime: nodejs24.x
@@ -1739,7 +1758,7 @@ provider:
 
 API Gateway allows for clients to receive [compressed payloads](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-gzip-compression-decompression.html), and supports various [content encodings](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-enable-compression.html#api-gateway-supported-content-encodings).
 
-```yml
+```yaml
 provider:
   name: aws
   apiGateway:
@@ -1752,7 +1771,7 @@ API Gateway makes it possible to return binary media such as images or files as 
 
 To return binary media in proxy integration, set the `binaryMediaTypes` config:
 
-```yml
+```yaml
 provider:
   apiGateway:
     binaryMediaTypes:
@@ -1781,11 +1800,30 @@ module.exports.handler = async () => ({
 });
 ```
 
+### Converting payload encoding with `contentHandling`
+
+For the non-proxy `lambda` integration you can have API Gateway convert the payload encoding between text and binary as it passes a request to, or a response from, your function. Set `request.contentHandling` to control the request payload and `response.contentHandling` to control the response payload. Both accept `CONVERT_TO_BINARY` (Base64-decode a text payload into binary) or `CONVERT_TO_TEXT` (Base64-encode a binary payload into text). See the [AWS documentation on content type conversions](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-payload-encodings-workflow.html).
+
+```yaml
+functions:
+  binaryExample:
+    handler: binaryExample.handler
+    events:
+      - http:
+          path: binary
+          method: post
+          integration: lambda
+          request:
+            contentHandling: CONVERT_TO_BINARY
+          response:
+            contentHandling: CONVERT_TO_TEXT
+```
+
 ## Detailed CloudWatch Metrics
 
 Use the following configuration to enable detailed CloudWatch Metrics:
 
-```yml
+```yaml
 provider:
   apiGateway:
     metrics: true
@@ -1795,7 +1833,7 @@ provider:
 
 API Gateway supports a form of out of the box distributed tracing via [AWS X-Ray](https://aws.amazon.com/xray/) though enabling [active tracing](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-xray.html). To enable this feature for your serverless application's API Gateway add the following to your `serverless.yml`
 
-```yml
+```yaml
 # serverless.yml
 
 provider:
@@ -1810,7 +1848,7 @@ provider:
 
 API Gateway stages will be tagged with the `tags` and `stackTags` values defined at the `provider` level:
 
-```yml
+```yaml
 # serverless.yml
 
 provider:
@@ -1825,7 +1863,7 @@ provider:
 
 Use the following configuration to enable API Gateway logs:
 
-```yml
+```yaml
 # serverless.yml
 provider:
   name: aws
@@ -1842,7 +1880,7 @@ To be able to write logs, API Gateway [needs a CloudWatch role configured](https
 - Let osls create and assign an IAM role for you (default behavior). Note that since this is a shared setting, this role is not removed when you remove the deployment.
 - Let osls assign an existing IAM role that you created before the deployment, if not already assigned:
 
-  ```yml
+  ```yaml
   # serverless.yml
   provider:
     logs:
@@ -1852,7 +1890,7 @@ To be able to write logs, API Gateway [needs a CloudWatch role configured](https
 
 - Do not let osls manage the CloudWatch role configuration. In this case, you would create and assign the IAM role yourself, e.g. in a separate "account setup" deployment:
 
-  ```yml
+  ```yaml
   provider:
     logs:
       restApi:
@@ -1863,13 +1901,13 @@ To be able to write logs, API Gateway [needs a CloudWatch role configured](https
 
 By default, API Gateway access logs will use the following format:
 
-```
+```text
 'requestId: $context.requestId, ip: $context.identity.sourceIp, caller: $context.identity.caller, user: $context.identity.user, requestTime: $context.requestTime, httpMethod: $context.httpMethod, resourcePath: $context.resourcePath, status: $context.status, protocol: $context.protocol, responseLength: $context.responseLength'
 ```
 
 You can specify your own [format for API Gateway Access Logs](https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-logging.html#apigateway-cloudwatch-log-formats) by including your preferred string in the `format` property:
 
-```yml
+```yaml
 # serverless.yml
 provider:
   name: aws
@@ -1880,7 +1918,7 @@ provider:
 
 The default API Gateway log level will be INFO. You can change this to error with the following:
 
-```yml
+```yaml
 # serverless.yml
 provider:
   name: aws
@@ -1893,7 +1931,7 @@ Valid values are INFO, ERROR.
 
 The existence of the `logs` property enables both access and execution logging. If you want to disable one or both of them, you can do so with the following:
 
-```yml
+```yaml
 # serverless.yml
 provider:
   name: aws
@@ -1905,7 +1943,7 @@ provider:
 
 By default, the full requests and responses data will be logged. If you want to disable like so:
 
-```yml
+```yaml
 # serverless.yml
 provider:
   name: aws
@@ -1916,7 +1954,7 @@ provider:
 
 Websockets have the same configuration options as the the REST API. Example:
 
-```yml
+```yaml
 # serverless.yml
 provider:
   name: aws
@@ -1930,7 +1968,7 @@ provider:
 
 By default, clients can invoke your API with the default https://{api_id}.execute-api.{region}.amazonaws.com endpoint. To require that clients use a custom domain name to invoke your API, disable the default endpoint.
 
-```yml
+```yaml
 provider:
   apiGateway:
     disableDefaultEndpoint: true
@@ -1940,10 +1978,27 @@ provider:
 
 By default, the API Gateway stage will be same as the serverless stage. This can be overridden by passing stage under the apiGateway configuration under provider.
 
-```yml
+```yaml
 provider:
   apiGateway:
     stage: customStageName
+```
+
+## Custom API name scheme
+
+By default, the REST API is named `${stage}-${service}` (for example `dev-myService`). Set `provider.apiGateway.shouldStartNameWithService` to `true` to flip the order to `${service}-${stage}` (for example `myService-dev`):
+
+```yaml
+provider:
+  apiGateway:
+    shouldStartNameWithService: true
+```
+
+To set the API name explicitly instead, use `provider.apiName`, which takes precedence over the scheme above:
+
+```yaml
+provider:
+  apiName: my-custom-api-name
 ```
 
 ## Timeout
@@ -1955,7 +2010,7 @@ and overriding it in the `http` event for specific functions.
 **Note:** This is particularly useful if you have requested an increase to the API Gateway integration timeout soft limit
 in AWS (which previously had a hard limit of 29 seconds).
 
-```yml
+```yaml
 provider:
   apiGateway:
     timeoutInMillis: 10000 # Default timeout of 10 seconds for all endpoints
@@ -1975,3 +2030,7 @@ functions:
           method: post
           timeoutInMillis: 40000 # Override: 40-second timeout for this endpoint
 ```
+
+---
+
+[← All Events](./README.md) · [Docs Home](../README.md)

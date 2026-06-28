@@ -21,13 +21,13 @@ All AWS users get access to the Free Tier for [AWS Lambda](https://aws.amazon.co
 
 If you're new to Amazon Web Services, make sure you put in a credit card. If you don't have a credit card set up, you may not be able to deploy your resources and you may run into this error:
 
-```
+```text
 AWS Access Key Id needs a subscription for the service
 ```
 
 ## Create an IAM User and Access Key
 
-Now that you have an AWS account, you need to configure AWS credentials so that `serverless` can deploy to AWS. For that, you can create AWS access keys and configure them on your machine.
+Now that you have an AWS account, you need to configure AWS credentials so that `osls` can deploy to AWS. For that, you can create AWS access keys and configure them on your machine.
 
 ### Creating AWS Access Keys
 
@@ -62,7 +62,7 @@ As a quick setup to get started you can export them as environment variables so 
 ```bash
 export AWS_ACCESS_KEY_ID=<your-key-here>
 export AWS_SECRET_ACCESS_KEY=<your-secret-key-here>
-# AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are now available for serverless to use
+# AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are now available for osls to use
 osls deploy
 
 # 'export' command is valid only for unix shells
@@ -123,7 +123,7 @@ Credentials are stored in INI format in `~/.aws/credentials`, which you can edit
 
 You can even set up different profiles for different accounts, which can be used by osls as well. To specify a default profile to use, you can add a `profile` setting to your `provider` configuration in `serverless.yml`:
 
-```yml
+```yaml
 service: new-service
 provider:
   name: aws
@@ -151,7 +151,7 @@ Now you can switch per project (/ API) by executing once when you start your pro
 
 `export AWS_PROFILE="profileName2"`.
 
-in the Terminal. Now everything is set to execute all the `serverless` CLI options like `osls deploy`.
+in the Terminal. Now everything is set to execute all the `osls` CLI options like `osls deploy`.
 
 ##### Using the `aws-profile` option
 
@@ -171,7 +171,7 @@ As an advanced use-case, you can deploy different stages to different accounts b
 
 This example `serverless.yml` snippet will load the profile depending upon the stage specified in the command line options (or default to 'dev' if unspecified);
 
-```yml
+```yaml
 service: new-service
 provider:
   name: aws
@@ -198,13 +198,13 @@ That allows the deployment (and all other CLI commands) to be performed under a 
 
 Note that `serverless.yml` also offers the `provider.iam.deploymentRole` option. This lets us force CloudFormation to use a different role when deploying:
 
-```yml
+```yaml
 provider:
   iam:
     deploymentRole: arn:aws:iam::123456789012:role/deploy-role
 ```
 
-It is important to understand that `deploymentRole` only affects the role CloudFormation will assume. All other interactions from the `serverless` CLI with AWS will not use that `deploymentRole`.
+It is important to understand that `deploymentRole` only affects the role CloudFormation will assume. All other interactions from the `osls` CLI with AWS will not use that `deploymentRole`.
 
 This is why we usually recommend using the "assume role" method described above instead of `deploymentRole`.
 

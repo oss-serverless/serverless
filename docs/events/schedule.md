@@ -44,6 +44,25 @@ functions:
             inputTemplate: '{"time": <eventTime>, "key1": "value1"}'
 ```
 
+## Customizing the invocation event
+
+The `input` option lets you control the event payload passed to the function. You can supply a plain string, or an object that is serialized to JSON.
+
+As a special case, when `input` is an object whose only key is `body`, the `body` string is JSON-parsed before the whole `input` is stringified. This lets you embed a JSON document as the event body without double-escaping it. `body` is mutually exclusive with any other top-level `input` keys.
+
+```yaml
+functions:
+  crawl:
+    handler: crawl.handler
+    events:
+      - schedule:
+          rate: rate(1 hour)
+          input:
+            body: '{ "message": "hello" }'
+```
+
+The function above receives `{ "body": { "message": "hello" } }` as its event, with `body` already parsed into an object.
+
 ## Specify Name and Description
 
 Name and Description can be specified for a schedule event. These are not required properties.
@@ -111,3 +130,7 @@ functions:
             key1: value1
             key2: value2
 ```
+
+---
+
+[← All Events](./README.md) · [Docs Home](../README.md)

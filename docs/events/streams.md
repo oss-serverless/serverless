@@ -9,7 +9,22 @@ The ARN for the stream can be specified as a string, the reference to the ARN of
 
 **Note:** The `stream` event will hook up your existing streams to a Lambda function. osls won't create a new stream for you.
 
-```yml
+Summary:
+
+- [Setting the BatchSize and StartingPosition](#setting-the-batchsize-and-startingposition)
+  - [Setting the Kinesis StartingPosition](#setting-the-kinesis-startingposition)
+- [Setting the BatchWindow](#setting-the-batchwindow)
+- [Setting BisectBatchOnFunctionError](#setting-bisectbatchonfunctionerror)
+- [Setting the MaximumRetryAttempts](#setting-the-maximumretryattempts)
+- [Setting the MaximumRecordAgeInSeconds](#setting-the-maximumrecordageinseconds)
+- [Setting the OnFailure destination](#setting-the-onfailure-destination)
+- [Setting the ParallelizationFactor](#setting-the-parallelizationfactor)
+- [Setting the FunctionResponseTypes](#setting-the-functionresponsetypes)
+- [Using a Kinesis Data Streams Enhanced Fan-out](#using-a-kinesis-data-streams-enhanced-fan-out)
+- [Setting TumblingWindowInSeconds](#setting-tumblingwindowinseconds)
+- [Setting filter patterns](#setting-filter-patterns)
+
+```yaml
 functions:
   compute:
     handler: handler.compute
@@ -63,7 +78,7 @@ functions:
 This configuration sets up a disabled Kinesis stream event for the `preprocess` function which has a batch size of `100`. The starting position is
 `LATEST`.
 
-```yml
+```yaml
 functions:
   preprocess:
     handler: handler.preprocess
@@ -81,7 +96,7 @@ functions:
 This configuration sets up a disabled Kinesis stream event for the `preprocess` function. The starting position is
 `AT_TIMESTAMP` and the timestamp value is `1000000001`.
 
-```yml
+```yaml
 functions:
   preprocess:
     handler: handler.preprocess
@@ -108,7 +123,7 @@ The `batchWindow` property specifies a maximum amount of time to wait before tri
 
 For more information, read the [AWS release announcement](https://aws.amazon.com/about-aws/whats-new/2019/09/aws-lambda-now-supports-custom-batch-window-for-kinesis-and-dynamodb-event-sources/) for this property.
 
-```yml
+```yaml
 functions:
   preprocess:
     handler: handler.preprocess
@@ -126,7 +141,7 @@ This configuration provides the ability to recursively split a failed batch and 
 
 [Related AWS documentation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-lambda-eventsourcemapping.html#cfn-lambda-eventsourcemapping-bisectbatchonfunctionerror)
 
-```yml
+```yaml
 functions:
   preprocess:
     handler: handler.preprocess
@@ -144,7 +159,7 @@ This configuration sets up the maximum number of times to retry when the functio
 
 [Related AWS documentation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-lambda-eventsourcemapping.html#cfn-lambda-eventsourcemapping-maximumretryattempts)
 
-```yml
+```yaml
 functions:
   preprocess:
     handler: handler.preprocess
@@ -165,7 +180,7 @@ This configuration sets up the maximum age of a record that Lambda sends to a fu
 
 [Related AWS documentation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-lambda-eventsourcemapping.html#cfn-lambda-eventsourcemapping-maximumrecordageinseconds)
 
-```yml
+```yaml
 functions:
   preprocess:
     handler: handler.preprocess
@@ -187,7 +202,7 @@ The ARN for the SNS or SQS can be specified as a string, the reference to the AR
 
 **Note:** The `destinationConfig` will hook up your existing SNS or SQS resources. osls won't create a new SNS or SQS for you.
 
-```yml
+```yaml
 functions:
   preprocess1:
     handler: handler.preprocess
@@ -249,7 +264,7 @@ The `parallelizationFactor` property specifies the number of concurrent Lambda i
 
 For more information, read the [AWS release announcement](https://aws.amazon.com/blogs/compute/new-aws-lambda-scaling-controls-for-kinesis-and-dynamodb-event-sources/) for this property.
 
-```yml
+```yaml
 functions:
   preprocess:
     handler: handler.preprocess
@@ -265,7 +280,7 @@ This configuration allows customers to automatically checkpoint records that hav
 
 For more information, read the [AWS release announcement](https://aws.amazon.com/about-aws/whats-new/2020/12/aws-lambda-launches-checkpointing-for-amazon-kinesis-and-amazon-dynamodb-streams/)
 
-```yml
+```yaml
 functions:
   preprocess:
     handler: handler.preprocess
@@ -283,7 +298,7 @@ The `consumer` property can be used to put a [stream consumer](https://docs.aws.
 
 The configuration below creates a new stream consumer.
 
-```yml
+```yaml
 functions:
   preprocess:
     handler: handler.preprocess
@@ -299,7 +314,7 @@ The configuration below uses the pre-existing stream consumer with the given ARN
 If you delete a consumer and then create a new one with the same name, it won't have the same ARN.
 That's because consumer ARNs contain the creation timestamp.
 
-```yml
+```yaml
 functions:
   preprocess:
     handler: handler.preprocess
@@ -324,7 +339,7 @@ For more information and examples, read the [AWS release announcement](https://a
 
 Note: osls only sets this property if you explicitly add it to the stream configuration (see example below).
 
-```yml
+```yaml
 functions:
   preprocess:
     handler: handler.preprocess
@@ -342,7 +357,7 @@ For more details and examples of filter patterns, please see the [AWS event filt
 
 Note: osls only sets this property if you explicitly add it to the stream configuration (see an example below). The following example will only process inserted items in the DynamoDB table (it will skip removed and modified items).
 
-```yml
+```yaml
 functions:
   handleInsertedDynamoDBItem:
     handler: handler.preprocess
@@ -352,3 +367,7 @@ functions:
           filterPatterns:
             - eventName: [INSERT]
 ```
+
+---
+
+[← All Events](./README.md) · [Docs Home](../README.md)

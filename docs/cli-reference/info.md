@@ -10,11 +10,8 @@ osls info
 
 - `--stage` or `-s` The stage in your service you want to display information about.
 - `--region` or `-r` The region in your stage that you want to display information about.
-- `--verbose` Shows displays any Stack Output.
-
-## Provided lifecycle events
-
-- `info:info`
+- `--verbose` Displays any Stack Output.
+- `--conceal` Hide secrets from the output (e.g. API Gateway key values).
 
 ## Examples
 
@@ -64,3 +61,7 @@ ScreenshotBucket: dev-svdgraaf-screenshots
 ServiceEndpoint: https://12341jc801.execute-api.us-east-1.amazonaws.com/dev
 ServerlessDeploymentBucketName: lambda-screenshots-dev-serverlessdeploymentbucket-15b7pkc04f98a
 ```
+
+---
+
+[← All Commands](./README.md) · [Docs Home](../README.md)

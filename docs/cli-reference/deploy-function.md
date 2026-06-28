@@ -6,16 +6,16 @@ The `osls deploy function` command deploys an individual function without AWS Cl
 osls deploy function -f functionName
 ```
 
-**Note:** This command **now** deploys both function configuration and code by
-default. Just as before, this puts your function in an inconsistent state that
-is out of sync with your CloudFormation stack. Use this for faster development
-cycles and not production deployments
+**Note:** This command deploys both function configuration and code by default.
+This puts your function in a state that is out of sync with your CloudFormation
+stack. Use this for faster development cycles and not production deployments.
 
 **Note:** This command is not supported for functions configured with `durableConfig` locally or already deployed with durable configuration in AWS. Use `osls deploy` so osls can publish a new durable function version and retarget the generated durable alias.
 
 ## Options
 
-- `--function` or `-f` The name of the function which should be deployed
+- `--function` or `-f` The name of the function which should be deployed. **Required**.
+- `--force` Forces a deployment to take place.
 - `--stage` or `-s` The stage in your service that you want to deploy to.
 - `--region` or `-r` The region in that stage that you want to deploy to.
 - `--update-config` or `-u` Pushes ONLY Lambda-level configuration changes e.g. handler, timeout or memorySize
@@ -41,3 +41,7 @@ osls deploy function --function helloWorld \
 ```bash
 osls deploy function --function helloWorld --update-config
 ```
+
+---
+
+[← All Commands](./README.md) · [Docs Home](../README.md)

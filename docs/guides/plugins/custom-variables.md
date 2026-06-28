@@ -96,15 +96,16 @@ class MyPlugin {
   constructor() {
     this.configurationVariablesSources = {
       foo: {
-        async resolve({ resolveVariable, options }) {
+        async resolve({ resolveVariable, resolveConfigurationProperty, options }) {
           // `options` is CLI options
           // `resolveVariable` resolves other variables (for example here: `${sls:stage}`)
           const stage = await resolveVariable('sls:stage');
-          // To retrieve a configuration value from serverless.yml, use the `self:xxx` variable source, for example:
-          // await resolveVariable('self:provider.region')
+          // To retrieve a configuration value from serverless.yml, use
+          // `resolveConfigurationProperty` with the property path as an array of keys:
+          const region = await resolveConfigurationProperty(['provider', 'region']);
 
           return {
-            value: `The stage is ${stage}`,
+            value: `The stage is ${stage} in ${region}`,
           };
         },
       },
@@ -112,3 +113,23 @@ class MyPlugin {
   }
 }
 ```
+
+### Resolver arguments
+
+The object passed to `resolve()` exposes the following members:
+
+- `address` — the variable address. In `${foo:some-variable}`, `address` is `some-variable`.
+- `params` — the variable parameters (see [Variable parameters](#variable-parameters)).
+- `options` — the CLI options passed to the command.
+- `resolveVariable(variableString)` — resolves a single variable expression (for example
+  `await resolveVariable('sls:stage')`) and returns its value.
+- `resolveConfigurationProperty(pathKeys)` — resolves a configuration value from
+  `serverless.yml` by property path, passed as an array of keys (for example
+  `await resolveConfigurationProperty(['provider', 'region'])`). Prefer this over the
+  `resolveVariable('self:...')` workaround.
+- `resolveVariablesInString(stringValue)` — resolves all variables embedded in an arbitrary
+  string and returns the interpolated result.
+- `serviceDir` — the absolute path of the service directory (where `serverless.yml` lives).
+  `servicePath` is a deprecated alias of `serviceDir` and will be removed in a future major
+  version; use `serviceDir` instead.
+- `isSourceFulfilled` — `true` when the source was already fully resolved in a previous pass.

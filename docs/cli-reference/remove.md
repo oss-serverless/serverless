@@ -12,10 +12,6 @@ osls remove
 - `--region` or `-r` The name of the region in stage.
 - `--verbose` Shows all stack events during deployment.
 
-## Provided lifecycle events
-
-- `remove:remove`
-
 ## Examples
 
 ### Removal of service in specific stage and region
@@ -25,3 +21,7 @@ osls remove --stage dev --region us-east-1
 ```
 
 This example will remove the deployed service of your current working directory with the stage `dev` and the region `us-east-1`.
+
+---
+
+[← All Commands](./README.md) · [Docs Home](../README.md)

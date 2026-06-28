@@ -4,13 +4,23 @@
 
 osls makes it possible to setup an [API Gateway powered](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-websocket-api-overview.html) Websocket backend with the help of the `websocket` event.
 
+Summary:
+
+- [Event Definition](#event-definition)
+- [Routes](#routes)
+- [Using Authorizers](#using-authorizers)
+- [Send a message to a ws-client](#send-a-message-to-a-ws-client)
+- [Respond to a ws-client message](#respond-to-a-ws-client-message)
+- [Logs](#logs)
+- [Tags](#tags)
+
 ## Event Definition
 
 ### Simple
 
 The following code will setup a websocket with a `$connect` route key:
 
-```yml
+```yaml
 functions:
   connectHandler:
     handler: handler.connectHandler
@@ -22,7 +32,7 @@ functions:
 
 This code will setup a websocket with a `$disconnect` route key:
 
-```yml
+```yaml
 functions:
   disconnectHandler:
     handler: handler.disconnectHandler
@@ -33,7 +43,7 @@ functions:
 
 This code will set up a [RouteResponse](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-websocket-api-route-response.html), enabling you to respond to websocket messages by returning an object whose `body` is sent back to the client:
 
-```yml
+```yaml
 functions:
   helloHandler:
     handler: handler.helloHandler
@@ -52,11 +62,11 @@ The API-Gateway provides [4 types of routes](https://docs.aws.amazon.com/apigate
 - `$default` called if there is no handler to use for the event
 - custom routes - called if the route name is specified for a handler
 
-### Example serverless.yaml
+### Example serverless.yml
 
-This Serverless yaml will specify handlers for the `$connect`, `$disconnect`, `$default` and the custom `foo` event.
+This `serverless.yml` specifies handlers for the `$connect`, `$disconnect`, `$default` and the custom `foo` event.
 
-```yml
+```yaml
 service: serverless-ws-test
 
 provider:
@@ -91,7 +101,7 @@ You can enable an authorizer for your connect route by specifying the `authorize
 
 **Note:** AWS only supports authorizers for the `$connect` route.
 
-```yml
+```yaml
 functions:
   connectHandler:
     handler: handler.connectHandler
@@ -105,7 +115,7 @@ functions:
 
 Or, if your authorizer function is not managed by this service, you can provide an arn instead:
 
-```yml
+```yaml
 functions:
   connectHandler:
     handler: handler.connectHandler
@@ -117,7 +127,7 @@ functions:
 
 By default, the `identitySource` property is set to `route.request.header.Auth`, meaning that your request must include the auth token in the `Auth` header of the request. You can overwrite this by specifying your own `identitySource` configuration:
 
-```yml
+```yaml
 functions:
   connectHandler:
     handler: handler.connectHandler
@@ -138,7 +148,7 @@ With the above configuration, you can now must pass the auth token in both the `
 
 You can also supply an ARN instead of the name when using the object syntax for the authorizer:
 
-```yml
+```yaml
 functions:
   connectHandler:
     handler: handler.connectHandler
@@ -197,7 +207,7 @@ module.exports.defaultHandler = async (event) => {
 
 To respond to a websocket message from your handler function, [Route Responses](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-websocket-api-route-response.html) can be used. Set the `routeResponseSelectionExpression` option to enable this. Your async handler can then return an object whose `body` is sent back to the websocket client.
 
-```yml
+```yaml
 functions:
   sayHelloHandler:
     handler: handler.sayHello
@@ -221,7 +231,7 @@ module.exports.sayHello = async (event) => {
 
 Use the following configuration to enable Websocket logs:
 
-```yml
+```yaml
 # serverless.yml
 provider:
   name: aws
@@ -233,7 +243,7 @@ The log streams will be generated in a dedicated log group which follows the nam
 
 The default log level will be INFO. You can change this to error with the following:
 
-```yml
+```yaml
 # serverless.yml
 provider:
   name: aws
@@ -246,7 +256,7 @@ Valid values are INFO, ERROR.
 
 You can specify your own [format for API Gateway Access Logs](https://docs.aws.amazon.com/apigateway/latest/developerguide/websocket-api-logging.html) by including your preferred string in the `format` property:
 
-```yml
+```yaml
 # serverless.yml
 provider:
   name: aws
@@ -257,7 +267,7 @@ provider:
 
 The existence of the `logs` property enables both access and execution logging. If you want to disable one or both of them, you can do so with the following:
 
-```yml
+```yaml
 # serverless.yml
 provider:
   name: aws
@@ -269,7 +279,7 @@ provider:
 
 By default, the full requests and responses data will be logged. If you want to disable like so:
 
-```yml
+```yaml
 # serverless.yml
 provider:
   name: aws
@@ -291,3 +301,7 @@ provider:
 ```
 
 In the above example, the tag project: myProject will be applied to API Gateway and API Gateway Stage.
+
+---
+
+[← All Events](./README.md) · [Docs Home](../README.md)

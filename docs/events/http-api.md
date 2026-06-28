@@ -11,6 +11,28 @@ This guide documents using API Gateway **v2 HTTP API** via the `httpApi` event.
 
 To use API Gateway **v1 REST API** instead, follow the [API Gateway REST API guide](apigateway.md).
 
+Summary:
+
+- [Event Definition](#event-definition)
+  - [General setup](#general-setup)
+  - [Catch-alls](#catch-alls)
+  - [Parameters](#parameters)
+  - [Endpoints timeout](#endpoints-timeout)
+  - [CORS Setup](#cors-setup)
+  - [JWT Authorizers](#jwt-authorizers)
+  - [Lambda (Request) Authorizers](#lambda-request-authorizers)
+  - [AWS IAM Authorization](#aws-iam-authorization)
+  - [Access logs](#access-logs)
+  - [Reusing HTTP API in different services](#reusing-http-api-in-different-services)
+- [HTTP API URL](#http-api-url)
+- [Shared Authorizer](#shared-authorizer)
+- [Event / payload format](#event--payload-format)
+- [Detailed Metrics](#detailed-metrics)
+- [Tags](#tags)
+- [Disable Default Endpoint](#disable-default-endpoint)
+- [Service Naming](#service-naming)
+- [Custom domains](#custom-domains)
+
 ## Event Definition
 
 ### General setup
@@ -323,7 +345,7 @@ The URL is also exported as a CloudFormation output under the `HttpApiUrl` outpu
 
 For external HTTP API you can use shared authorizer in similar manner to RestApi. When using shared Lambda custom authorizer, you need to set `type` to `request`. Example configuration could look like:
 
-```yml
+```yaml
 httpApi:
     id: xxxx # Required
 
@@ -437,7 +459,7 @@ _Note: If the API Gateway has any existing tags applied outside of osls, they wi
 
 By default, clients can invoke your API with the default https://{api_id}.execute-api.{region}.amazonaws.com endpoint. To require that clients use a custom domain name to invoke your API, disable the default endpoint.
 
-```yml
+```yaml
 provider:
   httpApi:
     disableDefaultEndpoint: true
@@ -449,7 +471,7 @@ You can use the `shouldStartNameWithService` option to change the naming scheme 
 
 You can also define your own name for the API instead of the default generated one and also define a description for it.
 
-```yml
+```yaml
 provider:
   httpApi:
     shouldStartNameWithService: true
@@ -461,7 +483,7 @@ provider:
 
 API Gateway generates URLs for HTTP APIs in the following format:
 
-```
+```text
 https://<random>.execute-api.<region>.amazonaws.com/
 ```
 
@@ -510,3 +532,7 @@ provider:
   httpApi:
     disableDefaultEndpoint: true
 ```
+
+---
+
+[← All Events](./README.md) · [Docs Home](../README.md)

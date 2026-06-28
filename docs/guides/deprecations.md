@@ -1,12 +1,14 @@
 # osls Deprecations
 
+To review the deprecations that were reported during your most recent command run, use the [`osls doctor`](../cli-reference/doctor.md) command.
+
 ## How to disable a specific deprecation
 
 To disable a deprecation, use the `SLS_DEPRECATION_DISABLE=CODE` environment variable. You can disable multiple deprecations via `SLS_DEPRECATION_DISABLE=CODE1,CODE2` or disable them all via `SLS_DEPRECATION_DISABLE=*`.
 
 Alternatively, you can set `disabledDeprecations` in `serverless.yml`:
 
-```yml
+```yaml
 service: myService
 disabledDeprecations:
   - CODE_1 # To disable specific deprecation with code "CODE_1"
@@ -40,7 +42,7 @@ Removal target: osls v5.0.0
 
 In osls v4, `variablesResolutionMode: 20210326` is accepted as a deprecated no-op. The current variables resolver is always used, so you can safely remove this property from your configuration.
 
-Learn more about configuration validation here: ./configuration-validation.md
+Learn more about [configuration validation](./configuration-validation.md).
 
 <a name="PROJECT_DIR"><div>&nbsp;</div></a>
 
@@ -52,7 +54,7 @@ Removal target: osls v5.0.0
 
 The `projectDir` option is no longer used and is ignored. Drop it to avoid future validation errors. The `projectDir` property is scheduled for removal from accepted configuration in osls v5.0.0.
 
-Learn more about configuration validation here: ./configuration-validation.md
+Learn more about [configuration validation](./configuration-validation.md).
 
 <a name="PROVIDER_IAM_SETTINGS_V3"><div>&nbsp;</div></a>
 

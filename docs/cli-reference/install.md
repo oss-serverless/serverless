@@ -11,10 +11,6 @@ osls install --url https://github.com/some/service
 - `--url` or `-u` The services Git URL (can be a plain Git or a Code Hosting Platform URL). **Required**.
 - `--name` or `-n` Name for the service. Also used as the target directory name.
 
-## Provided lifecycle events
-
-- `install:install`
-
 ## Supported Remote Sources
 
 - Plain Git URLs
@@ -49,3 +45,7 @@ osls install --url https://github.com/serverless/examples/tree/master/aws-node-r
 ```
 
 This example downloads the `aws-node-rest-api-with-dynamodb` service from a repository subdirectory.
+
+---
+
+[← All Commands](./README.md) · [Docs Home](../README.md)
