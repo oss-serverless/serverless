@@ -27,7 +27,7 @@ resources:
   # Additional AWS resources to deploy
 ```
 
-To create a new service, run the `serverless` command and check out the [Getting started guide](../getting-started.md).
+To create a new service, create a `serverless.yml` file and check out the [Getting started guide](../getting-started.md).
 
 ## Organization
 

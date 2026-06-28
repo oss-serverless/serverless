@@ -1,6 +1,6 @@
 # AWS - Deploy List
 
-The `sls deploy list [functions]` command will list information about your deployments.
+The `serverless deploy list [functions]` command will list information about your deployments.
 
 You can either see all available deployments in your S3 deployment bucket by running `serverless deploy list` or you can see the deployed functions by running `serverless deploy list functions`.
 

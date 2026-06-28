@@ -48,16 +48,16 @@ provider:
     MY_SECRET: ${file(./config.${opt:stage, 'dev'}.json):CREDS}
 ```
 
-If `sls deploy --stage qa` is run, the option `stage=qa` is used inside the `${file(./config.${opt:stage, 'dev'}.json):CREDS}` variable and it will resolve the `config.qa.json` file and use the `CREDS` key defined.
+If `serverless deploy --stage qa` is run, the option `stage=qa` is used inside the `${file(./config.${opt:stage, 'dev'}.json):CREDS}` variable and it will resolve the `config.qa.json` file and use the `CREDS` key defined.
 
 **How that works:**
 
-1. stage is set to `qa` from the option supplied to the `sls deploy --stage qa` command
+1. stage is set to `qa` from the option supplied to the `serverless deploy --stage qa` command
 2. `${opt:stage, 'dev'}` resolves to `qa` and is used in `${file(./config.${opt:stage, 'dev'}.json):CREDS}`
 3. `${file(./config.qa.json):CREDS}` is found & the `CREDS` value is read
 4. `MY_SECRET` value is set
 
-Likewise, if `sls deploy --stage prod` is run the `config.prod.json` file would be found and used.
+Likewise, if `serverless deploy --stage prod` is run the `config.prod.json` file would be found and used.
 
 If no `--stage` flag is provided, the fallback `dev` will be used and result in `${file(./config.dev.json):CREDS}`.
 

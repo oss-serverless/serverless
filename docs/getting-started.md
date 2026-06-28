@@ -12,61 +12,86 @@ npm install -g osls
 
 _Requires Node.js `^20.19.0 || ^22.13.0 || >=24`. If you don’t already have a supported Node.js version on your machine, [install it first](https://nodejs.org/)._
 
+The package installs the `osls`, `sls`, and `serverless` commands. This guide uses `serverless` because osls 3.x is intended as a drop-in replacement for Serverless Framework v3.
+
+## Configure AWS Credentials
+
+Before deploying, configure AWS credentials for the AWS account and region you want to use. See the [AWS credentials guide](./guides/credentials.md) for supported options.
+
 ## Creating A Service
 
-To create your first project (known as a service), run the `serverless` command below, then follow the prompts.
+A project is known as a service. Create a new service directory:
 
 ```bash
-# Create a new serverless project
-serverless
-
-# Move into the newly created directory
-cd your-service-name
+mkdir osls-hello
+cd osls-hello
 ```
 
-The `serverless` command will guide you to:
+Create `serverless.yml`:
 
-1. Create a new project
-2. Configure your [AWS credentials](./guides/credentials.md)
+```yaml
+service: osls-hello
 
-Your new serverless project will contain a `serverless.yml` file. This file features simple syntax for deploying infrastructure to AWS, such as AWS Lambda functions, infrastructure that triggers those functions with events, and additional infrastructure your AWS Lambda functions may need for various use-cases. You can learn more about this in the [Core Concepts documentation](./guides/intro.md).
+provider:
+  name: aws
+  runtime: nodejs24.x
+  region: us-east-1
+  stage: dev
 
-If you want to start from an example project, check out the [project examples from Serverless Inc. and our community](https://github.com/serverless/examples). You can install any example by passing a GitHub URL using the `--template-url` option:
-
-```bash
-serverless create --template-url=https://github.com/serverless/examples/tree/v3/...
+functions:
+  hello:
+    handler: handler.hello
+    url: true
 ```
 
-Please note that you can use `serverless` or `sls` to run osls commands.
+Create `handler.js`:
+
+```js
+'use strict';
+
+module.exports.hello = async () => ({
+  statusCode: 200,
+  headers: {
+    'Content-Type': 'text/plain',
+  },
+  body: 'Hello from osls!\n',
+});
+```
+
+The `serverless.yml` file defines your AWS Lambda functions, the events that trigger them, and any additional AWS infrastructure your functions need. This example creates a public [Lambda Function URL](./guides/functions.md#lambda-function-urls). You can learn more in the [Core Concepts documentation](./guides/intro.md).
+
+osls does not include a maintained catalog of built-in templates. If you want to start from a template, use a trusted remote Git URL or local template directory with the [`create` command](./cli-reference/create.md).
 
 ## Deploying
 
-If you haven't done so already within the `serverless` command, you can deploy the project at any time by running:
+Deploy the service:
 
 ```bash
-sls deploy
+serverless deploy
 ```
 
-The deployed AWS Lambda functions and other essential information such as API Endpoint URLs will be displayed in the command output.
+The deployed AWS Lambda functions and other essential information, such as Function URL endpoints, will be displayed in the command output.
 
 More details on deploying can be found [here](./guides/deploying.md).
 
-## Developing On The Cloud
+## Invoking Your Function
 
-Many osls users choose to develop on the cloud, since it matches reality and emulating Lambda locally can be complex. To develop on the cloud quickly, without sacrificing speed, we recommend the following workflow...
-
-To deploy code changes quickly, skip the `serverless deploy` command which is much slower since it triggers a full AWS CloudFormation update. Instead, deploy code and configuration changes to individual AWS Lambda functions in seconds via the `deploy function` command, with `-f [function name in serverless.yml]` set to the function you want to deploy.
+To retrieve service information, including the Function URL, run:
 
 ```bash
-sls deploy function -f my-api
+serverless info
 ```
 
-More details on the `deploy function` command can be found [here](./cli-reference/deploy-function.md).
-
-To invoke your AWS Lambda function on the cloud, you can find URLs for your functions w/ API endpoints in the `serverless deploy` output, or retrieve them via `serverless info`. If your functions do not have API endpoints, you can use the `invoke` command, like this:
+Open the Function URL from the deploy or info output in a browser, or test it with `curl`:
 
 ```bash
-sls invoke -f hello
+curl https://your-function-url-id.lambda-url.us-east-1.on.aws/
+```
+
+If your function does not have an HTTP endpoint, or if you want to invoke it through the AWS Lambda API, use the `invoke` command:
+
+```bash
+serverless invoke -f hello
 
 # Invoke and display logs:
 serverless invoke -f hello --log
@@ -74,34 +99,42 @@ serverless invoke -f hello --log
 
 More details on the `invoke` command can be found [here](./cli-reference/invoke.md).
 
-## Developing Locally
+## Developing On The Cloud
 
-Many osls users rely on local emulation to develop more quickly. Please note, emulating AWS Lambda and other cloud services is never accurate and the process can be complex. We recommend the following workflow to develop locally...
+Many osls users choose to develop on the cloud, since it matches reality and emulating Lambda locally can be complex. To deploy code changes quickly, skip the `serverless deploy` command, which is much slower since it triggers a full AWS CloudFormation update. Instead, deploy code and configuration changes to individual AWS Lambda functions in seconds via the `deploy function` command, with `-f [function name in serverless.yml]` set to the function you want to deploy.
+
+```bash
+serverless deploy function -f hello
+```
+
+More details on the `deploy function` command can be found [here](./cli-reference/deploy-function.md).
+
+## Developing Locally
 
 Use the `invoke local` command to invoke your function locally:
 
 ```bash
-sls invoke local -f my-api
+serverless invoke local -f hello
 ```
 
-You can also pass data to this local invocation via a variety of ways. Here's one of them:
+You can also pass data to this local invocation:
 
 ```bash
-serverless invoke local --function functionName --data '{"a":"bar"}'
+serverless invoke local --function hello --data '{"a":"bar"}'
 ```
 
-More details on the `invoke local` command can be found [here](./cli-reference/invoke-local.md)
+More details on the `invoke local` command can be found [here](./cli-reference/invoke-local.md).
 
 A popular plugin, `serverless-offline`, allows you to run a server locally and emulate AWS API Gateway.
 
-More details on the **serverless-offline** plugin command can be found [here](https://github.com/dherault/serverless-offline)
+More details on the **serverless-offline** plugin command can be found [here](https://github.com/dherault/serverless-offline).
 
 ## Remove Your Service
 
-If you want to delete your service, run `remove`. This will delete all the AWS resources created by your project and ensure that you don't incur any unexpected charges. It will also remove the service from Serverless Dashboard.
+If you want to delete your service, run `remove`. This will delete the AWS resources created by your project and ensure that you don't incur any unexpected charges.
 
 ```bash
-sls remove
+serverless remove
 ```
 
 More details on the `remove` command can be found [here](./cli-reference/remove.md).
