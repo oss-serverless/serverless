@@ -77,7 +77,7 @@ Now, the above class keeps business logic separate. Further, the code responsibl
 
 Further, this code doesn't require running any external services. Instead of real `db` and `mailer` services, we can pass mocks and assert that `db.saveUser` and `mailer.sendWelcomeEmail` have been called with the proper arguments.
 
-Unit Tests can easily be written to cover the above class. An integration test can be added by invoking the function (`serverless invoke`) with fixture email address, check if user is actually saved to DB and check if email was received to see if everything is working together.
+Unit Tests can easily be written to cover the above class. An integration test can be added by invoking the function (`osls invoke`) with fixture email address, check if user is actually saved to DB and check if email was received to see if everything is working together.
 
 ## Other
 

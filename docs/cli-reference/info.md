@@ -3,7 +3,7 @@
 Displays information about the deployed service.
 
 ```bash
-serverless info
+osls info
 ```
 
 ## Options
@@ -26,7 +26,7 @@ See the example below for an example output.
 **Example:**
 
 ```bash
-$ serverless info
+$ osls info
 
 Service Information
 service: my-serverless-service
@@ -45,7 +45,7 @@ functions:
 When using the `--verbose` flag, the `info` command will also append all Stack Outputs to the output:
 
 ```bash
-$ serverless info --verbose
+$ osls info --verbose
 
 Service Information
 service: my-serverless-service

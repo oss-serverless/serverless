@@ -101,7 +101,7 @@ The examples above show how to consume messages from an existing SQS queue. To c
 [Lift](https://github.com/getlift/lift) is a plugin that simplifies deploying pieces of applications via "[constructs](https://github.com/getlift/lift#constructs)". Lift can be installed via:
 
 ```
-serverless plugin install -n serverless-lift
+osls plugin install -n serverless-lift
 ```
 
 We can use the [`queue` construct](https://github.com/getlift/lift/blob/master/docs/queue.md) to deploy an SQS queue with its Lambda consumer:

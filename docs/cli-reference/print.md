@@ -9,7 +9,7 @@ or if the variables are resolving as you expect.
 With this command, it will print the fully-resolved config to your console.
 
 ```bash
-serverless print
+osls print
 ```
 
 ## Options
@@ -44,10 +44,10 @@ resources:
         BucketName: ${self:custom.bucketName}
 ```
 
-Using `sls print` will resolve the variables in `provider.stage` and `BucketName`.
+Using `osls print` will resolve the variables in `provider.stage` and `BucketName`.
 
 ```bash
-$ sls print
+$ osls print
 service: my-service
 custom:
   bucketName: test
@@ -69,11 +69,11 @@ resources:
 This prints the provider name:
 
 ```bash
-sls print --path provider.name --format text
+osls print --path provider.name --format text
 ```
 
 And this prints all function names:
 
 ```bash
-sls print --path functions --transform keys --format text
+osls print --path functions --transform keys --format text
 ```

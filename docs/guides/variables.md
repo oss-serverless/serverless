@@ -48,16 +48,16 @@ provider:
     MY_SECRET: ${file(./config.${opt:stage, 'dev'}.json):CREDS}
 ```
 
-If `sls deploy --stage qa` is run, the option `stage=qa` is used inside the `${file(./config.${opt:stage, 'dev'}.json):CREDS}` variable and it will resolve the `config.qa.json` file and use the `CREDS` key defined.
+If `osls deploy --stage qa` is run, the option `stage=qa` is used inside the `${file(./config.${opt:stage, 'dev'}.json):CREDS}` variable and it will resolve the `config.qa.json` file and use the `CREDS` key defined.
 
 **How that works:**
 
-1. stage is set to `qa` from the option supplied to the `sls deploy --stage qa` command
+1. stage is set to `qa` from the option supplied to the `osls deploy --stage qa` command
 2. `${opt:stage, 'dev'}` resolves to `qa` and is used in `${file(./config.${opt:stage, 'dev'}.json):CREDS}`
 3. `${file(./config.qa.json):CREDS}` is found & the `CREDS` value is read
 4. `MY_SECRET` value is set
 
-Likewise, if `sls deploy --stage prod` is run the `config.prod.json` file would be found and used.
+Likewise, if `osls deploy --stage prod` is run the `config.prod.json` file would be found and used.
 
 If no `--stage` flag is provided, the fallback `dev` will be used and result in `${file(./config.dev.json):CREDS}`.
 
@@ -173,7 +173,7 @@ functions:
     handler: handler.world
 ```
 
-In the above example, you're dynamically adding a prefix to the function names by referencing the `stage` option that you pass in the CLI when you run `serverless deploy --stage dev`. So when you deploy, the function name will always include the stage you're deploying to.
+In the above example, you're dynamically adding a prefix to the function names by referencing the `stage` option that you pass in the CLI when you run `osls deploy --stage dev`. So when you deploy, the function name will always include the stage you're deploying to.
 
 ## Reference CloudFormation Outputs
 
@@ -497,7 +497,7 @@ functions:
       - schedule: ${file(./scheduleConfig.js):rate} # Reference a specific module
 ```
 
-Address resolution follows the value's own properties. If a JS file exports (or its resolver function returns) a `Proxy`-backed object, address segments are resolved through the proxy's `get` handler instead. The keys `__proto__`, `prototype` and `constructor` are only followed when they are own properties of the value, so an address can never traverse into prototype internals. The same rules apply when such a value is reached another way — a `${self:...}` reference into a property that was populated from a `${file(...)}` variable, and `serverless print --path`, also follow a Proxy's `get` handler, with the same restriction on `__proto__`, `prototype` and `constructor`.
+Address resolution follows the value's own properties. If a JS file exports (or its resolver function returns) a `Proxy`-backed object, address segments are resolved through the proxy's `get` handler instead. The keys `__proto__`, `prototype` and `constructor` are only followed when they are own properties of the value, so an address can never traverse into prototype internals. The same rules apply when such a value is reached another way — a `${self:...}` reference into a property that was populated from a `${file(...)}` variable, and `osls print --path`, also follow a Proxy's `get` handler, with the same restriction on `__proto__`, `prototype` and `constructor`.
 
 ### Exporting a function
 
@@ -626,7 +626,7 @@ functions:
     handler: handler.hello
 ```
 
-What this says is to use the `stage` CLI option if it exists, if not, use the default stage (which lives in `provider.stage`). So during development you can safely deploy with `serverless deploy`, but during production you can do `serverless deploy --stage production` and the stage will be picked up for you without having to make any changes to `serverless.yml`.
+What this says is to use the `stage` CLI option if it exists, if not, use the default stage (which lives in `provider.stage`). So during development you can safely deploy with `osls deploy`, but during production you can do `osls deploy --stage production` and the stage will be picked up for you without having to make any changes to `serverless.yml`.
 
 You can have as many variable references as you want, from any source you want, and each of them can be of different type and different name.
 

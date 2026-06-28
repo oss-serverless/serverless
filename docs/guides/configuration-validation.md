@@ -8,7 +8,7 @@ If you were presented with configuration error (or a warning, depending on `conf
 - Configuration related to external plugin does not have an associated JSON Schema. In such cases, please report the issue with the plugin author and provide them the details on how to [extend validation schema](./plugins) in order to permanently correct the issue.
 - However unlikely, there may be a bug (or missing) schema configuration for osls. If you believe this to be the case please report at [https://github.com/oss-serverless/osls/issues/new](https://github.com/oss-serverless/osls/issues/new)
 
-**Note**: In a warning mode (with `configValidationMode: warn` set in configuration) osls commands are not blocked in any way, e.g. `sls deploy` will still attempt to deploy the service normally (still depending on the source of the warning, success of a deployment may vary)
+**Note**: In a warning mode (with `configValidationMode: warn` set in configuration) osls commands are not blocked in any way, e.g. `osls deploy` will still attempt to deploy the service normally (still depending on the source of the warning, success of a deployment may vary)
 
 When the setting is not explicitly specified, osls defaults to `configValidationMode: error`. If you find this functionality problematic, you may also turn it off with `configValidationMode: off` setting.
 

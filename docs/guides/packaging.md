@@ -7,13 +7,13 @@ Using the osls CLI tool, you can package your project without deploying it to AW
 Running the following command will build and save all of the deployment artifacts in the service's .serverless directory:
 
 ```bash
-serverless package
+osls package
 ```
 
 However, you can also use the --package option to add a destination path and osls will store your deployment artifacts there (./my-artifacts in the following case):
 
 ```bash
-serverless package --package my-artifacts
+osls package --package my-artifacts
 ```
 
 ## Package Configuration

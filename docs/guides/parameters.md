@@ -11,7 +11,7 @@ Parameters can be defined in `serverless.yml` or passed via CLI with `--param="<
 Parameters can be passed directly via CLI `--param` flag, following the pattern `--param="<key>=<value>"`:
 
 ```
-serverless deploy --param="domain=myapp.com" --param="key=value"
+osls deploy --param="domain=myapp.com" --param="key=value"
 ```
 
 Parameters can then be used via the `${param:XXX}` variables:

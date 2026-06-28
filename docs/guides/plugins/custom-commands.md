@@ -76,7 +76,7 @@ class MyPlugin {
 
     this.commands = {
       'my-command': {
-        // The 'usage' property is used to display the 'serverless --help' output
+        // The 'usage' property is used to display the 'osls --help' output
         usage: 'This is my new custom command!',
         lifecycleEvents: ['run'],
         options: {

@@ -7,7 +7,7 @@ osls was designed to provision your AWS Lambda Functions, Events and infrastruct
 This is the main method for doing deployments with osls:
 
 ```bash
-serverless deploy
+osls deploy
 ```
 
 Use this method when you have updated your Function, Event or Resource configuration in `serverless.yml` and you want to deploy that change (or multiple changes at the same time) to Amazon Web Services.
@@ -49,9 +49,9 @@ provider:
 - Use this in your CI/CD systems, as it is the safest method of deployment.
 - You can print the progress during the deployment if you use `verbose` mode, like this:
   ```
-  serverless deploy --verbose
+  osls deploy --verbose
   ```
-- This method uses the AWS CloudFormation Stack Update method. CloudFormation is slow, so this method is slower. If you want to develop more quickly, use the `serverless deploy function` command (described below)
+- This method uses the AWS CloudFormation Stack Update method. CloudFormation is slow, so this method is slower. If you want to develop more quickly, use the `osls deploy function` command (described below)
 
 - This method defaults to `dev` stage and `us-east-1` region. You can change the default stage and region in your `serverless.yml` file by setting the `stage` and `region` properties inside a `provider` object as the following example shows:
 
@@ -68,7 +68,7 @@ provider:
 - You can also deploy to different stages and regions by passing in flags to the command:
 
   ```
-  serverless deploy --stage production --region eu-central-1
+  osls deploy --stage production --region eu-central-1
   ```
 
 - You can specify your own S3 bucket which should be used to store all the deployment artifacts.
@@ -94,7 +94,7 @@ Check out the [deploy command docs](../cli-reference/deploy.md) for all details 
 This deployment method does not touch your AWS CloudFormation Stack. Instead, it simply overwrites the zip file of the current function on AWS. This method is much faster, since it does not rely on CloudFormation.
 
 ```bash
-serverless deploy function --function myFunction
+osls deploy function --function myFunction
 ```
 
 -**Note:** You can always enforce a deployment using the `--force` option. -**Note:** You can use `--update-config` to change only Lambda configuration without deploying code.
@@ -109,19 +109,19 @@ serverless deploy function --function myFunction
 ### Tips
 
 - Use this when you are developing and want to test on AWS because it's much faster.
-- During development, people will often run this command several times, as opposed to `serverless deploy` which is only run when larger infrastructure provisioning is required.
+- During development, people will often run this command several times, as opposed to `osls deploy` which is only run when larger infrastructure provisioning is required.
 
 Check out the [deploy command docs](../cli-reference/deploy.md) for all details and options.
 
 ## Deploying a package
 
-This deployment option takes a deployment directory that has already been created with `serverless package` and deploys it to the cloud provider. This allows you to easily integrate CI / CD workflows with osls.
+This deployment option takes a deployment directory that has already been created with `osls package` and deploys it to the cloud provider. This allows you to easily integrate CI / CD workflows with osls.
 
 ```bash
-serverless deploy --package path-to-package
+osls deploy --package path-to-package
 ```
 
 ### How It Works
 
-- The argument to the `--package` flag is a directory that has been previously packaged by osls (with `serverless package`).
+- The argument to the `--package` flag is a directory that has been previously packaged by osls (with `osls package`).
 - The deploy process bypasses the package step and uses the existing package to deploy and update CloudFormation stacks.

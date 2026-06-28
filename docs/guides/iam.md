@@ -162,7 +162,7 @@ resources:
       Type: AWS::IAM::Role
       Properties:
         Path: /my/default/path/
-        RoleName: MyDefaultRole # required if you want to use 'serverless deploy --function' later on
+        RoleName: MyDefaultRole # required if you want to use 'osls deploy --function' later on
         AssumeRolePolicyDocument:
           Version: '2012-10-17'
           Statement:

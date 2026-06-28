@@ -3,7 +3,7 @@
 Uninstall an osls plugin and remove it from the services `plugins` array.
 
 ```bash
-serverless plugin uninstall --name pluginName
+osls plugin uninstall --name pluginName
 ```
 
 ## Options
@@ -21,5 +21,5 @@ The name must be a bare npm package name, such as `example-osls-plugin` or `@exa
 ### Remove the `example-osls-plugin` plugin
 
 ```bash
-serverless plugin uninstall --name example-osls-plugin
+osls plugin uninstall --name example-osls-plugin
 ```

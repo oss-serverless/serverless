@@ -124,20 +124,20 @@ When you deploy a service, all functions, events and resources in `serverless.ym
 To deploy a service, run the `deploy` command in the same directory as `serverless.yml`:
 
 ```bash
-serverless deploy
+osls deploy
 ```
 
 Deployment defaults to `dev` stage and `us-east-1` region on AWS. You can deploy to a different stage or region via CLI options:
 
 ```bash
-serverless deploy --stage prod --region us-east-1
+osls deploy --stage prod --region us-east-1
 ```
 
 Check out the [deployment guide](./deploying.md) to learn more about deployments and how they work. Or, check out the [`deploy` command reference](../cli-reference/deploy) to see all the options available.
 
 ## Removal
 
-To easily remove your service from your AWS account, you can use the `serverless remove` command.
+To easily remove your service from your AWS account, you can use the `osls remove` command.
 
 The removal process will only remove the service on your provider's infrastructure (including all the resources mentioned in `serverless.yml`). The service directory will still remain on your local machine, so you can still modify and (re)deploy it to another stage, region or provider later on.
 
@@ -203,7 +203,7 @@ To execute the locally installed CLI executable you have to reference the binary
 Example:
 
 ```bash
-npx serverless deploy
+npx osls deploy
 ```
 
 or

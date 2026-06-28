@@ -11,7 +11,7 @@ layout: Doc
 Creates sample Lambda function payloads for different types of events.
 
 ```bash
-serverless generate-event --type eventType
+osls generate-event --type eventType
 ```
 
 ## Options
@@ -40,17 +40,17 @@ serverless generate-event --type eventType
 ### Generate SQS event payload
 
 ```bash
-serverless generate-event -t aws:sqs
+osls generate-event -t aws:sqs
 ```
 
 ### Generate Kinesis event payload with body
 
 ```bash
-serverless generate-event -t aws:kinesis -b '{"foo": "bar"}'
+osls generate-event -t aws:kinesis -b '{"foo": "bar"}'
 ```
 
 ### Generate SQS event and save it to a file
 
 ```bash
-serverless generate-event -t aws:sqs > event.json
+osls generate-event -t aws:sqs > event.json
 ```

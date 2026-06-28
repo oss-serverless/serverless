@@ -1,9 +1,9 @@
 # AWS - deploy
 
-The `sls deploy` command deploys your entire service via CloudFormation. Run this command when you have made infrastructure changes (i.e., you edited `serverless.yml`). Use `serverless deploy function -f myFunction` when you have made code changes and you want to quickly upload your updated code to AWS Lambda or just change function configuration.
+The `osls deploy` command deploys your entire service via CloudFormation. Run this command when you have made infrastructure changes (i.e., you edited `serverless.yml`). Use `osls deploy function -f myFunction` when you have made code changes and you want to quickly upload your updated code to AWS Lambda or just change function configuration.
 
 ```bash
-serverless deploy
+osls deploy
 ```
 
 ## Options
@@ -21,14 +21,14 @@ serverless deploy
 
 ## Artifacts
 
-After the `serverless deploy` command runs, the framework runs `serverless package` in the background first then deploys the generated package.
+After the `osls deploy` command runs, the framework runs `osls package` in the background first then deploys the generated package.
 
 ## Examples
 
 ### Deployment without stage and region options
 
 ```bash
-serverless deploy
+osls deploy
 ```
 
 This is the simplest deployment usage possible. With this command osls will deploy your service to the defined
@@ -37,7 +37,7 @@ provider in the default stage (`dev`) to the default region (`us-east-1`).
 ### Deployment with stage and region options
 
 ```bash
-serverless deploy --stage production --region eu-central-1
+osls deploy --stage production --region eu-central-1
 ```
 
 With this example we've defined that we want our service to be deployed to the `production` stage in the region
@@ -46,7 +46,7 @@ With this example we've defined that we want our service to be deployed to the `
 ### Deployment from a pre-packaged directory
 
 ```bash
-serverless deploy --package /path/to/package/directory
+osls deploy --package /path/to/package/directory
 ```
 
 With this example, the packaging step will be skipped and the CLI will start deploying the package from the `/path/to/package/directory` directory.
@@ -56,5 +56,5 @@ With this example, the packaging step will be skipped and the CLI will start dep
 - `SLS_AWS_MONITORING_FREQUENCY` allows the adjustment of the deployment monitoring frequency time in ms, default is `5000`.
 
 ```bash
-SLS_AWS_MONITORING_FREQUENCY=10000 serverless deploy
+SLS_AWS_MONITORING_FREQUENCY=10000 osls deploy
 ```

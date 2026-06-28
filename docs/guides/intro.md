@@ -69,7 +69,7 @@ functions: # Your "Functions"
 resources: # The "Resources" your "Functions" use. Raw AWS CloudFormation goes in here.
 ```
 
-When deploying with the CLI via `serverless deploy`, everything in the configuration file is deployed at once.
+When deploying with the CLI via `osls deploy`, everything in the configuration file is deployed at once.
 
 [Learn more on configuring a service](./services.md)
 

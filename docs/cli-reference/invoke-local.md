@@ -3,7 +3,7 @@
 This runs your code locally by emulating the AWS Lambda environment. Please keep in mind, it's not a 100% perfect emulation, there may be some differences, but it works for the vast majority of users. We mock the `context` with simple mock data.
 
 ```bash
-serverless invoke local --function functionName
+osls invoke local --function functionName
 ```
 
 **Note:** Please refer to [this guide](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-set-up-simple-proxy.html#api-gateway-simple-proxy-for-lambda-input-format) for event data passing when your function uses the `http` event with a Lambda Proxy integration.
@@ -23,7 +23,7 @@ serverless invoke local --function functionName
   runtimes.
 * `--docker-arg` Pass additional arguments to docker run command when `--docker` is option used. e.g. `--docker-arg '-p 9229:9229' --docker-arg '-v /var:/host_var'`
 
-> **Security note:** When `serverless invoke local` receives a `--path` or `--contextPath` value ending in `.js`, the CLI loads it with Node.js (`require()`), which executes the file so it can export event or context data. Treat JavaScript input files and paths supplied by scripts or CI as trusted input. Prefer JSON or YAML files for event and context data from untrusted sources.
+> **Security note:** When `osls invoke local` receives a `--path` or `--contextPath` value ending in `.js`, the CLI loads it with Node.js (`require()`), which executes the file so it can export event or context data. Treat JavaScript input files and paths supplied by scripts or CI as trusted input. Prefer JSON or YAML files for event and context data from untrusted sources.
 
 ## Environment
 
@@ -37,7 +37,7 @@ set, that allows you to determine a local execution within your code.
 ### Local function invocation
 
 ```bash
-serverless invoke local --function functionName
+osls invoke local --function functionName
 ```
 
 This example will locally invoke your function.
@@ -45,23 +45,23 @@ This example will locally invoke your function.
 ### Local function invocation with data
 
 ```bash
-serverless invoke local --function functionName --data '{"a":"bar"}'
+osls invoke local --function functionName --data '{"a":"bar"}'
 ```
 
 ```bash
-serverless invoke local --function functionName --raw --data "hello world"
+osls invoke local --function functionName --raw --data "hello world"
 ```
 
 ### Local function invocation with data from standard input
 
 ```bash
-node dataGenerator.js | serverless invoke local --function functionName
+node dataGenerator.js | osls invoke local --function functionName
 ```
 
 ### Local function invocation with a data file
 
 ```bash
-serverless invoke local --function functionName --path lib/data.json
+osls invoke local --function functionName --path lib/data.json
 ```
 
 This example will pass the JSON data in the `lib/data.json` file (relative to the root of the service) while invoking the specified/deployed function.
@@ -80,13 +80,13 @@ Example `data.json`:
 ### Local function invocation with custom context
 
 ```bash
-serverless invoke local --function functionName --context '{"timeout":120}'
+osls invoke local --function functionName --context '{"timeout":120}'
 ```
 
 ### Local function invocation with context file
 
 ```bash
-serverless invoke local --function functionName \
+osls invoke local --function functionName \
   --contextPath lib/context.json
 ```
 
@@ -95,11 +95,11 @@ This example will pass the JSON context in the `lib/context.json` file (relative
 ### Local function invocation, setting environment variables
 
 ```bash
-serverless invoke local -f functionName -e VAR1=value1
+osls invoke local -f functionName -e VAR1=value1
 
 # Or more than one variable
 
-serverless invoke local -f functionName \
+osls invoke local -f functionName \
   -e VAR1=value1 \
   -e VAR2=value2
 ```
@@ -142,7 +142,7 @@ Lambda functions assume an _IAM role_ during execution: the framework creates th
 
 Unless you explicitly state otherwise, every call to the AWS SDK inside the lambda function is made using this role (a temporary pair of key / secret is generated and set by AWS as environment variables, `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`).
 
-When you use `serverless invoke local`, the situation is quite different: the role isn't available (the function is executed on your local machine), so unless you set a different user directly in the code (or via a key pair of environment variables), the AWS SDK will use the default profile specified inside your AWS credential configuration file.
+When you use `osls invoke local`, the situation is quite different: the role isn't available (the function is executed on your local machine), so unless you set a different user directly in the code (or via a key pair of environment variables), the AWS SDK will use the default profile specified inside your AWS credential configuration file.
 
 Take a look to the official AWS documentation (in this particular instance, for the javascript SDK, but should be similar for all SDKs):
 

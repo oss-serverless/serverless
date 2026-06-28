@@ -111,14 +111,14 @@ Versioned plugin configuration entries such as `example-osls-plugin@1.2.3` now f
 
 The legacy `plugins.localPath` option is still supported, but module names loaded from that directory must use npm package-name syntax. If you previously loaded uppercase local plugin names such as `MyPlugin` through `.serverless_plugins` or `plugins.localPath`, rename them to lowercase npm-style names or reference them with explicit `./` local paths.
 
-`serverless --help` and the `plugin` management commands skip invalid entries with a warning, so you can still inspect the service and fix the configuration.
+`osls --help` and the `plugin` management commands skip invalid entries with a warning, so you can still inspect the service and fix the configuration.
 
 ### `plugin install` accepts stricter package specs
 
-`serverless plugin install --name` now accepts only npm package names with optional semver ranges or npm dist-tags. Embedded literal quotes are rejected; quote the whole `--name` value at the shell level when the version range contains spaces or shell metacharacters:
+`osls plugin install --name` now accepts only npm package names with optional semver ranges or npm dist-tags. Embedded literal quotes are rejected; quote the whole `--name` value at the shell level when the version range contains spaces or shell metacharacters:
 
 ```bash
-serverless plugin install --name 'example-osls-plugin@^1.0.0 || 2'
+osls plugin install --name 'example-osls-plugin@^1.0.0 || 2'
 ```
 
 Package aliases, `file:`, `link:`, `workspace:`, `git+`, `github:`, `http:`, `https:`, `npm:`, tarball paths, absolute paths, and relative paths are no longer accepted by `plugin install`.
@@ -127,7 +127,7 @@ npm lifecycle scripts are ignored by default during plugin install. Pass `--allo
 
 ### `plugin uninstall` accepts package names only
 
-`serverless plugin uninstall --name` now accepts only a bare npm package name. Versioned package specs such as `example-osls-plugin@1.2.3` fail with `INVALID_PLUGIN_UNINSTALL_SPEC`.
+`osls plugin uninstall --name` now accepts only a bare npm package name. Versioned package specs such as `example-osls-plugin@1.2.3` fail with `INVALID_PLUGIN_UNINSTALL_SPEC`.
 
 ### `variablesResolutionMode: 20210219` is rejected
 
@@ -156,7 +156,7 @@ Remove `provider.eventBridge.useCloudFormation` from your configuration.
 If you previously relied on the legacy custom-resource path, migrate by:
 
 1. Removing (or commenting out) EventBridge event definitions.
-2. Running `serverless deploy` to remove the old resources.
+2. Running `osls deploy` to remove the old resources.
 3. Restoring the EventBridge events and deploying again.
 
 See [EventBridge](../events/event-bridge.md).
@@ -190,7 +190,7 @@ Packaging also now fails fast with `EVENT_INVOKE_CONFIG_CONDITIONAL_DESTINATION`
 
 ### `logs` and `metrics` time options are parsed strictly
 
-The `--startTime` option of `serverless logs` and the `--startTime` / `--endTime` options of `serverless metrics` are now parsed by a single strict parser:
+The `--startTime` option of `osls logs` and the `--startTime` / `--endTime` options of `osls metrics` are now parsed by a single strict parser:
 
 - Unix epoch values (e.g. `1469694264`) now work in both commands; they were documented but broken (in `logs` they silently produced a wrong time range, in `metrics` they failed). Digits-only values of 9+ characters are parsed as epoch seconds, or as epoch milliseconds when at or above `10^12` (13+ characters).
 - Dates and datetimes without an explicit UTC offset are now consistently interpreted as **UTC** in both commands. Previously `metrics` interpreted datetimes (e.g. `2016-07-01T10:00`) in the machine's local time zone.
@@ -328,8 +328,8 @@ See [Deprecations](./deprecations.md).
 
 ## New in v4
 
-- `provider.pruneFunctionVersions` — opt-in cleanup of old Lambda function and layer versions after a full `serverless deploy`, keeping the newest N. Replaces third-party version-pruning plugins. See [Functions](./functions.md).
-- `functions[].durableConfig` — AWS Lambda Durable Functions support: osls publishes a function version, generates a `durable` alias that event targets and Lambda Function URLs invoke through, and adds the required durable execution IAM permissions. Invoke durable executions with `serverless invoke --qualifier durable --durable-execution-name <name>`. See [AWS Lambda Durable Functions](./functions.md#aws-lambda-durable-functions).
+- `provider.pruneFunctionVersions` — opt-in cleanup of old Lambda function and layer versions after a full `osls deploy`, keeping the newest N. Replaces third-party version-pruning plugins. See [Functions](./functions.md).
+- `functions[].durableConfig` — AWS Lambda Durable Functions support: osls publishes a function version, generates a `durable` alias that event targets and Lambda Function URLs invoke through, and adds the required durable execution IAM permissions. Invoke durable executions with `osls invoke --qualifier durable --durable-execution-name <name>`. See [AWS Lambda Durable Functions](./functions.md#aws-lambda-durable-functions).
 
 ## Getting help
 
