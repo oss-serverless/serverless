@@ -1,6 +1,6 @@
 # AWS - Deploy Function
 
-The `sls deploy function` command deploys an individual function without AWS CloudFormation. This command simply swaps out the zip file that your CloudFormation stack is pointing toward. This is a much faster way of deploying changes in code.
+The `serverless deploy function` command deploys an individual function without AWS CloudFormation. This command simply swaps out the zip file that your CloudFormation stack is pointing toward. This is a much faster way of deploying changes in code.
 
 ```bash
 serverless deploy function -f functionName

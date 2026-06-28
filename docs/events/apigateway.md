@@ -1839,7 +1839,7 @@ The log streams will be generated in a dedicated log group which follows the nam
 
 To be able to write logs, API Gateway [needs a CloudWatch role configured](https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-logging.html). This setting is per region, shared by all the APIs. There are three approaches for handling it:
 
-- Let osls create and assign an IAM role for you (default behavior). Note that since this is a shared setting, this role is not removed when you remove the deployment.
+- Let serverless create and assign an IAM role for you (default behavior). Note that since this is a shared setting, this role is not removed when you remove the deployment.
 - Let osls assign an existing IAM role that you created before the deployment, if not already assigned:
 
   ```yml

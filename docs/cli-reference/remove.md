@@ -1,6 +1,6 @@
 # AWS - Remove
 
-The `sls remove` command will remove the deployed service, defined in your current working directory, from the provider.
+The `serverless remove` command will remove the deployed service, defined in your current working directory, from the provider.
 
 ```bash
 serverless remove

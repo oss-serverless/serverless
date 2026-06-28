@@ -7,7 +7,7 @@ osls does not include a maintained catalog of built-in template names. Use a loc
 **Create a service in a new folder using a local template:**
 
 ```bash
-osls create \
+serverless create \
   --template-path path/to/my/template/folder \
   --path myService
 ```
@@ -15,7 +15,7 @@ osls create \
 **Create a service in a new folder from a remote template:**
 
 ```bash
-osls create \
+serverless create \
   --template-url https://github.com/<owner>/<repo>/tree/<branch>/<template-directory> \
   --path myService
 ```
@@ -36,7 +36,7 @@ osls create \
 ### Creating a named service in a new directory using a local template
 
 ```bash
-osls create \
+serverless create \
   --template-path path/to/my/template/folder \
   --path my-new-service \
   --name my-new-service
@@ -49,7 +49,7 @@ Additionally osls will rename the service according to the name you provide. If 
 ### Creating a named service in a new directory from a remote template
 
 ```bash
-osls create \
+serverless create \
   --template-url https://github.com/<owner>/<repo>/tree/<branch>/<template-directory> \
   --path my-new-service \
   --name my-new-service

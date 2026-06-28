@@ -151,7 +151,7 @@ Now you can switch per project (/ API) by executing once when you start your pro
 
 `export AWS_PROFILE="profileName2"`.
 
-in the Terminal. Now everything is set to execute all the `serverless` CLI options like `sls deploy`.
+in the Terminal. Now everything is set to execute all the `serverless` CLI options like `serverless deploy`.
 
 ##### Using the `aws-profile` option
 

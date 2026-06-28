@@ -33,7 +33,7 @@ Install the 3.x release line explicitly:
 ```sh
 npm install -g osls@3
 
-osls --version
+serverless --version
 ```
 
 If you are replacing a global Serverless Framework installation, remove it first so the `serverless` command resolves to osls:

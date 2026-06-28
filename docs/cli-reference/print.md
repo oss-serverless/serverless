@@ -44,10 +44,10 @@ resources:
         BucketName: ${self:custom.bucketName}
 ```
 
-Using `sls print` will resolve the variables in `provider.stage` and `BucketName`.
+Using `serverless print` will resolve the variables in `provider.stage` and `BucketName`.
 
 ```bash
-$ sls print
+$ serverless print
 service: my-service
 custom:
   bucketName: test
@@ -69,11 +69,11 @@ resources:
 This prints the provider name:
 
 ```bash
-sls print --path provider.name --format text
+serverless print --path provider.name --format text
 ```
 
 And this prints all function names:
 
 ```bash
-sls print --path functions --transform keys --format text
+serverless print --path functions --transform keys --format text
 ```
