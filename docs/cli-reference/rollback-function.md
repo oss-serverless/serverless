@@ -3,13 +3,13 @@
 Rollback a function service to a specific version.
 
 ```bash
-serverless rollback function --function <name> \
+osls rollback function --function <name> \
   --function-version <version>
 ```
 
-**Note:** You can only rollback a function which was previously deployed through `serverless deploy`. Functions are not versioned when running `serverless deploy function`.
+**Note:** You can only rollback a function which was previously deployed through `osls deploy`. Functions are not versioned when running `osls deploy function`.
 
-**Note:** This command is not supported for functions configured with `durableConfig` locally or already deployed with durable configuration in AWS. Use `serverless deploy` to publish and retarget durable function versions.
+**Note:** This command is not supported for functions configured with `durableConfig` locally or already deployed with durable configuration in AWS. Use `osls deploy` to publish and retarget durable function versions.
 
 ## Options
 
@@ -20,7 +20,7 @@ serverless rollback function --function <name> \
 
 ### AWS
 
-At first you want to run `serverless deploy list functions` to see all the deployed functions of your service and their corresponding versions.
-After picking a function and the version you can run the `serverless rollback function` command to rollback the function.
+At first you want to run `osls deploy list functions` to see all the deployed functions of your service and their corresponding versions.
+After picking a function and the version you can run the `osls rollback function` command to rollback the function.
 
-E.g. `serverless rollback function -f my-function --function-version 23` rolls back the function `my-function` to the version `23`.
+E.g. `osls rollback function -f my-function --function-version 23` rolls back the function `my-function` to the version `23`.

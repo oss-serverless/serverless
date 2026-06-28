@@ -1,9 +1,9 @@
 # AWS - Deploy Function
 
-The `sls deploy function` command deploys an individual function without AWS CloudFormation. This command simply swaps out the zip file that your CloudFormation stack is pointing toward. This is a much faster way of deploying changes in code.
+The `osls deploy function` command deploys an individual function without AWS CloudFormation. This command simply swaps out the zip file that your CloudFormation stack is pointing toward. This is a much faster way of deploying changes in code.
 
 ```bash
-serverless deploy function -f functionName
+osls deploy function -f functionName
 ```
 
 **Note:** This command **now** deploys both function configuration and code by
@@ -11,7 +11,7 @@ default. Just as before, this puts your function in an inconsistent state that
 is out of sync with your CloudFormation stack. Use this for faster development
 cycles and not production deployments
 
-**Note:** This command is not supported for functions configured with `durableConfig` locally or already deployed with durable configuration in AWS. Use `serverless deploy` so osls can publish a new durable function version and retarget the generated durable alias.
+**Note:** This command is not supported for functions configured with `durableConfig` locally or already deployed with durable configuration in AWS. Use `osls deploy` so osls can publish a new durable function version and retarget the generated durable alias.
 
 ## Options
 
@@ -25,13 +25,13 @@ cycles and not production deployments
 ### Deployment without stage and region options
 
 ```bash
-serverless deploy function --function helloWorld
+osls deploy function --function helloWorld
 ```
 
 ### Deployment with stage and region options
 
 ```bash
-serverless deploy function --function helloWorld \
+osls deploy function --function helloWorld \
   --stage dev \
   --region us-east-1
 ```
@@ -39,5 +39,5 @@ serverless deploy function --function helloWorld \
 ### Deploy only configuration changes
 
 ```bash
-serverless deploy function --function helloWorld --update-config
+osls deploy function --function helloWorld --update-config
 ```

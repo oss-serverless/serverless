@@ -63,7 +63,7 @@ As a quick setup to get started you can export them as environment variables so 
 export AWS_ACCESS_KEY_ID=<your-key-here>
 export AWS_SECRET_ACCESS_KEY=<your-secret-key-here>
 # AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are now available for serverless to use
-serverless deploy
+osls deploy
 
 # 'export' command is valid only for unix shells
 # In Windows use 'set' instead of 'export'
@@ -92,14 +92,14 @@ export cafile="/path/to/cafile1.pem,/path/to/cafile2.pem"
 
 For a more permanent solution you can also set up credentials through AWS profiles. Here are different methods you can use to do so.
 
-##### Setup with `serverless config credentials` command
+##### Setup with `osls config credentials` command
 
-osls provides a convenient way to configure AWS profiles with the help of the `serverless config credentials` command.
+osls provides a convenient way to configure AWS profiles with the help of the `osls config credentials` command.
 
 Here's an example how you can configure the `default` AWS profile:
 
 ```bash
-serverless config credentials \
+osls config credentials \
   --provider aws \
   --key AKIAIOSFODNN7EXAMPLE \
   --secret wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
@@ -151,14 +151,14 @@ Now you can switch per project (/ API) by executing once when you start your pro
 
 `export AWS_PROFILE="profileName2"`.
 
-in the Terminal. Now everything is set to execute all the `serverless` CLI options like `sls deploy`.
+in the Terminal. Now everything is set to execute all the `serverless` CLI options like `osls deploy`.
 
 ##### Using the `aws-profile` option
 
 You can always specify the profile which should be used via the `aws-profile` option like this:
 
 ```bash
-serverless deploy --aws-profile devProfile
+osls deploy --aws-profile devProfile
 ```
 
 ##### Using web identity token
@@ -185,7 +185,7 @@ custom:
 
 #### Profile in place with the 'invoke local' command
 
-**Be aware!** Due to the way AWS IAM and the local environment works, if you invoke your lambda functions locally using the CLI command `serverless invoke local -f ...` the IAM role/profile could be (and probably is) different from the one set in the `serverless.yml` configuration file.
+**Be aware!** Due to the way AWS IAM and the local environment works, if you invoke your lambda functions locally using the CLI command `osls invoke local -f ...` the IAM role/profile could be (and probably is) different from the one set in the `serverless.yml` configuration file.
 Thus, most likely, a different set of permissions will be in place, altering the interaction between your lambda functions and other AWS resources.
 
 _Please, refer to the [`invoke local`](../cli-reference/invoke-local.md#aws---invoke-local) CLI command documentation for more details._

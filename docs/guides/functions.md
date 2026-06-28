@@ -391,7 +391,7 @@ functions:
         - flag
 ```
 
-During the first deployment when locally built images are used, the CLI will automatically create a dedicated ECR repository to store these images, with name `serverless-<service>-<stage>`. By default, older versions of images uploaded to ECR are not removed as they still might be in use by versioned functions. To automatically expire old images, set `provider.ecr.maxImageCount` to limit the number of images retained in the repository. During `sls remove`, the created ECR repository will be removed. During deployment, the CLI will attempt to `docker login` to ECR if needed. Depending on your local configuration, docker authorization token might be stored unencrypted. Please refer to documentation for more details: https://docs.docker.com/engine/reference/commandline/login/#credentials-store
+During the first deployment when locally built images are used, the CLI will automatically create a dedicated ECR repository to store these images, with name `serverless-<service>-<stage>`. By default, older versions of images uploaded to ECR are not removed as they still might be in use by versioned functions. To automatically expire old images, set `provider.ecr.maxImageCount` to limit the number of images retained in the repository. During `osls remove`, the created ECR repository will be removed. During deployment, the CLI will attempt to `docker login` to ECR if needed. Depending on your local configuration, docker authorization token might be stored unencrypted. Please refer to documentation for more details: https://docs.docker.com/engine/reference/commandline/login/#credentials-store
 
 ## Instruction set architecture
 
@@ -492,12 +492,12 @@ Lambda Function URLs for durable functions are configured on the generated `dura
 You can provide an execution name when invoking a durable function:
 
 ```bash
-serverless invoke --function orderProcessor --qualifier durable --durable-execution-name order-12345
+osls invoke --function orderProcessor --qualifier durable --durable-execution-name order-12345
 ```
 
 If you invoke a function with an execution name that already exists, Lambda handles the invocation idempotently only when the payload matches. A matching running execution returns existing execution information, and a matching closed execution returns the closed result. A different payload for the same execution name returns an error. Execution names must be 1-64 characters and can contain alphanumeric characters, hyphens, or underscores.
 
-Use `serverless deploy` after code or durable configuration changes so CloudFormation can publish a new function version and update generated aliases and event targets. Adding or removing `durableConfig` may still require Lambda function replacement as described above. `serverless deploy function` and `serverless rollback function` are not supported for functions configured with `durableConfig` locally or already deployed with durable configuration because they update `$LATEST` without publishing and retargeting the durable alias.
+Use `osls deploy` after code or durable configuration changes so CloudFormation can publish a new function version and update generated aliases and event targets. Adding or removing `durableConfig` may still require Lambda function replacement as described above. `osls deploy function` and `osls rollback function` are not supported for functions configured with `durableConfig` locally or already deployed with durable configuration because they update `$LATEST` without publishing and retargeting the durable alias.
 
 Functions currently configured with `durableConfig` are skipped by osls function pruning because durable executions may depend on retained versions for replay.
 
@@ -564,7 +564,7 @@ functions:
     handler: handler.users
 ```
 
-Then, when you run `serverless deploy`, VPC configuration will be deployed along with your lambda function.
+Then, when you run `osls deploy`, VPC configuration will be deployed along with your lambda function.
 
 If you have a provider VPC set but wish to have specific functions with no VPC, you can set the `vpc` value for these functions to `~` (null). For example:
 
@@ -768,7 +768,7 @@ functions:
 
 By default, osls creates function versions for every deploy. This behavior is optional, and can be turned off in cases where you don't invoke past versions by their qualifier. If you would like to do this, you can invoke your functions as `arn:aws:lambda:....:function/myFunc:3` to invoke version 3 for example.
 
-Older versions are not removed automatically unless you enable `provider.pruneFunctionVersions`. When enabled, osls deletes function and layer versions beyond the configured limit after a full service deploy (`serverless deploy`), keeping the newest versions. Function versions referenced by an alias are never deleted; layer versions are pruned purely by recency. `serverless deploy function` does not publish new versions and does not prune.
+Older versions are not removed automatically unless you enable `provider.pruneFunctionVersions`. When enabled, osls deletes function and layer versions beyond the configured limit after a full service deploy (`osls deploy`), keeping the newest versions. Function versions referenced by an alias are never deleted; layer versions are pruned purely by recency. `osls deploy function` does not publish new versions and does not prune.
 
 To turn off function versioning, set the provider-level option `versionFunctions`. `pruneFunctionVersions` cannot be used when `versionFunctions` is `false`, unless the only functions publishing versions are durable: at least one function configures `durableConfig` and no other function sets `versionFunction: true`. Functions configured with `durableConfig` are always skipped by function pruning, so in this configuration only layer versions are pruned.
 

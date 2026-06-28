@@ -32,7 +32,7 @@ functions:
 
 ### Example
 
-Update your `serverless.yml` file as follows and run `serverless deploy`.
+Update your `serverless.yml` file as follows and run `osls deploy`.
 
 ```yml
 functions:
@@ -46,7 +46,7 @@ functions:
       - cloudwatchLog: '/aws/lambda/hello2'
 ```
 
-Next up, edit `serverless.yml` and swap out the `logGroup` names. After that run `serverless deploy` again (the deployment will fail).
+Next up, edit `serverless.yml` and swap out the `logGroup` names. After that run `osls deploy` again (the deployment will fail).
 
 ```yml
 functions:

@@ -1,10 +1,10 @@
 # AWS - Deploy List
 
-The `sls deploy list [functions]` command will list information about your deployments.
+The `osls deploy list [functions]` command will list information about your deployments.
 
-You can either see all available deployments in your S3 deployment bucket by running `serverless deploy list` or you can see the deployed functions by running `serverless deploy list functions`.
+You can either see all available deployments in your S3 deployment bucket by running `osls deploy list` or you can see the deployed functions by running `osls deploy list functions`.
 
-The displayed information is useful when rolling back a deployment or function via `serverless rollback`.
+The displayed information is useful when rolling back a deployment or function via `osls rollback`.
 
 ## Options
 
@@ -16,11 +16,11 @@ The displayed information is useful when rolling back a deployment or function v
 ### List existing deploys
 
 ```bash
-serverless deploy list
+osls deploy list
 ```
 
 ### List deployed functions and their versions
 
 ```bash
-serverless deploy list functions
+osls deploy list functions
 ```

@@ -3,7 +3,7 @@
 Installs a service from a remote Git URL into a new directory in the current working directory.
 
 ```bash
-serverless install --url https://github.com/some/service
+osls install --url https://github.com/some/service
 ```
 
 ## Options
@@ -29,7 +29,7 @@ serverless install --url https://github.com/some/service
 ### Installing a service from a remote URL
 
 ```bash
-serverless install --url https://github.com/pmuens/serverless-crud
+osls install --url https://github.com/pmuens/serverless-crud
 ```
 
 This example downloads the `serverless-crud` service from the remote repository, creates a new directory named `serverless-crud` in the current working directory, and unzips the files into it.
@@ -37,7 +37,7 @@ This example downloads the `serverless-crud` service from the remote repository,
 ### Installing a service from a remote URL with a new service name
 
 ```bash
-serverless install --url https://github.com/pmuens/serverless-crud --name my-crud
+osls install --url https://github.com/pmuens/serverless-crud --name my-crud
 ```
 
 This example downloads the `serverless-crud` service from the remote repository, creates a new directory named `my-crud` in the current working directory, and renames the service to `my-crud` if `serverless.yml` exists in the service root.
@@ -45,7 +45,7 @@ This example downloads the `serverless-crud` service from the remote repository,
 ### Installing a service from a repository subdirectory URL
 
 ```bash
-serverless install --url https://github.com/serverless/examples/tree/master/aws-node-rest-api-with-dynamodb
+osls install --url https://github.com/serverless/examples/tree/master/aws-node-rest-api-with-dynamodb
 ```
 
 This example downloads the `aws-node-rest-api-with-dynamodb` service from a repository subdirectory.

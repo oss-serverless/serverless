@@ -597,7 +597,7 @@ provider:
 
 ## Package
 
-The `serverless package` or `serverless deploy` commands [package the code of all functions into zip files](./packaging.md).
+The `osls package` or `osls deploy` commands [package the code of all functions into zip files](./packaging.md).
 These zip files are then used for deployments.
 
 ```yml

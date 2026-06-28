@@ -64,4 +64,4 @@ functions:
 
 ## Deploying
 
-To deploy or update your Functions, Events and Infrastructure, run `serverless deploy`.
+To deploy or update your Functions, Events and Infrastructure, run `osls deploy`.

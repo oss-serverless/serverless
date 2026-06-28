@@ -3,7 +3,7 @@
 Rollback a service to a specific deployment.
 
 ```bash
-serverless rollback --timestamp timestamp
+osls rollback --timestamp timestamp
 ```
 
 If `timestamp` is not specified, the CLI will show your existing deployments.
@@ -22,12 +22,12 @@ If `timestamp` is not specified, the CLI will show your existing deployments.
 
 ### AWS
 
-At first you want to run `serverless deploy list` to show your existing deployments. This will provide you with a list of the deployments stored in your S3 bucket. You can then use the timestamp of one of these deployments to set your infrastructure stack to this specific deployment.
+At first you want to run `osls deploy list` to show your existing deployments. This will provide you with a list of the deployments stored in your S3 bucket. You can then use the timestamp of one of these deployments to set your infrastructure stack to this specific deployment.
 
 **Example:**
 
 ```
-$ serverless deploy list
+$ osls deploy list
 Serverless: Listing deployments:
 Serverless: -------------
 Serverless: Timestamp: 1476790110568
@@ -60,7 +60,7 @@ Serverless: Files:
 Serverless: - compiled-cloudformation-template.json
 Serverless: - mail-service.zip
 
-$ serverless rollback -t 1476893957131
+$ osls rollback -t 1476893957131
 Serverless: Updating Stack...
 Serverless: Checking Stack update progress...
 .....

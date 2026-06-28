@@ -142,9 +142,9 @@ provider:
   name: aws
   # declare one of the following...
   iam:
-    role: myDefaultRole                                                  # must validly reference a role defined in the service
-    role: arn:aws:iam::0123456789:role//my/default/path/roleInMyAccount  # must validly reference a role defined in your account
-    role:                                                                # must validly resolve to the ARN of a role you have the rights to use
+    role: myDefaultRole # must validly reference a role defined in the service
+    role: arn:aws:iam::0123456789:role//my/default/path/roleInMyAccount # must validly reference a role defined in your account
+    role: # must validly resolve to the ARN of a role you have the rights to use
       Fn::GetAtt:
         - myRole
         - Arn
@@ -162,7 +162,7 @@ resources:
       Type: AWS::IAM::Role
       Properties:
         Path: /my/default/path/
-        RoleName: MyDefaultRole # required if you want to use 'serverless deploy --function' later on
+        RoleName: MyDefaultRole # required if you want to use 'osls deploy --function' later on
         AssumeRolePolicyDocument:
           Version: '2012-10-17'
           Statement:
@@ -187,20 +187,19 @@ resources:
                     - logs:TagResource
                   Resource:
                     - 'Fn::Join':
-                      - ':'
-                      -
-                        - 'arn:aws:logs'
-                        - Ref: 'AWS::Region'
-                        - Ref: 'AWS::AccountId'
-                        - 'log-group:/aws/lambda/*:*:*'
-                -  Effect: "Allow"
-                   Action:
-                     - "s3:PutObject"
-                   Resource:
-                     Fn::Join:
-                       - ""
-                       - - "arn:aws:s3:::"
-                         - "Ref" : "ServerlessDeploymentBucket"
+                        - ':'
+                        - - 'arn:aws:logs'
+                          - Ref: 'AWS::Region'
+                          - Ref: 'AWS::AccountId'
+                          - 'log-group:/aws/lambda/*:*:*'
+                - Effect: 'Allow'
+                  Action:
+                    - 's3:PutObject'
+                  Resource:
+                    Fn::Join:
+                      - ''
+                      - - 'arn:aws:s3:::'
+                        - 'Ref': 'ServerlessDeploymentBucket'
 ```
 
 ### Custom IAM Roles For Each Function

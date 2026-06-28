@@ -43,10 +43,10 @@ _Note: JS/TS configuration files are also supported (`serverless-compose.{yml,ts
 
 ## Usage
 
-To deploy all services, instead of running `serverless deploy` in each service, you can now deploy all services at once by running `serverless deploy` at the root:
+To deploy all services, instead of running `osls deploy` in each service, you can now deploy all services at once by running `osls deploy` at the root:
 
 ```bash
-$ serverless deploy
+$ osls deploy
 
 Deploying myapp to stage dev
 
@@ -58,7 +58,7 @@ Deploying myapp to stage dev
 In order to limit the number of services that are deployed concurrently, use `--max-concurrency` flag:
 
 ```bash
-$ serverless deploy --max-concurrency 5
+$ osls deploy --max-concurrency 5
 ```
 
 ### Service dependencies and variables
@@ -101,7 +101,7 @@ Let's break down the example above into 3 steps:
          Value: !Ref MyQueue
    ```
 
-2. Because of the dependency introduced by the variable, `serverless deploy` will automatically **deploy `service-a` first, and then `service-b`.**
+2. Because of the dependency introduced by the variable, `osls deploy` will automatically **deploy `service-a` first, and then `service-b`.**
 
 3. The value will be passed to `service-b` [as a parameter](./parameters.md) named `queueUrl`. Parameters can be referenced in osls configuration via the `${param:xxx}` syntax:
 
@@ -143,18 +143,18 @@ As seen in the above example, it is possible to configure more than one dependen
 
 ### Global commands
 
-On top of `serverless deploy`, the following commands can be run globally across all services:
+On top of `osls deploy`, the following commands can be run globally across all services:
 
-- `serverless logs` to fetch logs from **all functions across all services**
-- `serverless info` to view all services info
-- `serverless remove` to remove all services
-- `serverless outputs` to view all services outputs
-- `serverless refresh-outputs` to refresh outputs of all services
+- `osls logs` to fetch logs from **all functions across all services**
+- `osls info` to view all services info
+- `osls remove` to remove all services
+- `osls outputs` to view all services outputs
+- `osls refresh-outputs` to refresh outputs of all services
 
 For example, it is possible to tail logs for all functions at once:
 
 ```bash
-$ serverless logs --tail
+$ osls logs --tail
 
 service-a › users › START
 service-a › users › 2021-12-31 16:54:14  INFO  New user created
@@ -173,34 +173,34 @@ service-b › billing › END Duration: 7 ms ...
 It is possible to run commands for a specific service only. For example to deploy only a specific service:
 
 ```bash
-serverless deploy --service=service-a
+osls deploy --service=service-a
 
 # Shortcut alternative
-serverless service-a:deploy
+osls service-a:deploy
 ```
 
 Or tail logs of a single function:
 
 ```bash
-serverless logs --service=service-a --function=index
+osls logs --service=service-a --function=index
 
 # Shortcut alternative
-serverless service-a:logs --function=index
+osls service-a:logs --function=index
 ```
 
 All osls commands are supported **only via service-specific commands**, including custom commands from plugins, for example:
 
 ```bash
-serverless service-a:offline
+osls service-a:offline
 ```
 
 ### Service-specific commands when using parameters
 
-The `serverless service-a:deploy` command is the equivalent of running `serverless deploy` in service-a's directory. Both can be used.
+The `osls service-a:deploy` command is the equivalent of running `osls deploy` in service-a's directory. Both can be used.
 
-However, if "service-a" uses `${param:xxx}` to reference parameters injected by `serverless-compose.yml`, then `serverless service-a:deploy` must be used. Indeed, `${param:xxx}` cannot be resolved outside of osls compose.
+However, if "service-a" uses `${param:xxx}` to reference parameters injected by `serverless-compose.yml`, then `osls service-a:deploy` must be used. Indeed, `${param:xxx}` cannot be resolved outside of osls compose.
 
-In these cases, you must run all commands from the root: `serverless service-a:deploy`.
+In these cases, you must run all commands from the root: `osls service-a:deploy`.
 
 ## Configuration
 
@@ -228,19 +228,19 @@ The [osls security model](./security.md) applies to Compose as well, with a few 
 The outputs of a service are stored locally (in the `.serverless/` directory). If a colleague deployed changes that changed the outputs of a service, you can refresh your local state via the `refresh-outputs` command:
 
 ```
-serverless refresh-outputs
+osls refresh-outputs
 ```
 
 This command has no impact on deployed services, it can be run at any time without unintended side effects.
 
 ## Removing services
 
-To delete the whole project (and all its services), run `serverless remove` in the same directory as `serverless-compose.yml`. This will run [`serverless remove`](../cli-reference/remove.md) in each service directory.
+To delete the whole project (and all its services), run `osls remove` in the same directory as `serverless-compose.yml`. This will run [`osls remove`](../cli-reference/remove.md) in each service directory.
 
 To delete only one service:
 
 1. make sure no other service depends on it (else these services will be broken)
-2. run `serverless <service-name>:remove`
+2. run `osls <service-name>:remove`
 3. then remove the service from `serverless-compose.yml`
 
 If you remove the service from `serverless-compose.yml` without doing step 1 first, the service will still be deployed in your AWS account.

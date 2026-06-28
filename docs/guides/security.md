@@ -13,7 +13,7 @@ osls therefore does not, and cannot, defend against a malicious service configur
 
 Variable sources such as `${ssm:...}` and `${env:...}` resolve to plain strings before commands run. Those resolved values appear in places you may not expect:
 
-- `serverless print` outputs the fully resolved configuration, including decrypted SSM SecureString values. Do not pipe it into logs that are retained or shared.
+- `osls print` outputs the fully resolved configuration, including decrypted SSM SecureString values. Do not pipe it into logs that are retained or shared.
 - The packaging step writes `.serverless/serverless-state.json`, which contains the resolved service configuration, including provider and function environment values. Keep the `.serverless` directory out of version control and out of uploaded CI artifacts.
 - Verbose and debug output may include resolved values. Treat retained CI logs of osls runs as potentially secret-bearing.
 

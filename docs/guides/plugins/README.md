@@ -17,12 +17,12 @@ Plugins are installed per service. They are not applied globally.
 To install a plugin, run the following command in a service directory:
 
 ```
-serverless plugin install -n example-osls-plugin
+osls plugin install -n example-osls-plugin
 ```
 
 This command will install the plugin via NPM and register it in `serverless.yml`.
 
-`serverless plugin install --name` accepts npm package names, scoped package names, semver ranges, and npm dist-tags. For example, `example-osls-plugin`, `@example/osls-plugin`, `example-osls-plugin@^1.0.0`, and `example-osls-plugin@next` are valid install specs. Literal embedded quotes are not accepted in osls v4; quote the full `--name` value at the shell level if your version range contains spaces.
+`osls plugin install --name` accepts npm package names, scoped package names, semver ranges, and npm dist-tags. For example, `example-osls-plugin`, `@example/osls-plugin`, `example-osls-plugin@^1.0.0`, and `example-osls-plugin@next` are valid install specs. Literal embedded quotes are not accepted in osls v4; quote the full `--name` value at the shell level if your version range contains spaces.
 
 npm lifecycle scripts are ignored by default during plugin install. If you trust the plugin and need its lifecycle scripts to run, pass `--allow-install-scripts`.
 

@@ -84,7 +84,7 @@ class MyPlugin {
 - Plugins should only write to `stdout` in commands they define (to avoid breaking the output of other commands).
 - The only content written to `stdout` should be the main output of the command.
 
-Take, for example, the `serverless invoke` command:
+Take, for example, the `osls invoke` command:
 
 - Its output is the result of the Lambda invocation: by writing that result (and only that) to `stdout`, it allows any script to parse the result of the Lambda invocation.
 - All other messages should be written to `stderr`: such logs are useful to humans, for example configuration warnings, upgrade notifications, Lambda logs… Since they are written to `stderr`, they do not break the parsable output of `stdout`.
@@ -189,7 +189,7 @@ progress.get('my-plugin-progress').remove();
 
 ## Service information
 
-Plugins can add their own sections to the "Service information", i.e. the information displayed after `serverless deploy` or in `serverless info`.
+Plugins can add their own sections to the "Service information", i.e. the information displayed after `osls deploy` or in `osls info`.
 
 To add a single item:
 
@@ -200,7 +200,7 @@ serverless.addServiceOutputSection('my section', 'content');
 The example above will be displayed as:
 
 ```
-$ serverless info
+$ osls info
 functions:
   ...
 my section: content
@@ -215,7 +215,7 @@ serverless.addServiceOutputSection('my section', ['line 1', 'line 2']);
 The example above will be displayed as:
 
 ```
-$ serverless info
+$ osls info
 functions:
   ...
 my section:

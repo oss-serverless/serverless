@@ -6,7 +6,7 @@ If you want a specific version, semver range, or npm dist-tag, specify `<pluginn
 **Note:** You might want to change the order of the plugin in the services `plugins` array.
 
 ```bash
-serverless plugin install --name pluginName
+osls plugin install --name pluginName
 ```
 
 ## Options
@@ -19,7 +19,7 @@ The plugin name must be an npm package name, such as `example-osls-plugin` or `@
 Literal embedded quotes are not accepted in osls v4. Quote the whole `--name` value at the shell level when the version range contains spaces or shell metacharacters:
 
 ```bash
-serverless plugin install --name 'example-osls-plugin@^1.0.0 || 2'
+osls plugin install --name 'example-osls-plugin@^1.0.0 || 2'
 ```
 
 Package aliases, git URLs, HTTP URLs, file paths, workspace specs, and tarball paths are not accepted by `plugin install`.
@@ -33,17 +33,17 @@ Package aliases, git URLs, HTTP URLs, file paths, workspace specs, and tarball p
 ### Install the `example-osls-plugin` plugin
 
 ```bash
-serverless plugin install --name example-osls-plugin
+osls plugin install --name example-osls-plugin
 ```
 
 ### Install a specific version
 
 ```bash
-serverless plugin install --name example-osls-plugin@3.0.0-rc.2
+osls plugin install --name example-osls-plugin@3.0.0-rc.2
 ```
 
 ### Allow npm lifecycle scripts
 
 ```bash
-serverless plugin install --name example-osls-plugin --allow-install-scripts
+osls plugin install --name example-osls-plugin --allow-install-scripts
 ```

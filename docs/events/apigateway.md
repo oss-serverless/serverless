@@ -1361,7 +1361,7 @@ There's a lot going on in these two templates, but all you need to know to set u
 endpoint of your proxy, and the URI you want to set a proxy to.
 
 Now that you have these two CloudFormation templates defined in your `serverless.yml` file, you can simply run
-`serverless deploy` and that will deploy these custom resources for you along with your service and set up a proxy on your Rest API.
+`osls deploy` and that will deploy these custom resources for you along with your service and set up a proxy on your Rest API.
 
 ## Accessing private resources using VPC Link
 

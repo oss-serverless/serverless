@@ -315,7 +315,7 @@ In such case no API and stage resources are created, therefore extending HTTP AP
 
 ## HTTP API URL
 
-When deploying functions with `httpApi` events, the URL of the HTTP API will be displayed in the `serverless deploy` and `serverless info` output.
+When deploying functions with `httpApi` events, the URL of the HTTP API will be displayed in the `osls deploy` and `osls info` output.
 
 The URL is also exported as a CloudFormation output under the `HttpApiUrl` output.
 
