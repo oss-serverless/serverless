@@ -134,7 +134,7 @@ functions:
     handler: myLambdaAtEdge.handler
     events:
       - cloudFront:
-          eventType: viewer-response
+          eventType: viewer-request
           includeBody: true
           origin: s3://bucketname.s3.amazonaws.com/files
       - cloudFront:

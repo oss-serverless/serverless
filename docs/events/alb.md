@@ -29,7 +29,6 @@ functions:
           listenerArn: arn:aws:elasticloadbalancing:us-east-1:12345:listener/app/my-load-balancer/50dc6c495c0c9188/
           priority: 1
           conditions:
-            host: example.com
             path: /hello
             method:
               - POST
@@ -60,8 +59,8 @@ provider:
     authorizers:
       myFirstAuth:
         type: 'cognito'
-        userPoolArn: 'arn:aws:cognito-idp:us-east-1:123412341234:userpool/us-east-1_123412341', # required
-        userPoolClientId: '1h57kf5cpq17m0eml12EXAMPLE', # required
+        userPoolArn: 'arn:aws:cognito-idp:us-east-1:123412341234:userpool/us-east-1_123412341' # required
+        userPoolClientId: '1h57kf5cpq17m0eml12EXAMPLE' # required
         userPoolDomain: 'your-test-domain' # required
         onUnauthenticatedRequest: 'deny' # If set to 'allow' this allows the request to be forwarded to the target when user is not authenticated. When omitted it defaults 'deny' which makes a HTTP 401 Unauthorized error be returned. Alternatively configure to 'authenticate' to redirect request to IdP authorization endpoint.
         requestExtraParams: # optional. The query parameters (up to 10) to include in the redirect request to the authorization endpoint
@@ -72,12 +71,12 @@ provider:
         sessionTimeout: 7000 # The maximum duration of the authentication session, in seconds. The default is 604800 seconds (7 days).
       mySecondAuth:
         type: 'oidc'
-        authorizationEndpoint: 'https://example.com', # required. The authorization endpoint of the IdP. Must be a full URL, including the HTTPS protocol, the domain, and the path
-        clientId: 'i-am-client', # required
-        clientSecret: 'i-am-secret', # if creating a rule this is required. If modifying a rule, this can be omitted if you set useExistingClientSecret to true (as below)
+        authorizationEndpoint: 'https://example.com' # required. The authorization endpoint of the IdP. Must be a full URL, including the HTTPS protocol, the domain, and the path
+        clientId: 'i-am-client' # required
+        clientSecret: 'i-am-secret' # if creating a rule this is required. If modifying a rule, this can be omitted if you set useExistingClientSecret to true (as below)
         useExistingClientSecret: true # only required if clientSecret is omitted
-        issuer: 'https://www.iamscam.com', # required. The OIDC issuer identifier of the IdP. This must be a full URL, including the HTTPS protocol, the domain, and the path
-        tokenEndpoint: 'http://somewhere.org', # required
+        issuer: 'https://www.iamscam.com' # required. The OIDC issuer identifier of the IdP. This must be a full URL, including the HTTPS protocol, the domain, and the path
+        tokenEndpoint: 'http://somewhere.org' # required
         userInfoEndpoint: 'https://another-example.com' # required
         onUnauthenticatedRequest: 'deny' # If set to 'allow' this allows the request to be forwarded to the target when user is not authenticated. When omitted it defaults 'deny' which makes a HTTP 401 Unauthorized error be returned. Alternatively configure to 'authenticate' to redirect request to IdP authorization endpoint.
         requestExtraParams:
