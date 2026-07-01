@@ -46,6 +46,36 @@ These commands were deprecated (and broken) in v3 and are removed in v4:
 
 ## Breaking changes
 
+### Update a pinned `frameworkVersion`
+
+If your `serverless.yml` pins `frameworkVersion` to a v3 range, **every osls command fails immediately** after upgrading, with `FRAMEWORK_VERSION_MISMATCH`:
+
+```
+Error: The osls version (4.0.0) does not satisfy the "frameworkVersion" (3) in serverless.yml
+```
+
+Update the pin to a v4 range:
+
+**Before (v3):**
+
+```yaml
+frameworkVersion: '3'
+```
+
+**After (v4):**
+
+```yaml
+frameworkVersion: '4'
+```
+
+If you want the same configuration to keep working on both osls v3 and v4, for example while a team or CI pipeline is still migrating, widen the pin to accept both major versions instead:
+
+```yaml
+frameworkVersion: '3 || 4'
+```
+
+The same applies to narrower ranges — replace pins such as `^3.38.0`, `>=3.0.0 <4.0.0`, or an exact `3.x.y` version with their v4 equivalents (for example `^4.0.0`). This check runs before configuration validation, so it cannot be relaxed with `configValidationMode: warn`; the pin has to match the installed version. See [Version Pinning](./services.md#version-pinning).
+
 ### Configuration validation defaults to `error`
 
 In v4, invalid `serverless.yml` configuration **fails the command by default** (`configValidationMode: error`). In older v3 setups that never set this property, invalid configuration often surfaced only as warnings.
