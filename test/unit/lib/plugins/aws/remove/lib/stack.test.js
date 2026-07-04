@@ -53,7 +53,9 @@ describe('removeStack', () => {
       removeStackStub.resolves({ Stacks: [{ EnableTerminationProtection: true }] });
       const context = createRemoveStackContext();
 
-      await expect(context.ensureStackIsNotDeletionProtected()).to.eventually.be.rejected.and.have.property(
+      await expect(
+        context.ensureStackIsNotDeletionProtected()
+      ).to.eventually.be.rejected.and.have.property(
         'code',
         'AWS_CLOUDFORMATION_DELETION_PROTECTION_ENABLED'
       );

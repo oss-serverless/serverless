@@ -102,7 +102,11 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
         { stages: ['dev', 'prod'] },
         true,
       ],
-      ['disables deletion protection when the current stage is not listed', { stages: ['prod'] }, false],
+      [
+        'disables deletion protection when the current stage is not listed',
+        { stages: ['prod'] },
+        false,
+      ],
     ]) {
       it(description, async () => {
         const { awsSdkV3Stub, updateTerminationProtectionStub } =
@@ -113,12 +117,12 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
           StackName: 'new-service-dev',
           EnableTerminationProtection: expected,
         });
-        expect(getCloudFormationSends(awsSdkV3Stub, 'updateTerminationProtection')[0].input).to.deep.equal(
-          {
-            StackName: 'new-service-dev',
-            EnableTerminationProtection: expected,
-          }
-        );
+        expect(
+          getCloudFormationSends(awsSdkV3Stub, 'updateTerminationProtection')[0].input
+        ).to.deep.equal({
+          StackName: 'new-service-dev',
+          EnableTerminationProtection: expected,
+        });
       });
     }
 
