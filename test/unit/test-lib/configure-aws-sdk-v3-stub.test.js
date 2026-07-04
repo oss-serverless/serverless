@@ -316,6 +316,7 @@ describe('test/unit/test-lib/configure-aws-sdk-v3-stub.test.js', () => {
         deleteChangeSet: {},
         getTemplate: { TemplateBody: '{}' },
         setStackPolicy: {},
+        updateTerminationProtection: {},
         describeStackEvents: { StackEvents: [] },
         describeStacks: { Stacks: [] },
         listStackResources: { StackResourceSummaries: [] },
@@ -332,6 +333,7 @@ describe('test/unit/test-lib/configure-aws-sdk-v3-stub.test.js', () => {
       DeleteChangeSetCommand,
       GetTemplateCommand,
       SetStackPolicyCommand,
+      UpdateTerminationProtectionCommand,
       DescribeStackEventsCommand,
       DescribeStacksCommand,
       ListStackResourcesCommand,
@@ -356,6 +358,7 @@ describe('test/unit/test-lib/configure-aws-sdk-v3-stub.test.js', () => {
     );
     await cloudFormation.send(new GetTemplateCommand({ StackName: 'stack' }));
     await cloudFormation.send(new SetStackPolicyCommand({ StackName: 'stack' }));
+    await cloudFormation.send(new UpdateTerminationProtectionCommand({ StackName: 'stack' }));
     await cloudFormation.send(new DescribeStackEventsCommand({ StackName: 'stack' }));
     await cloudFormation.send(new DescribeStacksCommand({ StackName: 'stack' }));
     await cloudFormation.send(new ListStackResourcesCommand({ StackName: 'stack' }));
@@ -370,6 +373,7 @@ describe('test/unit/test-lib/configure-aws-sdk-v3-stub.test.js', () => {
       'CloudFormation.deleteChangeSet',
       'CloudFormation.getTemplate',
       'CloudFormation.setStackPolicy',
+      'CloudFormation.updateTerminationProtection',
       'CloudFormation.describeStackEvents',
       'CloudFormation.describeStacks',
       'CloudFormation.listStackResources',

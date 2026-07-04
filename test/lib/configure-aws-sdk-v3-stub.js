@@ -47,6 +47,7 @@ const serviceDefinitions = {
       deleteChangeSet: 'DeleteChangeSetCommand',
       getTemplate: 'GetTemplateCommand',
       setStackPolicy: 'SetStackPolicyCommand',
+      updateTerminationProtection: 'UpdateTerminationProtectionCommand',
       describeStackEvents: 'DescribeStackEventsCommand',
     },
   },

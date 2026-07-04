@@ -44,6 +44,28 @@ provider:
   deploymentMethod: direct
 ```
 
+### Deletion protection
+
+You can enable CloudFormation termination protection for a service stack with `provider.deletionProtection`:
+
+```yaml
+provider:
+  name: aws
+  deletionProtection: true
+```
+
+To enable it only for specific stages, list those stages:
+
+```yaml
+provider:
+  name: aws
+  deletionProtection:
+    stages:
+      - prod
+```
+
+When deletion protection is enabled, `osls remove` or deleting the CloudFormation stack will fail. Disable `provider.deletionProtection` and deploy the service before removing it.
+
 ### Tips
 
 - Use this in your CI/CD systems, as it is the safest method of deployment.

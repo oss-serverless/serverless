@@ -2,7 +2,11 @@
 
 const expect = require('chai').expect;
 const sinon = require('sinon');
-const { CloudFormationClient, DeleteStackCommand } = require('@aws-sdk/client-cloudformation');
+const {
+  CloudFormationClient,
+  DeleteStackCommand,
+  DescribeStacksCommand,
+} = require('@aws-sdk/client-cloudformation');
 const removeStack = require('../../../../../../../lib/plugins/aws/remove/lib/stack');
 
 describe('removeStack', () => {
@@ -31,6 +35,40 @@ describe('removeStack', () => {
 
   afterEach(() => {
     CloudFormationClient.prototype.send.restore();
+  });
+
+  describe('#ensureStackIsNotDeletionProtected()', () => {
+    it('passes when the stack is not deletion protected', async () => {
+      removeStackStub.resolves({ Stacks: [{ EnableTerminationProtection: false }] });
+      const context = createRemoveStackContext();
+
+      await context.ensureStackIsNotDeletionProtected();
+
+      expect(removeStackStub).to.have.been.calledOnce;
+      expect(removeStackStub.firstCall.args[0]).to.be.instanceOf(DescribeStacksCommand);
+      expect(removeStackStub.firstCall.args[0].input).to.deep.equal({ StackName: stackName });
+    });
+
+    it('fails when the stack is deletion protected', async () => {
+      removeStackStub.resolves({ Stacks: [{ EnableTerminationProtection: true }] });
+      const context = createRemoveStackContext();
+
+      await expect(context.ensureStackIsNotDeletionProtected()).to.eventually.be.rejected.and.have.property(
+        'code',
+        'AWS_CLOUDFORMATION_DELETION_PROTECTION_ENABLED'
+      );
+    });
+
+    it('passes when the stack does not exist', async () => {
+      removeStackStub.throws(
+        Object.assign(new Error('Stack with id removeStack-dev does not exist'), {
+          name: 'ValidationError',
+        })
+      );
+      const context = createRemoveStackContext();
+
+      await context.ensureStackIsNotDeletionProtected();
+    });
   });
 
   describe('#remove()', () => {

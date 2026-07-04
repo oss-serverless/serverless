@@ -928,6 +928,11 @@ export interface AWS {
           tags?: AwsResourceTags;
         };
     deploymentPrefix?: string;
+    deletionProtection?:
+      | boolean
+      | {
+          stages: Stage[];
+        };
     disableRollback?: boolean;
     endpointType?: string;
     environment?: AwsLambdaEnvironment;
