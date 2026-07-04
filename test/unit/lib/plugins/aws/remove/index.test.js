@@ -36,6 +36,7 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
       headBucket: {},
     },
     CloudFormation: {
+      describeStacks: { Stacks: [{ EnableTerminationProtection: false }] },
       describeStackEvents: describeStackEventsStub,
       deleteStack: deleteStackStub,
       describeStackResource: { StackResourceDetail: { PhysicalResourceId: 'resource-id' } },
@@ -256,6 +257,29 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
     expect(
       cloudFormationSends.find(({ method }) => method === 'describeStackEvents').client
     ).to.equal(cloudFormationSends.find(({ method }) => method === 'deleteStack').client);
+  });
+
+  it('fails before cleanup when the stack has deletion protection enabled', async () => {
+    await expect(
+      runServerless({
+        fixture: 'function',
+        command: 'remove',
+        awsSdkV3StubMap: {
+          ...awsSdkV3StubMap,
+          CloudFormation: {
+            ...awsSdkV3StubMap.CloudFormation,
+            describeStacks: { Stacks: [{ EnableTerminationProtection: true }] },
+          },
+        },
+      })
+    ).to.eventually.have.been.rejected.and.have.property(
+      'code',
+      'AWS_CLOUDFORMATION_DELETION_PROTECTION_ENABLED'
+    );
+
+    expect(deleteObjectsStub).not.to.be.called;
+    expect(deleteStackStub).not.to.be.called;
+    expect(describeRepositoriesStub).not.to.be.called;
   });
 
   it('executes expected operations during removal when repository cannot be accessed due to denied access', async () => {

@@ -3,6 +3,7 @@
 const sinon = require('sinon');
 
 const runServerless = require('../../../../../utils/run-serverless');
+const AwsDeploy = require('../../../../../../lib/plugins/aws/deploy');
 
 const expect = require('chai').expect;
 
@@ -30,6 +31,123 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
     awsSdkV3Stub.sends.filter(
       ({ service, method: sendMethod }) => service === 'CloudFormation' && sendMethod === method
     );
+
+  describe('deletion protection', () => {
+    const deployWithDeletionProtection = async (deletionProtection) => {
+      const describeStacksStub = sinon
+        .stub()
+        .onFirstCall()
+        .throws(createCloudFormationValidationError('stack does not exist'))
+        .onSecondCall()
+        .resolves({ Stacks: [{}] });
+      const updateTerminationProtectionStub = sinon.stub().resolves({});
+
+      const { awsSdkV3Stub } = await runServerless({
+        fixture: 'function',
+        command: 'deploy',
+        awsSdkV3StubMap: {
+          ...baseAwsSdkV3StubMap,
+          ECR: {
+            describeRepositories: sinon.stub().throws({
+              providerError: { code: 'RepositoryNotFoundException' },
+            }),
+          },
+          S3: {
+            deleteObjects: {},
+            listObjectsV2: { Contents: [] },
+            upload: {},
+            headBucket: {},
+          },
+          CloudFormation: {
+            describeStacks: describeStacksStub,
+            createStack: {},
+            updateStack: {},
+            updateTerminationProtection: updateTerminationProtectionStub,
+            describeStackEvents: {
+              StackEvents: [
+                {
+                  EventId: '1e2f3g4h',
+                  StackName: 'new-service-dev',
+                  LogicalResourceId: 'new-service-dev',
+                  ResourceType: 'AWS::CloudFormation::Stack',
+                  Timestamp: new Date(),
+                  ResourceStatus: 'CREATE_COMPLETE',
+                },
+              ],
+            },
+            describeStackResource: {
+              StackResourceDetail: { PhysicalResourceId: 's3-bucket-resource' },
+            },
+            validateTemplate: {},
+            listStackResources: {},
+          },
+        },
+        configExt: {
+          service: 'new-service',
+          provider: {
+            deploymentMethod: 'direct',
+            deletionProtection,
+          },
+        },
+      });
+
+      return { awsSdkV3Stub, updateTerminationProtectionStub };
+    };
+
+    for (const [description, deletionProtection, expected] of [
+      ['enables deletion protection when configured to true', true, true],
+      ['disables deletion protection when configured to false', false, false],
+      [
+        'enables deletion protection when the current stage is listed',
+        { stages: ['dev', 'prod'] },
+        true,
+      ],
+      ['disables deletion protection when the current stage is not listed', { stages: ['prod'] }, false],
+    ]) {
+      it(description, async () => {
+        const { awsSdkV3Stub, updateTerminationProtectionStub } =
+          await deployWithDeletionProtection(deletionProtection);
+
+        expect(updateTerminationProtectionStub).to.be.calledOnce;
+        expect(updateTerminationProtectionStub.firstCall.args[0]).to.deep.equal({
+          StackName: 'new-service-dev',
+          EnableTerminationProtection: expected,
+        });
+        expect(getCloudFormationSends(awsSdkV3Stub, 'updateTerminationProtection')[0].input).to.deep.equal(
+          {
+            StackName: 'new-service-dev',
+            EnableTerminationProtection: expected,
+          }
+        );
+      });
+    }
+
+    it('reconciles deletion protection when no deployment is needed', async () => {
+      const provider = {
+        getStage: sinon.stub().returns('dev'),
+        getRegion: sinon.stub().returns('us-east-1'),
+      };
+      const serverless = {
+        serviceDir: '',
+        service: {
+          service: 'service',
+          package: {},
+          provider: { shouldNotDeploy: false },
+        },
+        getProvider: sinon.stub().withArgs('aws').returns(provider),
+      };
+      const deploy = new AwsDeploy(serverless, {});
+      deploy.ensureValidBucketExists = sinon.stub().resolves();
+      deploy.checkForChanges = sinon.stub().callsFake(async () => {
+        serverless.service.provider.shouldNotDeploy = true;
+      });
+      deploy.reconcileDeletionProtection = sinon.stub().resolves();
+
+      await deploy.hooks['aws:deploy:deploy:checkForChanges']();
+
+      expect(deploy.reconcileDeletionProtection).to.be.calledOnceWithExactly();
+    });
+  });
 
   describe('with direct create/update calls', () => {
     it('with nonexistent stack - first deploy', async () => {

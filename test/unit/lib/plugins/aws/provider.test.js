@@ -279,6 +279,44 @@ describe('AwsProvider', () => {
       });
     });
 
+    describe('deletionProtection validation', () => {
+      for (const [description, deletionProtection] of [
+        ['boolean form', true],
+        ['stage list form', { stages: ['prod'] }],
+      ]) {
+        it(`accepts ${description}`, async () => {
+          await runServerless({
+            fixture: 'function',
+            command: 'print',
+            configExt: {
+              provider: {
+                deletionProtection,
+              },
+            },
+          });
+        });
+      }
+
+      for (const [description, deletionProtection, message] of [
+        ['empty stages', { stages: [] }, 'must NOT have fewer than 1 items'],
+        ['enabled property', { enabled: true }, 'unrecognized property'],
+      ]) {
+        it(`rejects ${description}`, async () => {
+          await expect(
+            runServerless({
+              fixture: 'function',
+              command: 'print',
+              configExt: {
+                provider: {
+                  deletionProtection,
+                },
+              },
+            })
+          ).to.eventually.be.rejectedWith(message);
+        });
+      }
+    });
+
     describe('deploymentBucket configuration', () => {
       it('should do nothing if not defined', () => {
         serverless.service.provider.deploymentBucket = undefined;
