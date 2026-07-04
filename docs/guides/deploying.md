@@ -64,7 +64,9 @@ provider:
       - prod
 ```
 
-When deletion protection is enabled, `osls remove` or deleting the CloudFormation stack will fail. Disable `provider.deletionProtection` and deploy the service before removing it.
+When deletion protection is enabled, `osls remove` or deleting the CloudFormation stack will fail. To disable it, set `provider.deletionProtection` to `false` and deploy the service before removing it.
+
+Removing `provider.deletionProtection` from `serverless.yml` does not disable termination protection on an existing stack. It only stops osls from managing the setting.
 
 ### Tips
 

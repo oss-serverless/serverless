@@ -55,10 +55,10 @@ describe('removeStack', () => {
 
       await expect(
         context.ensureStackIsNotDeletionProtected()
-      ).to.eventually.be.rejected.and.have.property(
-        'code',
-        'AWS_CLOUDFORMATION_DELETION_PROTECTION_ENABLED'
-      );
+      ).to.eventually.be.rejected.and.include({
+        code: 'AWS_CLOUDFORMATION_DELETION_PROTECTION_ENABLED',
+        message: `Cannot remove stack "${stackName}" because deletion protection is enabled. Set provider.deletionProtection to false and deploy the service before removing it.`,
+      });
     });
 
     it('passes when the stack does not exist', async () => {
