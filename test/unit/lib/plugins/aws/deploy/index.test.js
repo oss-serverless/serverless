@@ -33,13 +33,20 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
     );
 
   describe('deletion protection', () => {
-    const deployWithDeletionProtection = async (deletionProtection) => {
-      const describeStacksStub = sinon
-        .stub()
-        .onFirstCall()
-        .throws(createCloudFormationValidationError('stack does not exist'))
-        .onSecondCall()
-        .resolves({ Stacks: [{}] });
+    async function deployWithDeletionProtection(deletionProtection, options = {}) {
+      const providerConfig = {
+        deploymentMethod: 'direct',
+      };
+      if (arguments.length > 0) providerConfig.deletionProtection = deletionProtection;
+
+      const describeStacksStub = options.stackExists
+        ? sinon.stub().resolves({ Stacks: [{}] })
+        : sinon
+            .stub()
+            .onFirstCall()
+            .throws(createCloudFormationValidationError('stack does not exist'))
+            .onSecondCall()
+            .resolves({ Stacks: [{}] });
       const updateTerminationProtectionStub = sinon.stub().resolves({});
 
       const { awsSdkV3Stub } = await runServerless({
@@ -71,7 +78,7 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
                   LogicalResourceId: 'new-service-dev',
                   ResourceType: 'AWS::CloudFormation::Stack',
                   Timestamp: new Date(),
-                  ResourceStatus: 'CREATE_COMPLETE',
+                  ResourceStatus: options.stackExists ? 'UPDATE_COMPLETE' : 'CREATE_COMPLETE',
                 },
               ],
             },
@@ -84,15 +91,12 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
         },
         configExt: {
           service: 'new-service',
-          provider: {
-            deploymentMethod: 'direct',
-            deletionProtection,
-          },
+          provider: providerConfig,
         },
       });
 
       return { awsSdkV3Stub, updateTerminationProtectionStub };
-    };
+    }
 
     for (const [description, deletionProtection, expected] of [
       ['enables deletion protection when configured to true', true, true],
@@ -125,6 +129,33 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
         });
       });
     }
+
+    it('does not manage deletion protection when it is not configured', async () => {
+      const { awsSdkV3Stub, updateTerminationProtectionStub } =
+        await deployWithDeletionProtection();
+
+      expect(updateTerminationProtectionStub).not.to.be.called;
+      expect(getCloudFormationSends(awsSdkV3Stub, 'updateTerminationProtection')).to.be.empty;
+    });
+
+    it('disables deletion protection on an existing stack when configured to false', async () => {
+      const { awsSdkV3Stub, updateTerminationProtectionStub } = await deployWithDeletionProtection(
+        false,
+        { stackExists: true }
+      );
+
+      expect(updateTerminationProtectionStub).to.be.calledOnce;
+      expect(updateTerminationProtectionStub.firstCall.args[0]).to.deep.equal({
+        StackName: 'new-service-dev',
+        EnableTerminationProtection: false,
+      });
+      expect(
+        getCloudFormationSends(awsSdkV3Stub, 'updateTerminationProtection')[0].input
+      ).to.deep.equal({
+        StackName: 'new-service-dev',
+        EnableTerminationProtection: false,
+      });
+    });
 
     it('reconciles deletion protection when no deployment is needed', async () => {
       const provider = {
