@@ -252,10 +252,17 @@ describe('test/unit/lib/aws/aws-sdk-v3-error.test.js', () => {
       name: 'CredentialsProviderError',
     });
 
+    const ssoLoginError = new ServerlessError(
+      'AWS SSO login requires an interactive terminal.',
+      'AWS_SSO_LOGIN_UNAVAILABLE'
+    );
+
     expect(awsSdkV3Error.isAwsCredentialsNotFoundError(credentialsError)).to.equal(true);
     expect(awsSdkV3Error.isAwsCredentialProviderError(sdkCredentialError)).to.equal(true);
     expect(awsSdkV3Error.isAwsCredentialError(credentialsError)).to.equal(true);
     expect(awsSdkV3Error.isAwsCredentialError(sdkCredentialError)).to.equal(true);
+    expect(awsSdkV3Error.isAwsCredentialError(ssoLoginError)).to.equal(true);
+    expect(awsSdkV3Error.isAwsCredentialError(new Error('unrelated'))).to.equal(false);
     expect(
       awsSdkV3Error.isAwsCredentialsNotFoundError(
         Object.create({ code: 'AWS_CREDENTIALS_NOT_FOUND' })
