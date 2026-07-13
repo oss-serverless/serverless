@@ -319,6 +319,8 @@ Declare any `@aws-sdk/client-*` packages your plugin imports in its own dependen
 
 See [AWS plugins](./plugins/creating-plugins.md#aws-plugins) for the full plugin-facing AWS API. The [credential resolution changes](#aws-credential-resolution-changes) above apply to plugin-created clients as well.
 
+For impacted users blocked by an incompatible plugin, check out the [osls-aws-provider-request-shim](https://github.com/slootjes/osls-aws-provider-request-shim) community project.
+
 ### Bundled utility packages removed (plugin authors)
 
 - The internal `lib/utils/open-browser.js` module is removed, along with the [`open`](https://www.npmjs.com/package/open) package it wrapped. It was unused by osls and never part of the public plugin API. If your plugin deep-required it, depend on `open` directly.
