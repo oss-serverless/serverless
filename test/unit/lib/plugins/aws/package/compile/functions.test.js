@@ -2588,6 +2588,10 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
               vpc: null,
               handler: 'index.handler',
             },
+            vpcDisabled: {
+              vpc: false,
+              handler: 'index.handler',
+            },
           },
         },
       });
@@ -2635,6 +2639,12 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
 
     it('should allow `functions[].vpc` to specify no vpc', () => {
       const Properties = cfResources[naming.getLambdaLogicalId('vpcNullify')].Properties;
+
+      expect(Properties.VpcConfig).to.be.undefined;
+    });
+
+    it('should allow `functions[].vpc` set to `false` to opt out of `provider.vpc`', () => {
+      const Properties = cfResources[naming.getLambdaLogicalId('vpcDisabled')].Properties;
 
       expect(Properties.VpcConfig).to.be.undefined;
     });
