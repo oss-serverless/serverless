@@ -676,4 +676,71 @@ describe('test/unit/lib/configuration/variables/resolve.test.js', () => {
       expect(valueMeta).to.have.property('variables');
     });
   });
+
+  describe('Deferred resolution ("isPropertyDeferred")', () => {
+    const configuration = {
+      params: {
+        dev: { greeting: '${sourceDirect:}' },
+        prod: {
+          referenced: '${sourceCounted:}',
+          nested: { deep: '${sourceCounted:}' },
+        },
+        staging: '${sourceCounted:}',
+      },
+      referencesDeferred: '${sourceProperty(params, prod, referenced)}',
+    };
+    let variablesMeta;
+    let callCount = 0;
+    const sources = {
+      sourceDirect: {
+        resolve: () => ({ value: 'hello' }),
+      },
+      sourceCounted: {
+        resolve: () => {
+          ++callCount;
+          return { value: `counted:${callCount}` };
+        },
+      },
+      sourceProperty: {
+        resolve: async ({ params, resolveConfigurationProperty }) => {
+          const result = await resolveConfigurationProperty(params || []);
+          return { value: result == null ? null : result };
+        },
+      },
+    };
+    before(async () => {
+      variablesMeta = resolveMeta(configuration);
+      await resolve({
+        serviceDir: process.cwd(),
+        configuration,
+        variablesMeta,
+        sources,
+        options: {},
+        fulfilledSources: new Set(['sourceDirect', 'sourceCounted', 'sourceProperty']),
+        isPropertyDeferred: (propertyPath) => {
+          if (!propertyPath.startsWith('params\0')) return false;
+          const stageKey = propertyPath.split('\0')[1];
+          return stageKey !== 'dev' && stageKey !== 'default';
+        },
+      });
+    });
+
+    it('should resolve not deferred properties', () => {
+      expect(configuration.params.dev.greeting).to.equal('hello');
+    });
+    it('should not resolve deferred properties', () => {
+      expect(configuration.params.prod.nested.deep).to.equal('${sourceCounted:}');
+      expect(configuration.params.staging).to.equal('${sourceCounted:}');
+      expect(variablesMeta.get('params\0prod\0nested\0deep')).to.have.property('variables');
+      expect(variablesMeta.get('params\0staging')).to.have.property('variables');
+    });
+    it('should resolve deferred properties on which other properties depend', () => {
+      expect(configuration.params.prod.referenced).to.equal('counted:1');
+      expect(configuration.referencesDeferred).to.equal('counted:1');
+      expect(variablesMeta.has('params\0prod\0referenced')).to.be.false;
+    });
+    it('should not invoke sources of deferred properties', () => {
+      expect(callCount).to.equal(1);
+    });
+  });
 });

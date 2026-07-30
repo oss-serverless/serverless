@@ -138,6 +138,7 @@ process.once('uncaughtException', (error) => {
     const Serverless = require('../lib/serverless');
     const { safeShallowAssign } = require('../lib/utils/safe-object');
     const resolveVariables = require('../lib/configuration/variables/resolve');
+    const deferIrrelevantStageParams = require('../lib/configuration/variables/defer-irrelevant-stage-params');
     const isPropertyResolved = require('../lib/configuration/variables/is-property-resolved');
     const eventuallyReportVariableResolutionErrors = require('../lib/configuration/variables/eventually-report-resolution-errors');
     const filterSupportedOptions = require('../lib/cli/filter-supported-options');
@@ -273,6 +274,10 @@ process.once('uncaughtException', (error) => {
               fulfilledSources: new Set(['file', 'self', 'strToBool']),
               propertyPathsToResolve: new Set(['provider\0name', 'provider\0stage', 'useDotenv']),
             };
+            resolverConfiguration.isPropertyDeferred = deferIrrelevantStageParams(
+              configuration,
+              resolverConfiguration
+            );
 
             await resolveVariables(resolverConfiguration);
 
@@ -571,6 +576,10 @@ process.once('uncaughtException', (error) => {
                 ? new Set(['plugins', 'provider\0name', 'provider\0stage', 'useDotenv'])
                 : null,
           };
+          resolverConfiguration.isPropertyDeferred = deferIrrelevantStageParams(
+            configuration,
+            resolverConfiguration
+          );
         }
 
         if (commandSchema) {
@@ -644,6 +653,17 @@ process.once('uncaughtException', (error) => {
         // Having all source resolvers configured, resolve variables
         processLog.debug('resolve all variables');
         await resolveVariables(resolverConfiguration);
+
+        // Drop entries which were deliberately left unresolved (params of irrelevant stages),
+        // so they're not reported as resolution errors or unrecognized sources.
+        // Their raw values remain in the configuration.
+        // Note: this must not run while a resolution pass is in progress
+        for (const propertyPath of Array.from(variablesMeta.keys())) {
+          if (resolverConfiguration.isPropertyDeferred(propertyPath)) {
+            variablesMeta.delete(propertyPath);
+          }
+        }
+
         if (!variablesMeta.size) return;
         if (
           eventuallyReportVariableResolutionErrorsForCliInput(
