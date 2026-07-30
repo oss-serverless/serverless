@@ -16,8 +16,13 @@ describe('test/unit/lib/configuration/variables/defer-irrelevant-stage-params.te
   it('should defer params of not effective stages', () => {
     const isPropertyDeferred = buildPredicate({ options: { stage: 'dev' } });
     expect(isPropertyDeferred(p('params', 'prod', 'secret'))).to.be.true;
-    expect(isPropertyDeferred(p('params', 'prod'))).to.be.true;
     expect(isPropertyDeferred(p('params', 'prod', 'nested', 'deep'))).to.be.true;
+  });
+
+  it('should not defer the stage section itself', () => {
+    // Such section has to resolve, as the configuration schema requires it to be an object
+    const isPropertyDeferred = buildPredicate({ options: { stage: 'dev' } });
+    expect(isPropertyDeferred(p('params', 'prod'))).to.be.false;
   });
 
   it('should not defer params of the effective stage', () => {
@@ -59,13 +64,29 @@ describe('test/unit/lib/configuration/variables/defer-irrelevant-stage-params.te
     expect(isPropertyDeferred(p('params', 'prod', 'secret'))).to.be.true;
   });
 
-  it('should ignore unresolved "provider.stage" values safely', () => {
+  it('should ignore non-primitive "provider.stage" values safely', () => {
     const isPropertyDeferred = buildPredicate({
       provider: { stage: { unexpected: 'object' } },
       options: {},
     });
     expect(isPropertyDeferred(p('params', 'dev', 'secret'))).to.be.false;
     expect(isPropertyDeferred(p('params', 'prod', 'secret'))).to.be.true;
+  });
+
+  it('should not defer when "provider.stage" did not resolve yet', () => {
+    // Deferring against a stage which is about to change would strand params of the effective
+    // stage as never scheduled for resolution
+    const isPropertyDeferred = buildPredicate({
+      provider: { stage: "${opt:stage, 'prod'}" },
+      options: {},
+    });
+    expect(isPropertyDeferred(p('params', 'dev', 'secret'))).to.be.false;
+    expect(isPropertyDeferred(p('params', 'prod', 'secret'))).to.be.false;
+  });
+
+  it('should not defer when stage passed via options did not resolve yet', () => {
+    const isPropertyDeferred = buildPredicate({ options: { stage: '${env:STAGE}' } });
+    expect(isPropertyDeferred(p('params', 'prod', 'secret'))).to.be.false;
   });
 
   it('should not defer when "params" is not a plain object', () => {

@@ -445,7 +445,25 @@ describe('test/unit/scripts/serverless.test.js', () => {
       expect(await print(serviceDir)).to.include('prodDomain: prod.example.com');
     });
 
-    it('should resolve "self" references nested in unresolved other stage params', async () => {
+    it('should resolve other stage sections configured with a single variable', async () => {
+      // Such section cannot be left unresolved, as the configuration schema requires
+      // "params.<stage>" to be an object
+      const { servicePath: serviceDir } = await setupProgrammaticFixture('aws', {
+        configExt: {
+          params: {
+            dev: { greeting: 'hello-dev' },
+            prod: '${file(./prod-params.yml)}',
+          },
+          custom: { greeting: '${param:greeting}' },
+        },
+        files: [{ to: 'prod-params.yml', contents: 'apiKey: real-prod-key' }],
+      });
+      const output = await print(serviceDir);
+      expect(output).to.include('greeting: hello-dev');
+      expect(output).to.include('apiKey: real-prod-key');
+    });
+
+    it('should resolve "self" references nested in other stage params', async () => {
       const { servicePath: serviceDir } = await setupProgrammaticFixture('aws', {
         configExt: {
           params: {
@@ -458,6 +476,21 @@ describe('test/unit/scripts/serverless.test.js', () => {
       const output = await print(serviceDir);
       expect(output).to.include('prodApiKey: real-prod-key');
       expect(output).to.not.include('fallback-value');
+    });
+
+    it('should resolve params of the effective stage when it is configured behind a variable', async () => {
+      const { servicePath: serviceDir } = await setupProgrammaticFixture('aws', {
+        configExt: {
+          provider: { stage: "${opt:stage, 'prod'}" },
+          params: {
+            dev: { greeting: '${unknownSource:foo}' },
+            prod: { greeting: '${file(./prod-params.yml):greeting}' },
+          },
+          custom: { greeting: '${param:greeting}' },
+        },
+        files: [{ to: 'prod-params.yml', contents: 'greeting: hello-prod' }],
+      });
+      expect(await print(serviceDir)).to.include('greeting: hello-prod');
     });
 
     it('should reject variable syntax errors in params of other stages', async () => {

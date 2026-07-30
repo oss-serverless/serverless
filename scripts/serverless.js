@@ -274,6 +274,7 @@ process.once('uncaughtException', (error) => {
               fulfilledSources: new Set(['file', 'self', 'strToBool']),
               propertyPathsToResolve: new Set(['provider\0name', 'provider\0stage', 'useDotenv']),
             };
+            // Assigned after the literal, as the predicate reads `resolverConfiguration` live
             resolverConfiguration.isPropertyDeferred = deferIrrelevantStageParams(
               configuration,
               resolverConfiguration
@@ -576,6 +577,8 @@ process.once('uncaughtException', (error) => {
                 ? new Set(['plugins', 'provider\0name', 'provider\0stage', 'useDotenv'])
                 : null,
           };
+          // Assigned after the literal, as the predicate reads `resolverConfiguration` live.
+          // When `resolverConfiguration` was already setup above, it carries its own predicate
           resolverConfiguration.isPropertyDeferred = deferIrrelevantStageParams(
             configuration,
             resolverConfiguration
