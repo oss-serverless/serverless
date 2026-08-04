@@ -36,4 +36,10 @@ describe('test/unit/lib/serverless-error.test.js', () => {
       expect(error.stack).to.have.string('testStackFrame');
     }
   });
+
+  it('should forward options to the Error constructor', () => {
+    const cause = new Error('Root cause');
+    const error = new ServerlessError('Some message', 'ERROR_CODE', { cause });
+    expect(error.cause).to.equal(cause);
+  });
 });
