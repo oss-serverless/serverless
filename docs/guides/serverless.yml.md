@@ -673,7 +673,7 @@ functions:
       foo: bar
     # VPC settings for this function
     # If you use VPC then both subproperties (securityGroupIds and subnetIds) are required
-    # Can be set to '~' to disable the use of a VPC
+    # Can be set to '~' or 'false' to disable the use of a VPC
     vpc:
       ipv6AllowedForDualStack: true
       securityGroupIds:
