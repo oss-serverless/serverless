@@ -235,8 +235,6 @@ describe('test/unit/lib/configuration/variables/resolve.test.js', () => {
       },
     };
 
-    const variableSourcesInConfig = new Set();
-
     before(async () => {
       variablesMeta = resolveMeta(configuration);
       await resolve({
@@ -246,7 +244,6 @@ describe('test/unit/lib/configuration/variables/resolve.test.js', () => {
         sources,
         options: {},
         fulfilledSources: new Set(),
-        variableSourcesInConfig,
       });
     });
 
@@ -562,29 +559,6 @@ describe('test/unit/lib/configuration/variables/resolve.test.js', () => {
         'nullWithCustomErrorMessage',
         'proxyTrapErrored',
         `infiniteResolutionRecursion${'\0nest'.repeat(10)}`,
-      ]);
-    });
-
-    it('should correctly record encountered variable sources', () => {
-      expect(Array.from(variableSourcesInConfig)).to.deep.equal([
-        'sourceParam',
-        'sourceDirect',
-        'sourceAddress',
-        'sourceProperty',
-        'sourceResultVariables',
-        'sourceInfiniteString',
-        'sourceResolveVariablesInString',
-        'sourceResolveVariable',
-        'sourceIncomplete',
-        'sourceMissing',
-        'sourceUnrecognized',
-        'sourceError',
-        'sourceInfinite',
-        'sourceShared',
-        'sourceSharedProperty',
-        'sourceSharedRaceCondition',
-        'sourceDeferredNull',
-        'sourceDirectNull',
       ]);
     });
 

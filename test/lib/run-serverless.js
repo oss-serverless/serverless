@@ -11,7 +11,6 @@ const { overrideEnv, overrideCwd, overrideArgv } = require('../utils/process');
 const sinon = require('sinon');
 const resolveEnv = require('./resolve-env');
 const observeOutput = require('./observe-output');
-const disableServerlessStatsRequests = require('./disable-serverless-stats-requests');
 const provisionTmpDir = require('./provision-tmp-dir');
 const configureAwsSdkV3Stub = require('./configure-aws-sdk-v3-stub');
 const { writeJsonFile } = require('../utils/fs');
@@ -23,13 +22,11 @@ const resolveModuleRealPath = (basePath, moduleId) =>
 
 const resolveServerless = async (serverlessPath, modulesCacheStub, callback) => {
   if (!modulesCacheStub) {
-    disableServerlessStatsRequests(serverlessPath);
     return callback(require(serverlessPath));
   }
 
   const originalCache = Object.assign({}, require.cache);
   for (const key of Object.keys(require.cache)) delete require.cache[key];
-  disableServerlessStatsRequests(serverlessPath);
   for (const [key, value] of Object.entries(modulesCacheStub)) {
     require.cache[path.isAbsolute(key) ? key : resolveModuleRealPath(serverlessPath, key)] = {
       exports: value,
