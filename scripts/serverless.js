@@ -660,11 +660,14 @@ process.once('uncaughtException', (error) => {
         // Drop entries which were deliberately left unresolved (params of irrelevant stages),
         // so they're not reported as resolution errors or unrecognized sources.
         // Their raw values remain in the configuration.
+        // Entries which already errored are kept, so they're still reported below: those carry
+        // variable syntax errors surfaced when a section resolved to an object, or failures of
+        // properties which were resolved on demand.
         // Note: this must not run while a resolution pass is in progress
         for (const propertyPath of Array.from(variablesMeta.keys())) {
-          if (resolverConfiguration.isPropertyDeferred(propertyPath)) {
-            variablesMeta.delete(propertyPath);
-          }
+          if (!resolverConfiguration.isPropertyDeferred(propertyPath)) continue;
+          if (variablesMeta.get(propertyPath).error) continue;
+          variablesMeta.delete(propertyPath);
         }
 
         if (!variablesMeta.size) return;

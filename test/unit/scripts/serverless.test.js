@@ -614,5 +614,43 @@ describe('test/unit/scripts/serverless.test.js', () => {
       expect(output).to.include('greeting: hello-dev');
       expect(output).to.include('${env:OSLS_TEST_SURELY_MISSING_ENV_VAR}');
     });
+
+    it('should report syntax errors in other stage params resolved in the final phase', async () => {
+      const { servicePath: serviceDir } = await setupProgrammaticFixture('aws', {
+        configExt: {
+          plugins: ['./source-plugin'],
+          params: {
+            dev: { greeting: 'hello-dev' },
+            prod: '${sourceObject:}',
+          },
+          custom: { greeting: '${param:greeting}' },
+        },
+        files: [
+          {
+            to: 'source-plugin.js',
+            contents: [
+              "'use strict';",
+              'module.exports = class SourcePlugin {',
+              '  constructor() {',
+              '    this.configurationVariablesSources = {',
+              '      sourceObject: {',
+              "        resolve: async () => ({ value: { bad: '${env:UNCLOSED' } }),",
+              '      },',
+              '    };',
+              '  }',
+              '};',
+              '',
+            ].join('\n'),
+          },
+        ],
+      });
+      try {
+        await print(serviceDir);
+        throw new Error('Unexpected');
+      } catch (error) {
+        expect(error.code).to.equal(1);
+        expect(String(error.stdoutBuffer)).to.include('params.prod.bad');
+      }
+    });
   });
 });
