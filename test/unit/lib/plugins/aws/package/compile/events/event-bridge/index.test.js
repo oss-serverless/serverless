@@ -345,6 +345,20 @@ describe('EventBridgeEvents', () => {
       let cfResources;
       let naming;
 
+      const buildExpectedSourceArn = (ruleName) => ({
+        'Fn::Join': [
+          ':',
+          [
+            'arn',
+            { Ref: 'AWS::Partition' },
+            'events',
+            { Ref: 'AWS::Region' },
+            { Ref: 'AWS::AccountId' },
+            { 'Fn::Join': ['/', ['rule', ruleName]] },
+          ],
+        ],
+      });
+
       before(async () => {
         const { cfTemplate, awsNaming } = await runServerless({
           fixture: 'function',
@@ -421,18 +435,27 @@ describe('EventBridgeEvents', () => {
         const lambdaPermissionResource =
           cfResources[naming.getEventBridgeLambdaPermissionLogicalId('basic', 3)];
 
-        expect(
-          lambdaPermissionResource.Properties.SourceArn['Fn::Join'][1][5]['Fn::Join'][1][1]
-        ).to.equal('default');
+        expect(lambdaPermissionResource.Properties.SourceArn).to.deep.equal(
+          buildExpectedSourceArn('event-bridge-lambda-rule-3')
+        );
       });
 
       it('should create a lambda permission resource that correctly references implicit default event bus in SourceArn', () => {
         const lambdaPermissionResource =
           cfResources[naming.getEventBridgeLambdaPermissionLogicalId('basic', 4)];
 
-        expect(
-          lambdaPermissionResource.Properties.SourceArn['Fn::Join'][1][5]['Fn::Join'][1]
-        ).not.to.include('default');
+        expect(lambdaPermissionResource.Properties.SourceArn).to.deep.equal(
+          buildExpectedSourceArn('event-bridge-lambda-rule-4')
+        );
+      });
+
+      it('should create a lambda permission resource that correctly references custom named rule on default event bus in SourceArn', () => {
+        const lambdaPermissionResource =
+          cfResources[naming.getEventBridgeLambdaPermissionLogicalId('basic', 5)];
+
+        expect(lambdaPermissionResource.Properties.SourceArn).to.deep.equal(
+          buildExpectedSourceArn('custom-event-name-test')
+        );
       });
 
       it('should correctly set event name when set', () => {
