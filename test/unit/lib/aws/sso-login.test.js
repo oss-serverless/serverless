@@ -121,7 +121,7 @@ describe('test/unit/lib/aws/sso-login.test.js', () => {
     getSSOTokenFilepath,
     mkdir,
     writeFileAtomic,
-    logNotice,
+    writeText,
   } = {}) {
     const getTokenPath =
       getSSOTokenFilepath ||
@@ -130,7 +130,7 @@ describe('test/unit/lib/aws/sso-login.test.js', () => {
       });
     const mkdirStub = mkdir || sinon.stub().resolves();
     const writeFileAtomicStub = writeFileAtomic || sinon.stub().resolves();
-    const logNoticeStub = logNotice || sinon.stub();
+    const writeTextStub = writeText || sinon.stub();
 
     const ssoLogin = proxyquire('../../../../lib/aws/sso-login', {
       '@aws-sdk/client-sso-oidc': {
@@ -144,7 +144,7 @@ describe('test/unit/lib/aws/sso-login.test.js', () => {
         loadSsoSessionData: loadSsoSessionData || sinon.stub().resolves(sessions),
         parseKnownFiles: parseKnownFiles || sinon.stub().resolves(profiles),
       },
-      '../utils/serverless-utils/log': { log: { notice: logNoticeStub } },
+      '../utils/serverless-utils/log': { writeText: writeTextStub },
       'fs': {
         promises: {
           mkdir: mkdirStub,
@@ -157,7 +157,7 @@ describe('test/unit/lib/aws/sso-login.test.js', () => {
       mkdir: mkdirStub,
       ssoLogin,
       writeFileAtomic: writeFileAtomicStub,
-      logNotice: logNoticeStub,
+      writeText: writeTextStub,
     };
   }
 
@@ -325,6 +325,53 @@ describe('test/unit/lib/aws/sso-login.test.js', () => {
     ).to.eventually.equal(null);
   });
 
+  it('resolves no SSO config when the profile is a web identity profile', async () => {
+    const { ssoLogin } = loadSsoLogin({
+      profiles: {
+        dev: {
+          web_identity_token_file: '/var/run/token',
+          role_arn: 'arn:aws:iam::123456789012:role/WebIdentity',
+          sso_start_url: 'https://example.awsapps.com/start',
+          sso_account_id: '123456789012',
+          sso_region: 'eu-west-1',
+          sso_role_name: 'Admin',
+        },
+      },
+    });
+
+    await expect(
+      ssoLogin.resolveSsoProfileConfig({
+        profile: 'dev',
+        filepath: '/aws/credentials',
+        configFilepath: '/aws/config',
+      })
+    ).to.eventually.equal(null);
+  });
+
+  it('resolves SSO config when a web identity token file lacks role_arn', async () => {
+    // fromIni only routes to web identity when role_arn is present; a stale
+    // web_identity_token_file alone must not suppress SSO recovery
+    const { ssoLogin } = loadSsoLogin({
+      profiles: {
+        dev: {
+          web_identity_token_file: '/var/run/token',
+          sso_start_url: 'https://example.awsapps.com/start',
+          sso_account_id: '123456789012',
+          sso_region: 'eu-west-1',
+          sso_role_name: 'Admin',
+        },
+      },
+    });
+
+    await expect(
+      ssoLogin.resolveSsoProfileConfig({
+        profile: 'dev',
+        filepath: '/aws/credentials',
+        configFilepath: '/aws/config',
+      })
+    ).to.eventually.include({ cacheKey: 'https://example.awsapps.com/start' });
+  });
+
   it('rethrows non-credential errors without attempting login', async () => {
     const originalError = new Error('unrelated failure');
     const { wrappedProvider } = loadWrappedSsoProvider(sinon.stub().rejects(originalError));
@@ -365,7 +412,7 @@ describe('test/unit/lib/aws/sso-login.test.js', () => {
         clientSecretExpiresAt: 1783276800,
       }),
     });
-    const { wrappedProvider, writeFileAtomic, logNotice } = loadWrappedSsoProvider(provider, {
+    const { wrappedProvider, writeFileAtomic, writeText } = loadWrappedSsoProvider(provider, {
       requestHandler: { handler: true },
       profiles: {
         dev: {
@@ -384,7 +431,7 @@ describe('test/unit/lib/aws/sso-login.test.js', () => {
     });
 
     const resultPromise = wrappedProvider({ callerClientConfig: { region: 'eu-west-1' } });
-    await clock.tickAsync(0);
+    await clock.tickAsync(1000);
 
     await expect(resultPromise).to.eventually.deep.equal(credentials);
     expect(provider).to.have.been.calledTwice;
@@ -402,10 +449,11 @@ describe('test/unit/lib/aws/sso-login.test.js', () => {
     expect(FakeSSOOIDCClient.send.firstCall.args[0].input.scopes).to.deep.equal([
       'sso:account:access',
     ]);
-    expect(logNotice.firstCall.args[0]).to.include('https://device.sso.aws/confirm');
-    expect(logNotice.firstCall.args[0]).to.include('ABCD-EFGH');
-    expect(logNotice.firstCall.args[0]).to.not.include('client-secret');
-    expect(logNotice.firstCall.args[0]).to.not.include('refresh-token');
+    const loginInstructions = writeText.firstCall.args.join('\n');
+    expect(loginInstructions).to.include('https://device.sso.aws/confirm');
+    expect(loginInstructions).to.include('ABCD-EFGH');
+    expect(loginInstructions).to.not.include('client-secret');
+    expect(loginInstructions).to.not.include('refresh-token');
     const writtenToken = JSON.parse(writeFileAtomic.firstCall.args[1]);
     expect(writeFileAtomic.firstCall.args[0]).to.equal('/home/test/.aws/sso/cache/my-sso.json');
     expect(writeFileAtomic.firstCall.args[2]).to.deep.equal({ mode: 0o600 });
@@ -413,12 +461,34 @@ describe('test/unit/lib/aws/sso-login.test.js', () => {
       startUrl: 'https://example.awsapps.com/start',
       region: 'eu-west-1',
       accessToken: 'access-token',
-      expiresAt: '2026-07-05T13:00:00.000Z',
+      expiresAt: '2026-07-05T13:00:01.000Z',
       clientId: 'client-id',
       clientSecret: 'client-secret',
       registrationExpiresAt: '2026-07-05T18:40:00.000Z',
       refreshToken: 'refresh-token',
     });
+  });
+
+  it('falls back to the plain verification URI when the complete URI is absent', async () => {
+    const clock = sinon.useFakeTimers(new Date('2026-07-05T12:00:00.000Z'));
+    const provider = sinon.stub();
+    provider.onFirstCall().rejects(createCredentialsProviderError());
+    provider.onSecondCall().resolves({ accessKeyId: 'key', secretAccessKey: 'secret' });
+    stubOidcFlow({
+      authorization: {
+        verificationUriComplete: undefined,
+        verificationUri: 'https://device.sso.aws/verify',
+      },
+    });
+    const { wrappedProvider, writeText } = loadWrappedSsoProvider(provider);
+
+    const resultPromise = wrappedProvider();
+    await clock.tickAsync(1000);
+
+    await expect(resultPromise).to.eventually.include({ accessKeyId: 'key' });
+    const loginInstructions = writeText.firstCall.args.join('\n');
+    expect(loginInstructions).to.include('https://device.sso.aws/verify');
+    expect(loginInstructions).to.include('ABCD-EFGH');
   });
 
   it('backs off on slow_down while polling for the device token', async () => {
@@ -446,8 +516,8 @@ describe('test/unit/lib/aws/sso-login.test.js', () => {
     const { wrappedProvider } = loadWrappedSsoProvider(provider);
 
     const resultPromise = wrappedProvider();
-    await clock.tickAsync(0);
-    await clock.tickAsync(5000);
+    await clock.tickAsync(1000);
+    await clock.tickAsync(6000);
 
     await expect(resultPromise).to.eventually.include({ accessKeyId: 'key' });
     expect(FakeSSOOIDCClient.send).to.have.been.calledWith(
@@ -478,7 +548,7 @@ describe('test/unit/lib/aws/sso-login.test.js', () => {
       clientSecret: 'client-secret',
       clientSecretExpiresAt: 1783284000,
     });
-    await clock.tickAsync(0);
+    await clock.tickAsync(1000);
 
     await expect(firstResult).to.eventually.include({ accessKeyId: 'first' });
     await expect(secondResult).to.eventually.include({ accessKeyId: 'second' });
@@ -512,12 +582,38 @@ describe('test/unit/lib/aws/sso-login.test.js', () => {
     const { wrappedProvider } = loadWrappedSsoProvider(provider);
 
     const firstError = captureRejection(wrappedProvider());
-    await clock.tickAsync(0);
+    await clock.tickAsync(1000);
     expect((await firstError).code).to.equal('AWS_SSO_LOGIN_EXPIRED');
 
     const secondResult = wrappedProvider();
-    await clock.tickAsync(0);
+    await clock.tickAsync(1000);
     await expect(secondResult).to.eventually.deep.equal(credentials);
+
+    const registerCalls = FakeSSOOIDCClient.send
+      .getCalls()
+      .filter((call) => call.args[0] instanceof RegisterClientCommand);
+    expect(registerCalls).to.have.length(2);
+  });
+
+  it('allows a new login after the previously written token expires', async () => {
+    const clock = sinon.useFakeTimers(new Date('2026-07-05T12:00:00.000Z'));
+    const provider = sinon.stub();
+    provider.onCall(0).rejects(createCredentialsProviderError());
+    provider.onCall(1).resolves({ accessKeyId: 'first', secretAccessKey: 'secret' });
+    provider.onCall(2).rejects(createCredentialsProviderError());
+    provider.onCall(3).resolves({ accessKeyId: 'second', secretAccessKey: 'secret' });
+    stubOidcFlow();
+    const { wrappedProvider } = loadWrappedSsoProvider(provider);
+
+    const firstResult = wrappedProvider();
+    await clock.tickAsync(1000);
+    await expect(firstResult).to.eventually.include({ accessKeyId: 'first' });
+
+    // The token written by the first login (expiresIn: 3600) has now expired
+    await clock.tickAsync(3600 * 1000);
+    const secondResult = wrappedProvider();
+    await clock.tickAsync(1000);
+    await expect(secondResult).to.eventually.include({ accessKeyId: 'second' });
 
     const registerCalls = FakeSSOOIDCClient.send
       .getCalls()
@@ -552,7 +648,7 @@ describe('test/unit/lib/aws/sso-login.test.js', () => {
     );
 
     const resultError = captureRejection(wrappedProvider());
-    await clock.tickAsync(0);
+    await clock.tickAsync(1000);
     const error = await resultError;
 
     expect(error.code).to.equal('AWS_SSO_LOGIN_DENIED');
@@ -571,7 +667,7 @@ describe('test/unit/lib/aws/sso-login.test.js', () => {
     );
 
     const resultError = captureRejection(wrappedProvider());
-    await clock.tickAsync(0);
+    await clock.tickAsync(1000);
 
     expect((await resultError).code).to.equal('AWS_SSO_LOGIN_EXPIRED');
   });
@@ -600,7 +696,7 @@ describe('test/unit/lib/aws/sso-login.test.js', () => {
     );
 
     const resultError = captureRejection(wrappedProvider());
-    await clock.tickAsync(0);
+    await clock.tickAsync(1000);
 
     expect((await resultError).code).to.equal('AWS_SSO_LOGIN_INVALID_RESPONSE');
   });
@@ -620,7 +716,7 @@ describe('test/unit/lib/aws/sso-login.test.js', () => {
     );
 
     const resultError = captureRejection(wrappedProvider());
-    await clock.tickAsync(0);
+    await clock.tickAsync(1000);
 
     expect(await resultError).to.equal(unknownError);
   });
@@ -634,7 +730,7 @@ describe('test/unit/lib/aws/sso-login.test.js', () => {
     const { wrappedProvider } = loadWrappedSsoProvider(sinon.stub().rejects(providerError));
 
     const firstError = captureRejection(wrappedProvider());
-    await clock.tickAsync(0);
+    await clock.tickAsync(1000);
     expect((await firstError).message).to.equal('user is not assigned to the role');
 
     const secondError = captureRejection(wrappedProvider());

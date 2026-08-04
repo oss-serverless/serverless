@@ -165,6 +165,12 @@ osls deploy --aws-profile devProfile
 
 To use web identity token authentication the `AWS_WEB_IDENTITY_TOKEN_FILE` and `AWS_ROLE_ARN` environment need to be set. It is automatically set if you specify a service account in AWS EKS.
 
+##### IAM Identity Center (SSO) profiles
+
+Profiles that authenticate through IAM Identity Center work out of the box, whether they use a modern `sso-session` section, a legacy `sso_*` configuration, or reach the SSO configuration through `role_arn`/`source_profile` chaining. When the SSO session is missing or expired, osls starts the standard device authorization flow automatically: it prints a verification URL and user code, waits for the browser approval, and retries credential resolution. Tokens are cached in `~/.aws/sso/cache` in the same format the AWS CLI uses, so osls and `aws sso login` share sessions in both directions.
+
+The automatic login requires an interactive terminal. In non-interactive environments (for example CI) the command fails fast with an `AWS_SSO_LOGIN_UNAVAILABLE` error instead of hanging; run `aws sso login --profile <profile>` beforehand or supply credentials another way.
+
 #### Per Stage Profiles
 
 As an advanced use-case, you can deploy different stages to different accounts by using different profiles per stage. In order to use different profiles per stage, you must leverage [variables](./variables.md) and the provider profile setting.
