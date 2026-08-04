@@ -384,4 +384,273 @@ describe('test/unit/scripts/serverless.test.js', () => {
       expect(String(error.stdoutBuffer)).to.include('command "config credentials" requires');
     }
   });
+
+  describe('params of irrelevant stages', () => {
+    const print = async (serviceDir, args = []) =>
+      stripAnsi(
+        String(
+          (await spawn('node', [serverlessPath, 'print', ...args], { cwd: serviceDir }))
+            .stdoutBuffer
+        )
+      );
+
+    it('should not resolve params of other stages', async () => {
+      const { servicePath: serviceDir } = await setupProgrammaticFixture('aws', {
+        configExt: {
+          params: {
+            dev: { greeting: 'hello-dev' },
+            prod: {
+              fromUnknownSource: '${unknownSource:foo}',
+              fromMissingEnv: '${env:OSLS_TEST_SURELY_MISSING_ENV_VAR}',
+            },
+          },
+          custom: { greeting: '${param:greeting}' },
+        },
+      });
+      const output = await print(serviceDir);
+      expect(output).to.include('greeting: hello-dev');
+      // Values of other stages are left as-is
+      expect(output).to.include('${unknownSource:foo}');
+      expect(output).to.include('${env:OSLS_TEST_SURELY_MISSING_ENV_VAR}');
+    });
+
+    it('should still resolve params of their own stage', async () => {
+      const { servicePath: serviceDir } = await setupProgrammaticFixture('aws', {
+        configExt: {
+          params: {
+            dev: { greeting: 'hello-dev' },
+            prod: { fromMissingEnv: '${env:OSLS_TEST_SURELY_MISSING_ENV_VAR}' },
+          },
+        },
+      });
+      try {
+        await print(serviceDir, ['--stage', 'prod']);
+        throw new Error('Unexpected');
+      } catch (error) {
+        expect(error.code).to.equal(1);
+        expect(String(error.stdoutBuffer)).to.include('params.prod.fromMissingEnv');
+      }
+    });
+
+    it('should resolve other stage params referenced with "self" variables', async () => {
+      const { servicePath: serviceDir } = await setupProgrammaticFixture('aws', {
+        configExt: {
+          params: {
+            prod: { domain: '${file(./prod-params.yml):domain}' },
+          },
+          custom: { prodDomain: '${self:params.prod.domain}' },
+        },
+        files: [{ to: 'prod-params.yml', contents: 'domain: prod.example.com' }],
+      });
+      expect(await print(serviceDir)).to.include('prodDomain: prod.example.com');
+    });
+
+    it('should resolve other stage sections configured with a single variable', async () => {
+      // Such section cannot be left unresolved, as the configuration schema requires
+      // "params.<stage>" to be an object
+      const { servicePath: serviceDir } = await setupProgrammaticFixture('aws', {
+        configExt: {
+          params: {
+            dev: { greeting: 'hello-dev' },
+            prod: '${file(./prod-params.yml)}',
+          },
+          custom: { greeting: '${param:greeting}' },
+        },
+        files: [{ to: 'prod-params.yml', contents: 'apiKey: real-prod-key' }],
+      });
+      const output = await print(serviceDir);
+      expect(output).to.include('greeting: hello-dev');
+      expect(output).to.include('apiKey: real-prod-key');
+    });
+
+    it('should not resolve params nested in other stage sections resolved from a single variable', async () => {
+      const { servicePath: serviceDir } = await setupProgrammaticFixture('aws', {
+        configExt: {
+          params: {
+            dev: { greeting: 'hello-dev' },
+            prod: '${file(./prod-params.yml)}',
+          },
+          custom: { greeting: '${param:greeting}' },
+        },
+        files: [
+          { to: 'prod-params.yml', contents: 'secret: ${env:OSLS_TEST_SURELY_MISSING_ENV_VAR}' },
+        ],
+      });
+      const output = await print(serviceDir);
+      expect(output).to.include('greeting: hello-dev');
+      expect(output).to.include('${env:OSLS_TEST_SURELY_MISSING_ENV_VAR}');
+    });
+
+    it('should not resolve other stage params nested in a whole "params" section resolved from a single variable', async () => {
+      const { servicePath: serviceDir } = await setupProgrammaticFixture('aws', {
+        configExt: {
+          params: '${file(./params.yml)}',
+          custom: { greeting: '${param:greeting}' },
+        },
+        files: [
+          {
+            to: 'params.yml',
+            contents: [
+              'dev:',
+              '  greeting: hello-dev',
+              'prod:',
+              '  secret: ${env:OSLS_TEST_SURELY_MISSING_ENV_VAR}',
+            ].join('\n'),
+          },
+        ],
+      });
+      const output = await print(serviceDir);
+      expect(output).to.include('greeting: hello-dev');
+      expect(output).to.include('${env:OSLS_TEST_SURELY_MISSING_ENV_VAR}');
+    });
+
+    it('should not resolve siblings of referenced params of other stages', async () => {
+      const { servicePath: serviceDir } = await setupProgrammaticFixture('aws', {
+        configExt: {
+          params: {
+            prod: '${file(./prod-params.yml)}',
+          },
+          custom: { prodDomain: '${self:params.prod.domain}' },
+        },
+        files: [
+          {
+            to: 'prod-params.yml',
+            contents: [
+              'domain: prod.example.com',
+              'secret: ${env:OSLS_TEST_SURELY_MISSING_ENV_VAR}',
+            ].join('\n'),
+          },
+        ],
+      });
+      const output = await print(serviceDir);
+      expect(output).to.include('prodDomain: prod.example.com');
+      expect(output).to.include('${env:OSLS_TEST_SURELY_MISSING_ENV_VAR}');
+    });
+
+    it('should resolve "self" references nested in other stage params', async () => {
+      const { servicePath: serviceDir } = await setupProgrammaticFixture('aws', {
+        configExt: {
+          params: {
+            prod: '${file(./prod-params.yml)}',
+          },
+          custom: { prodApiKey: "${self:params.prod.apiKey, 'fallback-value'}" },
+        },
+        files: [{ to: 'prod-params.yml', contents: 'apiKey: real-prod-key' }],
+      });
+      const output = await print(serviceDir);
+      expect(output).to.include('prodApiKey: real-prod-key');
+      expect(output).to.not.include('fallback-value');
+    });
+
+    it('should resolve params of the effective stage when it is configured behind a variable', async () => {
+      const { servicePath: serviceDir } = await setupProgrammaticFixture('aws', {
+        configExt: {
+          provider: { stage: "${opt:stage, 'prod'}" },
+          params: {
+            dev: { greeting: '${unknownSource:foo}' },
+            prod: { greeting: '${file(./prod-params.yml):greeting}' },
+          },
+          custom: { greeting: '${param:greeting}' },
+        },
+        files: [{ to: 'prod-params.yml', contents: 'greeting: hello-prod' }],
+      });
+      expect(await print(serviceDir)).to.include('greeting: hello-prod');
+    });
+
+    it('should reject variable syntax errors in params of other stages', async () => {
+      const { servicePath: serviceDir } = await setupProgrammaticFixture('aws', {
+        configExt: {
+          params: { prod: { bad: '${env:UNCLOSED' } },
+        },
+      });
+      try {
+        await print(serviceDir);
+        throw new Error('Unexpected');
+      } catch (error) {
+        expect(error.code).to.equal(1);
+        expect(String(error.stdoutBuffer)).to.include('params.prod.bad');
+      }
+    });
+
+    it('should resolve effective stage from "provider.stage"', async () => {
+      const { servicePath: serviceDir } = await setupProgrammaticFixture('aws', {
+        configExt: {
+          provider: { stage: 'prod' },
+          params: {
+            dev: { greeting: '${unknownSource:foo}' },
+            prod: { greeting: 'hello-prod' },
+          },
+          custom: { greeting: '${param:greeting}' },
+        },
+      });
+      expect(await print(serviceDir)).to.include('greeting: hello-prod');
+    });
+
+    it('should not resolve other stage params added by plugins', async () => {
+      const { servicePath: serviceDir } = await setupProgrammaticFixture('aws', {
+        configExt: {
+          plugins: ['./extend-params-plugin'],
+          params: { dev: { greeting: 'hello-dev' } },
+          custom: { greeting: '${param:greeting}' },
+        },
+        files: [
+          {
+            to: 'extend-params-plugin.js',
+            contents: [
+              "'use strict';",
+              'module.exports = class ExtendParamsPlugin {',
+              '  constructor(serverless) { this.serverless = serverless; }',
+              '  async asyncInit() {',
+              "    this.serverless.extendConfiguration(['params', 'prod', 'fromPlugin'],",
+              "      '${env:OSLS_TEST_SURELY_MISSING_ENV_VAR}');",
+              '  }',
+              '};',
+              '',
+            ].join('\n'),
+          },
+        ],
+      });
+      const output = await print(serviceDir);
+      expect(output).to.include('greeting: hello-dev');
+      expect(output).to.include('${env:OSLS_TEST_SURELY_MISSING_ENV_VAR}');
+    });
+
+    it('should report syntax errors in other stage params resolved in the final phase', async () => {
+      const { servicePath: serviceDir } = await setupProgrammaticFixture('aws', {
+        configExt: {
+          plugins: ['./source-plugin'],
+          params: {
+            dev: { greeting: 'hello-dev' },
+            prod: '${sourceObject:}',
+          },
+          custom: { greeting: '${param:greeting}' },
+        },
+        files: [
+          {
+            to: 'source-plugin.js',
+            contents: [
+              "'use strict';",
+              'module.exports = class SourcePlugin {',
+              '  constructor() {',
+              '    this.configurationVariablesSources = {',
+              '      sourceObject: {',
+              "        resolve: async () => ({ value: { bad: '${env:UNCLOSED' } }),",
+              '      },',
+              '    };',
+              '  }',
+              '};',
+              '',
+            ].join('\n'),
+          },
+        ],
+      });
+      try {
+        await print(serviceDir);
+        throw new Error('Unexpected');
+      } catch (error) {
+        expect(error.code).to.equal(1);
+        expect(String(error.stdoutBuffer)).to.include('params.prod.bad');
+      }
+    });
+  });
 });

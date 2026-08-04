@@ -68,6 +68,28 @@ Here is the priority used to resolve a `${param:XXX}` variable:
 
 This is especially useful in development when deploying to ephemeral stages (e.g. "feature-x"). The stage might not have any parameter, therefore it will default to the parameters set on the service. However, in other stages, like "prod", or "staging", you may override the service-level parameters with stage-level parameters to use values unique to that stage.
 
+## Resolution of other stages
+
+Variables set in `params.<stage>` sections that do not concern the current stage are not resolved. For example when deploying to `dev`, a `${ssm:/prod/secret}` variable set in `params.prod` is not fetched from SSM, and errors it may raise (missing permissions, missing environment variable, unknown variable source…) do not fail the command.
+
+Such variables are still resolved when they are explicitly referenced, e.g. with `${self:params.prod.domain}`.
+
+There are a few exceptions:
+
+- Params under `params.default` are always resolved, as they apply to every stage.
+- When a whole section is defined with a single variable (e.g. `params: ${file(./params.yml)}` or `params.prod: ${file(./prod-params.yml)}`), that variable itself is still resolved: the configuration schema requires these sections to be objects. Values nested in the result are however only resolved for the current stage.
+- Variable syntax errors are reported for all stages: a malformed variable in `params.prod` still fails the command when deploying to `dev`.
+
+One consequence is that `serverless print` displays these values unresolved, as they appear in `serverless.yml`:
+
+```yaml
+params:
+  dev:
+    domain: dev.myapp.com
+  prod:
+    domain: ${ssm:/myapp/prod/domain} # left as-is when deploying to "dev"
+```
+
 ## See also
 
 - [Referencing parameters](./variables.md#referencing-parameters) in the Variables guide for more on the `${param:XXX}` source.
