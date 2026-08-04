@@ -520,7 +520,7 @@ functions:
 
 Then, when you run `serverless deploy`, VPC configuration will be deployed along with your lambda function.
 
-If you have a provider VPC set but wish to have specific functions with no VPC, you can set the `vpc` value for these functions to `~` (null). For example:
+If you have a provider VPC set but wish to have specific functions with no VPC, you can set the `vpc` value for these functions to `~` (null) or `false`. For example:
 
 ```yml
 # serverless.yml
