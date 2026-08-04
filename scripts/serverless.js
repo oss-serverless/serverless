@@ -577,8 +577,8 @@ process.once('uncaughtException', (error) => {
                 ? new Set(['plugins', 'provider\0name', 'provider\0stage', 'useDotenv'])
                 : null,
           };
-          // Assigned after the literal, as the predicate reads `resolverConfiguration` live.
-          // When `resolverConfiguration` was already setup above, it carries its own predicate
+          // Assigned after the literal, as the predicate reads `resolverConfiguration` live
+          // (when set up above instead, `resolverConfiguration` already carries its predicate)
           resolverConfiguration.isPropertyDeferred = deferIrrelevantStageParams(
             configuration,
             resolverConfiguration
@@ -657,13 +657,10 @@ process.once('uncaughtException', (error) => {
         processLog.debug('resolve all variables');
         await resolveVariables(resolverConfiguration);
 
-        // Drop entries which were deliberately left unresolved (params of irrelevant stages),
-        // so they're not reported as resolution errors or unrecognized sources.
-        // Their raw values remain in the configuration.
-        // Entries which already errored are kept, so they're still reported below: those carry
-        // variable syntax errors surfaced when a section resolved to an object, or failures of
-        // properties which were resolved on demand.
-        // Note: this must not run while a resolution pass is in progress
+        // Drop entries deliberately left unresolved (params of irrelevant stages), so they're not
+        // reported as resolution errors or unrecognized sources; their raw values remain in the
+        // configuration. Errored entries (e.g. syntax errors in resolved objects) are kept to be
+        // reported below. Must not run while a resolution pass is in progress
         for (const propertyPath of Array.from(variablesMeta.keys())) {
           if (!resolverConfiguration.isPropertyDeferred(propertyPath)) continue;
           if (variablesMeta.get(propertyPath).error) continue;
