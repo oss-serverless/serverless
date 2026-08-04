@@ -305,6 +305,28 @@ describe('lib/plugins/aws/package/compile/layers/index.test.js', () => {
     ).to.deep.equal(['ruby4.0']);
   });
 
+  it('should accept AL2023 Java runtimes in `layers[].compatibleRuntimes`', async () => {
+    const {
+      awsNaming,
+      cfTemplate: { Resources },
+    } = await runServerless({
+      fixture: 'layer',
+      command: 'package',
+      configExt: {
+        layers: {
+          layer: {
+            compatibleRuntimes: ['java8.al2023', 'java11.al2023', 'java17.al2023'],
+          },
+        },
+      },
+      awsSdkV3StubMap,
+    });
+
+    expect(
+      Resources[awsNaming.getLambdaLayerLogicalId('layer')].Properties.CompatibleRuntimes
+    ).to.deep.equal(['java8.al2023', 'java11.al2023', 'java17.al2023']);
+  });
+
   it('should reject deprecated `layers[].compatibleRuntimes` values', () => {
     return expect(
       runServerless({

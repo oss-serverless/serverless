@@ -153,7 +153,7 @@ The `runtime` property (set at `provider.runtime` or per function) accepts a fix
 
 - **Node.js:** `nodejs20.x`, `nodejs22.x`, `nodejs24.x`
 - **Python:** `python3.10`, `python3.11`, `python3.12`, `python3.13`, `python3.14`
-- **Java:** `java8.al2`, `java11`, `java17`, `java21`, `java25`
+- **Java:** `java8.al2`, `java8.al2023`, `java11`, `java11.al2023`, `java17`, `java17.al2023`, `java21`, `java25`
 - **Ruby:** `ruby3.3`, `ruby3.4`, `ruby4.0`
 - **.NET:** `dotnet8`, `dotnet9`, `dotnet10`
 - **Custom (OS-only):** `provided.al2`, `provided.al2023`
