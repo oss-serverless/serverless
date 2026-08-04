@@ -2863,6 +2863,96 @@ describe('lib/plugins/aws/package/compile/functions/index.test.js', () => {
       );
     });
 
+    it('should accept `provider.runtime: java8.al2023`', async () => {
+      const {
+        awsNaming: localNaming,
+        cfTemplate: { Resources: localResources },
+      } = await runServerless({
+        fixture: 'function',
+        command: 'package',
+        configExt: {
+          provider: {
+            runtime: 'java8.al2023',
+          },
+        },
+      });
+
+      expect(localResources[localNaming.getLambdaLogicalId('basic')].Properties.Runtime).to.equal(
+        'java8.al2023'
+      );
+      expect(localResources[localNaming.getLambdaLogicalId('other')].Properties.Runtime).to.equal(
+        'java8.al2023'
+      );
+    });
+
+    it('should accept `provider.runtime: java11.al2023`', async () => {
+      const {
+        awsNaming: localNaming,
+        cfTemplate: { Resources: localResources },
+      } = await runServerless({
+        fixture: 'function',
+        command: 'package',
+        configExt: {
+          provider: {
+            runtime: 'java11.al2023',
+          },
+        },
+      });
+
+      expect(localResources[localNaming.getLambdaLogicalId('basic')].Properties.Runtime).to.equal(
+        'java11.al2023'
+      );
+      expect(localResources[localNaming.getLambdaLogicalId('other')].Properties.Runtime).to.equal(
+        'java11.al2023'
+      );
+    });
+
+    it('should accept `provider.runtime: java17.al2023`', async () => {
+      const {
+        awsNaming: localNaming,
+        cfTemplate: { Resources: localResources },
+      } = await runServerless({
+        fixture: 'function',
+        command: 'package',
+        configExt: {
+          provider: {
+            runtime: 'java17.al2023',
+          },
+        },
+      });
+
+      expect(localResources[localNaming.getLambdaLogicalId('basic')].Properties.Runtime).to.equal(
+        'java17.al2023'
+      );
+      expect(localResources[localNaming.getLambdaLogicalId('other')].Properties.Runtime).to.equal(
+        'java17.al2023'
+      );
+    });
+
+    it('should accept `functions[].runtime: java17.al2023`', async () => {
+      const {
+        awsNaming: localNaming,
+        cfTemplate: { Resources: localResources },
+      } = await runServerless({
+        fixture: 'function',
+        command: 'package',
+        configExt: {
+          functions: {
+            basic: {
+              runtime: 'java17.al2023',
+            },
+          },
+        },
+      });
+
+      expect(localResources[localNaming.getLambdaLogicalId('basic')].Properties.Runtime).to.equal(
+        'java17.al2023'
+      );
+      expect(localResources[localNaming.getLambdaLogicalId('other')].Properties.Runtime).to.equal(
+        'nodejs20.x'
+      );
+    });
+
     it('should reject deprecated `provider.runtime` values', () => {
       return expect(
         runServerless({
