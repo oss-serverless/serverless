@@ -52,7 +52,14 @@ describe('test/unit/lib/aws/credentials.test.js', () => {
   }
   FakeNodeHttpHandler.instances = [];
 
-  function loadCredentials({ files = {}, fromIni, fromNodeProviderChain, readline, logWarning }) {
+  function loadCredentials({
+    files = {},
+    fromIni,
+    fromNodeProviderChain,
+    readline,
+    logWarning,
+    withInteractiveSsoLogin,
+  }) {
     const readFileSync = sinon.stub().callsFake((filePath) => {
       if (Object.prototype.hasOwnProperty.call(files, filePath)) {
         const result = files[filePath];
@@ -68,6 +75,13 @@ describe('test/unit/lib/aws/credentials.test.js', () => {
         fromNodeProviderChain,
       },
       '@smithy/node-http-handler': { NodeHttpHandler: FakeNodeHttpHandler },
+      './sso-login': {
+        withInteractiveSsoLogin:
+          withInteractiveSsoLogin ||
+          (({ provider: wrappedProvider }) => {
+            return wrappedProvider;
+          }),
+      },
       '../utils/serverless-utils/log': { log: { warning: logWarning || sinon.stub() } },
       'fs': { readFileSync },
       'os': { homedir: () => homeDir },
@@ -532,6 +546,43 @@ describe('test/unit/lib/aws/credentials.test.js', () => {
       expect(initOptions.profile).to.equal('dev');
       expect(initOptions.clientConfig.requestHandler).to.be.an.instanceOf(FakeNodeHttpHandler);
       expect(initOptions.clientConfig).to.not.have.property('region');
+    });
+  });
+
+  it('wraps profile providers with interactive SSO login support', async () => {
+    await overrideEnv(async () => {
+      process.env.AWS_PROFILE = 'dev';
+      const profileCredentials = {
+        accessKeyId: 'profileAccessKeyId',
+        secretAccessKey: 'profileSecretAccessKey',
+      };
+      const profileProvider = sinon.stub().resolves(profileCredentials);
+      const fromIni = sinon.stub().returns(profileProvider);
+      const fromNodeProviderChain = sinon.stub();
+      const wrappedProvider = sinon.stub().resolves(profileCredentials);
+      const withInteractiveSsoLogin = sinon.stub().returns(wrappedProvider);
+      const { getAwsSdkV3CredentialsProvider } = loadCredentials({
+        fromIni,
+        fromNodeProviderChain,
+        withInteractiveSsoLogin,
+      });
+      const providerOptions = { callerClientConfig: { region: 'eu-west-1' } };
+
+      await expect(getAwsSdkV3CredentialsProvider()(providerOptions)).to.eventually.deep.equal(
+        profileCredentials
+      );
+
+      expect(withInteractiveSsoLogin).to.have.been.calledOnce;
+      expect(withInteractiveSsoLogin.firstCall.args[0]).to.include({
+        profile: 'dev',
+        provider: profileProvider,
+        filepath: credentialsFilePath,
+        configFilepath: configFilePath,
+      });
+      expect(withInteractiveSsoLogin.firstCall.args[0].requestHandler).to.be.an.instanceOf(
+        FakeNodeHttpHandler
+      );
+      expect(wrappedProvider).to.have.been.calledOnceWithExactly(providerOptions);
     });
   });
 
