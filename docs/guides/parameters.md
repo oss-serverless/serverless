@@ -74,6 +74,12 @@ Variables set in `params.<stage>` sections that do not concern the current stage
 
 Such variables are still resolved when they are explicitly referenced, e.g. with `${self:params.prod.domain}`.
 
+There are a few exceptions:
+
+- Params under `params.default` are always resolved, as they apply to every stage.
+- When a whole section is defined with a single variable (e.g. `params: ${file(./params.yml)}` or `params.prod: ${file(./prod-params.yml)}`), that variable itself is still resolved: the configuration schema requires these sections to be objects. Values nested in the result are however only resolved for the current stage.
+- Variable syntax errors are reported for all stages: a malformed variable in `params.prod` still fails the command when deploying to `dev`.
+
 One consequence is that `serverless print` displays these values unresolved, as they appear in `serverless.yml`:
 
 ```yaml
