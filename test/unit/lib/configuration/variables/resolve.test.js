@@ -743,4 +743,77 @@ describe('test/unit/lib/configuration/variables/resolve.test.js', () => {
       expect(callCount).to.equal(1);
     });
   });
+
+  describe('Deferred resolution of dynamically discovered properties', () => {
+    const configuration = {
+      params: {
+        dev: { greeting: '${sourceDirect:}' },
+        prod: '${sourceObject:}',
+      },
+      referencesDeferred: '${sourceProperty(params, prod, referenced)}',
+    };
+    let variablesMeta;
+    let callCount = 0;
+    const sources = {
+      sourceDirect: {
+        resolve: () => ({ value: 'hello' }),
+      },
+      sourceCounted: {
+        resolve: () => {
+          ++callCount;
+          return { value: `counted:${callCount}` };
+        },
+      },
+      sourceObject: {
+        resolve: () => ({
+          value: { referenced: '${sourceCounted:}', notReferenced: '${sourceCounted:}' },
+        }),
+      },
+      sourceProperty: {
+        resolve: async ({ params, resolveConfigurationProperty }) => {
+          const result = await resolveConfigurationProperty(params || []);
+          return { value: result == null ? null : result };
+        },
+      },
+    };
+    before(async () => {
+      variablesMeta = resolveMeta(configuration);
+      await resolve({
+        serviceDir: process.cwd(),
+        configuration,
+        variablesMeta,
+        sources,
+        options: {},
+        fulfilledSources: new Set([
+          'sourceDirect',
+          'sourceCounted',
+          'sourceObject',
+          'sourceProperty',
+        ]),
+        isPropertyDeferred: (propertyPath) => {
+          if (!propertyPath.startsWith('params\0')) return false;
+          const propertyPathKeys = propertyPath.split('\0');
+          if (propertyPathKeys.length < 3) return false;
+          return propertyPathKeys[1] !== 'dev' && propertyPathKeys[1] !== 'default';
+        },
+      });
+    });
+
+    it('should resolve section variables', () => {
+      expect(variablesMeta.has('params\0prod')).to.be.false;
+      expect(configuration.params.dev.greeting).to.equal('hello');
+    });
+    it('should not resolve deferred properties discovered in resolved values', () => {
+      expect(configuration.params.prod.notReferenced).to.equal('${sourceCounted:}');
+      expect(variablesMeta.get('params\0prod\0notReferenced')).to.have.property('variables');
+    });
+    it('should resolve discovered properties on which other properties depend', () => {
+      expect(configuration.params.prod.referenced).to.equal('counted:1');
+      expect(configuration.referencesDeferred).to.equal('counted:1');
+      expect(variablesMeta.has('params\0prod\0referenced')).to.be.false;
+    });
+    it('should not invoke sources of deferred discovered properties', () => {
+      expect(callCount).to.equal(1);
+    });
+  });
 });

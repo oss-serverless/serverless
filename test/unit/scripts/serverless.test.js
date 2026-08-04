@@ -463,6 +463,70 @@ describe('test/unit/scripts/serverless.test.js', () => {
       expect(output).to.include('apiKey: real-prod-key');
     });
 
+    it('should not resolve params nested in other stage sections resolved from a single variable', async () => {
+      const { servicePath: serviceDir } = await setupProgrammaticFixture('aws', {
+        configExt: {
+          params: {
+            dev: { greeting: 'hello-dev' },
+            prod: '${file(./prod-params.yml)}',
+          },
+          custom: { greeting: '${param:greeting}' },
+        },
+        files: [
+          { to: 'prod-params.yml', contents: 'secret: ${env:OSLS_TEST_SURELY_MISSING_ENV_VAR}' },
+        ],
+      });
+      const output = await print(serviceDir);
+      expect(output).to.include('greeting: hello-dev');
+      expect(output).to.include('${env:OSLS_TEST_SURELY_MISSING_ENV_VAR}');
+    });
+
+    it('should not resolve other stage params nested in a whole "params" section resolved from a single variable', async () => {
+      const { servicePath: serviceDir } = await setupProgrammaticFixture('aws', {
+        configExt: {
+          params: '${file(./params.yml)}',
+          custom: { greeting: '${param:greeting}' },
+        },
+        files: [
+          {
+            to: 'params.yml',
+            contents: [
+              'dev:',
+              '  greeting: hello-dev',
+              'prod:',
+              '  secret: ${env:OSLS_TEST_SURELY_MISSING_ENV_VAR}',
+            ].join('\n'),
+          },
+        ],
+      });
+      const output = await print(serviceDir);
+      expect(output).to.include('greeting: hello-dev');
+      expect(output).to.include('${env:OSLS_TEST_SURELY_MISSING_ENV_VAR}');
+    });
+
+    it('should not resolve siblings of referenced params of other stages', async () => {
+      const { servicePath: serviceDir } = await setupProgrammaticFixture('aws', {
+        configExt: {
+          params: {
+            prod: '${file(./prod-params.yml)}',
+          },
+          custom: { prodDomain: '${self:params.prod.domain}' },
+        },
+        files: [
+          {
+            to: 'prod-params.yml',
+            contents: [
+              'domain: prod.example.com',
+              'secret: ${env:OSLS_TEST_SURELY_MISSING_ENV_VAR}',
+            ].join('\n'),
+          },
+        ],
+      });
+      const output = await print(serviceDir);
+      expect(output).to.include('prodDomain: prod.example.com');
+      expect(output).to.include('${env:OSLS_TEST_SURELY_MISSING_ENV_VAR}');
+    });
+
     it('should resolve "self" references nested in other stage params', async () => {
       const { servicePath: serviceDir } = await setupProgrammaticFixture('aws', {
         configExt: {
