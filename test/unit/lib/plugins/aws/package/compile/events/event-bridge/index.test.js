@@ -417,22 +417,45 @@ describe('EventBridgeEvents', () => {
         ).to.deep.equal({ Ref: 'ImportedEventBus' });
       });
 
-      it('should create a lambda permission resource that correctly references explicit default event bus in SourceArn', () => {
+      const buildExpectedSourceArn = (ruleName) => ({
+        'Fn::Join': [
+          ':',
+          [
+            'arn',
+            { Ref: 'AWS::Partition' },
+            'events',
+            { Ref: 'AWS::Region' },
+            { Ref: 'AWS::AccountId' },
+            { 'Fn::Join': ['/', ['rule', ruleName]] },
+          ],
+        ],
+      });
+
+      it('should create a lambda permission resource with the exact rule ARN (no `default/` segment) for explicit default event bus', () => {
         const lambdaPermissionResource =
           cfResources[naming.getEventBridgeLambdaPermissionLogicalId('basic', 3)];
 
-        expect(
-          lambdaPermissionResource.Properties.SourceArn['Fn::Join'][1][5]['Fn::Join'][1][1]
-        ).to.equal('default');
+        expect(lambdaPermissionResource.Properties.SourceArn).to.deep.equal(
+          buildExpectedSourceArn('event-bridge-lambda-rule-3')
+        );
       });
 
-      it('should create a lambda permission resource that correctly references implicit default event bus in SourceArn', () => {
+      it('should create a lambda permission resource with the exact rule ARN (no `default/` segment) for implicit default event bus', () => {
         const lambdaPermissionResource =
           cfResources[naming.getEventBridgeLambdaPermissionLogicalId('basic', 4)];
 
-        expect(
-          lambdaPermissionResource.Properties.SourceArn['Fn::Join'][1][5]['Fn::Join'][1]
-        ).not.to.include('default');
+        expect(lambdaPermissionResource.Properties.SourceArn).to.deep.equal(
+          buildExpectedSourceArn('event-bridge-lambda-rule-4')
+        );
+      });
+
+      it('should create a lambda permission resource with the exact rule ARN for a custom-named rule on the default event bus', () => {
+        const lambdaPermissionResource =
+          cfResources[naming.getEventBridgeLambdaPermissionLogicalId('basic', 5)];
+
+        expect(lambdaPermissionResource.Properties.SourceArn).to.deep.equal(
+          buildExpectedSourceArn('custom-event-name-test')
+        );
       });
 
       it('should correctly set event name when set', () => {
