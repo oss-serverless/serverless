@@ -16,6 +16,7 @@ In-depth guides for building, testing, deploying, and operating services with os
 - [AWS Lambda Layers](layers.md) — Publishing and consuming Lambda layers.
 - [AWS Infrastructure Resources](resources.md) — Adding raw CloudFormation resources and outputs to a service.
 - [Packaging](packaging.md) — Controlling what code and dependencies are bundled into the deployment artifact.
+- [Packaging Python dependencies](python-requirements.md) — Bundling requirements.txt, Pipenv, or Poetry dependencies for Lambda.
 - [Variables](variables.md) — Using `${...}` variable sources to keep configuration DRY.
 - [Loading .env files](environment-variables.md) — Loading local `.env` files into a command's environment.
 - [Parameters](parameters.md) — Defining and overriding stage/instance parameters.

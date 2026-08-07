@@ -17,6 +17,10 @@ This guide is for upgrading the **`osls`** CLI (`npm install osls@4`), not [Serv
 
 If you are coming from Serverless Framework v3, you can upgrade to osls v4 directly since osls v3 was based on Serverless Framework v3.
 
+### Python requirements
+
+Python dependency packaging is built into OSLS. Remove `serverless-python-requirements` from the `plugins` list and from your service's `package.json`, but keep `custom.pythonRequirements` (use `{}` for defaults) to activate the integration. See [Packaging Python dependencies](./python-requirements.md).
+
 ## Install osls v4
 
 If you do not have Serverless Framework installed, install osls globally:
