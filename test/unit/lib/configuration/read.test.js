@@ -46,6 +46,35 @@ describe('test/unit/lib/configuration/read.test.js', () => {
     });
   });
 
+  it('should preserve date-shaped YAML values as strings', async () => {
+    configurationPath = 'serverless.yml';
+    await fsp.writeFile(
+      configurationPath,
+      [
+        'service: test-date-strings',
+        'provider:',
+        '  name: aws',
+        '  unquotedDate: 2020-12-12',
+        "  quotedDate: '2020-12-12'",
+        '  explicitlyTaggedDate: !!str 2020-12-12',
+        '  unquotedDateTime: 2020-12-12T00:00:00Z',
+        '  spacedDateTime: 2020-12-12 00:00:00',
+        '',
+      ].join('\n')
+    );
+    expect(await readConfiguration(configurationPath)).to.deep.equal({
+      service: 'test-date-strings',
+      provider: {
+        name: 'aws',
+        unquotedDate: '2020-12-12',
+        quotedDate: '2020-12-12',
+        explicitlyTaggedDate: '2020-12-12',
+        unquotedDateTime: '2020-12-12T00:00:00Z',
+        spacedDateTime: '2020-12-12 00:00:00',
+      },
+    });
+  });
+
   it('should read "serverless.json"', async () => {
     configurationPath = 'serverless.json';
     const configuration = {

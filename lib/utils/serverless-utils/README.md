@@ -26,6 +26,10 @@ Source of truth:
 
 Notes:
 
+- `cloudformation-schema.js` intentionally diverges from upstream: it removes
+  implicit YAML timestamp resolution and re-registers `!!timestamp` as an
+  explicit type (https://github.com/oss-serverless/osls/issues/438). Preserve
+  this when re-syncing.
 - `config.js` is a locally owned fork. It intentionally keeps the synchronous
   `get('frameworkId')` and `get('meta.created_at')` lookups that Bref v2/v3 use
   for best-effort telemetry if a future compatibility shim routes
