@@ -315,6 +315,46 @@ describe('AwsProvider', () => {
           ).to.eventually.be.rejectedWith(message);
         });
       }
+
+      for (const [description, deletionProtection] of [
+        ['stage array', ['prod']],
+        ['stage string', 'prod'],
+      ]) {
+        it(`rejects ${description}`, async () => {
+          await expect(
+            runServerless({
+              fixture: 'function',
+              command: 'print',
+              configExt: {
+                provider: {
+                  deletionProtection,
+                },
+              },
+            })
+          ).to.eventually.be.rejected.and.have.property(
+            'code',
+            'INVALID_NON_SCHEMA_COMPLIANT_CONFIGURATION'
+          );
+        });
+      }
+
+      for (const [description, deletionProtection, expected] of [
+        ['a string boolean', 'true', true],
+        ['a single stage string', { stages: 'prod' }, { stages: ['prod'] }],
+      ]) {
+        it(`coerces ${description}`, async () => {
+          const { serverless } = await runServerless({
+            fixture: 'function',
+            command: 'print',
+            configExt: {
+              provider: {
+                deletionProtection,
+              },
+            },
+          });
+          expect(serverless.service.provider.deletionProtection).to.deep.equal(expected);
+        });
+      }
     });
 
     describe('deploymentBucket configuration', () => {

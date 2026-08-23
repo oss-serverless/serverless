@@ -82,12 +82,13 @@ provider:
     key: value
   # Method used for CloudFormation deployments: 'changesets' or 'direct' (default: changesets)
   deploymentMethod: direct
-  # Enable CloudFormation termination protection for the stack.
-  # To enable only for specific stages, use:
+  # Manage CloudFormation termination protection for the stack after each deploy (not managed by default).
+  # `true`/`false` applies to every stage; the `stages` form enables protection for the listed
+  # stages and disables it for all others.
+  deletionProtection: true
   # deletionProtection:
   #   stages:
   #     - prod
-  deletionProtection: true
   # List of existing Amazon SNS topics in the same region where notifications about stack events are sent.
   notificationArns:
     - 'arn:aws:sns:us-east-1:XXXXXX:mytopic'

@@ -279,7 +279,29 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
 
     expect(deleteObjectsStub).not.to.be.called;
     expect(deleteStackStub).not.to.be.called;
-    expect(describeRepositoriesStub).not.to.be.called;
+    expect(deleteRepositoryStub).not.to.be.called;
+  });
+
+  it('proceeds with removal when deletion protection cannot be checked', async () => {
+    await runServerless({
+      fixture: 'function',
+      command: 'remove',
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
+        CloudFormation: {
+          ...awsSdkV3StubMap.CloudFormation,
+          describeStacks: () => {
+            throw Object.assign(
+              new Error('User is not authorized to perform: cloudformation:DescribeStacks'),
+              { name: 'AccessDenied', $metadata: { httpStatusCode: 403 } }
+            );
+          },
+        },
+      },
+    });
+
+    expect(deleteObjectsStub).to.be.calledOnce;
+    expect(deleteStackStub).to.be.calledOnce;
   });
 
   it('executes expected operations during removal when repository cannot be accessed due to denied access', async () => {

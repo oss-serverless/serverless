@@ -2,6 +2,8 @@
 
 The `osls remove` command will remove the deployed service, defined in your current working directory, from the provider.
 
+If the stack has deletion protection enabled (see [`provider.deletionProtection`](../guides/deploying.md#deletion-protection)), the command fails before deleting anything.
+
 ```bash
 osls remove
 ```

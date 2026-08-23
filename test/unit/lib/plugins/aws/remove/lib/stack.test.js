@@ -2,6 +2,7 @@
 
 const expect = require('chai').expect;
 const sinon = require('sinon');
+const logEmitter = require('log/lib/emitter');
 const {
   CloudFormationClient,
   DeleteStackCommand,
@@ -53,12 +54,60 @@ describe('removeStack', () => {
       removeStackStub.resolves({ Stacks: [{ EnableTerminationProtection: true }] });
       const context = createRemoveStackContext();
 
+      await expect(context.ensureStackIsNotDeletionProtected())
+        .to.eventually.be.rejected.and.have.property(
+          'code',
+          'AWS_CLOUDFORMATION_DELETION_PROTECTION_ENABLED'
+        )
+        .and.satisfy(() => true);
       await expect(
         context.ensureStackIsNotDeletionProtected()
-      ).to.eventually.be.rejected.and.include({
-        code: 'AWS_CLOUDFORMATION_DELETION_PROTECTION_ENABLED',
-        message: `Cannot remove stack "${stackName}" because deletion protection is enabled. Set provider.deletionProtection to false and deploy the service before removing it.`,
+      ).to.eventually.be.rejected.and.satisfy((error) => {
+        expect(error.message).to.include(`Cannot remove stack "${stackName}"`);
+        expect(error.message).to.include('provider.deletionProtection.stages');
+        expect(error.message).to.include(
+          `update-termination-protection --no-enable-termination-protection --stack-name ${stackName}`
+        );
+        return true;
       });
+    });
+
+    it('passes with a warning when the stack cannot be described', async () => {
+      removeStackStub.rejects(
+        Object.assign(
+          new Error('User is not authorized to perform: cloudformation:DescribeStacks'),
+          {
+            name: 'AccessDenied',
+            $metadata: { httpStatusCode: 403 },
+          }
+        )
+      );
+      const context = createRemoveStackContext();
+      const logEvents = [];
+      const listener = (event) => logEvents.push(event);
+      logEmitter.on('log', listener);
+
+      try {
+        await context.ensureStackIsNotDeletionProtected();
+      } finally {
+        logEmitter.off('log', listener);
+      }
+
+      const warnings = logEvents
+        .filter((event) => event.logger.level === 'warning')
+        .map((event) => event.messageTokens[0]);
+      expect(warnings).to.have.lengthOf(1);
+      expect(warnings[0]).to.include(`Could not check whether stack "${stackName}"`);
+      expect(warnings[0]).to.include(
+        'User is not authorized to perform: cloudformation:DescribeStacks'
+      );
+    });
+
+    it('passes when the stack lookup returns no stacks', async () => {
+      removeStackStub.resolves({ Stacks: [] });
+      const context = createRemoveStackContext();
+
+      await context.ensureStackIsNotDeletionProtected();
     });
 
     it('passes when the stack does not exist', async () => {
