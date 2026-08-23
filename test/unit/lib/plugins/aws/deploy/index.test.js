@@ -31,6 +31,204 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       ({ service, method: sendMethod }) => service === 'CloudFormation' && sendMethod === method
     );
 
+  describe('deletion protection', () => {
+    const emptyChangeSetDescription = {
+      ChangeSetName: 'new-service-dev-change-set',
+      ChangeSetId: 'some-change-set-id',
+      StackName: 'new-service-dev',
+      Status: 'FAILED',
+      StatusReason: 'No updates are to be performed.',
+    };
+
+    async function deployWithDeletionProtection(deletionProtection, options = {}) {
+      const providerConfig = {
+        deploymentMethod: options.deploymentMethod || 'direct',
+        ...options.provider,
+      };
+      if (deletionProtection !== undefined) providerConfig.deletionProtection = deletionProtection;
+
+      const describeStacksStub = options.stackExists
+        ? sinon.stub().resolves({ Stacks: [{}] })
+        : sinon
+            .stub()
+            .onFirstCall()
+            .throws(createCloudFormationValidationError('stack does not exist'))
+            .onSecondCall()
+            .resolves({ Stacks: [{}] });
+      const updateTerminationProtectionStub = sinon.stub().resolves({});
+
+      const { awsSdkV3Stub } = await runServerless({
+        fixture: 'function',
+        command: 'deploy',
+        awsSdkV3StubMap: {
+          ...baseAwsSdkV3StubMap,
+          ECR: {
+            describeRepositories: sinon.stub().throws({
+              providerError: { code: 'RepositoryNotFoundException' },
+            }),
+          },
+          S3: {
+            deleteObjects: {},
+            listObjectsV2: { Contents: [] },
+            upload: {},
+            headBucket: {},
+            ...options.s3,
+          },
+          CloudFormation: {
+            describeStacks: describeStacksStub,
+            createStack: {},
+            updateStack: {},
+            updateTerminationProtection: updateTerminationProtectionStub,
+            describeStackEvents: {
+              StackEvents: [
+                {
+                  EventId: '1e2f3g4h',
+                  StackName: 'new-service-dev',
+                  LogicalResourceId: 'new-service-dev',
+                  ResourceType: 'AWS::CloudFormation::Stack',
+                  Timestamp: new Date(),
+                  ResourceStatus: options.stackExists ? 'UPDATE_COMPLETE' : 'CREATE_COMPLETE',
+                },
+              ],
+            },
+            describeStackResource: {
+              StackResourceDetail: { PhysicalResourceId: 's3-bucket-resource' },
+            },
+            validateTemplate: {},
+            listStackResources: {},
+            ...options.cloudFormation,
+          },
+        },
+        configExt: {
+          service: 'new-service',
+          provider: providerConfig,
+        },
+      });
+
+      return { awsSdkV3Stub, updateTerminationProtectionStub };
+    }
+
+    for (const [description, deletionProtection, expected] of [
+      ['enables deletion protection when configured to true', true, true],
+      ['disables deletion protection when configured to false', false, false],
+      [
+        'enables deletion protection when the current stage is listed',
+        { stages: ['dev', 'prod'] },
+        true,
+      ],
+      [
+        'disables deletion protection when the current stage is not listed',
+        { stages: ['prod'] },
+        false,
+      ],
+    ]) {
+      it(description, async () => {
+        const { awsSdkV3Stub, updateTerminationProtectionStub } =
+          await deployWithDeletionProtection(deletionProtection);
+
+        expect(updateTerminationProtectionStub).to.be.calledOnce;
+        expect(
+          getCloudFormationSends(awsSdkV3Stub, 'updateTerminationProtection')[0].input
+        ).to.deep.equal({
+          StackName: 'new-service-dev',
+          EnableTerminationProtection: expected,
+        });
+      });
+    }
+
+    it('does not manage deletion protection when it is not configured', async () => {
+      const { awsSdkV3Stub, updateTerminationProtectionStub } =
+        await deployWithDeletionProtection(undefined);
+
+      expect(updateTerminationProtectionStub).not.to.be.called;
+      expect(getCloudFormationSends(awsSdkV3Stub, 'updateTerminationProtection')).to.be.empty;
+    });
+
+    it('disables deletion protection on an existing stack when configured to false', async () => {
+      const { awsSdkV3Stub, updateTerminationProtectionStub } = await deployWithDeletionProtection(
+        false,
+        { stackExists: true }
+      );
+
+      expect(updateTerminationProtectionStub).to.be.calledOnce;
+      expect(
+        getCloudFormationSends(awsSdkV3Stub, 'updateTerminationProtection')[0].input
+      ).to.deep.equal({
+        StackName: 'new-service-dev',
+        EnableTerminationProtection: false,
+      });
+    });
+
+    it('reconciles deletion protection when the direct update is a no-op', async () => {
+      const { updateTerminationProtectionStub } = await deployWithDeletionProtection(true, {
+        stackExists: true,
+        cloudFormation: {
+          updateStack: () => {
+            throw createCloudFormationValidationError('No updates are to be performed.');
+          },
+        },
+      });
+
+      expect(updateTerminationProtectionStub).to.be.calledOnce;
+      expect(updateTerminationProtectionStub.firstCall.args[0]).to.deep.equal({
+        StackName: 'new-service-dev',
+        EnableTerminationProtection: true,
+      });
+    });
+
+    it('reconciles deletion protection with an empty change set', async () => {
+      const executeChangeSetStub = sinon.stub().resolves({});
+      const { updateTerminationProtectionStub } = await deployWithDeletionProtection(false, {
+        stackExists: true,
+        deploymentMethod: 'changesets',
+        s3: {
+          listObjectsV2: sinon
+            .stub()
+            .onFirstCall()
+            .resolves({ Contents: [] })
+            .onSecondCall()
+            .callsFake((params) => ({
+              Contents: [{ Key: `${params.Prefix}/compiled-cloudformation-template.json` }],
+            })),
+        },
+        cloudFormation: {
+          createChangeSet: {},
+          executeChangeSet: executeChangeSetStub,
+          deleteChangeSet: {},
+          describeChangeSet: emptyChangeSetDescription,
+        },
+      });
+
+      expect(executeChangeSetStub).not.to.be.called;
+      expect(updateTerminationProtectionStub).to.be.calledOnce;
+      expect(updateTerminationProtectionStub.firstCall.args[0]).to.deep.equal({
+        StackName: 'new-service-dev',
+        EnableTerminationProtection: false,
+      });
+    });
+
+    it('does not protect a stack left in REVIEW_IN_PROGRESS by an empty create change set', async () => {
+      const createChangeSetStub = sinon.stub().resolves({});
+      const executeChangeSetStub = sinon.stub().resolves({});
+      const { updateTerminationProtectionStub } = await deployWithDeletionProtection(true, {
+        deploymentMethod: 'changesets',
+        provider: { deploymentBucket: 'existing-s3-bucket' },
+        s3: { headBucket: () => ({ BucketRegion: 'us-east-1' }) },
+        cloudFormation: {
+          createChangeSet: createChangeSetStub,
+          executeChangeSet: executeChangeSetStub,
+          deleteChangeSet: {},
+          describeChangeSet: emptyChangeSetDescription,
+        },
+      });
+
+      expect(createChangeSetStub).to.be.calledOnce;
+      expect(createChangeSetStub.getCall(0).args[0].ChangeSetType).to.equal('CREATE');
+      expect(executeChangeSetStub).not.to.be.called;
+      expect(updateTerminationProtectionStub).not.to.be.called;
+    });
+  });
+
   describe('with direct create/update calls', () => {
     it('with nonexistent stack - first deploy', async () => {
       const describeStacksStub = sinon

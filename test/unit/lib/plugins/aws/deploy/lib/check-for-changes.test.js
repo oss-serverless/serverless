@@ -762,9 +762,7 @@ describe('checkForChanges', () => {
         { Metadata: { filesha256: 'remote-hash-cf-template' } },
         { Metadata: { filesha256: 'remote-hash-zip-file-1' } },
         {
-          Metadata: {
-            /* no filesha256 available */
-          },
+          Metadata: {/* no filesha256 available */},
         }, // will be translated to ''
       ];
 
@@ -1301,6 +1299,7 @@ const runCheckForChanges = async ({
   options,
   awsSdkV3StubMap,
   awsSdkV3StubMapOverrides,
+  lastLifecycleHookName = 'aws:deploy:deploy:checkForChanges',
 } = {}) => {
   let serverless;
   const getServerless = () => serverless;
@@ -1311,7 +1310,7 @@ const runCheckForChanges = async ({
   const runOptions = {
     command: 'deploy',
     options,
-    lastLifecycleHookName: 'aws:deploy:deploy:checkForChanges',
+    lastLifecycleHookName: lastLifecycleHookName || undefined,
     env: { AWS_CONTAINER_CREDENTIALS_FULL_URI: 'ignore' },
     hooks: {
       beforeInstanceInit: (serverlessInstance) => (serverless = serverlessInstance),
@@ -1362,6 +1361,31 @@ describe('test/unit/lib/plugins/aws/deploy/lib/checkForChanges.test.js', () => {
     expect(sentMethods).to.include('listObjectsV2');
     expect(sentMethods).to.include('headObject');
     expect(sentMethods).to.include('getFunction');
+  });
+
+  it('should still reconcile deletion protection when the deployment is skipped', async () => {
+    const updateTerminationProtectionStub = sandbox.stub().resolves({});
+
+    const { serverless, awsSdkV3Stub } = await runCheckForChanges({
+      configExt: { provider: { deletionProtection: true } },
+      lastLifecycleHookName: null,
+      awsSdkV3StubMapOverrides: {
+        CloudFormation: {
+          updateTerminationProtection: updateTerminationProtectionStub,
+          listStackResources: {},
+        },
+      },
+    });
+
+    expect(serverless.service.provider.shouldNotDeploy).to.equal(true);
+    const sentMethods = awsSdkV3Stub.sends.map(({ method }) => method);
+    expect(sentMethods).to.not.include('updateStack');
+    expect(sentMethods).to.not.include('createChangeSet');
+    expect(updateTerminationProtectionStub).to.have.been.calledOnce;
+    expect(updateTerminationProtectionStub.firstCall.args[0]).to.deep.equal({
+      StackName: `${checkForChangesServiceName}-dev`,
+      EnableTerminationProtection: true,
+    });
   });
 
   it('should deploy with --force option', async () => {

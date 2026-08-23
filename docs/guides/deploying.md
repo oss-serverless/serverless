@@ -44,6 +44,39 @@ provider:
   deploymentMethod: direct
 ```
 
+### Deletion protection
+
+Set `provider.deletionProtection` to have osls manage [CloudFormation termination protection](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-protect-stacks.html) for the service stack:
+
+```yaml
+provider:
+  name: aws
+  deletionProtection: true
+```
+
+To protect only some stages, list them:
+
+```yaml
+provider:
+  name: aws
+  deletionProtection:
+    stages:
+      - prod
+```
+
+After every successful `osls deploy`, including deploys that are skipped because nothing changed, osls sets the stack's termination protection to match the configuration: enabled when the value is `true` or the current stage is listed in `stages`, disabled otherwise. With the `stages` form, deploying an unlisted stage therefore actively disables protection on that stage's stack. Third-party termination protection plugins typically only ever enable protection, so check the `stages` list when migrating from one. `osls deploy function` and `osls rollback` never change the setting, and removing `provider.deletionProtection` from `serverless.yml` does not disable protection on an existing stack; it only stops osls from managing it.
+
+While a stack is protected, `osls remove` fails early with `AWS_CLOUDFORMATION_DELETION_PROTECTION_ENABLED`, before any deployment artifacts are deleted, and deleting the stack in the AWS console or CLI is rejected by CloudFormation. To remove the service, set `provider.deletionProtection` to `false` (or drop the stage from `stages`), deploy, then remove. If deploying is not possible, for example because the stack is stuck in a failed state, disable protection directly with `aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name <stack-name>`.
+
+Keep in mind:
+
+- The deploying identity needs `cloudformation:UpdateTerminationProtection` on the stack. `osls remove` uses `cloudformation:DescribeStacks` to check the flag; if that call is denied, osls logs a warning and continues, and CloudFormation still refuses to delete a protected stack.
+- Protection is applied after the stack has been created or updated, so a brand-new stack is unprotected until its first deployment completes.
+- An invalid value fails the deploy with `INVALID_DELETION_PROTECTION_CONFIG` before anything is uploaded. Configuration validation already rejects most invalid shapes; this also covers `configValidationMode: warn` and `off`.
+- `osls deploy --package` uses the value saved by `osls package`; re-run `osls package` after changing it.
+- Nested stacks inherit the root stack's setting.
+- Termination protection prevents accidents, not malicious deletion: anyone allowed to call `UpdateTerminationProtection` can turn it off, and deploying with `deletionProtection: false` does exactly that.
+
 ### Tips
 
 - Use this in your CI/CD systems, as it is the safest method of deployment.

@@ -279,6 +279,84 @@ describe('AwsProvider', () => {
       });
     });
 
+    describe('deletionProtection validation', () => {
+      for (const [description, deletionProtection] of [
+        ['boolean form', true],
+        ['stage list form', { stages: ['prod'] }],
+      ]) {
+        it(`accepts ${description}`, async () => {
+          await runServerless({
+            fixture: 'function',
+            command: 'print',
+            configExt: {
+              provider: {
+                deletionProtection,
+              },
+            },
+          });
+        });
+      }
+
+      for (const [description, deletionProtection, message] of [
+        ['empty stages', { stages: [] }, 'must NOT have fewer than 1 items'],
+        ['enabled property', { enabled: true }, 'unrecognized property'],
+      ]) {
+        it(`rejects ${description}`, async () => {
+          await expect(
+            runServerless({
+              fixture: 'function',
+              command: 'print',
+              configExt: {
+                provider: {
+                  deletionProtection,
+                },
+              },
+            })
+          ).to.eventually.be.rejectedWith(message);
+        });
+      }
+
+      for (const [description, deletionProtection] of [
+        ['stage array', ['prod']],
+        ['stage string', 'prod'],
+      ]) {
+        it(`rejects ${description}`, async () => {
+          await expect(
+            runServerless({
+              fixture: 'function',
+              command: 'print',
+              configExt: {
+                provider: {
+                  deletionProtection,
+                },
+              },
+            })
+          ).to.eventually.be.rejected.and.have.property(
+            'code',
+            'INVALID_NON_SCHEMA_COMPLIANT_CONFIGURATION'
+          );
+        });
+      }
+
+      for (const [description, deletionProtection, expected] of [
+        ['a string boolean', 'true', true],
+        ['a single stage string', { stages: 'prod' }, { stages: ['prod'] }],
+      ]) {
+        it(`coerces ${description}`, async () => {
+          const { serverless } = await runServerless({
+            fixture: 'function',
+            command: 'print',
+            configExt: {
+              provider: {
+                deletionProtection,
+              },
+            },
+          });
+          expect(serverless.service.provider.deletionProtection).to.deep.equal(expected);
+        });
+      }
+    });
+
     describe('deploymentBucket configuration', () => {
       it('should do nothing if not defined', () => {
         serverless.service.provider.deploymentBucket = undefined;

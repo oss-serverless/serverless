@@ -89,6 +89,11 @@ export type AwsPruneFunctionVersions =
   | {
       number: number;
     };
+export type AwsDeletionProtection =
+  | boolean
+  | {
+      stages: Stage[];
+    };
 export type AwsHttpApiPayload = '1.0' | '2.0';
 export type AwsApiGatewayApiKeys = (
   | string
@@ -912,6 +917,7 @@ export interface AWS {
         };
       };
     };
+    deletionProtection?: AwsDeletionProtection;
     deploymentBucket?:
       | AwsS3BucketName
       | {

@@ -521,4 +521,62 @@ describe('test/unit/lib/plugins/aws/rollback.test.js', () => {
       })
     ).to.eventually.be.rejected.and.have.property('code', 'AWS_S3_LIST_OBJECTS_V2_ACCESS_DENIED');
   });
+
+  it('does not touch deletion protection', async () => {
+    const updateTerminationProtectionStub = sinon.stub().resolves({});
+    const updateStackStub = sinon.stub().resolves({});
+    const deploymentDirectory = '1476779096930-2016-10-18T08:24:56.930Z';
+    const { awsSdkV3Stub } = await runServerless({
+      fixture: 'function',
+      command: 'rollback',
+      options: { timestamp: '1476779096930' },
+      configExt: { provider: { deploymentMethod: 'direct', deletionProtection: true } },
+      awsSdkV3StubMap: {
+        CloudFormation: {
+          describeStackResource: {
+            StackResourceDetail: { PhysicalResourceId: 'deployment-bucket' },
+          },
+          updateStack: updateStackStub,
+          updateTerminationProtection: updateTerminationProtectionStub,
+          describeStackEvents: {
+            StackEvents: [
+              {
+                EventId: '1e2f3g4h',
+                StackName: 'service-dev',
+                LogicalResourceId: 'service-dev',
+                ResourceType: 'AWS::CloudFormation::Stack',
+                Timestamp: new Date(),
+                ResourceStatus: 'UPDATE_COMPLETE',
+              },
+            ],
+          },
+        },
+        STS: {
+          getCallerIdentity: {
+            ResponseMetadata: { RequestId: 'ffffffff-ffff-ffff-ffff-ffffffffffff' },
+            UserId: 'XXXXXXXXXXXXXXXXXXXXX',
+            Account: '999999999999',
+            Arn: 'arn:aws:iam::999999999999:user/test',
+          },
+        },
+        S3: {
+          headObject: () => {},
+          headBucket: () => {},
+          listObjectsV2: ({ Prefix }) => ({
+            Contents: [
+              { Key: `${Prefix}${deploymentDirectory}/compiled-cloudformation-template.json` },
+              { Key: `${Prefix}${deploymentDirectory}/service.zip` },
+            ],
+          }),
+          getObject: { Body: '{}' },
+        },
+      },
+    });
+
+    expect(updateStackStub).to.have.been.calledOnce;
+    const sentMethods = awsSdkV3Stub.sends.map(({ method }) => method);
+    expect(sentMethods).to.include('updateStack');
+    expect(sentMethods).to.not.include('updateTerminationProtection');
+    expect(updateTerminationProtectionStub).not.to.have.been.called;
+  });
 });

@@ -36,6 +36,7 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
       headBucket: {},
     },
     CloudFormation: {
+      describeStacks: { Stacks: [{ EnableTerminationProtection: false }] },
       describeStackEvents: describeStackEventsStub,
       deleteStack: deleteStackStub,
       describeStackResource: { StackResourceDetail: { PhysicalResourceId: 'resource-id' } },
@@ -256,6 +257,51 @@ describe('test/unit/lib/plugins/aws/remove/index.test.js', () => {
     expect(
       cloudFormationSends.find(({ method }) => method === 'describeStackEvents').client
     ).to.equal(cloudFormationSends.find(({ method }) => method === 'deleteStack').client);
+  });
+
+  it('fails before cleanup when the stack has deletion protection enabled', async () => {
+    await expect(
+      runServerless({
+        fixture: 'function',
+        command: 'remove',
+        awsSdkV3StubMap: {
+          ...awsSdkV3StubMap,
+          CloudFormation: {
+            ...awsSdkV3StubMap.CloudFormation,
+            describeStacks: { Stacks: [{ EnableTerminationProtection: true }] },
+          },
+        },
+      })
+    ).to.eventually.have.been.rejected.and.have.property(
+      'code',
+      'AWS_CLOUDFORMATION_DELETION_PROTECTION_ENABLED'
+    );
+
+    expect(deleteObjectsStub).not.to.be.called;
+    expect(deleteStackStub).not.to.be.called;
+    expect(deleteRepositoryStub).not.to.be.called;
+  });
+
+  it('proceeds with removal when deletion protection cannot be checked', async () => {
+    await runServerless({
+      fixture: 'function',
+      command: 'remove',
+      awsSdkV3StubMap: {
+        ...awsSdkV3StubMap,
+        CloudFormation: {
+          ...awsSdkV3StubMap.CloudFormation,
+          describeStacks: () => {
+            throw Object.assign(
+              new Error('User is not authorized to perform: cloudformation:DescribeStacks'),
+              { name: 'AccessDenied', $metadata: { httpStatusCode: 403 } }
+            );
+          },
+        },
+      },
+    });
+
+    expect(deleteObjectsStub).to.be.calledOnce;
+    expect(deleteStackStub).to.be.calledOnce;
   });
 
   it('executes expected operations during removal when repository cannot be accessed due to denied access', async () => {
