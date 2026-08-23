@@ -108,6 +108,23 @@ describe('YamlParser', () => {
         .to.equal('bar');
     });
 
+    it('should parse date-shaped values and shorthand tags in referenced files', () => {
+      const tmpDirPath = getTmpDirPath();
+
+      serverless.utils.writeFileSync(
+        path.join(tmpDirPath, 'ref.yml'),
+        'date: 2012-10-17\nref: !Ref Topic\n'
+      );
+
+      serverless.utils.writeFileSync(path.join(tmpDirPath, 'test.yml'), {
+        main: { $ref: './ref.yml' },
+      });
+
+      return expect(serverless.yamlParser.parse(path.join(tmpDirPath, 'test.yml')))
+        .to.eventually.have.property('main')
+        .to.deep.equal({ date: '2012-10-17', ref: { Ref: 'Topic' } });
+    });
+
     it('should leave same-document refs in the root file untouched', async () => {
       const tmpFilePath = getTmpFilePath('same-document.yml');
 

@@ -114,6 +114,12 @@ describe('#parse()', () => {
     });
   });
 
+  it('should keep date-shaped values as strings and support explicit timestamp tags', () => {
+    const obj = parse('anything.yml', 'date: 2012-10-17\ntagged: !!timestamp 2020-12-12');
+    expect(obj.date).to.equal('2012-10-17');
+    expect(obj.tagged).to.be.instanceOf(Date);
+  });
+
   it('should parse YAML without shorthand syntax', () => {
     const tmpFilePath = 'anything.yml';
     const fileContents = 'Item:\n  Fn::Join:\n  - ""\n  - - "arn:aws:s3::"\n    - !Ref MyBucket';

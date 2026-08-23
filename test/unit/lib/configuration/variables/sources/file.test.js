@@ -16,6 +16,7 @@ describe('test/unit/lib/configuration/variables/sources/file.test.js', () => {
       yaml: '${file(file.yaml)}',
       yml: '${file(file.yml)}',
       json: '${file(file.json)}',
+      dateString: '${file(file-date.yml):date}',
       tfstate: '${file(file.tfstate)}',
       js: '${file(file.js)}',
       cjs: '${file(file.cjs)}',
@@ -86,6 +87,9 @@ describe('test/unit/lib/configuration/variables/sources/file.test.js', () => {
 
   it('should resolve "json" file sources', () =>
     expect(configuration.json).to.deep.equal({ result: 'json' }));
+
+  it('should resolve date-shaped values as strings', () =>
+    expect(configuration.dateString).to.equal('2012-10-17'));
 
   it('should resolve "tfstate" file sources', () =>
     expect(configuration.tfstate).to.deep.equal({ result: 'tfstate' }));

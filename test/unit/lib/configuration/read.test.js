@@ -57,6 +57,8 @@ describe('test/unit/lib/configuration/read.test.js', () => {
         '  unquotedDate: 2020-12-12',
         "  quotedDate: '2020-12-12'",
         '  explicitlyTaggedDate: !!str 2020-12-12',
+        '  unquotedDateTime: 2020-12-12T00:00:00Z',
+        '  spacedDateTime: 2020-12-12 00:00:00',
         '',
       ].join('\n')
     );
@@ -67,6 +69,8 @@ describe('test/unit/lib/configuration/read.test.js', () => {
         unquotedDate: '2020-12-12',
         quotedDate: '2020-12-12',
         explicitlyTaggedDate: '2020-12-12',
+        unquotedDateTime: '2020-12-12T00:00:00Z',
+        spacedDateTime: '2020-12-12 00:00:00',
       },
     });
   });
