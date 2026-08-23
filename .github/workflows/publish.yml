@@ -91,6 +91,7 @@ jobs:
             *-alpha.*) NPM_TAG=alpha ;;
             *-beta.*) NPM_TAG=beta ;;
             *-rc.*) NPM_TAG=rc ;;
+            3.*) NPM_TAG=legacy ;;
             *) NPM_TAG=latest ;;
           esac
 
