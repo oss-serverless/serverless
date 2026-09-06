@@ -756,9 +756,15 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
               'Resources:',
               '  ExistingBucket:',
               '    Type: AWS::S3::Bucket',
+              '  ExistingRole:',
+              '    Type: AWS::IAM::Role',
+              '    Properties:',
+              '      AssumeRolePolicyDocument:',
+              '        Version: 2012-10-17',
+              '        Statement: []',
               'Outputs:',
               '  ExistingOutput:',
-              '    Value: existing',
+              '    Value: !Ref ExistingBucket',
             ].join('\n'),
           },
           describeStackEvents: {
@@ -793,8 +799,12 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       expect(templateBody.Resources.ExistingBucket).to.deep.equal({
         Type: 'AWS::S3::Bucket',
       });
+      expect(templateBody.Resources.ExistingRole).to.deep.equal({
+        Type: 'AWS::IAM::Role',
+        Properties: { AssumeRolePolicyDocument: { Version: '2012-10-17', Statement: [] } },
+      });
       expect(templateBody.Outputs.ExistingOutput).to.deep.equal({
-        Value: 'existing',
+        Value: { Ref: 'ExistingBucket' },
       });
       expect(templateBody.Resources).to.include.keys(
         Object.keys(serverless.service.provider.coreCloudFormationTemplate.Resources)
@@ -809,6 +819,50 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       const updateStackSend = getCloudFormationSends(awsSdkV3Stub, 'updateStack')[0];
       expect(updateStackSend.commandName).to.equal('UpdateStackCommand');
       expect(updateStackSend.client).to.equal(getTemplateSend.client);
+    });
+
+    it('with existing stack - fails when the existing template cannot be parsed', async () => {
+      const awsSdkV3StubMap = {
+        ...baseAwsSdkV3StubMap,
+        ECR: {
+          describeRepositories: sinon.stub().throws({
+            providerError: { code: 'RepositoryNotFoundException' },
+          }),
+        },
+        S3: {
+          listObjectsV2: { Contents: [] },
+          headBucket: () => {
+            const err = new Error();
+            err.code = 'AWS_S3_HEAD_BUCKET_NOT_FOUND';
+            throw err;
+          },
+        },
+        CloudFormation: {
+          describeStacks: { Stacks: [{}] },
+          validateTemplate: {},
+          getTemplate: { TemplateBody: '{' },
+          describeStackResource: sinon
+            .stub()
+            .throws(createCloudFormationValidationError('does not exist for stack')),
+        },
+      };
+
+      await expect(
+        runServerless({
+          fixture: 'function',
+          command: 'deploy',
+          awsSdkV3StubMap,
+          configExt: {
+            provider: {
+              deploymentMethod: 'direct',
+            },
+          },
+          lastLifecycleHookName: 'aws:deploy:deploy:checkForChanges',
+        })
+      ).to.have.been.eventually.rejected.with.property(
+        'code',
+        'CLOUDFORMATION_TEMPLATE_PARSE_FAILED'
+      );
     });
 
     describe('custom deployment-related properties', () => {
@@ -1545,9 +1599,15 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
               'Resources:',
               '  ExistingBucket:',
               '    Type: AWS::S3::Bucket',
+              '  ExistingRole:',
+              '    Type: AWS::IAM::Role',
+              '    Properties:',
+              '      AssumeRolePolicyDocument:',
+              '        Version: 2012-10-17',
+              '        Statement: []',
               'Outputs:',
               '  ExistingOutput:',
-              '    Value: existing',
+              '    Value: !Ref ExistingBucket',
             ].join('\n'),
           },
           describeStackEvents: {
@@ -1577,8 +1637,12 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       expect(templateBody.Resources.ExistingBucket).to.deep.equal({
         Type: 'AWS::S3::Bucket',
       });
+      expect(templateBody.Resources.ExistingRole).to.deep.equal({
+        Type: 'AWS::IAM::Role',
+        Properties: { AssumeRolePolicyDocument: { Version: '2012-10-17', Statement: [] } },
+      });
       expect(templateBody.Outputs.ExistingOutput).to.deep.equal({
-        Value: 'existing',
+        Value: { Ref: 'ExistingBucket' },
       });
       expect(templateBody.Resources).to.include.keys(
         Object.keys(serverless.service.provider.coreCloudFormationTemplate.Resources)
