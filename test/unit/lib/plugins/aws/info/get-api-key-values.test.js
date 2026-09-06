@@ -2,13 +2,22 @@
 
 const expect = require('chai').expect;
 const sinon = require('sinon');
+const proxyquire = require('proxyquire');
 const AwsInfo = require('../../../../../../lib/plugins/aws/info/index');
+const { retryOnThrottlingError } = require('../../../../../../lib/aws/retry');
 const {
   CloudFormationClient,
   DescribeStackResourcesCommand,
 } = require('@aws-sdk/client-cloudformation');
 const { APIGatewayClient, GetApiKeyCommand } = require('@aws-sdk/client-api-gateway');
 const releasePendingRequestsUntilSettled = require('../../../../../utils/release-pending-requests-until-settled');
+
+const fastRetry = {
+  retryOnThrottlingError: (task, options) =>
+    retryOnThrottlingError(task, { ...options, delayMs: 1 }),
+};
+const createThrottlingError = () =>
+  Object.assign(new Error('Rate exceeded'), { name: 'Throttling' });
 
 function createServerlessContext(options) {
   const provider = {
@@ -169,6 +178,37 @@ describe('#getApiKeyValues()', () => {
     expect(observedMaxActiveRequests).to.equal(2);
     await releasePendingRequestsUntilSettled(pendingResolvers, promise);
     expect(observedMaxActiveRequests).to.equal(2);
+  });
+
+  it('retries the stack resources description and API key lookups on throttling errors', async () => {
+    awsInfo.serverless.service.provider.apiGateway = { apiKeys: ['foo'] };
+    awsInfo.gatheredData = { info: {} };
+    cloudFormationSendStub
+      .onFirstCall()
+      .rejects(createThrottlingError())
+      .onSecondCall()
+      .resolves({
+        StackResources: [
+          { PhysicalResourceId: 'api-key-id', ResourceType: 'AWS::ApiGateway::ApiKey' },
+        ],
+      });
+    apiGatewaySendStub
+      .onFirstCall()
+      .rejects(createThrottlingError())
+      .onSecondCall()
+      .resolves({ name: 'foo', value: 'valueForKeyFoo' });
+    const getApiKeyValuesWithFastRetry = proxyquire(
+      '../../../../../../lib/plugins/aws/info/get-api-key-values',
+      { '../../../aws/retry': fastRetry }
+    );
+
+    await getApiKeyValuesWithFastRetry.getApiKeyValues.call(awsInfo);
+
+    expect(cloudFormationSendStub).to.have.been.calledTwice;
+    expect(apiGatewaySendStub).to.have.been.calledTwice;
+    expect(awsInfo.gatheredData.info.apiKeys).to.deep.equal([
+      { customerId: undefined, description: undefined, name: 'foo', value: 'valueForKeyFoo' },
+    ]);
   });
 
   it('uses an existing CloudFormation client promise from the info context', async () => {

@@ -2,14 +2,27 @@
 
 const expect = require('chai').expect;
 const sinon = require('sinon');
+const proxyquire = require('proxyquire');
 const logEmitter = require('log/lib/emitter');
 const { ListVersionsByFunctionCommand } = require('@aws-sdk/client-lambda');
 const AwsPrune = require('../../../../../lib/plugins/aws/prune');
 const ServerlessError = require('../../../../../lib/serverless-error');
+const { retryOnThrottlingError } = require('../../../../../lib/aws/retry');
+
+const fastRetry = {
+  retryOnThrottlingError: (task, options) =>
+    retryOnThrottlingError(task, { ...options, delayMs: 1 }),
+};
+const createThrottlingError = () =>
+  Object.assign(new Error('Rate exceeded'), { name: 'Throttling' });
+const AwsPruneWithFastRetry = proxyquire('../../../../../lib/plugins/aws/prune', {
+  '../../aws/retry': fastRetry,
+});
 
 describe('AwsPrune', () => {
   let serverless;
   let awsPrune;
+  let awsPruneWithFastRetry;
 
   beforeEach(() => {
     const options = { stage: 'dev', region: 'us-east-1' };
@@ -40,6 +53,7 @@ describe('AwsPrune', () => {
       getProvider: sinon.stub().withArgs('aws').returns(provider),
     };
     awsPrune = new AwsPrune(serverless, options);
+    awsPruneWithFastRetry = new AwsPruneWithFastRetry(serverless, options);
   });
 
   afterEach(() => sinon.restore());
@@ -229,6 +243,23 @@ describe('AwsPrune', () => {
         Marker: 'm2',
       });
     });
+
+    it('should retry throttled list requests', async () => {
+      const send = sinon.stub();
+      send.onFirstCall().rejects(createThrottlingError());
+      send.onSecondCall().resolves({ Versions: [{ Version: '1' }] });
+      sinon.stub(awsPruneWithFastRetry, 'getLambdaClient').resolves({ send });
+
+      const result = await awsPruneWithFastRetry.paginateLambda(
+        ListVersionsByFunctionCommand,
+        { FunctionName: 'service-FunctionA' },
+        'Versions',
+        'Lambda function versions listing'
+      );
+
+      expect(result).to.deep.equal([{ Version: '1' }]);
+      expect(send.callCount).to.equal(2);
+    });
   });
 
   describe('list helpers', () => {
@@ -279,6 +310,20 @@ describe('AwsPrune', () => {
       });
     });
 
+    it('should retry throttled delete requests', async () => {
+      const send = sinon.stub();
+      send.onFirstCall().rejects(createThrottlingError());
+      send.onSecondCall().resolves({});
+      sinon.stub(awsPruneWithFastRetry, 'getLambdaClient').resolves({ send });
+
+      const deleted = await awsPruneWithFastRetry.deleteVersionsForFunction('service-FunctionA', [
+        '3',
+      ]);
+
+      expect(deleted).to.equal(1);
+      expect(send.callCount).to.equal(2);
+    });
+
     it('should swallow the replicated-function error and continue', async () => {
       const replicated = Object.assign(
         new Error(
@@ -318,6 +363,18 @@ describe('AwsPrune', () => {
         LayerName: 'layer-LayerA',
         VersionNumber: 3,
       });
+    });
+
+    it('should retry throttled delete requests', async () => {
+      const send = sinon.stub();
+      send.onFirstCall().rejects(createThrottlingError());
+      send.onSecondCall().resolves({});
+      sinon.stub(awsPruneWithFastRetry, 'getLambdaClient').resolves({ send });
+
+      const deleted = await awsPruneWithFastRetry.deleteVersionsForLayer('layer-LayerA', [3]);
+
+      expect(deleted).to.equal(1);
+      expect(send.callCount).to.equal(2);
     });
   });
 

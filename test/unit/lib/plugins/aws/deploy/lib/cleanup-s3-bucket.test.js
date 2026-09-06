@@ -5,6 +5,18 @@ const chai = require('chai');
 const proxyquire = require('proxyquire');
 const { S3Client, ListObjectsV2Command, DeleteObjectsCommand } = require('@aws-sdk/client-s3');
 const cleanupS3BucketMixin = require('../../../../../../../lib/plugins/aws/deploy/lib/cleanup-s3-bucket');
+const { retryOnThrottlingError } = require('../../../../../../../lib/aws/retry');
+
+const fastRetry = {
+  retryOnThrottlingError: (task, options) =>
+    retryOnThrottlingError(task, { ...options, delayMs: 1 }),
+};
+const createThrottlingError = () =>
+  Object.assign(new Error('Rate exceeded'), { name: 'Throttling' });
+const cleanupS3BucketWithFastRetry = proxyquire(
+  '../../../../../../../lib/plugins/aws/deploy/lib/cleanup-s3-bucket',
+  { '../../../../aws/retry': fastRetry }
+);
 
 const expect = chai.expect;
 
@@ -126,9 +138,7 @@ describe('cleanupS3Bucket', () => {
         '@aws-sdk/client-s3': {
           S3Client: FakeS3Client,
           DeleteObjectsCommand: FakeDeleteObjectsCommand,
-          paginateListObjectsV2: async function* paginate(config, input) {
-            yield await config.client.send(new FakeListObjectsV2Command(input));
-          },
+          ListObjectsV2Command: FakeListObjectsV2Command,
         },
       }
     );
@@ -155,6 +165,20 @@ describe('cleanupS3Bucket', () => {
           Bucket: awsDeploy.bucketName,
           Prefix: `${s3Key}/`,
         });
+      });
+    });
+
+    it('should retry throttled list requests', async () => {
+      s3SendStub.onFirstCall().rejects(createThrottlingError()).onSecondCall().resolves({});
+      Object.assign(awsDeploy, cleanupS3BucketWithFastRetry);
+
+      const objectsToRemove = await awsDeploy.getObjectsToRemove();
+
+      expect(objectsToRemove).to.deep.equal([]);
+      expect(s3SendStub).to.have.been.calledTwice;
+      expectListObjectsCall(s3SendStub.secondCall, {
+        Bucket: awsDeploy.bucketName,
+        Prefix: `${s3Key}/`,
       });
     });
 
@@ -434,6 +458,20 @@ describe('cleanupS3Bucket', () => {
             Objects: objectsToRemove,
           },
         });
+      });
+    });
+
+    it('should retry throttled delete requests', async () => {
+      const objectsToRemove = [{ Key: `${s3Key}/113304333331-2016-08-18T13:40:06/artifact.zip` }];
+      s3SendStub.onFirstCall().rejects(createThrottlingError()).onSecondCall().resolves({});
+      Object.assign(awsDeploy, cleanupS3BucketWithFastRetry);
+
+      await awsDeploy.removeObjects(objectsToRemove);
+
+      expect(s3SendStub).to.have.been.calledTwice;
+      expectDeleteObjectsCall(s3SendStub.secondCall, {
+        Bucket: awsDeploy.bucketName,
+        Delete: { Objects: objectsToRemove },
       });
     });
 

@@ -2,10 +2,23 @@
 
 const expect = require('chai').expect;
 const sinon = require('sinon');
+const proxyquire = require('proxyquire');
 const logEmitter = require('log/lib/emitter');
 const { UpdateTerminationProtectionCommand } = require('@aws-sdk/client-cloudformation');
 const AwsDeletionProtection = require('../../../../../lib/plugins/aws/deletion-protection');
 const ServerlessError = require('../../../../../lib/serverless-error');
+const { retryOnThrottlingError } = require('../../../../../lib/aws/retry');
+
+const fastRetry = {
+  retryOnThrottlingError: (task, options) =>
+    retryOnThrottlingError(task, { ...options, delayMs: 1 }),
+};
+const createThrottlingError = () =>
+  Object.assign(new Error('Rate exceeded'), { name: 'Throttling' });
+const AwsDeletionProtectionWithFastRetry = proxyquire(
+  '../../../../../lib/plugins/aws/deletion-protection',
+  { '../../aws/retry': fastRetry }
+);
 
 describe('AwsDeletionProtection', () => {
   let serverless;
@@ -146,6 +159,25 @@ describe('AwsDeletionProtection', () => {
         StackName: 'service-dev',
         EnableTerminationProtection: true,
       });
+    });
+
+    it('should retry the termination protection update on throttling errors', async () => {
+      serverless.service.provider.deletionProtection = true;
+      const retryingSend = sinon.stub();
+      retryingSend.onFirstCall().rejects(createThrottlingError());
+      retryingSend.onSecondCall().resolves({});
+      const awsDeletionProtectionWithFastRetry = new AwsDeletionProtectionWithFastRetry(
+        serverless,
+        { stage: 'dev', region: 'us-east-1' }
+      );
+      sinon
+        .stub(awsDeletionProtectionWithFastRetry, 'getCloudFormationClient')
+        .resolves({ send: retryingSend });
+
+      await awsDeletionProtectionWithFastRetry.postDeploy();
+
+      expect(retryingSend).to.have.been.calledTwice;
+      expect(retryingSend.secondCall.args[0]).to.be.instanceOf(UpdateTerminationProtectionCommand);
     });
 
     it('should disable protection when the stage is not listed', async () => {
