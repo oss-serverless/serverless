@@ -2,6 +2,7 @@
 
 const chai = require('chai');
 const sinon = require('sinon');
+const proxyquire = require('proxyquire');
 
 const ServerlessError = require('../../../../lib/serverless-error');
 const {
@@ -78,6 +79,30 @@ describe('test/unit/lib/aws/retry.test.js', () => {
       'Rate exceeded'
     );
     expect(task).to.have.been.calledThrice;
+  });
+
+  it('jitters the retry delay between 0.8 and 1.4 times the base delay', async () => {
+    const sleepStub = sinon.stub().resolves();
+    const { retryOnThrottlingError: retryWithSleepStub } = proxyquire('../../../../lib/aws/retry', {
+      '../utils/sleep': sleepStub,
+    });
+    const randomStub = sinon.stub(Math, 'random');
+    randomStub.onFirstCall().returns(0);
+    randomStub.onSecondCall().returns(0.999999);
+    const task = sinon.stub();
+    task.onCall(0).rejects(createThrottlingError());
+    task.onCall(1).rejects(createThrottlingError());
+    task.onCall(2).resolves('result');
+
+    try {
+      await expect(retryWithSleepStub(task, { delayMs: 5000 })).to.eventually.equal('result');
+    } finally {
+      randomStub.restore();
+    }
+
+    expect(sleepStub).to.have.been.calledTwice;
+    expect(sleepStub.firstCall.args[0]).to.equal(4000);
+    expect(sleepStub.secondCall.args[0]).to.equal(7000);
   });
 
   it('does not retry non-throttling errors', async () => {
