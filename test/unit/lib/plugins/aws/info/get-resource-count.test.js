@@ -2,11 +2,20 @@
 
 const expect = require('chai').expect;
 const sinon = require('sinon');
+const proxyquire = require('proxyquire');
 const AwsInfo = require('../../../../../../lib/plugins/aws/info/index');
+const { retryOnThrottlingError } = require('../../../../../../lib/aws/retry');
 const {
   CloudFormationClient,
   ListStackResourcesCommand,
 } = require('@aws-sdk/client-cloudformation');
+
+const fastRetry = {
+  retryOnThrottlingError: (task, options) =>
+    retryOnThrottlingError(task, { ...options, delayMs: 1 }),
+};
+const createThrottlingError = () =>
+  Object.assign(new Error('Rate exceeded'), { name: 'Throttling' });
 
 function createServerlessContext(options) {
   const provider = {
@@ -186,6 +195,24 @@ describe('#getResourceCount()', () => {
       NextToken: 'next',
     });
     expect(awsInfo.gatheredData.info.resourceCount).to.equal(3);
+  });
+
+  it('retries the stack resources listing on throttling errors', async () => {
+    listStackResourcesStub
+      .onFirstCall()
+      .rejects(createThrottlingError())
+      .onSecondCall()
+      .resolves({ StackResourceSummaries: [{}, {}] });
+    awsInfo.gatheredData = { info: {}, outputs: [] };
+    const getResourceCountWithFastRetry = proxyquire(
+      '../../../../../../lib/plugins/aws/info/get-resource-count',
+      { '../../../aws/retry': fastRetry }
+    );
+
+    await getResourceCountWithFastRetry.getResourceCount.call(awsInfo);
+
+    expect(listStackResourcesStub).to.have.been.calledTwice;
+    expect(awsInfo.gatheredData.info.resourceCount).to.equal(2);
   });
 
   it('uses an existing CloudFormation client promise from the info context', async () => {

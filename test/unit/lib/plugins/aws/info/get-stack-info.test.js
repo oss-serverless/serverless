@@ -2,13 +2,22 @@
 
 const expect = require('chai').expect;
 const sinon = require('sinon');
+const proxyquire = require('proxyquire');
 const AwsInfo = require('../../../../../../lib/plugins/aws/info/index');
+const { retryOnThrottlingError } = require('../../../../../../lib/aws/retry');
 const {
   CloudFormationClient,
   DescribeStacksCommand,
   ListExportsCommand,
 } = require('@aws-sdk/client-cloudformation');
 const { ApiGatewayV2Client, GetApiCommand } = require('@aws-sdk/client-apigatewayv2');
+
+const fastRetry = {
+  retryOnThrottlingError: (task, options) =>
+    retryOnThrottlingError(task, { ...options, delayMs: 1 }),
+};
+const createThrottlingError = () =>
+  Object.assign(new Error('Rate exceeded'), { name: 'Throttling' });
 
 function upperFirst(value) {
   return `${value[0].toUpperCase()}${value.slice(1)}`;
@@ -258,6 +267,23 @@ describe('#getStackInfo()', () => {
     } finally {
       getAwsSdkV3ConfigStub.restore();
     }
+  });
+
+  it('retries the stack description on throttling errors', async () => {
+    describeStacksStub
+      .onFirstCall()
+      .rejects(createThrottlingError())
+      .onSecondCall()
+      .resolves({ Stacks: [{ Outputs: [] }] });
+    const getStackInfoWithFastRetry = proxyquire(
+      '../../../../../../lib/plugins/aws/info/get-stack-info',
+      { '../../../aws/retry': fastRetry }
+    );
+
+    await getStackInfoWithFastRetry.getStackInfo.call(awsInfo);
+
+    expect(describeStacksStub).to.have.been.calledTwice;
+    expect(awsInfo.gatheredData.outputs).to.deep.equal([]);
   });
 
   it('uses an existing API Gateway V2 client promise from the info context', async () => {
