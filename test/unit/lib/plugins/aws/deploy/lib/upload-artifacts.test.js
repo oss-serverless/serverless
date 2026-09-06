@@ -12,6 +12,7 @@ const AwsProvider = require('../../../../../../../lib/plugins/aws/provider');
 const AwsDeploy = require('../../../../../../../lib/plugins/aws/deploy/index');
 const Serverless = require('../../../../../../../lib/serverless');
 const { progress } = require('../../../../../../../lib/utils/serverless-utils/log');
+const skipOnDisabledSymlinksInWindows = require('../../../../../../lib/skip-on-disabled-symlinks-in-windows');
 const { createTmpDir, ensureFileSync, getTmpDirPath } = require('../../../../../../utils/fs');
 const runServerless = require('../../../../../../utils/run-serverless');
 
@@ -358,6 +359,7 @@ describe('uploadArtifacts', () => {
           expect(getUploadParams(uploadStub)).to.deep.include({
             Bucket: awsDeploy.bucketName,
             Key: `${awsDeploy.serverless.service.package.artifactDirectoryName}/artifact.zip`,
+            ContentLength: 25,
             ContentType: 'application/zip',
           });
           expect(getUploadParams(uploadStub).Body.path).to.equal(artifactFilePath);
@@ -371,6 +373,28 @@ describe('uploadArtifacts', () => {
           });
           expect(readFileSyncStub).to.not.have.been.called;
         });
+    });
+
+    it('should declare the size of the target file for symlinked artifacts', async function () {
+      cryptoStub.read.onCall(0).returns('local-hash-zip-file');
+
+      const tmpDirPath = getTmpDirPath();
+      const targetFilePath = path.join(tmpDirPath, 'cached-artifact.zip');
+      const artifactFilePath = path.join(tmpDirPath, 'artifact.zip');
+      serverless.utils.writeFileSync(targetFilePath, 'artifact.zip file content');
+      try {
+        fs.symlinkSync(targetFilePath, artifactFilePath);
+      } catch (error) {
+        skipOnDisabledSymlinksInWindows(error, this);
+        throw error;
+      }
+
+      await awsDeploy.uploadZipFile({
+        filename: artifactFilePath,
+        s3KeyDirname: awsDeploy.serverless.service.package.artifactDirectoryName,
+      });
+
+      expect(getUploadParams(uploadStub).ContentLength).to.equal(25);
     });
 
     it('should configure S3 transfer acceleration for .zip file uploads', async () => {
@@ -394,6 +418,7 @@ describe('uploadArtifacts', () => {
       const streamError = new Error('stream failed');
       cryptoStub.read.onCall(0).returns('local-hash-zip-file');
       const artifactFilePath = path.join(getTmpDirPath(), 'artifact.zip');
+      serverless.utils.writeFileSync(artifactFilePath, 'artifact.zip file content');
       sinon
         .stub(fs, 'createReadStream')
         .onFirstCall()
@@ -477,6 +502,7 @@ describe('uploadArtifacts', () => {
         Bucket: awsDeploy.bucketName,
         Key: `${awsDeploy.serverless.service.package.artifactDirectoryName}/artifact.zip`,
         Body: artifactFilePath,
+        ContentLength: 25,
         ContentType: 'application/zip',
         Metadata: {
           filesha256: 'local-hash-zip-file',
