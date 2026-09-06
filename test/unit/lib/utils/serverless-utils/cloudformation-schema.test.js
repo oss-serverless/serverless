@@ -17,4 +17,17 @@ describe('serverless-utils/cloudformation-schema', () => {
   it('should construct a Date for an explicit timestamp tag', () => {
     expect(load('date: !!timestamp 2020-12-12').date).to.be.instanceOf(Date);
   });
+
+  it('should construct the Transform and GetStackOutput short forms', () => {
+    expect(
+      load(
+        'value: !Transform\n  Name: AWS::Include\n  Parameters:\n    Location: s3://bucket/x.yml'
+      ).value
+    ).to.deep.equal({
+      'Fn::Transform': { Name: 'AWS::Include', Parameters: { Location: 's3://bucket/x.yml' } },
+    });
+    expect(
+      load('value: !GetStackOutput\n  StackName: producer\n  OutputName: VpcId').value
+    ).to.deep.equal({ 'Fn::GetStackOutput': { StackName: 'producer', OutputName: 'VpcId' } });
+  });
 });
