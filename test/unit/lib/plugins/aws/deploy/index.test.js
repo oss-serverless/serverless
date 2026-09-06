@@ -821,50 +821,6 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
       expect(updateStackSend.client).to.equal(getTemplateSend.client);
     });
 
-    it('with existing stack - fails when the existing template cannot be parsed', async () => {
-      const awsSdkV3StubMap = {
-        ...baseAwsSdkV3StubMap,
-        ECR: {
-          describeRepositories: sinon.stub().throws({
-            providerError: { code: 'RepositoryNotFoundException' },
-          }),
-        },
-        S3: {
-          listObjectsV2: { Contents: [] },
-          headBucket: () => {
-            const err = new Error();
-            err.code = 'AWS_S3_HEAD_BUCKET_NOT_FOUND';
-            throw err;
-          },
-        },
-        CloudFormation: {
-          describeStacks: { Stacks: [{}] },
-          validateTemplate: {},
-          getTemplate: { TemplateBody: '{' },
-          describeStackResource: sinon
-            .stub()
-            .throws(createCloudFormationValidationError('does not exist for stack')),
-        },
-      };
-
-      await expect(
-        runServerless({
-          fixture: 'function',
-          command: 'deploy',
-          awsSdkV3StubMap,
-          configExt: {
-            provider: {
-              deploymentMethod: 'direct',
-            },
-          },
-          lastLifecycleHookName: 'aws:deploy:deploy:checkForChanges',
-        })
-      ).to.have.been.eventually.rejected.with.property(
-        'code',
-        'CLOUDFORMATION_TEMPLATE_PARSE_FAILED'
-      );
-    });
-
     describe('custom deployment-related properties', () => {
       let createStackStub;
       let updateStackStub;
@@ -2026,6 +1982,44 @@ describe('test/unit/lib/plugins/aws/deploy/index.test.js', () => {
     ).to.eventually.have.been.rejected.and.have.property(
       'code',
       'DEPLOYMENT_BUCKET_REMOVED_MANUALLY'
+    );
+  });
+
+  it('with existing stack - with template that cannot be parsed', async () => {
+    const awsSdkV3StubMap = {
+      ...baseAwsSdkV3StubMap,
+      ECR: {
+        describeRepositories: sinon.stub().throws({
+          providerError: { code: 'RepositoryNotFoundException' },
+        }),
+      },
+      S3: {
+        headBucket: () => {
+          const err = new Error();
+          err.code = 'AWS_S3_HEAD_BUCKET_NOT_FOUND';
+          throw err;
+        },
+      },
+      CloudFormation: {
+        describeStacks: { Stacks: [{}] },
+        validateTemplate: {},
+        getTemplate: { TemplateBody: '{' },
+        describeStackResource: sinon
+          .stub()
+          .throws(createCloudFormationValidationError('does not exist for stack')),
+      },
+    };
+
+    await expect(
+      runServerless({
+        fixture: 'function',
+        command: 'deploy',
+        awsSdkV3StubMap,
+        lastLifecycleHookName: 'aws:deploy:deploy:checkForChanges',
+      })
+    ).to.eventually.have.been.rejected.and.have.property(
+      'code',
+      'CLOUDFORMATION_TEMPLATE_PARSE_FAILED'
     );
   });
 
