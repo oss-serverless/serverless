@@ -654,6 +654,12 @@ describe('PluginManager', () => {
       );
     });
 
+    it('should suggest installing the package for unknown package subpath plugins', () => {
+      return expect(pluginManager.loadAllPlugins(['@scope/package/lib/plugin']))
+        .to.be.eventually.rejected.and.have.property('message')
+        .that.includes('serverless plugin install -n @scope/package');
+    });
+
     it('should not throw error when trying to load unknown plugin with help flag', async () => {
       const servicePlugins = [servicePluginMock3Name, servicePluginMock1Name];
 
