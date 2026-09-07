@@ -135,7 +135,7 @@ Java and Ruby local invocation now fails the command when the local runtime exit
 
 ### `plugins` configuration entries are validated
 
-Plugin entries in `serverless.yml` are now validated when osls loads the service. Entries must be lowercase npm package names, scoped npm package names, or explicit local paths beginning with `./` that stay inside the service directory.
+Plugin entries in `serverless.yml` are now validated when osls loads the service. Entries must be lowercase npm package names or scoped npm package names, optionally followed by a package subpath such as `@scope/package/lib/plugin`, or explicit local paths beginning with `./` that stay inside the service directory.
 
 Versioned plugin configuration entries such as `example-osls-plugin@1.2.3` now fail with `INVALID_PLUGIN_REFERENCE`; pin plugin versions in `package.json` instead. Non-string entries also fail with `INVALID_PLUGIN_REFERENCE`. Local plugin paths that escape the service directory, such as `./../plugin`, fail with `INVALID_LOCAL_PLUGIN_PATH`.
 

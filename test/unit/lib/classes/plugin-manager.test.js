@@ -654,6 +654,12 @@ describe('PluginManager', () => {
       );
     });
 
+    it('should suggest installing the package for unknown package subpath plugins', () => {
+      return expect(pluginManager.loadAllPlugins(['@scope/package/lib/plugin']))
+        .to.be.eventually.rejected.and.have.property('message')
+        .that.includes('serverless plugin install -n @scope/package');
+    });
+
     it('should not throw error when trying to load unknown plugin with help flag', async () => {
       const servicePlugins = [servicePluginMock3Name, servicePluginMock1Name];
 
@@ -821,6 +827,26 @@ describe('PluginManager', () => {
       expect(pluginManager.parsePluginsObject(['./plugins/local-plugin']).modules).to.deep.equal([
         './plugins/local-plugin',
       ]);
+    });
+
+    it('preserves package subpath plugin entries', () => {
+      expect(
+        pluginManager.parsePluginsObject(['@scope/package/lib/plugin', 'package/plugin']).modules
+      ).to.deep.equal(['@scope/package/lib/plugin', 'package/plugin']);
+    });
+
+    for (const input of ['package/../plugin', '@scope/package/./plugin', 'package//plugin']) {
+      it(`rejects package subpath plugin entry ${JSON.stringify(input)}`, () => {
+        expect(() => pluginManager.parsePluginsObject([input]))
+          .to.throw()
+          .with.property('code', 'INVALID_PLUGIN_REFERENCE');
+      });
+    }
+
+    it('rejects versioned package subpath plugin entries', () => {
+      expect(() => pluginManager.parsePluginsObject(['@scope/package/plugin@1.2.3']))
+        .to.throw()
+        .with.property('code', 'INVALID_PLUGIN_REFERENCE');
     });
 
     it('rejects non-string plugin entries', () => {
